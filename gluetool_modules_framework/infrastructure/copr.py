@@ -217,6 +217,9 @@ class CoprTask(object):
         # this string identifies component in static config file
         self.component_id = '{}/{}/{}'.format(self.owner, self.project, self.component)
 
+        if not self.error:
+            self.module.info('Initialized with {}: {} ({})'.format(self.id, self.full_name, self.url))
+
     @cached_property
     def has_artifacts(self):
         # type: () -> bool
@@ -320,7 +323,7 @@ class Copr(gluetool.Module):
         }
     }
 
-    required_options = ('copr-url', 'copr-web-url-template', 'task-id')
+    required_options = ('copr-url', 'copr-web-url-template')
 
     shared_functions = ['primary_task', 'tasks', 'copr_api']
 
@@ -343,8 +346,20 @@ class Copr(gluetool.Module):
         self._tasks = []
 
         for task_id in task_ids:
-            build_id, chroot_name = [s.strip() for s in task_id.split(':')]
-            self._tasks.append(CoprTask(BuildTaskID(int(build_id), chroot_name), self))
+            try:
+                build_id, chroot_name = [s.strip() for s in task_id.split(':')]
+            except ValueError:
+                raise gluetool.GlueError(
+                    "Invalid copr build with id '{}', must be 'build_id:chroot_name'".format(task_id)
+                )
+
+            try:
+                self._tasks.append(CoprTask(BuildTaskID(int(build_id), chroot_name), self))
+            except gluetool.glue.GlueError as error:
+                self.error(str(error))
+                raise gluetool.GlueError(
+                    "Could not find copr build id '{}' for chroot '{}'".format(build_id, chroot_name)
+                )
 
         return self._tasks
 
@@ -395,15 +410,17 @@ class Copr(gluetool.Module):
 
     def execute(self):
         # type: () -> None
+        if not self.option('task-id'):
+            return
+
         build_id, chroot_name = [s.strip() for s in self.option('task-id').split(':')]
 
         build_task_id = BuildTaskID(int(build_id), chroot_name)
+
         self.task = CoprTask(build_task_id, self)
-        self._tasks = [self.task]
 
         if self.task.error:
-            raise gluetool.GlueError(
-                'Error resolving copr build {}:{}: {}'.format(build_id, chroot_name, self.task.error)
-            )
+            raise gluetool.GlueError('Error resolving copr build {}:{}: {}'.format(
+                build_id, chroot_name, self.task.error))
 
-        self.info('Initialized with {}: {} ({})'.format(self.task.id, self.task.full_name, self.task.url))
+        self._tasks = [self.task]

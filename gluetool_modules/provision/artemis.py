@@ -15,7 +15,9 @@ import requests
 from gluetool import GlueError, SoftGlueError
 from gluetool.log import log_dict, LoggerMixin
 from gluetool.result import Result
-from gluetool.utils import dump_yaml, treat_url, normalize_multistring_option, wait, normalize_bool_option, normalize_path
+from gluetool.utils import (
+    dump_yaml, treat_url, normalize_multistring_option, wait, normalize_bool_option, normalize_path
+)
 from gluetool_modules.libs.guest import NetworkedGuest
 
 from gluetool_modules.libs.testing_environment import TestingEnvironment

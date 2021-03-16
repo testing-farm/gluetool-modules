@@ -3,7 +3,6 @@
 
 import os
 import stat
-import sys
 import tempfile
 
 import enum
@@ -270,11 +269,11 @@ class TestScheduleTMT(Module):
         }),
         ('Result options', {
             'recognize-errors': {
-                'help': 'If set, the error from tmt is recognized as test error (default: %(default)s).',
+                'help': 'If set, the error from tmt is recognized as test error.',
                 'action': 'store_true',
             },
             'reproducer-comment': {
-                'help': 'Comment added at the beginning of the tmt reproducer.',
+                'help': 'Comment added at the beginning of the tmt reproducer. (default: %(default)s).',
                 'default': '# tmt reproducer'
             },
         })
@@ -409,7 +408,6 @@ class TestScheduleTMT(Module):
         excludes = output[start:end].replace(',', '').replace('and', '')
 
         return normalize_shell_option(excludes)
-
 
     def create_test_schedule(self, testing_environment_constraints=None):
         # type: (Optional[List[TestingEnvironment]]) -> TestSchedule
@@ -591,7 +589,7 @@ class TestScheduleTMT(Module):
 
         else:
             reproducer.extend([
-                 # `provision` step
+                # `provision` step
                 'provision',
                 '--how', 'virtual',
                 # TODO: this might need revisit later

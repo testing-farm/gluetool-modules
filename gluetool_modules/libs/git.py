@@ -227,7 +227,9 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
                 gluetool.utils.Command(command).run()
 
             except gluetool.GlueCommandError as exc:
-                raise FailedToConfigure('Failed to configure git remote fetching on {}: {}'.format(ref, exc.output.stderr))
+                raise FailedToConfigure(
+                    'Failed to configure git remote fetching on {}: {}'.format(ref, exc.output.stderr)
+                )
 
             # Fetch the pull/merge request
             try:
@@ -277,7 +279,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
                 assert show_ref_output.stdout
                 ref = show_ref_output.stdout.split()[0].rstrip()
-            except gluetool.GlueCommandError as exc:
+            except gluetool.GlueCommandError:
                 pass
 
             try:

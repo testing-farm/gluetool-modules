@@ -94,7 +94,9 @@ class SUTInstallation(object):
         self.steps.append(SUTStep(label, command, items, ignore_exception, callback))
 
     def run(self, guest):
-        # type: (gluetool_modules_framework.libs.guest.NetworkedGuest) -> Result[None, SUTInstallationFailedError]
+        # type: (gluetool_modules_framework.libs.guest.NetworkedGuest) -> Result[List[str], SUTInstallationFailedError]
+
+        commands = []
 
         try:
             guest.execute('command -v dnf')
@@ -127,6 +129,7 @@ class SUTInstallation(object):
                 command = '{}{}'.format(dnf_command, command[3:])
 
             if not step.items:
+                commands.append(command)
                 command_failed, error_message, output = run_and_log(
                     [command],  # `command` is a string, we need to send it as List[str]
                     log_filepath,
@@ -151,6 +154,7 @@ class SUTInstallation(object):
                 # `step.command` contains `{}` to indicate place where item is substitute.
                 # e.g 'yum install -y {}'.format('ksh')
                 final_command = command.format(item)
+                commands.append(final_command)
 
                 command_failed, error_message, output = run_and_log(
                     [final_command],  # `final_command` is a string, we need to send it as List[str]
@@ -191,7 +195,7 @@ class SUTInstallation(object):
                     )
                 )
 
-        return Ok(None)
+        return Ok(commands)
 
 
 def check_ansible_sut_installation(ansible_output,  # type: Dict[str, Any]

@@ -16,15 +16,18 @@ from simplejson import JSONDecodeError
 from gluetool import GlueError, SoftGlueError
 from gluetool.log import log_dict, LoggerMixin
 from gluetool.result import Result
-from gluetool.utils import dump_yaml, treat_url, normalize_multistring_option, wait, normalize_path
+from gluetool.utils import (
+    dump_yaml, treat_url, normalize_multistring_option, wait, normalize_bool_option, normalize_path
+)
 from gluetool_modules_framework.libs.guest import NetworkedGuest
-
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 
 from typing import Any, Dict, List, Optional, Tuple, cast  # noqa
 
 SUPPORTED_API_VERSIONS = (
-    'v0.0.16', 'v0.0.17', 'v0.0.18', 'v0.0.19', 'v0.0.20', 'v0.0.21', 'v0.0.24', 'v0.0.26', 'v0.0.27', 'v0.0.28'
+    'v0.0.16', 'v0.0.17', 'v0.0.18', 'v0.0.19',
+    'v0.0.20', 'v0.0.21', 'v0.0.24', 'v0.0.26', 'v0.0.27', 'v0.0.28',
+    'v0.0.38'
 )
 
 EVENT_LOG_SUFFIX = '-artemis-guest-log.yaml'
@@ -200,17 +203,24 @@ class ArtemisAPI(object):
         :returns: Artemis API response serialized as dictionary or ``None`` in case of failure.
         '''
 
-        compose = environment.compose
+        compose = self.module.option('compose') or environment.compose
         snapshots = environment.snapshots
+        pool = pool or environment.pool
 
         post_install_script_contents = None
         if post_install_script:
-            with open(normalize_path(post_install_script)) as f:
-                post_install_script_contents = f.read()
+            # Check if it's a file, if not - treat it as raw script data
+            # NOTE(ivasilev) To unify logic with artemis-cli should be a 3-step check: a file, a url, a raw script
+            if os.path.isfile(post_install_script):
+                with open(normalize_path(post_install_script)) as f:
+                    post_install_script_contents = f.read()
+            else:
+                # NOTE(ivasilev) Remove possible string escaping
+                post_install_script_contents = post_install_script.replace('\\n', '\n')
 
         # TODO: yes, semver will make this much better... Or better, artemis-cli package provide an easy-to-use
         # bit of code to construct the payload.
-        if self.version in ('v0.0.19', 'v0.0.20', 'v0.0.21', 'v0.0.24', 'v0.0.26', 'v0.0.27', 'v0.0.28'):
+        if self.version in ('v0.0.19', 'v0.0.20', 'v0.0.21', 'v0.0.24', 'v0.0.26', 'v0.0.27', 'v0.0.28', 'v0.0.38'):
             data = {
                 'keyname': keyname,
                 'environment': {
@@ -230,8 +240,13 @@ class ArtemisAPI(object):
             if pool:
                 data['environment']['pool'] = pool
 
-            if cast(ArtemisProvisioner, self.module).hw_constraints:
-                data['environment']['hw']['constraints'] = cast(ArtemisProvisioner, self.module).hw_constraints
+            hardware = cast(ArtemisProvisioner, self.module).hw_constraints or environment.hardware
+
+            if hardware:
+                data['environment']['hw']['constraints'] = hardware
+
+            if self.version in ('v0.0.24'):
+                data['skip_prepare_verify_ssh'] = normalize_bool_option(self.module.option('skip-prepare-verify-ssh'))
 
         elif self.version in ('v0.0.16', 'v0.0.17', 'v0.0.18'):
             data = {
@@ -773,8 +788,15 @@ class ArtemisProvisioner(gluetool.Module):
                 'metavar': 'POOL',
                 'type': str
             },
+            'playbook': {
+                'help': 'Ansible playbook to run after the guest became ready, before alive checks.',
+            },
             'setup-provisioned': {
                 'help': "Setup guests after provisioning them. See 'guest-setup' module",
+                'action': 'store_true'
+            },
+            'skip-prepare-verify-ssh': {
+                'help': 'Skip verifiction of SSH connection in prepare state',
                 'action': 'store_true'
             },
             'snapshots': {
@@ -1004,6 +1026,22 @@ class ArtemisProvisioner(gluetool.Module):
             guest.hostname = six.ensure_str(response['address']) if response['address'] is not None else None
             guest.info("Guest is ready: {}".format(guest))
 
+            if self.option('playbook'):
+                self.require_shared('run_playbook')
+
+                env_variables = os.environ.copy()
+                env_variables.update({'ANSIBLE_SSH_RETRIES': '60'})
+
+                self.shared(
+                    'run_playbook',
+                    gluetool.utils.normalize_path(self.option('playbook')),
+                    guest,
+                    env=env_variables,
+                    variables={
+                        'IMAGE_NAME': environment.compose
+                    }
+                )
+
             guest._wait_alive(self.option('connect-timeout'),
                               self.option('activation-timeout'), self.option('activation-tick'),
                               self.option('echo-timeout'), self.option('echo-tick'),
@@ -1041,7 +1079,11 @@ class ArtemisProvisioner(gluetool.Module):
         ssh_key = self.option('ssh-key')
         priority = self.option('priority-group')
         options = normalize_multistring_option(self.option('ssh-options'))
+        # NOTE(ivasilev) Use artemis module requested post-install-script or the one from the environment
         post_install_script = self.option('post-install-script')
+        if not post_install_script:
+            provisioning = self.shared('user_settings').get('provisioning') or {}
+            post_install_script = provisioning.get('post_install_script')
 
         if self.option('snapshots'):
             environment.snapshots = True

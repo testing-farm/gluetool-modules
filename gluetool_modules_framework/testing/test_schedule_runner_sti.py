@@ -14,7 +14,7 @@ import gluetool
 from gluetool import GlueError
 from gluetool.action import Action
 from gluetool.log import log_blob, log_dict
-from gluetool.utils import dict_update, new_xml_element, normalize_path
+from gluetool.utils import dict_update, new_xml_element, normalize_path, normalize_shell_option
 
 from gluetool_modules_framework.libs import sort_children
 from gluetool_modules_framework.libs.artifacts import artifacts_location
@@ -114,6 +114,9 @@ class STIRunner(gluetool.Module):
             'metavar': 'PATH',
             'type': str,
             'default': ''
+        },
+        'ansible-extra-options': {
+            'help': 'Extra options to pass to ansible-playbook',
         }
     }
 
@@ -268,7 +271,8 @@ sut     ansible_host={} ansible_user=root {}
                 json_output=False,
                 log_filepath=os.path.join(work_dirpath, STI_ANSIBLE_LOG_FILENAME),
                 variables=variables,
-                ansible_playbook_filepath=ansible_playbook_filepath
+                ansible_playbook_filepath=ansible_playbook_filepath,
+                extra_options=normalize_shell_option(self.option('ansible-extra-options'))
             )
 
         # monitor artifact directory

@@ -273,10 +273,17 @@ class GuestSetup(gluetool.Module):
         playbooks = []  # type: List[str]
         extra_vars = {}  # type: Dict[str, Any]
 
+        # TODO: testing-farm reimplement via schedule entry
+        if self.shared('compose') and isinstance(self.shared('compose'), list):
+            compose = self.shared('compose')[0]
+        else:
+            compose = '<no compose>'
+
         context = gluetool.utils.dict_update(
             self.shared('eval_context'),
             {
-                'GUEST': guest
+                'GUEST': guest,
+                'COMPOSE': compose
             }
         )
 

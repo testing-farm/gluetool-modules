@@ -11,7 +11,7 @@ from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestSche
     TestScheduleEntryState
 
 # Type annotations
-from typing import cast, TYPE_CHECKING, Any, Dict, List  # noqa
+from typing import cast, TYPE_CHECKING, Any, Dict, List, Optional  # noqa
 
 if TYPE_CHECKING:
     import bs4  # noqa
@@ -255,7 +255,12 @@ class TestScheduleReport(gluetool.Module):
         sort_children(testsuites_properties, lambda child: child.attrs['name'])
 
         for schedule_entry in schedule:
-            test_suite = gluetool.utils.new_xml_element('testsuite', _parent=test_suites, tests='0')
+            test_suite = gluetool.utils.new_xml_element(
+                'testsuite',
+                _parent=test_suites,
+                name=schedule_entry.id,
+                tests='0'
+            )
             test_suite['result'] = schedule_entry.result.name.lower()
 
             testsuite_logs = gluetool.utils.new_xml_element('logs', _parent=test_suite)
@@ -281,7 +286,11 @@ class TestScheduleReport(gluetool.Module):
                 name='baseosci.result', value=schedule_entry.result.name.lower()
             )
 
-            self.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
+            if hasattr(schedule_entry, 'results'):
+                self.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
+
+            sort_children(testsuite_logs, lambda child: child.attrs['name'])
+            sort_children(testsuite_properties, lambda child: child.attrs['name'])
 
             sort_children(testsuite_logs, lambda child: child.attrs['name'])
             sort_children(testsuite_properties, lambda child: child.attrs['name'])
@@ -303,6 +312,16 @@ class TestScheduleReport(gluetool.Module):
     def execute(self):
         # type: () -> None
         self.require_shared('test_schedule')
+        self._schedule.log(self.info, label='finished schedule')
+
+    def destroy(self, failure=None):
+        # type: (Optional[Any]) -> None
+
+        if not self._schedule:
+            return
+
+        if failure:
+            self._schedule.log(self.info, label='aborted schedule')
 
         self._serialize_results(self._schedule)
 

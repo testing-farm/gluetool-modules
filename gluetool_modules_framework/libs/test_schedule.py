@@ -392,7 +392,8 @@ class TestSchedule(List[TestScheduleEntry]):
             ]
 
             for se in self:
-                if se.guest is None:
+                # TODO: would be nice to recognize non-ssh guest better as checking for attributes
+                if se.guest is None or not hasattr(se.guest, 'username'):
                     ssh_command = 'not available'
 
                 else:

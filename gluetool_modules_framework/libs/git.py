@@ -19,6 +19,33 @@ from gluetool.utils import Result
 # Type annotations
 from typing import cast, Any, Optional, List  # cast, Callable, Dict, List, NamedTuple, Optional, Tuple  # noqa
 
+# Clone directory for reproducer commands
+TESTCODE_DIR = 'testcode'
+
+
+class RemoteGitRepositoryError(gluetool.GlueError):
+    pass
+
+
+class FailedToClone(RemoteGitRepositoryError):
+    pass
+
+
+class FailedToConfigure(RemoteGitRepositoryError):
+    pass
+
+
+class FailedToFetchRef(RemoteGitRepositoryError):
+    pass
+
+
+class FailedToCheckoutBranch(RemoteGitRepositoryError):
+    pass
+
+
+class FailedToCheckoutRef(RemoteGitRepositoryError):
+    pass
+
 
 class RemoteGitRepository(gluetool.log.LoggerMixin):
     """
@@ -55,6 +82,9 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
         # holds git.Git instance, GitPython has no typing support
         self._instance = None  # type: Any
+
+        # list of commands use to clone the repository
+        self.commands = []  # type: List[str]
 
         # initialize from given path if given
         if self.path:
@@ -152,18 +182,22 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
             actual_path
         ]
 
+        self.commands.append(
+            gluetool.utils.format_command_line([['git', 'clone', clone_url, TESTCODE_DIR]]),
+        )
+
         def _clone():
             # type: () -> Result[None, str]
             try:
                 cmd.run()
 
             except gluetool.GlueCommandError as exc:
-                return Result.Error('Failed to clone git repository: {}, retrying'.format(exc.output.stderr))
+                raise FailedToClone('Failed to clone git repository: {}, retrying'.format(exc.output.stderr))
 
             return Result.Ok(None)
 
         gluetool.utils.wait(
-            "cloning with timeout {}, tick {}".format(clone_timeout, clone_tick),
+            "cloning with timeout {}s, tick {}s".format(clone_timeout, clone_tick),
             _clone,
             timeout=clone_timeout,
             tick=clone_tick
@@ -178,16 +212,96 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
             stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH  # noqa: E501  # line too long
         )
 
-        if ref:
+        if ref and ref.startswith('refs/'):
+            # Fetch the pull/merge request
             try:
-                gluetool.utils.Command([
+                command = [
+                    'git',
+                    '-C', actual_path,
+                    'config',
+                    'remote.origin.fetch',
+                    '"+refs/merge-requests/*:refs/remotes/origin/merge-requests/*"'
+                ]
+
+                self.commands.append(' '.join(command).replace(actual_path, TESTCODE_DIR))
+                gluetool.utils.Command(command).run()
+
+            except gluetool.GlueCommandError as exc:
+                raise FailedToConfigure(
+                    'Failed to configure git remote fetching on {}: {}'.format(ref, exc.output.stderr)
+                )
+
+            # Fetch the pull/merge request
+            try:
+                command = [
+                    'git',
+                    '-C', actual_path,
+                    'fetch',
+                    clone_url,
+                    '{}:{}'.format(ref, ref)
+                ]
+
+                self.commands.append(' '.join(command).replace(actual_path, TESTCODE_DIR))
+                gluetool.utils.Command(command).run()
+
+            except gluetool.GlueCommandError as exc:
+                raise FailedToFetchRef('Failed to fetch ref {}: {}'.format(ref, exc.output.stderr))
+
+            try:
+                command = [
                     'git',
                     '-C', actual_path,
                     'checkout', ref
-                ]).run()
+                ]
+
+                self.commands.append(' '.join(command).replace(actual_path, TESTCODE_DIR))
+                gluetool.utils.Command(command).run()
 
             except gluetool.GlueCommandError as exc:
-                raise gluetool.GlueError('Failed to checkout ref {}: {}'.format(ref, exc.output.stderr))
+                raise FailedToCheckoutBranch('Failed to checkout branch {}: {}'.format(ref, exc.output.stderr))
+
+        elif ref:
+            # Default branch name of a checkout via hash, we always checkout a "named" branch
+            branch_name = ref[:8]
+
+            # Find out if the given ref is a reference and find its hash
+            try:
+                command = [
+                    'git',
+                    '-C', actual_path,
+                    'show-ref', '-s', ref
+                ]
+
+                show_ref_output = gluetool.utils.Command(command).run()
+
+                # As the branch name us the reference name
+                branch_name = '{}-testing-farm-checkout'.format(ref)
+
+                assert show_ref_output.stdout
+                ref = show_ref_output.stdout.split()[0].rstrip()
+            except gluetool.GlueCommandError:
+                pass
+
+            try:
+                command = [
+                    'git',
+                    '-C', actual_path,
+                    'checkout', '-b', branch_name, ref
+                ]
+
+                reproducer_command = [
+                    'git',
+                    '-C', actual_path,
+                    'checkout', '-b', 'testbranch', ref
+                ]
+
+                self.commands.append(' '.join(reproducer_command).replace(actual_path, TESTCODE_DIR))
+                gluetool.utils.Command(command).run()
+
+            except gluetool.GlueCommandError as exc:
+                raise FailedToCheckoutRef('Failed to checkout ref {}: {}'.format(ref, exc.output.stderr))
+
+        self.commands.append('cd {}'.format(TESTCODE_DIR))
 
         # Since we used `dir` when creating repo directory, the path we have is absolute. That is not perfect,
         # we have an agreement with the rest of the world that we're living in current directory, which we consider

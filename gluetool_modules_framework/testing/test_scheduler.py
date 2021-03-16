@@ -209,7 +209,7 @@ class TestScheduler(gluetool.Module):
         # Check whether we have *any* artifacts at all, before we move on to more fine-grained checks.
         # If there's no task, just move on - we cannot check it, but it's allowed to run pipeline
         # without a task.
-        if self.has_shared('tasks'):
+        if self.has_shared('tasks') and self.shared('tasks'):
             gluetool_modules_framework.libs.artifacts.has_artifacts(*self.shared('tasks'))
 
         # One day, all that arch constraint "guessing" would move into `guess-environment` (or similar module)
@@ -226,6 +226,9 @@ class TestScheduler(gluetool.Module):
         # These are arches which we'd use to constraint the schedule - we're going to add to this list later...
         constraint_arches = []  # type: List[str]
 
+        # TODO: pool should be tied to an environment, a hack until we resolve this
+        pool = None
+
         provisioner_capabilities = cast(
             ProvisionerCapabilities,
             self.shared('provisioner_capabilities')
@@ -240,12 +243,29 @@ class TestScheduler(gluetool.Module):
         supported_arches = provisioner_capabilities.available_arches if provisioner_capabilities else []
         log_dict(self.debug, 'supported arches', supported_arches)
 
+        testing_farm_request = self.shared('testing_farm_request') if self.has_shared('testing_farm_request') else None
+
         # ... and these are arches available in the artifact.
-        if self.has_shared('primary_task'):
+        if self.has_shared('primary_task') and self.shared('primary_task'):
             artifact_arches = cast(
                 List[str],
                 self.shared('primary_task').task_arches.arches
             )
+
+        # TODO: hack, this will need more work once get's into the mainline
+        elif testing_farm_request:
+            try:
+                artifact_arches = [
+                    environment['arch']
+                    for environment in testing_farm_request.environments_requested
+                ]
+            except KeyError:
+                self.warn('no architecture specified in requested environments')
+                artifact_arches = []
+
+            # TODO: this is wrong of course, but sufficient hack for now ...
+            if testing_farm_request.environments_requested and 'pool' in testing_farm_request.environments_requested[0]:
+                pool = testing_farm_request.environments_requested[0]['pool']
 
         else:
             artifact_arches = []
@@ -378,7 +398,8 @@ class TestScheduler(gluetool.Module):
                     TestingEnvironment(
                         arch=arch,
                         compose=compose,
-                        snapshots=self.use_snapshots
+                        snapshots=self.use_snapshots,
+                        pool=pool
                     )
                 ]
 

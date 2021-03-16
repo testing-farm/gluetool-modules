@@ -67,7 +67,8 @@ def test_gather_results(module, asset, monkeypatch):
         TestingEnvironment('x86_64', 'rhel-9'),
         # a plan always starts with slash
         '/{}'.format(name),
-        'some-repo-dir'
+        'some-repo-dir',
+        ['exclude1', 'exclude2']
     )
 
     outcome, results = gather_plan_results(schedule_entry, ASSETS_DIR)

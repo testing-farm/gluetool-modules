@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import collections
+import os
 import re
 import six
 import sys
@@ -14,7 +15,7 @@ import requests
 from gluetool import GlueError, GlueCommandError, SoftGlueError
 from gluetool.log import log_dict, LoggerMixin
 from gluetool.result import Result
-from gluetool.utils import Command, dump_yaml, treat_url, normalize_multistring_option, wait, normalize_path
+from gluetool.utils import Command, dump_yaml, treat_url, normalize_multistring_option, wait, normalize_path, normalize_bool_option
 from gluetool_modules.libs.guest import NetworkedGuest
 
 from gluetool_modules.libs.testing_environment import TestingEnvironment
@@ -186,6 +187,7 @@ class ArtemisAPI(object):
 
         compose = environment.compose
         snapshots = environment.snapshots
+        pool = pool or environment.pool
 
         post_install_script_contents = None
         if post_install_script:
@@ -216,6 +218,9 @@ class ArtemisAPI(object):
 
             if cast(ArtemisProvisioner, self.module).hw_constraints:
                 data['environment']['hw']['constraints'] = cast(ArtemisProvisioner, self.module).hw_constraints
+
+            if self.version in ('v0.0.24'):
+                data['skip_prepare_verify_ssh'] = normalize_bool_option(self.module.option('skip-prepare-verify-ssh'))
 
         elif self.version in ('v0.0.16', 'v0.0.17', 'v0.0.18'):
             data = {
@@ -713,8 +718,15 @@ class ArtemisProvisioner(gluetool.Module):
                 'metavar': 'POOL',
                 'type': str
             },
+            'playbook': {
+                'help': 'Ansible playbook to run after the guest became ready, before alive checks.',
+            },
             'setup-provisioned': {
                 'help': "Setup guests after provisioning them. See 'guest-setup' module",
+                'action': 'store_true'
+            },
+            'skip-prepare-verify-ssh': {
+                'help': 'Skip verifiction of SSH connection in prepare state',
                 'action': 'store_true'
             },
             'snapshots': {
@@ -940,6 +952,38 @@ class ArtemisProvisioner(gluetool.Module):
             guest.hostname = response['address']
             guest.info("Guest is ready: {}".format(guest))
 
+            if self.option('playbook'):
+                self.require_shared('run_playbook')
+
+                env_variables = os.environ.copy()
+                env_variables.update({'ANSIBLE_SSH_RETRIES': '60'})
+
+                self.shared(
+                    'run_playbook',
+                    gluetool.utils.normalize_path(self.option('playbook')),
+                    guest,
+                    env=env_variables,
+                    variables={
+                        'IMAGE_NAME': environment.compose
+                    }
+                )
+
+            if self.option('playbook'):
+                self.require_shared('run_playbook')
+
+                env_variables = os.environ.copy()
+                env_variables.update({'ANSIBLE_SSH_RETRIES': '60'})
+
+                self.shared(
+                    'run_playbook',
+                    gluetool.utils.normalize_path(self.option('playbook')),
+                    guest,
+                    env=env_variables,
+                    variables={
+                        'IMAGE_NAME': environment.compose
+                    }
+                )
+
             guest._wait_alive(self.option('connect-timeout'),
                               self.option('activation-timeout'), self.option('activation-tick'),
                               self.option('echo-timeout'), self.option('echo-tick'),
@@ -1037,3 +1081,5 @@ class ArtemisProvisioner(gluetool.Module):
         # type: (Optional[Any]) -> None
         for guest in self.guests[:]:
             guest.destroy()
+
+        self.info('successfully removed all guests')

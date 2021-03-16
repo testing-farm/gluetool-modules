@@ -152,10 +152,12 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
     primary_task_mock.repo_url = 'dummy_repo_url'
     primary_task_mock.rpm_urls = ['dummy_rpm_url1', 'dummy_rpm_url2']
     primary_task_mock.rpm_names = ['dummy_rpm_names1', 'dummy_rpm_names2']
+    primary_task_mock.project = 'copr/project'
 
     patch_shared(monkeypatch, copr_module, {
         'primary_task': primary_task_mock,
-        'setup_guest': None
+        'setup_guest': None,
+        'tasks': [primary_task_mock]
     })
 
     module.execute()
@@ -178,7 +180,7 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
     ]
 
     copr_commands = [
-        'curl -v dummy_repo_url --output /etc/yum.repos.d/copr_build.repo',
+        'curl dummy_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project-1.repo',
         'dnf --allowerasing -y reinstall dummy_rpm_url1 || true',
         'dnf --allowerasing -y reinstall dummy_rpm_url2 || true',
         'dnf --allowerasing -y install dummy_rpm_url1 dummy_rpm_url2',

@@ -15,10 +15,13 @@ from gluetool import GlueError, GlueCommandError, Module
 from gluetool.action import Action
 from gluetool.log import Logging, format_blob, log_blob, log_dict
 from gluetool.log import ContextAdapter, LoggingFunctionType  # Ignore PyUnusedCodeBear
-from gluetool.utils import Command, load_yaml, new_xml_element, dict_update, from_yaml
+from gluetool.utils import Command, load_yaml, new_xml_element, dict_update, from_yaml, \
+    cached_property, normalize_shell_option
 
 from gluetool_modules_framework.libs import create_inspect_callback, sort_children
 from gluetool_modules_framework.libs.artifacts import artifacts_location
+from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
+from gluetool_modules_framework.libs.sut_installation import INSTALL_COMMANDS_FILE
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleResult, TestScheduleEntryOutput, \
     TestScheduleEntryStage, TestScheduleEntryAdapter
@@ -32,6 +35,10 @@ from typing import Any, Dict, List, NamedTuple, Optional  # noqa
 
 # TMT run log file
 TMT_LOG = 'tmt-run.log'
+TMT_REPRODUCER = 'tmt-reproducer.sh'
+
+# File with environment variables
+TMT_ENV_FILE = 'tmt-environment-{}.yaml'
 
 CONTEXT_FILENAME_PREFIX = 'context-'
 CONTEXT_FILENAME_SUFFIX = '.yaml'
@@ -76,6 +83,18 @@ PLAN_OUTCOME = {
     2: TestScheduleResult.FAILED,
 }
 
+# Result weight to TestScheduleResult outcome
+#
+#     https://tmt.readthedocs.io/en/latest/overview.html#exit-codes
+#
+# All tmt errors are connected to tests or config, so only higher return code than 3
+# is treated as error
+PLAN_OUTCOME_WITH_ERROR = {
+    0: TestScheduleResult.PASSED,
+    1: TestScheduleResult.FAILED,
+    2: TestScheduleResult.ERROR,
+}
+
 # Results YAML file, contains list of test run results, relative to plan workdir
 RESULTS_YAML = "execute/results.yaml"
 
@@ -117,8 +136,8 @@ class TestScheduleEntry(BaseTestScheduleEntry):
 
         return '{}:{}'.format(entry_id, plan)
 
-    def __init__(self, logger, tec, plan, repodir):
-        # type: (ContextAdapter, TestingEnvironment, str, Dict[str, Any]) -> None
+    def __init__(self, logger, tec, plan, repodir, excludes):
+        # type: (ContextAdapter, TestingEnvironment, str, str, List[str]) -> None
         """
         Test schedule entry, suited for use with TMT runners.
 
@@ -136,7 +155,10 @@ class TestScheduleEntry(BaseTestScheduleEntry):
         self.plan = plan
         self.work_dirpath = None  # type: Optional[str]
         self.results = None  # type: Any
-        self.repodir = repodir
+        self.repodir = repodir  # type: str
+        self.excludes = excludes  # type: List[str]
+        self.tmt_reproducer = []  # type: List[str]
+        self.tmt_reproducer_filepath = None  # type: Optional[str]
 
         self.context_files = []  # type: List[str]
 
@@ -164,8 +186,8 @@ PlanRun = NamedTuple('PlanRun', (
 ))
 
 
-def gather_plan_results(schedule_entry, work_dir):
-    # type: (TestScheduleEntry, str) -> Tuple[TestScheduleResult, List[TestResult]]
+def gather_plan_results(schedule_entry, work_dir, recognize_errors=False):
+    # type: (TestScheduleEntry, str, bool) -> Tuple[TestScheduleResult, List[TestResult]]
     """
     Extracts plan results from tmt logs.
 
@@ -196,11 +218,19 @@ def gather_plan_results(schedule_entry, work_dir):
         schedule_entry.warn('Could not load results.yaml file: {}'.format(error))
         return TestScheduleResult.ERROR, results
 
-    # Something went wrong, there should be results. There were tests, otherwise we wouldn't
-    # be running `tmt run`, but where are results? Reporting an error...
+    # no results means a failure user needs to investigate
     if not results:
-        schedule_entry.warn('Could not find any results in results.yaml file')
-        return TestScheduleResult.ERROR, test_results
+        tmt_log_filepath = os.path.join(work_dir, TMT_LOG)
+        return TestScheduleResult.FAILED, [
+            TestResult(
+                schedule_entry.id,
+                RESULT_OUTCOME['fail'],
+                [
+                    TestArtifact('testout.log', tmt_log_filepath),
+                    TestArtifact('log_dir', os.path.split(tmt_log_filepath)[0]),
+                ]
+            )
+        ]
 
     # iterate through all the test results and create TestResult for each
     for name, data in six.iteritems(results):
@@ -242,6 +272,9 @@ def gather_plan_results(schedule_entry, work_dir):
     # count the maximum result weight encountered, i.e. the overall result
     max_weight = max(RESULT_WEIGHT[data['result']] for _, data in six.iteritems(results))
 
+    if recognize_errors:
+        return PLAN_OUTCOME_WITH_ERROR[max_weight], results
+
     return PLAN_OUTCOME[max_weight], test_results
 
 
@@ -253,6 +286,8 @@ class TestScheduleTMT(Module):
 
     It executes each plan in a separate schedule entry using ``tmt run``. For execution it uses ``how=connect``
     for the provision step.
+
+    By default `tmt` errors are treated as test failures, use `--recognize-errors` option to treat them as errors.
     """
 
     name = 'test-schedule-tmt'
@@ -278,7 +313,21 @@ class TestScheduleTMT(Module):
                         """,
                 'action': 'append',
                 'default': []
+            },
+            'how': {
+                'help': 'How to run provisioning - connect plugin or local plugin (default: %(default)s).',
+                'default': 'local'
             }
+        }),
+        ('Result options', {
+            'recognize-errors': {
+                'help': 'If set, the error from tmt is recognized as test error.',
+                'action': 'store_true',
+            },
+            'reproducer-comment': {
+                'help': 'Comment added at the beginning of the tmt reproducer. (default: %(default)s).',
+                'default': '# tmt reproducer'
+            },
         })
     ]
 
@@ -358,8 +407,25 @@ class TestScheduleTMT(Module):
 
         return filepaths
 
-    def _plans_from_dist_git(self, repodir, context_files, filter):
-        # type: (str, List[str], str) -> List[str]
+    @cached_property
+    def _tmt_context_from_testing_farm(self):
+        # type: () -> List[str]
+        context = self.shared('tmt_context')
+
+        if not context:
+            return []
+
+        options = []  # type: List[str]
+
+        for name, value in six.iteritems(context):
+            options += [
+                '--context', '{}={}'.format(name, value)
+            ]
+
+        return options
+
+    def _plans_from_dist_git(self, repodir, context_files, filter=None):
+        # type: (str, List[str], Optional[str]) -> List[str]
         """
         Return list of plans from given repository.
 
@@ -367,23 +433,44 @@ class TestScheduleTMT(Module):
         :param str filter: use the given filter when listing plans.
         """
 
-        command = [self.option('command')] + [
-            '--context=@{}'.format(filepath)
-            for filepath in context_files
-        ] + [
-            'plan', 'ls', '--filter', filter
+        command = [
+            self.option('command')
         ]
+
+        if context_files:
+            command.extend([
+                '--context=@{}'.format(filepath)
+                for filepath in context_files
+            ])
+
+        if self._tmt_context_from_testing_farm:
+            command.extend(self._tmt_context_from_testing_farm)
+
+        command.extend(['plan', 'ls'])
+
+        if filter:
+            command.extend(['--filter', filter])
+
+        # by default we add enabled:true
+        else:
+            command.extend(['--filter', 'enabled:true'])
+
+        plans_regex = self.shared('testing_farm_request').plans
+
+        if plans_regex:
+            command.extend([plans_regex])
 
         try:
             tmt_output = Command(command).run(cwd=repodir)
 
         except GlueCommandError as exc:
-            assert exc.output.stderr
-            log_dict(self.error, "Failed to get list of plans", {
-                'command': ' '.join(command),
-                'exception': exc.output.stderr
-            })
-            six.reraise(*sys.exc_info())
+            # workaround until tmt prints errors properly to stderr
+            log_blob(
+                self.error,
+                "Failed to get list of plans",
+                exc.output.stderr or exc.output.stdout or '<no output>'
+            )
+            raise GlueError('Failed to list plans, TMT metadata are absent or corrupted.')
 
         if not tmt_output.stdout:
             raise GlueError("Did not find any plans. Command used '{}'.".format(' '.join(command)))
@@ -441,6 +528,59 @@ class TestScheduleTMT(Module):
             return {}
 
         return cast(Dict[str, Any], exported_plans[0].get('provision', {}).get('hardware', {}))
+
+    def excludes_from_tmt(self, repodir, plan):
+        # type: (str, str) -> List[str]
+        command = [self.option('command'), 'plan', 'show', '-v', '^{}$'.format(re.escape(plan))]
+
+        # TODO: tmt is python3 only, parse the excludes from output until our modules run in python3
+        try:
+            tmt_output = Command(command).run(cwd=repodir)
+
+        except GlueCommandError as exc:
+            # workaround until tmt prints errors properly to stderr
+            log_blob(
+                self.error,
+                "Failed to list plan '{}' details".format(plan),
+                exc.output.stderr or exc.output.stdout or '<no output>'
+            )
+            raise GlueError('Failed to get plan details, TMT metadata are absent or corrupted.')
+
+        output = tmt_output.stdout
+        assert output
+
+        # exclude packages are between 'exclude' and 'missing' keywords in the output
+        start = output.find('exclude')
+        end = output.rfind('missing')
+
+        # exclude or missing not found in `tmt` output
+        if start == -1 or end == -1:
+            self.debug('No excludes found in tmt output')
+            return []
+
+        # do not include start tag
+        start += len('exclude')
+
+        # remove formatting of tmt, examples
+        # exclude
+        # exclude glibc-devel, glibc-devel, glibc-devel and glibc-deve
+        # exclude glibc-devel
+        #         glibc-devel
+        #         glibc-devel
+        #         glibc-devel
+        #         glibc-devel
+        excludes = output[start:end].replace(',', '').replace('and', '')
+
+        return normalize_shell_option(excludes)
+
+    def hardware_from_request(self):
+        # type: () -> Dict[str, Any]
+        request = self.shared('testing_farm_request')
+
+        if not request:
+            return {}
+
+        return request.environments_requested[0].get('hardware') or {}
 
     def create_test_schedule(self, testing_environment_constraints=None):
         # type: (Optional[List[TestingEnvironment]]) -> TestSchedule
@@ -500,15 +640,23 @@ class TestScheduleTMT(Module):
                 continue
 
             for plan in plans:
-                schedule_entry = TestScheduleEntry(root_logger, tec, plan, repodir)
+                schedule_entry = TestScheduleEntry(
+                    root_logger,
+                    tec,
+                    plan,
+                    repodir,
+                    self.excludes_from_tmt(repodir, plan)
+                )
 
                 schedule_entry.testing_environment = TestingEnvironment(
                     compose=tec.compose,
                     arch=tec.arch,
                     snapshots=tec.snapshots,
                     pool=tec.pool,
-                    hardware=self.hardware_from_tmt(repodir, plan, context_files)
+                    hardware=self.hardware_from_request() or self.hardware_from_tmt(repodir, plan, context_files)
                 )
+
+                schedule_entry.tmt_reproducer.extend(repository.commands)
 
                 schedule_entry.context_files = context_files
 
@@ -590,31 +738,111 @@ class TestScheduleTMT(Module):
             for filepath in schedule_entry.context_files
         ]
 
-        command += [
+        # reproducer is the command which we present to user for reproducing the execution
+        # on his localhost
+        reproducer = []
+
+        if self._tmt_context_from_testing_farm:
+            command.extend(self._tmt_context_from_testing_farm)
+
+        reproducer = list(command)
+
+        reproducer.extend([
             'run',
             '--all',
+            '--verbose'
+        ])
+
+        command.extend([
+            'run',
+            '--all',
+            '--verbose',
             '--id', os.path.abspath(work_dirpath)
-        ]
+        ])
 
-        for name, value in six.iteritems(variables):
-            command += [
-                '-e', '{}={}'.format(name, value)
+        if variables:
+            # we MUST use a dedicated env file for each plan, to mitigate race conditions
+            # plans are handled in threads ...
+            tmt_env_file = TMT_ENV_FILE.format(schedule_entry.plan[1:].replace('/', '-'))
+            gluetool.utils.dump_yaml(variables, os.path.join(schedule_entry.repodir, tmt_env_file))
+            env_options = [
+                '-e', '@{}'.format(tmt_env_file)
             ]
+            command.extend(env_options)
+            reproducer.extend(env_options)
 
-        assert schedule_entry.guest.key is not None
-        assert schedule_entry.guest.hostname is not None
-        command += [
+            # reproducer command to download the environment file
+            schedule_entry.tmt_reproducer.append(
+                'curl -LO {}'.format(
+                    artifacts_location(self, os.path.join(schedule_entry.repodir, tmt_env_file), logger=self.logger)
+                )
+            )
+
+        if self.option('how') == 'local':
+            local_command = [
+                # `provision` step
+                'provision',
+
+                # `plan` step
+                'plan',
+                '--name', r'^{}$'.format(re.escape(schedule_entry.plan))
+            ]
+            command += local_command
+            reproducer += local_command
+
+        else:
             # `provision` step
-            'provision',
-            '--how', 'connect',
-            '--guest', schedule_entry.guest.hostname,
-            '--key', schedule_entry.guest.key,
-            '--port', str(schedule_entry.guest.port),
+            reproducer.extend([
+                'provision',
+                '--how', 'virtual',
+                # TODO: this might need revisit later
+                '--image', self.shared('compose')[0],
+            ])
 
-            # `plan` step
+            assert schedule_entry.guest.key is not None
+            assert schedule_entry.guest.hostname is not None
+
+            command.extend([
+                'provision',
+                '--how', 'connect',
+                '--guest', schedule_entry.guest.hostname,
+                '--key', schedule_entry.guest.key,
+                '--port', str(schedule_entry.guest.port),
+            ])
+
+        # collect artifact installation commands
+        install_commands = ''
+        for output in schedule_entry.guest_setup_outputs.get(GuestSetupStage.ARTIFACT_INSTALLATION, []):
+            try:
+                with open(os.path.join(output.log_path, INSTALL_COMMANDS_FILE)) as f:
+                    install_commands += f.read()
+            except FileNotFoundError:
+                self.debug(
+                    'ARTIFACT_INSTALLATION output {} did not create a {}'.format(output, INSTALL_COMMANDS_FILE))
+
+        if install_commands:
+            self.debug('sut_install_commands: {}'.format(install_commands))
+            reproducer.extend([
+                # `prepare` step
+                'prepare',
+                '--how', 'shell',
+                '--script', "'\n" + install_commands + "'"
+            ])
+        else:
+            self.debug('no sut_install_commands available')
+
+        # `plan` step
+        command.extend([
             'plan',
-            '--name', schedule_entry.plan
-        ]
+            '--name', r'^{}$'.format(re.escape(schedule_entry.plan))
+        ])
+        reproducer.extend([
+            'plan',
+            '--name', r'^{}$'.format(re.escape(schedule_entry.plan))
+        ])
+
+        # add tmt reproducer suitable for local execution
+        schedule_entry.tmt_reproducer.append(' '.join(reproducer))
 
         def _save_output(output):
             # type: (gluetool.utils.ProcessOutput) -> None
@@ -626,6 +854,23 @@ class TestScheduleTMT(Module):
 
                 _write('# STDOUT:', format_blob(cast(str, output.stdout)))
                 _write('# STDERR:', format_blob(cast(str, output.stderr)))
+
+                f.flush()
+
+        def _save_reproducer(reproducer):
+            # type: (str) -> None
+
+            assert schedule_entry.tmt_reproducer_filepath
+            with open(schedule_entry.tmt_reproducer_filepath, 'w') as f:
+                def _write(*args):
+                    # type: (Any) -> None
+                    f.write('\n'.join(args))
+
+                # TODO: artifacts instalation should be added once new plugin is ready
+                _write(
+                    self.option('reproducer-comment'),
+                    reproducer
+                )
 
                 f.flush()
 
@@ -642,26 +887,31 @@ class TestScheduleTMT(Module):
         except GlueCommandError as exc:
             tmt_output = exc.output
 
-            # check if tmt failed to produce results
-            if tmt_output.exit_code == TMTExitCodes.RESULTS_MISSING:
-                schedule_entry.warn('tmt did not produce results, skipping results evaluation')
-
-                log_blob(
-                    schedule_entry.error,
-                    'tmt execution failed with exit code {}'.format(tmt_output.exit_code),
-                    tmt_output.stderr if tmt_output.stderr else ''
-                )
-
-                return TestScheduleResult.ERROR, []
-
-            self.info('tmt produced results with exit code {}'.format(tmt_output.exit_code))
-
         finally:
             if tmt_output:
                 _save_output(tmt_output)
+            if schedule_entry.tmt_reproducer:
+                _save_reproducer('\n'.join(schedule_entry.tmt_reproducer))
+
+        self.info('tmt exited with code {}'.format(tmt_output.exit_code))
+
+        # check if tmt failed to produce results
+        if tmt_output.exit_code == TMTExitCodes.RESULTS_MISSING:
+            schedule_entry.warn('tmt did not produce results, skipping results evaluation')
+
+            return TestScheduleResult.FAILED, [
+                TestResult(
+                    schedule_entry.id,
+                    RESULT_OUTCOME['fail'],
+                    [
+                        TestArtifact('testout.log', tmt_log_filepath),
+                        TestArtifact('log_dir', os.path.split(tmt_log_filepath)[0]),
+                    ]
+                )
+            ]
 
         # gather and return overall plan run result and test results
-        return gather_plan_results(schedule_entry, work_dirpath)
+        return gather_plan_results(schedule_entry, work_dirpath, self.option('recognize-errors'))
 
     def run_test_schedule_entry(self, schedule_entry):
         # type: (TestScheduleEntry) -> None
@@ -678,6 +928,7 @@ class TestScheduleTMT(Module):
         schedule_entry.work_dirpath = work_dirpath
 
         tmt_log_filepath = os.path.join(work_dirpath, TMT_LOG)
+        schedule_entry.tmt_reproducer_filepath = os.path.join(work_dirpath, TMT_REPRODUCER)
 
         artifacts = artifacts_location(self, tmt_log_filepath, logger=schedule_entry.logger)
 
@@ -729,12 +980,44 @@ class TestScheduleTMT(Module):
             # type: (Any, str, Any, Any, bool) -> Any
             parent_elem = new_xml_element('testing-environment', _parent=test_case, name=name)
             new_xml_element('property', _parent=parent_elem, name='arch', value=arch)
-            new_xml_element('property', _parent=parent_elem, name='compose', value=compose)
+            if compose:
+                new_xml_element('property', _parent=parent_elem, name='compose', value=compose)
             new_xml_element('property', _parent=parent_elem, name='snapshots', value=str(snapshots))
 
         if schedule_entry.runner_capability != 'tmt':
             self.overloaded_shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
             return
+
+        if not schedule_entry.results:
+            return
+
+        if schedule_entry.tmt_reproducer_filepath:
+            new_xml_element(
+                'log',
+                _parent=test_suite.logs,
+                **{
+                    'name': 'tmt-reproducer',
+                    'href': artifacts_location(
+                        self,
+                        schedule_entry.tmt_reproducer_filepath,
+                        logger=schedule_entry.logger
+                    )
+                }
+            )
+
+        if schedule_entry.work_dirpath:
+            new_xml_element(
+                'log',
+                _parent=test_suite.logs,
+                **{
+                    'name': 'workdir',
+                    'href': artifacts_location(
+                        self,
+                        schedule_entry.work_dirpath,
+                        logger=schedule_entry.logger
+                    )
+                }
+            )
 
         for task in schedule_entry.results:
 

@@ -64,10 +64,12 @@ def fixture_module_shared_patched(module, monkeypatch):
     primary_task_mock.repo_url = 'dummy_repo_url'
     primary_task_mock.rpm_urls = ['dummy_rpm_url1', 'dummy_rpm_url2']
     primary_task_mock.rpm_names = ['dummy_rpm_names1', 'dummy_rpm_names2']
+    primary_task_mock.project = 'copr/project'
 
     patch_shared(monkeypatch, module, {
         'primary_task': primary_task_mock,
-        'setup_guest': None
+        'setup_guest': None,
+        'tasks': [primary_task_mock]
     })
 
     return module, primary_task_mock
@@ -86,7 +88,7 @@ def test_setup_guest(module_shared_patched, tmpdir):
     module.setup_guest(guest, stage=GuestSetupStage.ARTIFACT_INSTALLATION, log_dirpath=str(tmpdir))
 
     commands = [
-        'curl -v dummy_repo_url --output /etc/yum.repos.d/copr_build.repo',
+        'curl dummy_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project-1.repo',
         'dnf --allowerasing -y reinstall dummy_rpm_url1 || true',
         'dnf --allowerasing -y reinstall dummy_rpm_url2 || true',
         'dnf --allowerasing -y install dummy_rpm_url1 dummy_rpm_url2',
@@ -118,14 +120,18 @@ def test_no_dnf(module_shared_patched, tmpdir):
     module.setup_guest(guest, stage=GuestSetupStage.ARTIFACT_INSTALLATION, log_dirpath=str(tmpdir))
 
     calls = [
-        call('curl -v dummy_repo_url --output /etc/yum.repos.d/copr_build.repo'),
+        call('command -v dnf'),
+        call('curl dummy_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project-1.repo'),
         call('yum -y reinstall dummy_rpm_url1'),
         call('yum -y reinstall dummy_rpm_url2'),
         call('yum -y downgrade dummy_rpm_url1 dummy_rpm_url2'),
-        call('yum -y install dummy_rpm_url1 dummy_rpm_url2')
+        call('yum -y install dummy_rpm_url1 dummy_rpm_url2'),
+        call('rpm -q dummy_rpm_names1'),
+        call('rpm -q dummy_rpm_names2')
     ]
 
-    execute_mock.assert_has_calls(calls, any_order=True)
+    execute_mock.assert_has_calls(calls, any_order=False)
+    assert execute_mock.call_count == 9
     assert_log_files(guest, str(tmpdir), file_names=[
         '0-Download-copr-repository.txt',
         '1-Reinstall-packages.txt',
@@ -153,7 +159,7 @@ def test_nvr_check_fails(module_shared_patched, tmpdir):
 
     assert len(outputs) == 1
     assert outputs[0].stage == GuestSetupStage.ARTIFACT_INSTALLATION
-    assert outputs[0].label == 'Copr build installation'
+    assert outputs[0].label == 'Copr build(s) installation'
     assert outputs[0].log_path == '{}/artifact-installation-guest0'.format(str(tmpdir))
     assert isinstance(outputs[0].additional_data, gluetool_modules_framework.libs.sut_installation.SUTInstallation)
 
@@ -181,7 +187,7 @@ def test_repo_download_fails(module_shared_patched, tmpdir):
 
     assert len(outputs) == 1
     assert outputs[0].stage == GuestSetupStage.ARTIFACT_INSTALLATION
-    assert outputs[0].label == 'Copr build installation'
+    assert outputs[0].label == 'Copr build(s) installation'
     assert outputs[0].log_path == '{}/artifact-installation-guest0'.format(str(tmpdir))
     assert isinstance(outputs[0].additional_data, gluetool_modules_framework.libs.sut_installation.SUTInstallation)
 

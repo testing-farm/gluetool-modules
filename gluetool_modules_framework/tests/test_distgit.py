@@ -15,7 +15,7 @@ from gluetool.log import Logging
 
 import gluetool_modules_framework.infrastructure.distgit
 from gluetool_modules_framework.infrastructure.distgit import DistGitRepository
-from . import assert_shared, create_module, patch_shared, testing_asset
+from . import create_module, patch_shared, testing_asset
 
 Response = collections.namedtuple('Response', ['status_code', 'content', 'text'])
 
@@ -27,7 +27,10 @@ def fixture_module():
 
 @pytest.fixture(name='dummy_repository')
 def fixture_dummy_repository(module):
-    return DistGitRepository(module, 'some-package', clone_url='some-clone-url', web_url='some-web-url', branch='some-branch')
+    return DistGitRepository(
+        module, 'some-package',
+        clone_url='some-clone-url', web_url='some-web-url', branch='some-branch'
+    )
 
 
 @pytest.fixture(name='dummy_repository_path')
@@ -92,10 +95,6 @@ def test_sanity_missing_required_options(module, method):
     with pytest.raises(gluetool.utils.IncompatibleOptionsError,
                        match="missing required options for method '{}'".format(method)):
         module.sanity()
-
-
-def test_missing_primary_task(module):
-    assert_shared('primary_task', module.execute)
 
 
 def test_artifact(monkeypatch, module):

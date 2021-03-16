@@ -37,21 +37,31 @@ class TestingEnvironment(object):
         then deduce what guest configuration (arch & distro, arch & OpenStack image, and so on) would satisfy
         such request.
     :param str arch: Architecture that should be used for testing.
-    :param bool snapshots: Choose a pool with snapshots support
+    :param bool snapshots: Choose a pool with snapshots support.
+    :param str pool: Name of the pool to use for provisioning.
     """
 
     # Make special values available to templates, they are now reachable as class variables
     # of each instance.
     ANY = gluetool_modules_framework.libs.ANY
 
-    _fields = ('arch', 'compose', 'snapshots')
+    _fields = ('arch', 'compose', 'snapshots', 'pool', 'hardware')
 
-    def __init__(self, arch=None, compose=None, snapshots=False):
-        # type: (Optional[ArchType], Optional[ComposeType], SnapshotsType) -> None
+    def __init__(
+        self,
+        arch=None,          # type: Optional[ArchType]
+        compose=None,       # type: Optional[ComposeType]
+        snapshots=False,    # type: SnapshotsType
+        pool=None,          # type: Optional[str]
+        hardware=None       # type: Optional[Dict[str, Any]]
+    ):
+        # type: (...) -> None
 
         self.arch = arch
         self.compose = compose
         self.snapshots = snapshots
+        self.pool = pool
+        self.hardware = hardware
 
     def __str__(self):
         # type: () -> str

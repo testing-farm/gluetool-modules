@@ -8,12 +8,15 @@ from concurrent.futures import ThreadPoolExecutor, wait, Future
 
 import gluetool
 from gluetool import GlueError
-from gluetool_modules.libs.guest import NetworkedGuest
+from gluetool.result import Ok
+from gluetool.utils import Command, IncompatibleOptionsError
+from gluetool_modules.libs.guest import NetworkedGuest, Guest, GuestConnectionError
+from gluetool_modules.libs.guest_setup import GuestSetupOutput
 
 from gluetool_modules.libs.testing_environment import TestingEnvironment
 
 # Type annotations
-from typing import Any, List, Optional, NamedTuple, Set, cast  # noqa
+from typing import Any, Dict, List, Optional, NamedTuple, Set, Union, cast  # noqa
 from typing_extensions import Literal
 
 # SSH connection defaults
@@ -24,6 +27,9 @@ DEFAULT_SSH_OPTIONS = ['UserKnownHostsFile=/dev/null', 'StrictHostKeyChecking=no
 DEFAULT_BOOT_TIMEOUT = 10
 DEFAULT_CONNECT_TIMEOUT = 10
 DEFAULT_ECHO_TIMEOUT = 10
+
+# Hostnames recognized as localhost connections
+LOCALHOST_GUEST_HOSTNAMES = ['127.0.0.1', 'localhost']
 
 #: Generic provisioner capabilities.
 #: Follows :doc:`Provisioner Capabilities Protocol </protocols/provisioner-capabilities>`.
@@ -67,6 +73,68 @@ class StaticGuest(NetworkedGuest):
             raise GlueError('Error retrieving guest architecture')
         self.environment = TestingEnvironment(arch=arch.rstrip(), compose=None)
 
+    def destroy(self):
+        # type: () -> None
+        """
+        Destroy guest. For a remote guest this is no-op.
+        """
+        pass
+
+
+class StaticLocalhostGuest(Guest):
+    """
+    StaticLocalhostGuest provides access to the local machine under the same user running the module.
+    """
+
+    def _is_allowed_degraded(self, service):
+        # type: (Any) -> Literal[True]
+        return True
+
+    def __init__(self, module, fqdn, **kwargs):
+        # type: (CIStaticGuest, str, **Any) -> None
+        super(StaticLocalhostGuest, self).__init__(module, fqdn, **kwargs)
+
+        # populate guest architecture from the OS`
+        arch_output = self.execute('arch')
+        assert arch_output.stdout
+        self.environment = TestingEnvironment(arch=arch_output.stdout.rstrip(), compose=None)
+
+        self.hostname = fqdn
+
+    def execute(self, cmd, **kwargs):
+        # type: (str, **Any) -> gluetool.utils.ProcessOutput
+        """
+        Execute a command on the guest. Should behave like `utils.run_command`.
+        """
+
+        return Command([cmd], logger=self.logger).run(**kwargs)
+
+    def setup(self, variables=None, **kwargs):
+        # type: (Optional[Dict[str, Any]], **Any) -> Any
+        variables = variables or {}
+
+        # pylint: disable=arguments-differ
+        if not self._module.has_shared('setup_guest'):
+            raise gluetool.GlueError("Module 'guest-setup' is required to actually set the guests up.")
+
+        if 'IMAGE_NAME' not in variables:
+            assert self.environment
+            variables['IMAGE_NAME'] = self.environment.compose
+
+        return self._module.shared('setup_guest', self, variables=variables, **kwargs)
+
+    def __repr__(self):
+        # type: () -> str
+
+        return self.hostname
+
+    def destroy(self):
+        # type: () -> None
+        """
+        Destroy guest. For localhost this is no-op.
+        """
+        pass
+
 
 class CIStaticGuest(gluetool.Module):
     """
@@ -78,7 +146,11 @@ class CIStaticGuest(gluetool.Module):
     options = [
         ('General Options', {
             'guest': {
-                'help': "Guest connection details, in form '[user@]hostname[:port]. Default user is 'root' and port 22",
+                'help': """
+                    Guest connection details, in form '[user@]hostname[:port]. Use 'localhost' or '127.0.0.1' to connect
+                    to localhost instead. Default user for localhost is the same as the one running the pipeline.
+                    In other cases the default user is 'root' and port 22.
+                """,
                 'action': 'append'
             },
             'guest-setup': {
@@ -86,7 +158,7 @@ class CIStaticGuest(gluetool.Module):
                 'action': 'store_true'
             },
             'ssh-key': {
-                'help': 'SSH key to use to connect to the guests.'
+                'help': 'SSH key to use to connect to the guests. Does not apply for localhost.'
             }
         }),
         ('Timeouts', {
@@ -112,7 +184,7 @@ class CIStaticGuest(gluetool.Module):
     ]
 
     shared_functions = ['provision', 'provisioner_capabilities']
-    required_options = ('guest', 'ssh-key')
+    required_options = ('guest',)
 
     def __init__(self, *args, **kwargs):
         # type: (*Any, **Any) -> None
@@ -121,7 +193,16 @@ class CIStaticGuest(gluetool.Module):
         # All guests connected
         self._guests = []  # type: List[StaticGuest]
 
-    def guest_connect(self, guest):
+    def sanity(self):
+        # type: () -> None
+        if not self.option('guest'):
+            return
+
+        for guest in self.option('guest'):
+            if guest not in LOCALHOST_GUEST_HOSTNAMES and not self.option('ssh-key'):
+                raise IncompatibleOptionsError("Option 'ssh-key' is required")
+
+    def guest_remote(self, guest):
         # type: (str) -> StaticGuest
         """
         Connect to a guest and return a StaticGuest instance.
@@ -146,6 +227,19 @@ class CIStaticGuest(gluetool.Module):
             options=DEFAULT_SSH_OPTIONS)
 
         return static_guest
+
+    def guest_localhost(self, guest):
+        # type: (str) -> StaticLocalhostGuest
+        """
+        Connect to a localhost guest and return a StaticLocalhostGuest instance.
+
+        :returns: A connected guest
+        """
+
+        self.info("adding guest '{}'".format(guest))
+        localhost_guest = StaticLocalhostGuest(self, guest)
+
+        return localhost_guest
 
     def provisioner_capabilities(self):
         # type: () -> ProvisionerCapabilities
@@ -183,6 +277,13 @@ class CIStaticGuest(gluetool.Module):
             raise GlueError("Did not find {} guest(s) with architecture '{}'.".format(count, environment.arch))
 
         return returned_guests
+
+    def guest_connect(self, guest):
+        # type: (str) -> Union[StaticGuest, StaticLocalhostGuest]
+        if guest in LOCALHOST_GUEST_HOSTNAMES:
+            return self.guest_localhost(guest)
+
+        return self.guest_remote(guest)
 
     def execute(self):
         # type: () -> None

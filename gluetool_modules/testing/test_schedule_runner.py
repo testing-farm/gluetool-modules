@@ -187,7 +187,7 @@ class TestScheduleRunner(gluetool.Module):
 
             r_result = cast(
                 SetupGuestReturnType,
-                schedule_entry.guest.setup(stage=stage)
+                schedule_entry.guest.setup(stage=stage, schedule_entry=schedule_entry)
             )
 
             if r_result.is_ok:
@@ -200,7 +200,8 @@ class TestScheduleRunner(gluetool.Module):
 
             schedule_entry.guest_setup_outputs[stage] = results
 
-            schedule_entry.log_guest_setup_outputs(self, log_fn=schedule_entry.info)
+            if results:
+                schedule_entry.log_guest_setup_outputs(self, log_fn=schedule_entry.info)
 
             if not exc:
                 return

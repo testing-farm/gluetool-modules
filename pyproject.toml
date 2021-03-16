@@ -61,8 +61,10 @@ github = "gluetool_modules.infrastructure.github:GitHub"
 github-copr-build-job = "gluetool_modules.testing.pull_request_builder.github_copr_build_job:CoprBuildJob"
 guess-environment = "gluetool_modules.helpers.guess_environment:GuessEnvironment"
 guest-setup = "gluetool_modules.helpers.guest_setup:GuestSetup"
-openstack-job = "gluetool_modules.testing.openstack.openstack_job:OpenStackJob"
+hide-secrets = "gluetool_modules.helpers.hide_secrets:HideSecrets"
 install-copr-build = "gluetool_modules.helpers.install_copr_build:InstallCoprBuild"
+install-koji-build-execute = "gluetool_modules.helpers.install_koji_build_execute:InstallKojiBuildExecute"
+install-repository = "gluetool_modules.helpers.install_repository:InstallRepository"
 install-mbs-build-execute = "gluetool_modules.helpers.install_mbs_build_execute:InstallMBSBuild"
 install-mbs-build = "gluetool_modules.helpers.install_mbs_build:InstallMBSBuild"
 jenkins-build-name = "gluetool_modules.helpers.jenkins.jenkins_build_name:JenkinsBuildName"
@@ -134,6 +136,7 @@ jenkins-job-builder = "1.6.2"
 jinja2 = "2.10"
 jq = "0.1.6"
 koji = "^1.22"
+lazy-object-proxy = "1.6.0"
 mako = "1.0.6"
 mysql-connector-python = "8.0.13"
 packaging = "17.1"
@@ -161,6 +164,10 @@ pylint = {version = "1.9.5", python = "~2.7"}
 pytest = [
     {version = "5.4.3", python = "~3.7"},
     {version = "4.6.5", python = "~2.7"}
+]
+lazy-object_proxy = [
+    {version = "1.7.1", python = "~3.7"},
+    {version = "1.6.0", python = "~2.7"}
 ]
 pytest-catchlog = "1.2.2"
 pytest-cov = "2.7.1"

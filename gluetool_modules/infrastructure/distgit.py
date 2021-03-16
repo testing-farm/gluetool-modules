@@ -273,7 +273,7 @@ class DistGit(gluetool.Module):
             }
         }),
         ("Options related to discovering bugs from commit logs", {
-            'regex-bugzilla': {
+            'ex-bugzilla': {
                 'help': 'Regular expression for matching bugzilla in commit logs'
             },
             'regex-resolves': {

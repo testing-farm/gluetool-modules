@@ -144,7 +144,7 @@ class CIStaticGuest(gluetool.Module):
     ]
 
     shared_functions = ('provision', 'provisioner_capabilities')
-    required_options = ('guest', )
+    required_options = ('guest', 'ssh-key')
 
     def __init__(self, *args, **kwargs):
         super(CIStaticGuest, self).__init__(*args, **kwargs)

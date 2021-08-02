@@ -46,7 +46,15 @@ class InstallKojiBuildExecute(gluetool.Module):
 
         return gluetool.utils.load_yaml(self.option('installation-workarounds'), logger=self.logger)
 
-    def setup_guest(self, guest, stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION, log_dirpath=None, **kwargs):
+    def setup_guest(self,
+        guest,
+        schedule_entry=None,
+        stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
+        log_dirpath=None,
+        **kwargs
+    ):
+        # type: (Guest, GuestSetupStage, Optional[TestScheduleEntry], Optional[str], **Any) -> SetupGuestReturnType
+
         self.require_shared('evaluate_instructions')
 
         log_dirpath = guest_setup_log_dirpath(guest, log_dirpath)
@@ -54,6 +62,7 @@ class InstallKojiBuildExecute(gluetool.Module):
         r_overloaded_guest_setup_output = self.overloaded_shared(
             'setup_guest',
             guest,
+            schedule_entry=schedule_entry,
             stage=stage,
             log_dirpath=log_dirpath,
             **kwargs
@@ -71,6 +80,16 @@ class InstallKojiBuildExecute(gluetool.Module):
         # no artifacts to test
         if not self.request_artifacts:
             return r_overloaded_guest_setup_output
+
+        excluded_packages = schedule_entry.excludes if schedule_entry and hasattr(schedule_entry, 'excludes') else []
+
+        if excluded_packages:
+            assert schedule_entry
+            log_dict(schedule_entry.logger.info, 'excluded_packages', excluded_packages)
+
+        exclude_options = ''.join([
+            '--exclude {}$ '.format(package) for package in excluded_packages
+        ])
 
         guest_setup_output = r_overloaded_guest_setup_output.unwrap() or []
 
@@ -107,15 +126,53 @@ class InstallKojiBuildExecute(gluetool.Module):
                 ).format(koji_command, artifact['id'], arch)
             )
 
-        # note: library does the magic in using DNF is needed \o/
-        sut_installation.add_step('Reinstall packages', 'yum -y reinstall *[^.src].rpm', ignore_exception=True)
-        sut_installation.add_step('Downgrade packages', 'yum -y downgrade *[^.src].rpm', ignore_exception=True)
-        sut_installation.add_step('Update packages', 'yum -y update *[^.src].rpm', ignore_exception=True)
-        sut_installation.add_step('Install packages', 'yum -y install *[^.src].rpm', ignore_exception=True)
+        excluded_packages_regexp = '|'.join(['^{} '.format(package) for package in excluded_packages])
+
+        sut_installation.add_step(
+            'Get package list',
+            (
+                'ls *[^.src].rpm | '
+                'sed -r "s/(.*)-.*-.*/\\1 \\0/" | '
+                '{}'
+                'awk "{{print $2}}" | '
+                'tee rpms-list'
+            ).format(
+                'egrep -v "({})" | '.format(excluded_packages_regexp)
+                if excluded_packages_regexp else ''
+            )
+        )
+
+        sut_installation.add_step(
+            'Reinstall packages',
+            'yum -y reinstall {} $(cat rpms-list)'.format(exclude_options),
+            ignore_exception=True,
+            allow_erasing=True
+        )
+
+        sut_installation.add_step(
+            'Downgrade packages',
+            'yum -y downgrade {} $(cat rpms-list)'.format(exclude_options),
+            ignore_exception=True,
+            allow_erasing=True
+        )
+
+        sut_installation.add_step(
+            'Update packages',
+            'yum -y update {} $(cat rpms-list)'.format(exclude_options),
+            ignore_exception=True,
+            allow_erasing=True
+        )
+
+        sut_installation.add_step(
+            'Install packages',
+            'yum -y install {} $(cat rpms-list)'.format(exclude_options),
+            ignore_exception=True,
+            allow_erasing=True
+        )
 
         sut_installation.add_step(
             'Verify all packages installed',
-            "ls *[^.src].rpm | sed 's/.rpm$//' | xargs rpm -q"
+            "sed 's/.rpm$//' rpms-list | xargs rpm -q"
         )
 
         with Action(

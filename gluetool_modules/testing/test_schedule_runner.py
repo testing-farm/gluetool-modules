@@ -166,7 +166,7 @@ class TestScheduleRunner(gluetool.Module):
 
             r_result = cast(
                 SetupGuestReturnType,
-                schedule_entry.guest.setup(stage=stage)
+                schedule_entry.guest.setup(stage=stage, schedule_entry=schedule_entry)
             )
 
             if r_result.is_ok:

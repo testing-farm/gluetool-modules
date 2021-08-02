@@ -32,7 +32,7 @@ StepCallbackType = Callable[[str, gluetool.utils.ProcessOutput], None]
 #: :ivar list(str) items: Items to execute command with replaced to `command`.
 #: :ivar bool ignore_exception: Indicates whether to raise `SUTInstallationFailedError` when command fails.
 #: :ivar Callable callback: Callback to additional processing of command output.
-SUTStep = collections.namedtuple('SUTStep', ['label', 'command', 'items', 'ignore_exception', 'callback'])
+SUTStep = collections.namedtuple('SUTStep', ['label', 'command', 'items', 'ignore_exception', 'allow_erasing', 'callback'])
 
 
 class SUTInstallationFailedError(ArtifactFingerprintsMixin, SoftGlueError):
@@ -68,8 +68,8 @@ class SUTInstallation(object):
         self.steps = []  # type: List[SUTStep]
         self.logger = logger or gluetool.log.Logging.get_logger()
 
-    def add_step(self, label, command, items=None, ignore_exception=False, callback=None):
-        # type: (str, str, Union[Optional[str], Optional[List[str]]], bool, Optional[StepCallbackType]) -> None
+    def add_step(self, label, command, items=None, ignore_exception=False, allow_erasing=True, callback=None):
+        # type: (str, str, Union[Optional[str], Optional[List[str]]], bool, bool, Optional[StepCallbackType]) -> None
 
         if not items:
             items = []
@@ -77,16 +77,16 @@ class SUTInstallation(object):
         if not isinstance(items, list):
             items = [items]
 
-        self.steps.append(SUTStep(label, command, items, ignore_exception, callback))
+        self.steps.append(SUTStep(label, command, items, ignore_exception, allow_erasing, callback))
 
     def run(self, guest):
         # type: (gluetool_modules.libs.guest.NetworkedGuest) -> Result[None, SUTInstallationFailedError]
 
         try:
-            guest.execute('command -v yum')
-            yum_present = True
+            guest.execute('command -v dnf')
+            dnf_present = True
         except gluetool.glue.GlueCommandError:
-            yum_present = False
+            dnf_present = False
 
         if not os.path.exists(self.log_dirpath):
             os.mkdir(self.log_dirpath)
@@ -100,9 +100,14 @@ class SUTInstallation(object):
             log_filepath = os.path.join(self.log_dirpath, log_filename)
 
             command = step.command
-            # replace yum with dnf in case yum is not present on guest
-            if not yum_present and command.startswith('yum'):
+
+            # replace yum with dnf in case dnf is present on guest
+            if dnf_present and command.startswith('yum'):
                 command = '{}{}'.format('dnf', command[3:])
+
+            # with allow_errasing present, add it to the command, supported only for dnf
+            if dnf_present and command.startswith('dnf') and step.allow_erasing:
+                command = '{}{}'.format('dnf --allowerasing', command[3:])
 
             if not step.items:
                 command_failed, error_message, output = run_and_log(

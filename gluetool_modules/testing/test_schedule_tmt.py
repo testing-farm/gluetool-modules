@@ -14,7 +14,7 @@ from gluetool import GlueError, GlueCommandError, Module
 from gluetool.action import Action
 from gluetool.log import Logging, format_blob, log_blob, log_dict
 from gluetool.log import ContextAdapter, LoggingFunctionType  # Ignore PyUnusedCodeBear
-from gluetool.utils import Command, cached_property, load_yaml, new_xml_element, dict_update
+from gluetool.utils import Command, cached_property, load_yaml, new_xml_element, dict_update, normalize_shell_option
 
 from gluetool_modules.libs import create_inspect_callback, sort_children
 from gluetool_modules.libs.artifacts import artifacts_location
@@ -109,8 +109,8 @@ class TMTExitCodes(enum.IntEnum):
 
 
 class TestScheduleEntry(BaseTestScheduleEntry):
-    def __init__(self, logger, plan, repodir):
-        # type: (ContextAdapter, str, Dict[str, Any]) -> None
+    def __init__(self, logger, plan, repodir, excludes):
+        # type: (ContextAdapter, str, Dict[str, Any], List[str]) -> None
         """
         Test schedule entry, suited for use with TMT runners.
 
@@ -129,6 +129,7 @@ class TestScheduleEntry(BaseTestScheduleEntry):
         self.work_dirpath = None  # type: Optional[str]
         self.results = None  # type: Any
         self.repodir = repodir
+        self.excludes = excludes  # type: List[str]
 
     def log_entry(self, log_fn=None):
         # type: (Optional[LoggingFunctionType]) -> None
@@ -353,6 +354,50 @@ class TestScheduleTMT(Module):
 
         return plans
 
+    def get_tmt_excludes(self, repodir, plan):
+        # type: (str, str) -> List[str]
+        command = [self.option('command'), 'plan', 'show', '-v', '^{}$'.format(plan)]
+
+        # TODO: tmt is python3 only, parse the excludes from output until our modules run in python3
+        try:
+            tmt_output = Command(command).run(cwd=repodir)
+
+        except GlueCommandError as exc:
+            # workaround until tmt prints errors properly to stderr
+            log_blob(
+                self.error,
+                "Failed to list plan '{}' details".format(plan),
+                exc.output.stderr or exc.output.stdout
+            )
+            raise GlueError('Failed to get plan details, TMT metadata are absent or corrupted.')
+
+        output = tmt_output.stdout
+
+        # exclude packages are between 'exclude' and 'missing' keywords in the output
+        start = output.find('exclude')
+        end = output.rfind('missing')
+
+        # exclude or missing not found in `tmt` output
+        if start == -1 or end == -1:
+            self.debug('No excludes found in tmt output')
+            return []
+
+        # do not include start tag
+        start += len('exclude')
+
+        # remove formatting of tmt, examples
+        # exclude
+        # exclude glibc-devel, glibc-devel, glibc-devel and glibc-deve
+        # exclude glibc-devel
+        #         glibc-devel
+        #         glibc-devel
+        #         glibc-devel
+        #         glibc-devel
+        excludes = output[start:end].replace(',', '').replace('and', '')
+
+        return normalize_shell_option(excludes)
+
+
     def create_test_schedule(self, testing_environment_constraints=None):
         # type: (Optional[List[TestingEnvironment]]) -> TestSchedule
         """
@@ -390,7 +435,12 @@ class TestScheduleTMT(Module):
                     self.warn('TMT scheduler does not support open constraints', sentry=True)
                     continue
 
-                schedule_entry = TestScheduleEntry(Logging.get_logger(), plan, repodir)
+                schedule_entry = TestScheduleEntry(
+                    Logging.get_logger(),
+                    plan,
+                    repodir,
+                    self.get_tmt_excludes(repodir, plan)
+                )
 
                 schedule_entry.testing_environment = TestingEnvironment(
                     compose=tec.compose,

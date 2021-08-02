@@ -252,7 +252,8 @@ class Ansible(gluetool.Module):
                      extra_options=None,  # type: Optional[List[str]]
                      extra_vars_filename_prefix=EXTRA_VARS_FILENAME_PREFIX,  # type: str
                      extra_vars_filename_suffix=EXTRA_VARS_FILENAME_SUFFIX,  # type: str
-                     ansible_playbook_filepath=None  # type: Optional[str]
+                     ansible_playbook_filepath=None,  # type: Optional[str]
+                     **kwargs
                     ):  # noqa
         # type: (...) -> AnsibleOutput
         """

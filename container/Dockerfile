@@ -25,7 +25,7 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       poetry postgresql-devel python3-libselinux python2-devel \
                       python-unversioned-command redhat-rpm-config \
                       standard-test-roles koji python3-virtualenv \
-    && dnf -y install --enablerepo=updates-testing tmt-provision-container rsync \
+    && dnf -y install --enablerepo=updates-testing tmt-provision-container tmt-provision-virtual rsync \
     && rpm -ivh --nodeps https://kojipkgs.fedoraproject.org//packages/rpm/4.15.1/2.fc31/x86_64/python2-rpm-4.15.1-2.fc31.x86_64.rpm \
     && python2 -m ensurepip \
     && dnf clean all \

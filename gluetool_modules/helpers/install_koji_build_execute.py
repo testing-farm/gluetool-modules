@@ -87,10 +87,6 @@ class InstallKojiBuildExecute(gluetool.Module):
             assert schedule_entry
             log_dict(schedule_entry.logger.info, 'excluded_packages', excluded_packages)
 
-        exclude_options = ''.join([
-            '--exclude {}$ '.format(package) for package in excluded_packages
-        ])
-
         guest_setup_output = r_overloaded_guest_setup_output.unwrap() or []
 
         installation_log_dirpath = os.path.join(
@@ -144,28 +140,28 @@ class InstallKojiBuildExecute(gluetool.Module):
 
         sut_installation.add_step(
             'Reinstall packages',
-            'yum -y reinstall {} $(cat rpms-list)'.format(exclude_options),
+            'yum -y reinstall $(cat rpms-list)',
             ignore_exception=True,
             allow_erasing=True
         )
 
         sut_installation.add_step(
             'Downgrade packages',
-            'yum -y downgrade {} $(cat rpms-list)'.format(exclude_options),
+            'yum -y downgrade $(cat rpms-list)',
             ignore_exception=True,
             allow_erasing=True
         )
 
         sut_installation.add_step(
             'Update packages',
-            'yum -y update {} $(cat rpms-list)'.format(exclude_options),
+            'yum -y update $(cat rpms-list)',
             ignore_exception=True,
             allow_erasing=True
         )
 
         sut_installation.add_step(
             'Install packages',
-            'yum -y install {} $(cat rpms-list)'.format(exclude_options),
+            'yum -y install $(cat rpms-list)',
             ignore_exception=True,
             allow_erasing=True
         )

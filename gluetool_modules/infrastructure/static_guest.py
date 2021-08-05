@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, wait
 import gluetool
 from gluetool import GlueError
 from gluetool.result import Ok
-from gluetool.utils import Command
+from gluetool.utils import Command, IncompatibleOptionsError
 from gluetool_modules.libs.guest import NetworkedGuest, Guest, GuestConnectionError
 from gluetool_modules.libs.guest_setup import GuestSetupOutput
 
@@ -144,13 +144,21 @@ class CIStaticGuest(gluetool.Module):
     ]
 
     shared_functions = ('provision', 'provisioner_capabilities')
-    required_options = ('guest', 'ssh-key')
+    required_options = ('guest',)
 
     def __init__(self, *args, **kwargs):
         super(CIStaticGuest, self).__init__(*args, **kwargs)
 
         # All guests connected
         self._guests = []
+
+    def sanity(self):
+        if not self.option('guest'):
+            return
+
+        for guest in self.option('guest'):
+            if guest not in LOCALHOST_GUEST_HOSTNAMES and not self.option('ssh-key'):
+                raise IncompatibleOptionsError("Option 'ssh-key' is required")
 
     def guest_remote(self, guest):
         """

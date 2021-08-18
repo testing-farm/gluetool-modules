@@ -130,7 +130,7 @@ class InstallKojiBuildExecute(gluetool.Module):
                 'ls *[^.src].rpm | '
                 'sed -r "s/(.*)-.*-.*/\\1 \\0/" | '
                 '{}'
-                'awk "{{print $2}}" | '
+                'awk "{{print \$2}}" | '
                 'tee rpms-list'
             ).format(
                 'egrep -v "({})" | '.format(excluded_packages_regexp)
@@ -166,9 +166,14 @@ class InstallKojiBuildExecute(gluetool.Module):
             allow_erasing=True
         )
 
+        # Use printf to correctly quote the package name, we encountered '^' in the NVR, which is actually a valid
+        # character in NVR - https://docs.fedoraproject.org/en-US/packaging-guidelines/Versioning/#_snapshots
+        #
+        # Explicitely pass delimiter for xargs to mitigate special handling of quotes, which would break the
+        # quoting done previously by printf
         sut_installation.add_step(
             'Verify all packages installed',
-            "sed 's/.rpm$//' rpms-list | xargs rpm -q"
+            "sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q"
         )
 
         with Action(

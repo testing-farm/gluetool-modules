@@ -5,9 +5,9 @@ import collections
 import re
 import six
 import sys
-import os
 
 import gluetool
+import gluetool.utils
 import gluetool_modules.libs
 import requests
 
@@ -19,7 +19,9 @@ from gluetool_modules.libs.guest import NetworkedGuest
 
 from gluetool_modules.libs.testing_environment import TestingEnvironment
 
-from typing import Any, Dict, List, Optional, Tuple, cast, Union  # noqa
+from typing import Any, Dict, List, Optional, Tuple, cast  # noqa
+
+SUPPORTED_API_VERSIONS = ('v0.0.16', 'v0.0.17', 'v0.0.18', 'v0.0.19', 'v0.0.20')
 
 DEFAULT_PRIORIY_GROUP = 'default-priority'
 DEFAULT_READY_TIMEOUT = 300
@@ -90,20 +92,18 @@ class ArtemisAPIError(SoftGlueError):
 class ArtemisAPI(object):
     ''' Class that allows RESTful communication with Artemis API '''
 
-    def __init__(self, module, api_url, timeout, tick):
-        # type: (gluetool.Module, str, int, int) -> None
+    def __init__(self, module, api_url, api_version, timeout, tick):
+        # type: (gluetool.Module, str, str, int, int) -> None
 
         self.module = module
         self.url = treat_url(api_url)
+        self.version = api_version
         self.timeout = timeout
         self.tick = tick
         self.check_if_artemis()
 
     def api_call(self, endpoint, method='GET', expected_status_code=200, data=None):
-        # type: (str, str, Union[int, List[int]], Optional[Dict[str, Any]]) -> Any
-
-        if not isinstance(expected_status_code, list):
-            expected_status_code = [expected_status_code]
+        # type: (str, str, int, Optional[Dict[str, Any]]) -> Any
 
         def _api_call():
             # type: () -> Result[Any, str]
@@ -124,8 +124,7 @@ class ArtemisAPI(object):
                     return Result.Error('Connecton aborted: {}'.format(error_string))
                 six.reraise(*sys.exc_info())
 
-            assert isinstance(expected_status_code, list)
-            if response.status_code in expected_status_code:
+            if response.status_code == expected_status_code:
                 return Result.Ok(response)
 
             return Result.Error('Artemis API error: {}'.format(ArtemisAPIError(response)))
@@ -190,23 +189,53 @@ class ArtemisAPI(object):
             with open(normalize_path(post_install_script)) as f:
                 post_install_script_contents = f.read()
 
-        data = {
-            'keyname': keyname,
-            'environment': {
-                'arch': environment.arch,
-                'os': {},
-                'snapshots': snapshots
-            },
-            'priority_group': priority,
-            'post_install_script': post_install_script_contents
-        }  # type: Dict[str, Any]
+        if self.version in ('v0.0.19', 'v0.0.20'):
+            data = {
+                'keyname': keyname,
+                'environment': {
+                    'hw': {
+                        'arch': environment.arch
+                    },
+                    'os': {
+                        'compose': compose
+                    },
+                    'snapshots': snapshots
+                },
+                'priority_group': priority,
+                'post_install_script': post_install_script_contents,
+                'user_data': user_data
+            }  # type: Dict[str, Any]
 
-        if pool:
-            data['environment']['pool'] = pool
+            if pool:
+                data['environment']['pool'] = pool
 
-        data['environment']['os']['compose'] = compose
+            if cast(ArtemisProvisioner, self.module).hw_constraints:
+                data['environment']['hw']['constraints'] = cast(ArtemisProvisioner, self.module).hw_constraints
 
-        data['user_data'] = user_data
+        elif self.version in ('v0.0.16', 'v0.0.17', 'v0.0.18'):
+            data = {
+                'keyname': keyname,
+                'environment': {
+                    'arch': environment.arch,
+                    'os': {},
+                    'snapshots': snapshots
+                },
+                'priority_group': priority,
+                'post_install_script': post_install_script_contents
+            }
+
+            if pool:
+                data['environment']['pool'] = pool
+
+            data['environment']['os']['compose'] = compose
+
+            data['user_data'] = user_data
+
+        else:
+            # Note that this should never happen, because we check the requested version in sanity()
+            raise GlueError('unsupported API version {}'.format(self.version))
+
+        log_dict(self.module.debug, 'guest data', data)
 
         return self.api_call('guests/', method='POST', expected_status_code=201, data=data).json()
 
@@ -250,7 +279,7 @@ class ArtemisAPI(object):
         :returns: Artemis API response or ``None`` in case of failure.
         '''
 
-        return self.api_call('guests/{}'.format(guest_id), method='DELETE', expected_status_code=[200, 204])
+        return self.api_call('guests/{}'.format(guest_id), method='DELETE', expected_status_code=204)
 
     def create_snapshot(self, guest_id, start_again=True):
         # type: (str, bool) -> Any
@@ -323,7 +352,7 @@ class ArtemisAPI(object):
 
         return self.api_call('guests/{}/snapshots/{}'.format(guest_id, snapshot_id),
                              method='DELETE',
-                             expected_status_code=[200, 204])
+                             expected_status_code=204)
 
 
 class ArtemisSnapshot(LoggerMixin):
@@ -574,9 +603,14 @@ class ArtemisGuest(NetworkedGuest):
 
     def destroy(self):
         # type: () -> None
+
+        self.info('destroying guest')
+
         self._release_snapshots()
         self._release_instance()
         cast(ArtemisProvisioner, self._module).remove_from_list(self)
+
+        self.info('successfully released')
 
 
 class ArtemisProvisioner(gluetool.Module):
@@ -587,6 +621,11 @@ class ArtemisProvisioner(gluetool.Module):
         ('API options', {
             'api-url': {
                 'help': 'Artemis API url',
+                'metavar': 'URL',
+                'type': str
+            },
+            'api-version': {
+                'help': 'Artemis API version',
                 'metavar': 'URL',
                 'type': str
             },
@@ -642,13 +681,22 @@ class ArtemisProvisioner(gluetool.Module):
                 'metavar': 'COMPOSE',
                 'type': str
             },
+            'hw-constraint': {
+                'help': """
+                        HW requirements, expresses as key/value pairs. Keys can consist of several properties,
+                        e.g. ``disk.space='>= 40 GiB'``, such keys will be merged in the resulting environment
+                        with other keys sharing the path: ``cpu.family=79`` and ``cpu.model=6`` would be merged,
+                        not overwriting each other (default: none).
+                        """,
+                'metavar': 'KEY1.KEY2=VALUE',
+                'type': str,
+                'action': 'append',
+                'default': []
+            },
             'pool': {
                 'help': 'Desired pool',
                 'metavar': 'POOL',
                 'type': str
-            },
-            'playbook': {
-                'help': 'Ansible playbook to run after the guest became ready, before alive checks.',
             },
             'setup-provisioned': {
                 'help': "Setup guests after provisioning them. See 'guest-setup' module",
@@ -741,18 +789,61 @@ class ArtemisProvisioner(gluetool.Module):
         })
     ]
 
-    required_options = ('api-url', 'key', 'priority-group', 'ssh-key')
+    required_options = ('api-url', 'api-version', 'key', 'priority-group', 'ssh-key')
 
     shared_functions = ['provision', 'provisioner_capabilities']
 
+    @gluetool.utils.cached_property
+    def hw_constraints(self):
+        # type: () -> Optional[Dict[str, Any]]
+
+        normalized_constraints = gluetool.utils.normalize_multistring_option(self.option('hw-constraint'))
+
+        if not normalized_constraints:
+            return None
+
+        constraints = {}  # type: Dict[str, Any]
+
+        for raw_constraint in normalized_constraints:
+            path, value = raw_constraint.split('=', 1)
+
+            if not path or not value:
+                raise GlueError('Cannot parse HW constraint: {}'.format(raw_constraint))
+
+            # Walk the path, step by step, and initialize containers along the way. The last step is not
+            # a name of another nested container, but actually a name in the last container.
+            container = constraints
+            path_splitted = path.split('.')
+
+            while len(path_splitted) > 1:
+                step = path_splitted.pop(0)
+
+                if step not in container:
+                    container[step] = {}
+
+                container = container[step]
+
+            container[path_splitted.pop()] = value
+
+        log_dict(self.logger.debug, 'hw-constraints', constraints)
+
+        return constraints
+
     def sanity(self):
         # type: () -> None
+
+        # test whether parsing of HW requirements yields anything valid - the value is just ignored, we just want
+        # to be sure it doesn't raise any exception
+        self.hw_constraints
 
         if not self.option('provision'):
             return
 
         if not self.option('arch'):
             raise GlueError('Missing required option: --arch')
+
+        if self.option('api-version') not in SUPPORTED_API_VERSIONS:
+            raise GlueError('Unsupported API version, only {} are supported'.format(', '.join(SUPPORTED_API_VERSIONS)))
 
     def __init__(self, *args, **kwargs):
         # type: (Any, Any) -> None
@@ -770,7 +861,7 @@ class ArtemisProvisioner(gluetool.Module):
         '''
 
         return ProvisionerCapabilities(
-            available_arches=['x86_64', 'ppc64le', 's390x', 'aarch64']
+            available_arches=gluetool_modules.libs.ANY
         )
 
     def provision_guest(self,
@@ -816,66 +907,32 @@ class ArtemisProvisioner(gluetool.Module):
                                          post_install_script=post_install_script)
 
         guestname = response.get('guestname')
-        guest = None
+        guest = ArtemisGuest(self, guestname, response['address'], environment,
+                             port=response['ssh']['port'], username=response['ssh']['username'],
+                             key=ssh_key, options=options)
+        guest.info('Guest is being provisioned')
+        log_dict(guest.debug, 'Created guest request', response)
 
         try:
-            guest = ArtemisGuest(self, guestname, response['address'], environment,
-                                 port=response['ssh']['port'], username=response['ssh']['username'],
-                                 key=ssh_key, options=options)
-
-            guest.info('Guest is being provisioned')
-            log_dict(guest.debug, 'Created guest request', response)
-
             guest._wait_ready(timeout=self.option('ready-timeout'), tick=self.option('ready-tick'))
             response = self.api.inspect_guest(guest.artemis_id)
             guest.hostname = response['address']
             guest.info("Guest is ready: {}".format(guest))
-
-            if self.option('playbook'):
-                self.require_shared('run_playbook')
-
-                env_variables = os.environ.copy()
-                env_variables.update({'ANSIBLE_SSH_RETRIES': '60'})
-
-                self.shared(
-                    'run_playbook',
-                    gluetool.utils.normalize_path(self.option('playbook')),
-                    guest,
-                    env=env_variables,
-                    variables={
-                        'IMAGE_NAME': environment.compose
-                    }
-                )
-
-            if self.option('playbook'):
-                self.require_shared('run_playbook')
-
-                env_variables = os.environ.copy()
-                env_variables.update({'ANSIBLE_SSH_RETRIES': '60'})
-
-                self.shared(
-                    'run_playbook',
-                    gluetool.utils.normalize_path(self.option('playbook')),
-                    guest,
-                    env=env_variables,
-                    variables={
-                        'IMAGE_NAME': environment.compose
-                    }
-                )
 
             guest._wait_alive(self.option('activation-timeout'), self.option('activation-tick'),
                               self.option('echo-timeout'), self.option('echo-tick'),
                               self.option('boot-timeout'), self.option('boot-tick'))
             guest.info('Guest has become alive')
 
-        except Exception as exc:
-            self.warn("Exception while provisioning guest: {}".format(exc))
+        except (Exception, KeyboardInterrupt) as exc:
+            message = 'KeyboardInterrupt' if isinstance(exc, KeyboardInterrupt) else str(exc)
+            self.warn("Exception while provisioning guest: {}".format(message))
             if not self.option('keep'):
-                if guest:
-                    self.api.cancel_guest(guest.artemis_id)
-                elif guestname:
-                    self.api.cancel_guest(guestname)
-            raise exc
+                self.info("Cancelling guest '{}'".format(guestname))
+                self.api.cancel_guest(guestname)
+            else:
+                self.warn("Keeping guest '{}' provisioned".format(guestname))
+            six.reraise(*sys.exc_info())
 
         return guest
 
@@ -919,6 +976,7 @@ class ArtemisProvisioner(gluetool.Module):
 
         self.api = ArtemisAPI(self,
                               self.option('api-url'),
+                              self.option('api-version'),
                               self.option('api-call-timeout'),
                               self.option('api-call-tick'))
 
@@ -959,6 +1017,6 @@ class ArtemisProvisioner(gluetool.Module):
             return
 
         for guest in self.guests[:]:
-            guest.info('Canceling guest')
             guest.destroy()
-            guest.info('Successfully removed guest')
+
+        self.info('successfully removed all guests')

@@ -26,7 +26,7 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       libpq-devel libtool libxml2-devel make openssl-devel popt-devel \
                       postgresql-devel python3-libselinux python2-devel \
                       redhat-rpm-config standard-test-roles koji python3-virtualenv \
-                      rsync python3 \
+                      rsync python3 beakerlib-libraries \
     && dnf -y install --enablerepo=epel-testing tmt-provision-container tmt-provision-virtual \
     && curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3 - \
     && dnf clean all \

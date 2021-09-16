@@ -5,9 +5,9 @@ import gluetool
 from gluetool import Failure
 from gluetool import GlueCommandError
 from gluetool import GlueError
-from gluetool.utils import Command
+from gluetool.utils import Command, Result, wait
 
-from typing import AnyStr, List, Optional # noqa
+from typing import List, Optional, Dict # noqa
 
 
 class UploadResults(gluetool.Module):
@@ -107,8 +107,14 @@ class UploadResults(gluetool.Module):
         )
         return artifact_folder_name
 
-    def _create_subdir_for_artifacts(self, destination_sub_path, user_and_domain):
-        # type: (str, str) -> str
+    def _create_subdir_for_artifacts(
+        self,
+        destination_sub_path,  # type: str
+        user_and_domain,  # type: str
+        create_timeout=120,  # type: int
+        create_tick=20  # type: int
+    ):
+        # type: (...) -> str
         """
         This will create a folder for the results on the target file hosting.
 
@@ -124,12 +130,25 @@ class UploadResults(gluetool.Module):
                 user_and_domain,
                 "mkdir -p {}".format(os.path.join(target_dir, destination_sub_path))
             ]
-            try:
-                Command(cmd_init_remote_dir).run()
-                return destination_sub_path
-            except GlueCommandError as exc:
-                assert exc.output.stderr is not None
-                raise GlueError('Creating remote folder failed: {} cmd: {}'.format(exc, cmd_init_remote_dir))
+
+            def _create():
+                # type: () -> Result[None, str]
+                try:
+                    Command(cmd_init_remote_dir).run()
+
+                except GlueCommandError as exc:
+                    assert exc.output.stderr is not None
+                    return Result.Error('Creating remote folder failed: {} stderr: {}'.format(exc, exc.output.stderr))
+
+                return Result.Ok(None)
+
+            wait(
+                "creating subdir with timeout {}, tick {}".format(create_timeout, create_tick),
+                _create,
+                timeout=create_timeout,
+                tick=create_tick
+            )
+            return destination_sub_path
 
     def _get_files_to_upload(self):
         # type: () -> List(dict(str, str), dict(str, str))
@@ -158,8 +177,15 @@ class UploadResults(gluetool.Module):
 
         return files
 
-    def _upload_results(self, destination_path, user_and_domain, results_files):
-        # type: (str, str, List(dict(str, str), dict(str, str))) -> None
+    def _upload_results(
+        self,
+        destination_path,  # type: str
+        user_and_domain,  # type: str
+        results_files,  # type: List[Dict[str,str]]
+        upload_timeout=240,  # type: int
+        upload_tick=40  # type: int
+    ):
+        # type: (...) -> None
         """
         It uploads the artifacts to the server.
 
@@ -177,12 +203,22 @@ class UploadResults(gluetool.Module):
                 os.path.join(destination_path, results_file['dest-filename'])
             ))
 
-            try:
-                Command(cmd_upload).run()
-                cmd_upload = None
-            except GlueCommandError as exc:
-                assert exc.output.stderr is not None
-                raise GlueError('Uploading results failed: {} cmd: {}'.format(exc, cmd_upload))
+            def _upload():
+                # type: () -> Result[None, str]
+                try:
+                    Command(cmd_upload).run()
+
+                except GlueCommandError as exc:
+                    return Result.Error('Uploading results failed: {} stderr: {}'.format(exc, exc.output.stderr))
+
+                return Result.Ok(None)
+
+            wait(
+                "uploading with timeout {}, tick {}".format(upload_timeout, upload_tick),
+                _upload,
+                timeout=upload_timeout,
+                tick=upload_tick
+            )
 
     @property
     def _full_target_url(self):

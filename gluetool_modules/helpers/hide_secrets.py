@@ -8,16 +8,21 @@ import six
 
 class HideSecrets(gluetool.Module):
     """
-    Hide secrets from all files in the current dirctory.
+    Hide secrets from all files in the search path, by default
+    current working directory.
     """
 
     name = 'hide-secrets'
+    options = {
+        'search-path': {
+            'help': 'Path used to search for files (default: %(default)s)',
+            'default': '.'
+        }
+    }
 
     def destroy(self, failure=None):
         if not self.shared('user_secrets'):
             return
-
-        self.info('hiding secrets from all logs')
 
         # TODO: this would really need shlex.quote or something to be safe
         sed_expr = ';'.join(
@@ -25,4 +30,5 @@ class HideSecrets(gluetool.Module):
             for _, value in six.iteritems(self.shared('user_secrets'))
         )
 
-        os.system("find . -type f | xargs sed -i '{}'".format(sed_expr))
+        self.info("Hiding secrets from all files under '{}' path".format(self.option('search-path')))
+        os.system("find '{}' -type f | xargs sed -i '{}'".format(self.option('search-path'), sed_expr))

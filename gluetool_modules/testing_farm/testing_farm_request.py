@@ -273,7 +273,7 @@ class TestingFarmRequestModule(gluetool.Module):
     ]
 
     required_options = ('api-url', 'api-key', 'request-id')
-    shared_functions = ['testing_farm_request', 'user_variables', 'tmt_context']
+    shared_functions = ['testing_farm_request', 'user_variables', 'user_secrets', 'tmt_context']
 
     def __init__(self, *args, **kwargs):
         super(TestingFarmRequestModule, self).__init__(*args, **kwargs)
@@ -293,19 +293,41 @@ class TestingFarmRequestModule(gluetool.Module):
     def testing_farm_request(self):
         return self._tf_request
 
-    def user_variables(self, **kwargs):
+    def user_variables(self, hide_secrets=False, **kwargs):
         request = self.testing_farm_request()
+        variables = {}
 
         if request.environments_requested \
                 and 'variables' in request.environments_requested[0] \
                 and request.environments_requested[0]['variables']:
 
-            return {
+            variables.update({
                 key: six.moves.shlex_quote(value)
                 for key, value in six.iteritems(request.environments_requested[0]['variables'])
-            }
+            })
 
-        return {}
+        if request.environments_requested \
+                and 'secrets' in request.environments_requested[0] \
+                and request.environments_requested[0]['secrets']:
+
+            variables.update({
+                key: '*'*len(value) if hide_secrets else six.moves.shlex_quote(value)
+                for key, value in six.iteritems(request.environments_requested[0]['secrets'])
+            })
+
+        return variables
+
+    def user_secrets(self):
+        request = self.testing_farm_request()
+        secrets = {}
+
+        if request.environments_requested \
+                and 'secrets' in request.environments_requested[0] \
+                and request.environments_requested[0]['secrets']:
+
+            return request.environments_requested[0]['secrets']
+
+        return secrets
 
     def tmt_context(self):
         request = self.testing_farm_request()
@@ -339,12 +361,19 @@ class TestingFarmRequestModule(gluetool.Module):
         else:
             plans = '<not applicable>'
 
+        def _hide_secrets(environments):
+            environments = [environment.copy() if environment else environment for environment in environments]
+            for environment in environments:
+                if 'secrets' in environment:
+                    environment.pop('secrets', None)
+            return environments
+
         log_dict(self.info, "Initialized with {}".format(request.id), {
             'type': request.type,
             'plans': plans,
             'url': request.url,
             'ref': request.ref,
-            'variables': self.user_variables() or '<no variables specified>',
-            'environments_requested': request.environments_requested,
+            'variables': self.user_variables(hide_secrets=True) or '<no variables specified>',
+            'environments_requested': _hide_secrets(request.environments_requested),
             'webhook_url': request.webhook_url or '<no webhook specified>'
         })

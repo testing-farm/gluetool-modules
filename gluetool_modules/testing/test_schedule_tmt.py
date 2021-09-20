@@ -7,7 +7,6 @@ import sys
 import tempfile
 
 import enum
-import six
 
 import gluetool
 from gluetool import GlueError, GlueCommandError, Module
@@ -30,6 +29,9 @@ from typing import Any, Dict, List, NamedTuple, Optional  # noqa
 
 # TMT run log file
 TMT_LOG = 'tmt-run.log'
+
+# File with environment variables
+TMT_ENV_FILE = 'tmt-environment.yaml'
 
 # Weight of a test result, used to count the overall result. Higher weight has precendence
 # when counting the overall result. See https://tmt.readthedocs.io/en/latest/spec/steps.html#execute
@@ -531,9 +533,10 @@ class TestScheduleTMT(Module):
             '--id', os.path.abspath(work_dirpath)
         ]
 
-        for name, value in variables.iteritems():
+        if variables:
+            gluetool.utils.dump_yaml(variables, os.path.join(schedule_entry.repodir, TMT_ENV_FILE))
             command += [
-                '-e', '{}={}'.format(name, value)
+                '-e', '@{}'.format(TMT_ENV_FILE)
             ]
 
         if self.option('how') == 'local':

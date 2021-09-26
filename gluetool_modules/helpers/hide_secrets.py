@@ -31,4 +31,4 @@ class HideSecrets(gluetool.Module):
         )
 
         self.info("Hiding secrets from all files under '{}' path".format(self.option('search-path')))
-        os.system("find '{}' -type f | xargs sed -i '{}'".format(self.option('search-path'), sed_expr))
+        os.system("find '{}' -type f | xargs -n1 -I{{}} sed -i '{}' '{{}}'".format(self.option('search-path'), sed_expr))

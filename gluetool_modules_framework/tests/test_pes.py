@@ -10,7 +10,7 @@ from mock import MagicMock
 
 import gluetool
 from gluetool_modules_framework.infrastructure import pes
-from . import check_loadable, create_module, patch_shared, testing_asset
+from . import check_loadable, create_module, testing_asset
 
 
 @pytest.fixture(name='module')
@@ -21,7 +21,6 @@ def fixture_module():
     module._config['api-url'] = 'https://pes-api-url'
     module._config['retry-tick'] = 1
     module._config['retry-timeout'] = 1
-    module._config['map-primary-task'] = True
 
     return module
 
@@ -51,6 +50,11 @@ def test_loadable(module):
     check_loadable(module.glue, 'gluetool_modules_framework/infrastructure/pes.py', 'PES')
 
 
+def test_shared(module):
+    assert module.glue.has_shared('ancestors')
+    assert module.glue.has_shared('successors')
+
+
 @pytest.mark.parametrize('test', [
     'no-events',
     'multiple-events'
@@ -59,18 +63,14 @@ def test_ancestors(module, monkeypatch, test, log):
 
     (test, module) = prepare_test(module, monkeypatch, test)
 
-    primary_task = MagicMock()
-    primary_task.component = test['package']
-
-    patch_shared(monkeypatch, module, {
-        'primary_task': primary_task
-    })
-
-    module.execute()
+    module.ancestors(test['package'], test['release'])
 
     assert log.match(
-        message="Ancestors of '{}': {}".format(test['package'], ', '.join(test['ancestors'])),
-        levelno=logging.INFO
+        message="Ancestors of '{}' from release '{}': {}".format(
+            test['package'],
+            test['release'],
+            ', '.join(test['ancestors'])
+        ), levelno=logging.INFO
     )
 
 
@@ -79,7 +79,7 @@ def test_invalid_response(module, monkeypatch):
     (_, module) = prepare_test(module, monkeypatch, 'invalid-response')
 
     with pytest.raises(gluetool.GlueError, match=r'post.*returned 500'):
-        module.ancestors('dummy')
+        module.ancestors('dummy package', 'dummy release')
 
 
 def test_invalid_json(module, monkeypatch):
@@ -89,7 +89,7 @@ def test_invalid_json(module, monkeypatch):
     (_, module) = prepare_test(module, monkeypatch, 'invalid-json', side_effect_json=exception)
 
     with pytest.raises(gluetool.GlueError, match=r'Pes returned unexpected non-json output, needs investigation'):
-        module.ancestors('dummy')
+        module.ancestors('dummy package', 'dummy release')
 
 
 def test_connection_error(module, monkeypatch):
@@ -98,14 +98,4 @@ def test_connection_error(module, monkeypatch):
     (_, module) = prepare_test(module, monkeypatch, 'invalid-response', side_effect=exception)
 
     with pytest.raises(gluetool.GlueError, match=r"Condition 'getting post response from https://pes-api-url/srpm-events/' failed to pass within given time"):
-        module.pes_api().get_ancestors('dummy')
-
-
-def test_no_build_available(module, monkeypatch):
-
-    patch_shared(monkeypatch, module, {
-        'primary_task': None
-    })
-
-    with pytest.raises(gluetool.GlueError, match='No build available, cannot continue'):
-        module.execute()
+        module.pes_api().get_ancestors('dummy package', 'dummy release')

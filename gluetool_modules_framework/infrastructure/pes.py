@@ -89,17 +89,17 @@ class PESApi(LoggerMixin, object):
                                    timeout=self.module.option('retry-timeout'),
                                    tick=self.module.option('retry-tick'))
 
-    def get_ancestors(self, package):
-        # type: (str) -> List[str]
+    def get_ancestors(self, package, release):
+        # type: (str, str) -> List[str]
         """
-        Get ancestors of the given package by querying Package Evolution Service. This can be used
-        for testing upgrades from the ancestor package(s) to the given package.
+        Get ancestors of the given package from given release by querying Package Evolution Service.
+        This can be used for testing upgrades from the ancestor package(s) to the given package.
 
         :returns: List of ancestors of the package.
         """
 
         # Note: srpm-events endpoint MUST end with /
-        response = self._request_with_payload('post', 'srpm-events/', {'name': package})
+        response = self._request_with_payload('post', 'srpm-events/', {'name': package, 'release': release})
 
         # When no entries are found empty list is returned.
         # We can assume package has not changed between releases, but rather no guessing in this step.
@@ -172,12 +172,6 @@ class PES(gluetool.Module):
                 'default': DEFAULT_RETRY_TICK
             },
         }),
-        ('Testing options', {
-            'map-primary-task': {
-                'help': 'Finds ancestors for the component of the primary task',
-                'action': 'store_true'
-            }
-        })
     ]
 
     required_options = ('api-url',)
@@ -203,18 +197,17 @@ class PES(gluetool.Module):
         """
         return cast(PESApi, self._pes_api)
 
-    def ancestors(self, package):
-        # type: (str) -> List[str]
+    def ancestors(self, package, release):
+        # type: (str, str) -> List[str]
         """
-        Returns list of package ancestors from a previous major release.
-
-        Note that this currently expects PES only holds ancestors for a previous major release.
+        Return list of package ancestors of a specified package from specified major release.
 
         :param str package: Package to find ancestors for.
+        :param str release: Version of targeted system in a RHEL X format.
         """
-        ancestors = cast(List[str], self._pes_api.get_ancestors(package))
+        ancestors = cast(List[str], self._pes_api.get_ancestors(package, release))
 
-        self.info("Ancestors of '{}': {}".format(package, ', '.join(ancestors)))
+        self.info("Ancestors of '{}' from release '{}': {}".format(package, release, ', '.join(ancestors)))
 
         return ancestors
 
@@ -234,17 +227,3 @@ class PES(gluetool.Module):
         self.info("Successors ({}) of '{}' ({}): {}".format(initial_release, package, release, ', '.join(successors)))
 
         return successors
-
-    def execute(self):
-        # type: () -> None
-
-        if self.option('map-primary-task'):
-
-            self.require_shared('primary_task')
-
-            try:
-                component = self.shared('primary_task').component
-            except AttributeError:
-                raise gluetool.GlueError('No build available, cannot continue')
-
-            self.ancestors(component)

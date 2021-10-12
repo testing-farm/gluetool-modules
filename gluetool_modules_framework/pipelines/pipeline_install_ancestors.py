@@ -2,8 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import gluetool
+import re
+
 from gluetool.result import Ok, Error
-from gluetool.utils import normalize_shell_option, normalize_multistring_option
+from gluetool.utils import normalize_multistring_option, normalize_shell_option, render_template
 from gluetool.log import log_dict
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupStage
 
@@ -49,9 +51,19 @@ class PipelineInstallAncestors(gluetool.Module):
             'default': [],
             'action': 'append'
         },
+        'major-version-pattern': {
+            'help': """
+                Regex with match group to extract major version from primary task's destination tag.
+                """
+        },
+        'release-template': {
+            'help': """
+                Release string usable with Package Evolution Service.
+                """
+        }
     }
 
-    required_options = ('tag',)
+    required_options = ('tag', 'major-version-pattern', 'release-template')
     shared_functions = ['setup_guest']
 
     def __init__(self, *args, **kwargs):
@@ -82,7 +94,23 @@ class PipelineInstallAncestors(gluetool.Module):
 
         elif self.has_shared('ancestors'):
             self.info('Ancestors set by shared function')
-            ancestors = self.shared('ancestors', component)
+
+            major_version_pattern = self.option('major-version-pattern')
+            target = self.shared('primary_task').target
+
+            version_match = re.match(major_version_pattern, target)
+            if not version_match:
+                raise gluetool.GlueError('Unexpected build target format: {}'.format(target))
+
+            release = render_template(
+                self.option('release-template'),
+                logger=self.logger,
+                **{
+                    'MAJOR_VERSION': version_match.group(1)
+                }
+            )
+
+            ancestors = self.shared('ancestors', component, release)
 
         if ancestors:
             log_dict(self.info, "Ancestors of '{}'".format(component), ancestors)

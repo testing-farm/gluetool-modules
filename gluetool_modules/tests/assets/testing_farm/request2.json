@@ -1,0 +1,9 @@
+{
+    "test": {
+        "faketype": {
+            "url": "faketesturl",
+            "ref": "faketestref"
+        }
+    },
+    "environments_requested": []
+}

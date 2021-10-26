@@ -1,0 +1,21 @@
+{
+    "test": {
+        "fmf": {
+            "url": "testurl",
+            "ref": "testref",
+            "name": "testname"
+        }
+    },
+    "environments_requested": [{
+        "tmt": {
+            "context": {"some": "context"}
+        },
+        "secrets": {"some": "secrets"},
+        "variables": {"something": "variables"}
+    }],
+    "notification": {
+        "webhook": {
+            "url": "webhookurl"
+        }
+    }
+}

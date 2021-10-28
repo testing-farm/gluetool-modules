@@ -543,6 +543,9 @@ class KojiTask(LoggerMixin, object):
             else:
                 build = builds[1] if len(builds) > 1 else None
 
+        if build is None:
+            raise GlueError("Could not fetch the build.")
+
         if 'task_id' not in build:
             raise GlueError("No 'task_id' found for the build.")
 

@@ -261,7 +261,8 @@ class TestScheduleTMT(Module):
             })
             six.reraise(*sys.exc_info())
 
-        assert tmt_output.stdout
+        if not tmt_output.stdout:
+            raise GlueError("Did not find any plans. Command used '{}'.".format(' '.join(command)))
 
         output_lines = [line.strip() for line in tmt_output.stdout.splitlines()]
 

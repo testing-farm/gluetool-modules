@@ -177,7 +177,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
             stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH  # noqa: E501  # line too long
         )
 
-        if ref and ref.startswith('refs/pull'):
+        if ref and ref.startswith('refs/'):
             # Fetch the pull request
             try:
                 gluetool.utils.Command([

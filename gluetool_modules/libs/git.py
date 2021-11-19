@@ -178,7 +178,19 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         )
 
         if ref and ref.startswith('refs/'):
-            # Fetch the pull request
+            # Fetch the pull/merge request
+            try:
+                gluetool.utils.Command([
+                    'git',
+                    '-C', actual_path,
+                    'config',
+                    'remote.origin.fetch',
+                    '"+refs/merge-requests/*:refs/remotes/origin/merge-requests/*"'
+                ]).run()
+            except gluetool.GlueCommandError as exc:
+                raise gluetool.GlueError('Failed to configure git remote fetching: {}'.format(ref, exc.output.stderr))
+
+            # Fetch the pull/merge request
             try:
                 gluetool.utils.Command([
                     'git',

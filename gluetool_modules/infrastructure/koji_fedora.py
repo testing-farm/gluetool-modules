@@ -2380,7 +2380,6 @@ class Brew(Koji, (gluetool.Module)):
             build_ids=None,  # type: Optional[List[int]]
             nvrs=None,  # type: Optional[List[str]]
             names=None,  # type: Optional[List[str]]
-            **kwargs  # type: Any
     ):
         # type: (...) -> List[TaskInitializer]
         """
@@ -2405,8 +2404,10 @@ class Brew(Koji, (gluetool.Module)):
         """
 
         log_dict(self.debug, '[find task initializers - brew] task initializers', task_initializers)
+        log_dict(self.debug, '[find task initializers - brew] from task IDs', task_ids)
         log_dict(self.debug, '[find task initializers - brew] from build IDs', build_ids)
-        log_dict(self.debug, '[find task initializers - brew] other params', kwargs)
+        log_dict(self.debug, '[find task initializers - brew] from NVRs', nvrs)
+        log_dict(self.debug, '[find task initializers - brew] from names', names)
 
         task_initializers = task_initializers or []
         build_ids = build_ids or []
@@ -2446,6 +2447,8 @@ class Brew(Koji, (gluetool.Module)):
 
         return super(Brew, self)._find_task_initializers(
             task_initializers=task_initializers,
+            task_ids=task_ids,
             build_ids=cleansed_build_ids,
-            **kwargs
+            nvrs=nvrs,
+            names=names,
         )

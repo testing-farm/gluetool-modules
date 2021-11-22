@@ -46,7 +46,7 @@ image: "quay.io/testing-farm/python-ci-image"
 # Run unit tests
 #
 # Note: this step also generates coverage report (HTML).
-unit-tests:
+py27-unit-tests:
   extends: .tests
   stage: test
   script:
@@ -55,12 +55,27 @@ unit-tests:
     paths:
       - coverage-report
 
+py37-unit-tests:
+  extends: .tests
+  stage: test
+  script:
+    - tox -v -e py37-unit-tests -- --cov=gluetool_modules --cov-report=html:coverage-report
+  artifacts:
+    paths:
+      - coverage-report
+
 # Static analysis - pylint, flake8
-static-analysis:
+py27-static-analysis:
   extends: .tests
   stage: test
   script:
     - tox -v -e py27-static-analysis
+
+py37-static-analysis:
+  extends: .tests
+  stage: test
+  script:
+    - tox -v -e py37-static-analysis
 
 # Static analysis - coala
 #
@@ -132,7 +147,7 @@ generate-docs:
   extends: .tests
   stage: test
   script:
-    - tox -v -e py27-doctest -- ./docs
+    - tox -v -e py37-doctest -- ./docs
   artifacts:
     paths:
-      - .tox/py27-doctest/tmp/docs/build/html
+      - .tox/py37-doctest/tmp/docs/build/html

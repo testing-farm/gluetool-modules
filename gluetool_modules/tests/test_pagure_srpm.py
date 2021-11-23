@@ -7,7 +7,7 @@ from mock import MagicMock
 from mock import call
 
 import os
-import __builtin__
+from six.moves import builtins
 import gluetool
 from gluetool_modules.helpers import pagure_srpm
 from . import create_module, patch_shared, check_loadable
@@ -51,7 +51,7 @@ def run_src_rpm(module, monkeypatch, command_calls):
     rename_mock = MagicMock()
     monkeypatch.setattr(os, 'rename', rename_mock)
 
-    monkeypatch.setattr(__builtin__, 'open', MagicMock())
+    monkeypatch.setattr(builtins, 'open', MagicMock())
 
     assert module.src_rpm() == ('dummy_src_rpm.srpm', PROJECT_NAME)
     rename_mock.assert_called_once_with('{}/dummy_project_name.spec'.format(PROJECT_NAME),

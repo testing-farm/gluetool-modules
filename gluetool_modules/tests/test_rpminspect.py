@@ -7,7 +7,7 @@ import tempfile
 import pytest
 
 from mock import MagicMock
-import __builtin__
+from six.moves import builtins
 
 import gluetool
 from gluetool.utils import from_json
@@ -372,7 +372,7 @@ def test_run_rpminspect(module, monkeypatch):
     mock_primary_task.baseline_task.scratch = False
     mock_primary_task.id = 111111
 
-    monkeypatch.setattr(__builtin__, 'open', MagicMock())
+    monkeypatch.setattr(builtins, 'open', MagicMock())
 
     module._run_rpminspect(mock_primary_task, ['ALL'], 'workdir')
 
@@ -405,7 +405,7 @@ def test_run_rpminspect_scratch(module, monkeypatch):
     mock_primary_task.id = 111111
     mock_primary_task.baseline_task.id = 222222
 
-    monkeypatch.setattr(__builtin__, 'open', MagicMock())
+    monkeypatch.setattr(builtins, 'open', MagicMock())
 
     module._run_rpminspect(mock_primary_task, ['ALL'], 'workdir')
 
@@ -439,7 +439,7 @@ def test_run_rpminspect_profile(module, monkeypatch):
     mock_primary_task.baseline_task.scratch = False
     mock_primary_task.id = 111111
 
-    monkeypatch.setattr(__builtin__, 'open', MagicMock())
+    monkeypatch.setattr(builtins, 'open', MagicMock())
 
     module._run_rpminspect(mock_primary_task, ['ALL'], 'workdir')
 
@@ -461,7 +461,7 @@ def test_run_rpminspect_no_baseline(module, monkeypatch):
     mock_primary_task = MagicMock()
     mock_primary_task.baseline_task = None
 
-    monkeypatch.setattr(__builtin__, 'open', MagicMock())
+    monkeypatch.setattr(builtins, 'open', MagicMock())
 
     with pytest.raises(gluetool.GlueError, match=r"^Not provided baseline for comparison"):
         module._run_rpminspect(mock_primary_task, ['ALL'], 'workdir')
@@ -478,7 +478,7 @@ def test_run_rpminspect_fail(module, monkeypatch):
 
     mock_primary_task = MagicMock()
 
-    monkeypatch.setattr(__builtin__, 'open', MagicMock())
+    monkeypatch.setattr(builtins, 'open', MagicMock())
 
     with pytest.raises(gluetool.GlueError, match=r"^Rpminspect failed during execution with exit code 2"):
         module._run_rpminspect(mock_primary_task, ['ALL'], 'workdir')
@@ -493,7 +493,7 @@ def test_run_rpminspect_tests_failed(module, monkeypatch, log):
 
     mock_primary_task = MagicMock()
 
-    monkeypatch.setattr(__builtin__, 'open', MagicMock())
+    monkeypatch.setattr(builtins, 'open', MagicMock())
 
     module._run_rpminspect(mock_primary_task, ['ALL'], 'workdir')
 
@@ -534,7 +534,7 @@ def test_execute(module, monkeypatch, log):
     monkeypatch.setattr(gluetool.utils.Command, 'run', mock_command_run)
     monkeypatch.setattr(gluetool_modules.static_analysis.rpminspect.rpminspect, 'load_json', MagicMock(return_value={}))
 
-    monkeypatch.setattr(__builtin__, 'open', MagicMock())
+    monkeypatch.setattr(builtins, 'open', MagicMock())
 
     module.execute()
     mock_command_run.assert_called_once()
@@ -547,7 +547,7 @@ def test_execute(module, monkeypatch, log):
 def test_execute_no_latest(module, monkeypatch, log):
     module.task.baseline_task = None
 
-    monkeypatch.setattr(__builtin__, 'open', MagicMock())
+    monkeypatch.setattr(builtins, 'open', MagicMock())
 
     module.execute()
 
@@ -582,7 +582,7 @@ def test_execute_no_latest(module, monkeypatch, log):
 def test_execute_nvr_is_latest(module, monkeypatch, log):
     module.task.baseline_task.nvr = module.task.nvr
 
-    monkeypatch.setattr(__builtin__, 'open', MagicMock())
+    monkeypatch.setattr(builtins, 'open', MagicMock())
 
     module.execute()
 
@@ -633,7 +633,7 @@ def test_execute_rpminspect_yaml(module, monkeypatch, log):
     })
 
     mock_open = MagicMock()
-    monkeypatch.setattr(__builtin__, 'open', mock_open)
+    monkeypatch.setattr(builtins, 'open', mock_open)
 
     module.execute()
     mock_command_run.assert_called_once()

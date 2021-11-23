@@ -15,7 +15,8 @@ from requests.exceptions import ConnectionError, HTTPError, Timeout
 
 # Type annotations
 # pylint: disable=unused-import,wrong-import-order
-from typing import Any, Dict, List, Optional, TypedDict, Union, cast  # noqa
+from typing import Any, Dict, List, Optional, Union, cast  # noqa
+from typing_extensions import TypedDict
 
 RequestTestFMFType = TypedDict(
     'RequestTestFMFType',

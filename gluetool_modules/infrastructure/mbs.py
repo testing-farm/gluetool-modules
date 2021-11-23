@@ -19,7 +19,8 @@ from gluetool.utils import cached_property, normalize_multistring_option, dict_u
 from gluetool.log import LoggerMixin, log_dict
 
 # Type annotations
-from typing import cast, Any, Dict, List, Optional, Tuple, Union, NamedTuple, Set, TypedDict  # noqa
+from typing import cast, Any, Dict, List, Optional, Tuple, Union, NamedTuple, Set  # noqa
+from typing_extensions import TypedDict
 
 #: Information about task architectures.
 #:

@@ -13,11 +13,11 @@ from . import check_loadable, create_module, patch_shared
 
 
 @pytest.fixture(name='module')
-def fixture_module():
+def fixture_module(monkeypatch):
     module = create_module(upload_results.UploadResults)[1]
     module._config['artifact-src-filenames'] = 'ansible.out'
     module._config['artifact-dest-file-postfix'] = '.log'
-    module._config['artifact-target-dir-name'] = 'pull_request3_fs45da5'
+    module._config['artifact-target-dir-name'] = 'pull_request3_{}_{}_fs45da5'
     module._config['artifact-target-subdirs'] = 'artifacts'
     module._config['key-path'] = '/home/user/.ssh/id_rsa'
     module._config['upload-to-public'] = True
@@ -26,6 +26,11 @@ def fixture_module():
     module._config['download-domain'] = 'myGlueResults-download.com'
     module._config['target-url'] = 'artifacts/results'
     module._config['target-dir'] = 'data/artifacts/results'
+
+    patch_shared(monkeypatch, module, {
+        'compose': 'fedora-35',
+    })
+
     return module
 
 
@@ -131,23 +136,23 @@ def test_destroy(module, monkeypatch):
             '-i',
             '/home/user/.ssh/id_rsa',
             'user@myGlueResults.com',
-            'mkdir -p data/artifacts/results/pull_request3_fs45da5/artifacts'
+            'mkdir -p data/artifacts/results/pull_request3_foo-repo-42-a1b0c3d_fedora-35_fs45da5/artifacts'
         ]),
         call([
             'scp',
             '-i',
             '/home/user/.ssh/id_rsa',
             'work/dir/path/ansible.out',
-            'user@myGlueResults.com:data/artifacts/results/pull_request3_fs45da5/artifacts/test_foo-PASSED.log']),
+            'user@myGlueResults.com:data/artifacts/results/pull_request3_foo-repo-42-a1b0c3d_fedora-35_fs45da5/artifacts/test_foo-PASSED.log']),  # noqa
         call([
             'scp',
             '-i',
             '/home/user/.ssh/id_rsa',
             'work/dir2/path2/ansible.out',
-            'user@myGlueResults.com:data/artifacts/results/pull_request3_fs45da5/artifacts/test_bar-PASSED.log'])
+            'user@myGlueResults.com:data/artifacts/results/pull_request3_foo-repo-42-a1b0c3d_fedora-35_fs45da5/artifacts/test_bar-PASSED.log'])  # noqa
     ])
 
-    assert module.full_target_url == 'https://myGlueResults-download.com/artifacts/results/pull_request3_fs45da5/artifacts'
+    assert module.full_target_url == 'https://myGlueResults-download.com/artifacts/results/pull_request3_foo-repo-42-a1b0c3d_fedora-35_fs45da5/artifacts'  # noqa
 
 
 def test_destroy_empty_schedule(module, monkeypatch):

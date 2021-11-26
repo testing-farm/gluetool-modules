@@ -186,6 +186,7 @@ class ArtemisAPI(object):
 
         compose = environment.compose
         snapshots = environment.snapshots
+        pool = pool or environment.pool
 
         post_install_script_contents = None
         if post_install_script:

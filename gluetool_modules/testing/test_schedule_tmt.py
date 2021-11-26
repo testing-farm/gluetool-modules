@@ -448,7 +448,8 @@ class TestScheduleTMT(Module):
                 schedule_entry.testing_environment = TestingEnvironment(
                     compose=tec.compose,
                     arch=tec.arch,
-                    snapshots=tec.snapshots
+                    snapshots=tec.snapshots,
+                    pool=tec.pool
                 )
 
                 schedule.append(schedule_entry)

@@ -31,7 +31,7 @@ from typing import Any, Dict, List, NamedTuple, Optional  # noqa
 TMT_LOG = 'tmt-run.log'
 
 # File with environment variables
-TMT_ENV_FILE = 'tmt-environment.yaml'
+TMT_ENV_FILE = 'tmt-environment-{}.yaml'
 
 # Weight of a test result, used to count the overall result. Higher weight has precendence
 # when counting the overall result. See https://tmt.readthedocs.io/en/latest/spec/steps.html#execute
@@ -536,9 +536,12 @@ class TestScheduleTMT(Module):
         ]
 
         if variables:
-            gluetool.utils.dump_yaml(variables, os.path.join(schedule_entry.repodir, TMT_ENV_FILE))
+            # we MUST use a dedicated env file for each plan, to mitigate race conditions
+            # plans are handled in threads ...
+            tmt_env_file = TMT_ENV_FILE.format(schedule_entry.plan[1:].replace('/', '-'))
+            gluetool.utils.dump_yaml(variables, os.path.join(schedule_entry.repodir, tmt_env_file))
             command += [
-                '-e', '@{}'.format(TMT_ENV_FILE)
+                '-e', '@{}'.format(tmt_env_file)
             ]
 
         if self.option('how') == 'local':

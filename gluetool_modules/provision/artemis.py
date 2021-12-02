@@ -402,7 +402,7 @@ class ArtemisSnapshot(LoggerMixin):
             if snapshot_state == 'error':
                 raise ArtemisResourceError()
 
-        except ArtemisResourceError as e:
+        except ArtemisResourceError:
             six.reraise(*sys.exc_info())
 
         except Exception as e:
@@ -480,7 +480,7 @@ class ArtemisGuest(NetworkedGuest):
                 )
                 self.debug(err_msg)
 
-        except ArtemisResourceError as e:
+        except ArtemisResourceError:
             six.reraise(*sys.exc_info())
 
         except Exception as e:

@@ -14,8 +14,8 @@ from gluetool.log import log_dict
 from gluetool.utils import fetch_url, PatternMap, IncompatibleOptionsError
 
 # Type annotations
-from typing import cast, Any, Callable, Dict, List, Optional, Tuple, Type, Union, TypedDict  # noqa
-
+from typing import cast, Any, Callable, Dict, List, Optional, Tuple, Type, Union  # noqa
+from typing_extensions import TypedDict
 
 DEFAULT_NIGHTLY_LISTING = '<default url>'  # type: str
 DEFAULT_BU_LISTING = '<default url>'  # type: str

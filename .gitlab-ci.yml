@@ -143,7 +143,7 @@ installation-rhel8:
 # to generate the documentation - serves as a sort of a "test" on its own. citool
 # uses docstrings to generate command-line help, it is useful to check whether these
 # docstrings are readable and sane.
-generate-docs:
+py37-generate-docs:
   extends: .tests
   stage: test
   script:
@@ -151,3 +151,12 @@ generate-docs:
   artifacts:
     paths:
       - .tox/py37-doctest/tmp/docs/build/html
+
+py27-generate-docs:
+  extends: .tests
+  stage: test
+  script:
+    - tox -v -e py27-doctest -- ./docs
+  artifacts:
+    paths:
+      - .tox/py27-doctest/tmp/docs/build/html

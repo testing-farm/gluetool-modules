@@ -107,7 +107,7 @@ upload-results = "gluetool_modules.helpers.upload_results:UploadResults"
 url-shortener = "gluetool_modules.helpers.url_shortener:URLShortener"
 
 [tool.poetry.dependencies]
-python = "~2.7"
+python = "~2.7 || ~3.7"
 
 ansible = "2.8.5"
 # NOTE: without this dependency the installation will fail with
@@ -123,7 +123,7 @@ docutils = "0.14"
 enum34 = "1.1.6"
 fmf = "0.6.1"
 future = "0.16.0"
-futures = "3.2.0"
+futures = {version = "3.2.0", python = "~2.7"}
 gitdb2 = "2.0.6"
 GitPython = "2.1.15"
 gluetool = "^1.26"
@@ -157,13 +157,16 @@ sphinxcontrib-programoutput = "0.11"
 
 [tool.poetry.dev-dependencies]
 flake8 = "3.7.8"
-pylint = "1.9.5"
-pytest = "4.6.5"
+pylint = {version = "1.9.5", python = "~2.7"}
+pytest = [
+    {version = "5.4.3", python = "~3.7"},
+    {version = "4.6.5", python = "~2.7"}
+]
 pytest-catchlog = "1.2.2"
 pytest-cov = "2.7.1"
 pytest-flake8 = "1.0.4"
 pytest-mock = "1.10.4"
-pytest-pylint = "0.14.1"
+pytest-pylint = {version = "0.14.1", python = "~2.7"}
 tox = "3.8.6"
 yamllint = "1.16.0"
 

@@ -13,7 +13,8 @@ from gluetool_modules.libs.guest import NetworkedGuest
 from gluetool_modules.libs.testing_environment import TestingEnvironment
 
 # Type annotations
-from typing import Any, List, Optional, Literal, NamedTuple, Set, cast  # noqa
+from typing import Any, List, Optional, NamedTuple, Set, cast  # noqa
+from typing_extensions import Literal
 
 # SSH connection defaults
 DEFAULT_SSH_USER = 'root'

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-import urllib2
+from six.moves.urllib import request
 import pytest
 from mock import MagicMock
 import jenkinsapi.jenkins
@@ -136,7 +136,7 @@ def test_jenkins_set_build_name_url_not_found(module, monkeypatch):
     mocked_urlopen = MagicMock()
     mocked_urlopen.getcode.return_value = 404
 
-    monkeypatch.setattr(urllib2, 'urlopen', MagicMock(return_value=mocked_urlopen))
+    monkeypatch.setattr(request, 'urlopen', MagicMock(return_value=mocked_urlopen))
 
     monkeypatch.setenv('BUILD_URL', '')
     module._config['url'] = 'dummy_jenkins_url'

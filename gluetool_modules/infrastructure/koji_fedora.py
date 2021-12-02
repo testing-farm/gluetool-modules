@@ -22,8 +22,8 @@ from gluetool.result import Result
 from gluetool.utils import cached_property, dict_update, wait, normalize_multistring_option, render_template
 from gluetool.utils import IncompatibleOptionsError
 
-from typing import Any, Dict, List, NamedTuple, Optional, Union, Tuple, Callable, Type, cast, overload, Literal  # noqa
-from typing_extensions import TypedDict
+from typing import Any, Dict, List, NamedTuple, Optional, Union, Tuple, Callable, Type, cast, overload  # noqa
+from typing_extensions import TypedDict, Literal
 from gluetool_modules.helpers.rules_engine import ContextType
 
 InitDetailsType = TypedDict(

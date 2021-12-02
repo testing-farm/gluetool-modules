@@ -1,7 +1,7 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
-import ConfigParser
+from six.moves import configparser
 import json
 import os
 import sys
@@ -387,7 +387,7 @@ class CIJenkins(gluetool.Module):
         config_dir = os.path.dirname(config_file)
 
         # create configuration
-        config = ConfigParser.RawConfigParser()
+        config = configparser.RawConfigParser()
         config.add_section('jenkins')
         config.set('jenkins', 'url', url)
         if user:

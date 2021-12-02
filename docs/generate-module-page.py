@@ -11,6 +11,7 @@ import inspect
 import os
 import sys
 import re
+import six
 
 import gluetool
 
@@ -67,7 +68,7 @@ def gather_module_data():
     modules = []
     classes = {}
 
-    for name, properties in glue.modules.iteritems():
+    for name, properties in six.iteritems(glue.modules):
         # These modules are provided by gluetool, therefore they are not easily importable
         # by Sphinx. Skipping them to allow Sphinx to continue with our local modules.
         if name in ('bash-completion', 'dep-list', 'yaml-pipeline'):
@@ -113,7 +114,7 @@ def gather_module_data():
             'filepath': filepath,
             'modclass': properties.klass,
             'modpath': modpath,
-            'filepath_mtime': stat.st_mtime if stat else sys.maxint
+            'filepath_mtime': stat.st_mtime if stat else six.MAXSIZE
         })
 
     return modules

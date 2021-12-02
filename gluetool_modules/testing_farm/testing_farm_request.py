@@ -302,7 +302,7 @@ class TestingFarmRequestModule(gluetool.Module):
                 and request.environments_requested[0]['variables']:
 
             variables.update({
-                key: six.moves.shlex_quote(value) if value else ''
+                key: value or ''
                 for key, value in six.iteritems(request.environments_requested[0]['variables'])
             })
 
@@ -311,7 +311,7 @@ class TestingFarmRequestModule(gluetool.Module):
                 and request.environments_requested[0]['secrets']:
 
             variables.update({
-                key: '*'*len(value) if hide_secrets else six.moves.shlex_quote(value) if value else ''
+                key: '*'*len(value) if hide_secrets else value or ''
                 for key, value in six.iteritems(request.environments_requested[0]['secrets'])
             })
 

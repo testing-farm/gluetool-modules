@@ -110,8 +110,13 @@ class UploadResults(gluetool.Module):
         :rtype: str
         :returns: The name of the folder where the results will be uploaded
         """
+        compose = self.shared('compose')
+        if isinstance(compose, List):
+            compose = compose[0]
+
         artifact_folder_name = self.option('artifact-target-dir-name').format(
             self._get_pull_request_info(),
+            compose,
             datetime.now().strftime('%Y%m%d-%H%M%S')
         )
         return cast(str, artifact_folder_name)
@@ -223,6 +228,8 @@ class UploadResults(gluetool.Module):
           ``gluetool`` to destroy the whole session. Modules might want to take actions based
           on provided information, e.g. send different notifications.
         """
+        self.require_shared('test_schedule', 'compose', 'primary_task')
+
         if not self.shared('test_schedule'):
             raise gluetool.GlueError('test_schedule is empty.')
 

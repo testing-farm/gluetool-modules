@@ -12,6 +12,7 @@ import logging
 import os
 import socket
 import tempfile
+import six
 
 from functools import partial
 from gluetool.log import LoggerMixin
@@ -204,7 +205,7 @@ class Guest(LoggerMixin, object):
 name={}
 baseurl={}
 {}
-""".format(name, label, baseurl, '\n'.join(['{}={}'.format(k, v) for k, v in kwargs.iteritems()]))
+""".format(name, label, baseurl, '\n'.join(['{}={}'.format(k, v) for k, v in six.iteritems(kwargs)]))
 
         self.create_file(os.path.join(os.sep, 'etc', 'yum.repos.d', '{}.repo'.format(name)), repo)
 

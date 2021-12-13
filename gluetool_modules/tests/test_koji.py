@@ -6,6 +6,7 @@ import os
 import pytest
 import koji
 import functools
+import six
 
 import gluetool
 import gluetool_modules.helpers.rules_engine
@@ -42,7 +43,7 @@ class MockClientSession(object):
 
             return data[name]
 
-        for method, response in data.iteritems():
+        for method, response in six.iteritems(data):
             setattr(self, method, functools.partial(getter, method))
 
 
@@ -161,7 +162,7 @@ def assert_task_attributes(module, task_id):
 
     expected_attributes = gluetool.utils.load_yaml(testing_asset('koji', 'task-{}.yml'.format(task_id)))
 
-    for name, expected in expected_attributes.iteritems():
+    for name, expected in six.iteritems(expected_attributes):
         actual = getattr(primary_task, name)
 
         # correctly interpret 'None' value

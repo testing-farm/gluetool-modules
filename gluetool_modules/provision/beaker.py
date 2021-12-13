@@ -38,6 +38,7 @@ import collections
 import datetime
 import re
 import threading
+import six
 
 import gluetool
 from gluetool import GlueError
@@ -1198,8 +1199,8 @@ class BeakerProvisioner(gluetool.Module):
         section = cache_dump.get(self.option('cache-prefix'), {})
         environments = section.get('environments', {})
 
-        for env_name, env_arches in environments.iteritems():
-            for arch, arch_guests in env_arches.iteritems():
+        for env_name, env_arches in six.iteritems(environments):
+            for arch, arch_guests in six.iteritems(env_arches):
                 for hostname in arch_guests['guests']:
                     guests[hostname] = {
                         'arch': arch,
@@ -1208,7 +1209,7 @@ class BeakerProvisioner(gluetool.Module):
                         'use-by': 'unknown'
                     }
 
-        for hostname, info in section.get('guests', {}).iteritems():
+        for hostname, info in six.iteritems(section.get('guests', {})):
             if hostname not in guests:
                 self.warn('Guest {} is known but not linked from any environment'.format(hostname))
 
@@ -1225,7 +1226,7 @@ class BeakerProvisioner(gluetool.Module):
         headers = ['Host', 'Env', 'Arch', 'In Use?', 'Use by']
         rows = []
 
-        for host, info in guests.iteritems():
+        for host, info in six.iteritems(guests):
             rows.append([
                 host,
                 info['env'],

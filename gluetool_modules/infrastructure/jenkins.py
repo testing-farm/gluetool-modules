@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from six.moves import configparser
+import six
 import json
 import os
 import sys
@@ -295,7 +296,7 @@ class CIJenkins(gluetool.Module):
         if data:
             filtered_data = {
                 name: value
-                for name, value in data.iteritems()
+                for name, value in six.iteritems(data)
                 if value is not None
             }
 

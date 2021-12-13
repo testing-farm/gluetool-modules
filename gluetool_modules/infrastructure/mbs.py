@@ -5,6 +5,7 @@ import collections
 import urllib
 
 import re
+import six
 
 from concurrent.futures import ThreadPoolExecutor, wait
 import requests
@@ -371,7 +372,7 @@ class MBSTask(LoggerMixin, object):
         except (AttributeError, KeyError) as error:
             raise gluetool.GlueError('Could not detect module dependecies: {}'.format(error))
 
-        for module_name, module_streams in requires.iteritems():
+        for module_name, module_streams in six.iteritems(requires):
             for stream in module_streams:
                 dependencies.append('{}:{}'.format(module_name, stream))
 

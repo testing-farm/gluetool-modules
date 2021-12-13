@@ -3,6 +3,7 @@
 
 import smtplib
 import socket
+import six
 from email.mime.text import MIMEText
 
 import gluetool
@@ -108,7 +109,7 @@ class SMTP(gluetool.Module):
         msg['To'] = ', '.join(message.recipients)
         msg['Cc'] = ', '.join(message.cc)
 
-        for name, value in message.xheaders.iteritems():
+        for name, value in six.iteritems(message.xheaders):
             msg[name] = value
 
         if message.reply_to:

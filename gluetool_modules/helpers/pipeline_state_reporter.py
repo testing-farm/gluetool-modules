@@ -336,12 +336,12 @@ class PipelineStateReporter(gluetool.Module):
             if instruction.get('eval-as-rule', False):
                 subject_info.update({
                     detail: self.shared('evaluate_rules', value, context=context)
-                    for detail, value in argument.iteritems()
+                    for detail, value in six.iteritems(argument)
                 })
 
             else:
                 subject_info.update({
-                    detail: render_template(value, **context) for detail, value in argument.iteritems()
+                    detail: render_template(value, **context) for detail, value in six.iteritems(argument)
                 })
 
             log_dict(self.debug, '{} info'.format(subject_name), subject_info)

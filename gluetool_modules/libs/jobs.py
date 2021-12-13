@@ -12,6 +12,7 @@ import gluetool
 import gluetool.log
 
 from six import reraise
+import six
 
 # Type annotations
 from typing import cast, Any, Callable, Dict, List, NamedTuple, Optional, Tuple  # noqa
@@ -104,7 +105,7 @@ class JobEngine(object):
         table = [
             ['Future', 'Job']
         ] + [
-            [future, job.name] for future, job in self._futures.iteritems()
+            [future, job.name] for future, job in six.iteritems(self._futures)
         ]
 
         gluetool.log.log_table(self.logger.debug, label, table, headers='firstrow', tablefmt='psql')

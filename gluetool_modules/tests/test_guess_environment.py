@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
+import os
 
 from mock import call, MagicMock
 
@@ -9,6 +10,8 @@ import gluetool
 import gluetool_modules.helpers.guess_environment
 
 from . import create_module, patch_shared, assert_shared, check_loadable
+
+ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'guess_environment')
 
 
 @pytest.fixture(name='module')
@@ -489,3 +492,13 @@ def test_test_guessing(module, log):
         '    "product": "dummy"',
         '}'
     ]
+
+
+def test_symbolic_to_real_compose(module):
+    assert 'no-mapping-file' == module.actual_compose('no-mapping-file')
+
+    module._config['symbolic-compose-pattern-map'] = os.path.join(ASSETS_DIR, 'symbolic-compose-map.yaml')
+
+    assert 'non-existent-mapping' == module.actual_compose('non-existent-mapping')
+    assert 'compose-real' == module.actual_compose('compose-symbolic')
+    assert 'compose-real' == module.actual_compose('compose-real')

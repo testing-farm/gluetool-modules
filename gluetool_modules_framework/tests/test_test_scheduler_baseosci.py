@@ -6,6 +6,7 @@ import pytest
 
 from mock import MagicMock
 from gluetool import GlueError
+from gluetool.log import Logging
 
 import gluetool_modules_framework.testing.test_scheduler_baseosci
 from gluetool_modules_framework.testing.test_scheduler_baseosci import NoTestableArtifactsError
@@ -13,6 +14,8 @@ from gluetool_modules_framework.testing.test_scheduler_baseosci import NoTestabl
 from gluetool_modules_framework.helpers.rules_engine import RulesEngine
 from gluetool_modules_framework.libs import _UniqObject, ANY
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
+from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleEntry
+from gluetool_modules_framework.libs.guest import NetworkedGuest
 
 from . import create_module, patch_shared, testing_asset
 
@@ -70,7 +73,15 @@ class TestCase:
 
 
 def create_test_schedule_mock(testing_environment_constraints=None):
-    return testing_environment_constraints or []
+    test_schedule = TestSchedule()
+    for tec in testing_environment_constraints:
+        entry = TestScheduleEntry(Logging.get_logger(), 'some-entry-id', 'some-capability')
+        entry.testing_environment = tec
+        entry.guest = NetworkedGuest(MagicMock(), 'name')
+        entry.guest.environment = tec
+        entry.arch = tec.arch
+        test_schedule.append(entry)
+    return test_schedule
 
 
 def evaluate_instructions_mock(
@@ -315,7 +326,8 @@ def test_execute_extended(module, rules_engine, monkeypatch, log, tc):
     callables = {
         'evaluate_instructions': rules_engine.evaluate_instructions,
         'create_test_schedule': create_test_schedule_mock,
-        'compose': lambda: tc.composes
+        'compose': lambda: tc.composes,
+        'actual_compose': lambda _: ''
     }
 
     if tc.provisioner_available_arches:
@@ -371,7 +383,7 @@ def test_execute_extended(module, rules_engine, monkeypatch, log, tc):
 
     # sort schedules to get and expected order for testing
     module._schedule.sort(key=lambda s: s.arch)
-    assert module.test_schedule() == tc.expected_schedule
+    assert [entry.testing_environment for entry in module.test_schedule()] == tc.expected_schedule
 
     if not tc.expected_messages:
         return

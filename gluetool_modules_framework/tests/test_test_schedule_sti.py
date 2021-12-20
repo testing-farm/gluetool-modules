@@ -101,7 +101,7 @@ def test_create_test_schedule_playbook(module_scheduler, monkeypatch):
                 gluetool.utils.normalize_path(playbook),
                 {'key1': 'value1', 'key 2': 'value 2'}
             )
-            entry.testing_environment = TestingEnvironment(
+            env = TestingEnvironment(
                 arch='x86_64',
                 compose='Fedora37',
                 pool='some-pool',
@@ -116,6 +116,8 @@ def test_create_test_schedule_playbook(module_scheduler, monkeypatch):
                     'some-setting': 'some-setting-value'
                 }
             )
+            entry.testing_environment = env
+            entry.provisioned_environment = env
             expected_test_schedule.append(entry)
 
     # Run the module
@@ -278,6 +280,7 @@ def test_serialize_test_schedule_entry_results(module_runner, module_artemis_pro
     )
     schedule_entry.guest.console_log_file = 'console-11bbebc3-7029-4154-98ac-b18544181714.log'
     schedule_entry.testing_environment = TestingEnvironment(arch='x86_64', compose='rhel-9')
+    schedule_entry.provisioned_environment = TestingEnvironment(arch='x86_64', compose='rhel-9')
     schedule_entry.results = schedule_entry_results
     schedule_entry.runner_capability = 'sti'
     test_suite = TestSuite(name='some-suite', result='some-result')
@@ -304,6 +307,7 @@ def test_serialize_to_junit_non_printable_characters(monkeypatch, module_runner)
     schedule_entry.guest = NetworkedGuest(module_runner, 'hostname', 'name')
     schedule_entry.guest.environment = TestingEnvironment(arch='x86_64', compose='rhel-9')
     schedule_entry.testing_environment = TestingEnvironment(arch='x86_64', compose='rhel-9')
+    schedule_entry.provisioned_environment = TestingEnvironment(arch='x86_64', compose='rhel-9')
     schedule_entry.results = [TaskRun(name='foo', schedule_entry=None, result='pass', logs=['log1'])]
     schedule_entry.runner_capability = 'sti'
     test_suite = TestSuite(name='some-suite', result='some-result')

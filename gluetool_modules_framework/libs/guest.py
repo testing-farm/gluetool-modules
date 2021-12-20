@@ -24,7 +24,7 @@ import gluetool
 
 # Type annotations
 # pylint: disable=unused-import,wrong-import-order
-from typing import cast, Any, Callable, Dict, List, Optional, Tuple, Union  # noqa
+from typing import TYPE_CHECKING, cast, Any, Callable, Dict, List, Optional, Tuple, Union  # noqa
 
 
 class GuestConnectionError(gluetool.GlueError):

@@ -148,6 +148,7 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     )
     schedule_entry.guest = guest
     schedule_entry.testing_environment = test_env
+    schedule_entry.provisioned_environment = test_env
 
     # gather_plan_results() is called in _run_plan() right after calling tmt; we need to inject
     # writing results.yaml in between, which we can't do with a mock

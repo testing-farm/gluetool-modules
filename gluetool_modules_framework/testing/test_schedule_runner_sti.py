@@ -411,10 +411,14 @@ sut     ansible_host={} ansible_user=root {}
             assert schedule_entry.guest is not None
             assert schedule_entry.guest.environment is not None
             assert schedule_entry.guest.hostname is not None
+            assert schedule_entry.testing_environment is not None
+            assert schedule_entry.provisioned_environment is not None
             test_case.properties.update({
                 'baseosci.arch': str(schedule_entry.guest.environment.arch),
                 'baseosci.connectable_host': schedule_entry.guest.hostname,
-                'baseosci.distro': str(schedule_entry.guest.environment.compose),
+                'baseosci.testing-compose': str(schedule_entry.testing_environment.compose),
+                'baseosci.guest-compose': str(schedule_entry.guest.environment.compose),
+                'baseosci.provisioned-compose': str(schedule_entry.provisioned_environment.compose),
                 'baseosci.status': schedule_entry.stage.value.capitalize(),
                 'baseosci.variant': '',
             })
@@ -487,7 +491,8 @@ sut     ansible_host={} ansible_user=root {}
 
             assert schedule_entry.testing_environment is not None
             test_case.requested_environment = schedule_entry.testing_environment
-            test_case.provisioned_environment = schedule_entry.guest.environment
+            test_case.guest_environment = schedule_entry.guest.environment
+            test_case.provisioned_environment = schedule_entry.provisioned_environment
 
             if test_suite.requested_environment is None:
                 test_suite.requested_environment = schedule_entry.testing_environment

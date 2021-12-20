@@ -7,6 +7,7 @@ from gluetool.log import LoggerMixin, log_table
 import gluetool_modules_framework.libs.guest_setup
 import gluetool_modules_framework.libs.sentry
 from gluetool_modules_framework.libs.guest import NetworkedGuest
+from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from gluetool_modules_framework.libs.artifacts import artifacts_location
 from gluetool_modules_framework.libs import GlueEnum
 
@@ -197,6 +198,7 @@ class TestScheduleEntry(LoggerMixin, object):
         who consume the entry to update its state properly.
     :ivar TestScheduleResult result: result of the tests performed by the entry.
     :ivar TestingEnvironment testing_environment: environment required for the entry.
+    :ivar TestingEnvironment provisioned_environment: environment provisioned from provisioning service.
     :ivar NetworkedGuest guest: guest assigned to this entry.
     """
 
@@ -211,8 +213,9 @@ class TestScheduleEntry(LoggerMixin, object):
         self.state = TestScheduleEntryState.OK
         self.result = TestScheduleResult.UNDEFINED
 
-        self.testing_environment: Optional[gluetool_modules_framework.libs.testing_environment.TestingEnvironment] = None  # noqa
-        self.guest: Optional[gluetool_modules_framework.libs.guest.NetworkedGuest] = None
+        self.testing_environment: Optional[TestingEnvironment] = None
+        self.provisioned_environment: Optional[TestingEnvironment] = None
+        self.guest: Optional[NetworkedGuest] = None
 
         # List of exceptions encountered while processing the entry
         self.exceptions: List[gluetool.log.ExceptionInfoType] = []

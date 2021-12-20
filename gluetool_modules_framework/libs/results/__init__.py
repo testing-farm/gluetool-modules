@@ -38,6 +38,7 @@ class TestCase:
     note: Optional[str] = None
     properties: Dict[str, str] = attrs.field(factory=dict)
     logs: List[Log] = attrs.field(factory=list)
+    guest_environment: Optional[TestingEnvironment] = None
     requested_environment: Optional[TestingEnvironment] = None
     provisioned_environment: Optional[TestingEnvironment] = None
     # True can be used just to display a blank failure element, string can be specified as a failure message

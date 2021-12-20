@@ -11,8 +11,10 @@
    <properties>
     <property name="baseosci.arch" value="x86_64"/>
     <property name="baseosci.connectable_host" value="hostname"/>
-    <property name="baseosci.distro" value="rhel-9"/>
+    <property name="baseosci.guest-compose" value="rhel-9"/>
+    <property name="baseosci.provisioned-compose" value="rhel-9"/>
     <property name="baseosci.status" value="Created"/>
+    <property name="baseosci.testing-compose" value="rhel-9"/>
     <property name="baseosci.variant" value=""/>
    </properties>
    <logs>
@@ -20,6 +22,11 @@
    </logs>
    <failure/>
    <testing-environment name="requested">
+    <property name="arch" value="x86_64"/>
+    <property name="compose" value="rhel-9"/>
+    <property name="snapshots" value="False"/>
+   </testing-environment>
+   <testing-environment name="guest">
     <property name="arch" value="x86_64"/>
     <property name="compose" value="rhel-9"/>
     <property name="snapshots" value="False"/>

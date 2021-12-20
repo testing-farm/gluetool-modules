@@ -206,7 +206,13 @@ class TestSchedulerBaseOSCI(gluetool.Module):
 
     def execute(self) -> None:
 
-        self.require_shared('create_test_schedule', 'provisioner_capabilities', 'compose', 'evaluate_instructions')
+        self.require_shared(
+            'create_test_schedule',
+            'provisioner_capabilities',
+            'compose',
+            'actual_compose',
+            'evaluate_instructions'
+        )
 
         # Check whether we have *any* artifacts at all, before we move on to more fine-grained checks.
         # If there's no task, just move on - we cannot check it, but it's allowed to run pipeline
@@ -471,7 +477,19 @@ class TestSchedulerBaseOSCI(gluetool.Module):
 
         # Call plugin to create the schedule
         with Action('creating test schedule', parent=Action.current_action(), logger=self.logger):
-            schedule = self.shared('create_test_schedule', testing_environment_constraints=final_constraints)
+            schedule = cast(
+                TestSchedule,
+                self.shared('create_test_schedule', testing_environment_constraints=final_constraints)
+            )
+
+            for schedule_entry in schedule:
+                assert schedule_entry.guest is not None
+                assert schedule_entry.guest.environment is not None
+                schedule_entry.provisioned_environment = TestingEnvironment(
+                    compose=self.shared('actual_compose', schedule_entry.guest.environment.compose),
+                    arch=schedule_entry.guest.environment.arch,
+                    snapshots=schedule_entry.guest.environment.snapshots
+                )
 
         if not schedule:
             raise GlueError('Test schedule is empty')

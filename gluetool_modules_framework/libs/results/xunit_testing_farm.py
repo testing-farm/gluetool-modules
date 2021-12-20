@@ -188,6 +188,8 @@ class XUnitTFTestCase:
         environments: List[XUnitTFTestingEnvironment] = []
         if test_case.requested_environment:
             environments.append(XUnitTFTestingEnvironment.construct(test_case.requested_environment, 'requested'))
+        if test_case.guest_environment:
+            environments.append(XUnitTFTestingEnvironment.construct(test_case.guest_environment, 'guest'))
         if test_case.provisioned_environment:
             environments.append(XUnitTFTestingEnvironment.construct(test_case.provisioned_environment, 'provisioned'))
 

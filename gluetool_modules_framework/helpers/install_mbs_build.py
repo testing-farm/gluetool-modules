@@ -36,6 +36,7 @@ class InstallMBSBuild(gluetool.Module):
         self.info('Generating repo for module via ODCS')
 
         assert guest.environment is not None
+        assert guest.environment.arch is not None
         command = [
             'odcs',
             '--redhat', 'create',

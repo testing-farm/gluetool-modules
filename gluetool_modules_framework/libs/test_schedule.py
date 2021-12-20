@@ -216,6 +216,7 @@ class TestScheduleEntry(LoggerMixin, object):
         self.result = TestScheduleResult.UNDEFINED
 
         self.testing_environment = None  # type: Optional[gluetool_modules_framework.libs.testing_environment.TestingEnvironment]  # noqa
+        self.provisioned_environment = None  # type: Optional[gluetool_modules_framework.libs.testing_environment.TestingEnvironment]  # noqa
         self.guest = None  # type: Optional[gluetool_modules_framework.libs.guest.NetworkedGuest]
 
         # List of exceptions encountered while processing the entry

@@ -398,9 +398,9 @@ sut     ansible_host={} ansible_user=root {}
                 **attrs
             )
 
-        def _add_testing_environment(test_case, name, arch, compose):
+        def _add_testing_environment(parent, name, arch, compose):
             # type: (Any, str, Any, Any) -> Any
-            parent_elem = new_xml_element('testing-environment', _parent=test_case, name=name)
+            parent_elem = new_xml_element('testing-environment', _parent=parent, name=name)
             new_xml_element('property', _parent=parent_elem, name='arch', value=arch)
             new_xml_element('property', _parent=parent_elem, name='compose', value=compose)
 
@@ -416,6 +416,7 @@ sut     ansible_host={} ansible_user=root {}
             test_case = new_xml_element('testcase', _parent=test_suite, name=task.name, result=task.result)
             properties = new_xml_element('properties', _parent=test_case)
             logs = new_xml_element('logs', _parent=test_case)
+            testing_environments = new_xml_element('testing-environments', _parent=test_case)
 
             if task.result.upper() == 'FAIL':
                 new_xml_element('failure', _parent=test_case)
@@ -426,9 +427,13 @@ sut     ansible_host={} ansible_user=root {}
             # test properties
             assert schedule_entry.guest is not None
             assert schedule_entry.guest.environment is not None
+            assert schedule_entry.testing_environment is not None
+            assert schedule_entry.provisioned_environment is not None
             _add_property(properties, 'arch', schedule_entry.guest.environment.arch)
             _add_property(properties, 'connectable_host', schedule_entry.guest.hostname)
-            _add_property(properties, 'distro', schedule_entry.guest.environment.compose)
+            _add_property(properties, 'testing-compose', cast(str, schedule_entry.testing_environment.compose))
+            _add_property(properties, 'guest-compose', schedule_entry.guest.environment.compose)
+            _add_property(properties, 'provisioned-compose', cast(str, schedule_entry.provisioned_environment.compose))
             _add_property(properties, 'status', schedule_entry.stage.value.capitalize())
             if self.has_shared('dist_git_repository'):
                 _add_property(properties, 'testcase.source.url', self.shared('dist_git_repository').web_url)
@@ -471,14 +476,25 @@ sut     ansible_host={} ansible_user=root {}
                     schedule_entry=schedule_entry
                 )
 
-            assert schedule_entry.testing_environment is not None
-            _add_testing_environment(test_case, 'requested', schedule_entry.testing_environment.arch,
-                                     schedule_entry.testing_environment.compose)
-            _add_testing_environment(test_case, 'provisioned', schedule_entry.guest.environment.arch,
-                                     schedule_entry.guest.environment.compose)
+            _add_testing_environment(
+                testing_environments, 'guest',
+                schedule_entry.guest.environment.arch,
+                schedule_entry.guest.environment.compose
+            )
+            _add_testing_environment(
+                testing_environments, 'requested',
+                schedule_entry.testing_environment.arch,
+                schedule_entry.testing_environment.compose
+            )
+            _add_testing_environment(
+                testing_environments, 'provisioned',
+                schedule_entry.provisioned_environment.arch,
+                schedule_entry.provisioned_environment.compose
+            )
 
             # sorting
             sort_children(properties, lambda child: child.attrs['name'])
             sort_children(logs, lambda child: child.attrs['name'])
+            sort_children(testing_environments, lambda child: child.attrs['name'])
 
         test_suite['tests'] = len(schedule_entry.results)

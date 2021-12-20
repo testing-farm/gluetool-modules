@@ -27,7 +27,7 @@ from gluetool_modules_framework.libs.test_schedule import TestScheduleEntry as B
 from typing import cast, Any, Callable, Dict, List, Optional, Tuple  # noqa
 
 # Type annotations
-from typing import Any, Dict, List, NamedTuple, Optional  # noqa
+from typing import Any, Dict, List, NamedTuple, Optional, cast  # noqa
 
 # TMT run log file
 TMT_LOG = 'tmt-run.log'
@@ -533,9 +533,9 @@ class TestScheduleTMT(Module):
                 **attrs
             )
 
-        def _add_testing_environment(test_case, name, arch, compose, snapshots):
+        def _add_testing_environment(parent, name, arch, compose, snapshots):
             # type: (Any, str, Any, Any, bool) -> Any
-            parent_elem = new_xml_element('testing-environment', _parent=test_case, name=name)
+            parent_elem = new_xml_element('testing-environment', _parent=parent, name=name)
             new_xml_element('property', _parent=parent_elem, name='arch', value=arch)
             new_xml_element('property', _parent=parent_elem, name='compose', value=compose)
             new_xml_element('property', _parent=parent_elem, name='snapshots', value=str(snapshots))
@@ -549,6 +549,7 @@ class TestScheduleTMT(Module):
             test_case = new_xml_element('testcase', _parent=test_suite, name=task.name, result=task.result)
             properties = new_xml_element('properties', _parent=test_case)
             logs = new_xml_element('logs', _parent=test_case)
+            testing_environments = new_xml_element('testing-environments', _parent=test_case)
 
             if task.result == 'failed':
                 new_xml_element('failure', _parent=test_case)
@@ -559,9 +560,13 @@ class TestScheduleTMT(Module):
             # test properties
             assert schedule_entry.guest is not None
             assert schedule_entry.guest.environment is not None
+            assert schedule_entry.testing_environment is not None
+            assert schedule_entry.provisioned_environment is not None
             _add_property(properties, 'arch', schedule_entry.guest.environment.arch)
             _add_property(properties, 'connectable_host', schedule_entry.guest.hostname)
-            _add_property(properties, 'distro', schedule_entry.guest.environment.compose)
+            _add_property(properties, 'testing-compose', cast(str, schedule_entry.testing_environment.compose))
+            _add_property(properties, 'guest-compose', schedule_entry.guest.environment.compose)
+            _add_property(properties, 'provisioned-compose', cast(str, schedule_entry.provisioned_environment.compose))
             _add_property(properties, 'status', schedule_entry.stage.value.capitalize())
             _add_property(properties, 'testcase.source.url', self.shared('dist_git_repository').web_url)
             _add_property(properties, 'variant', '')
@@ -584,22 +589,28 @@ class TestScheduleTMT(Module):
                 schedule_entry=schedule_entry
             )
 
-            assert schedule_entry.testing_environment is not None
             _add_testing_environment(
-                test_case, 'requested',
+                testing_environments, 'guest',
+                schedule_entry.guest.environment.arch,
+                schedule_entry.guest.environment.compose,
+                schedule_entry.guest.environment.snapshots
+            )
+            _add_testing_environment(
+                testing_environments, 'requested',
                 schedule_entry.testing_environment.arch,
                 schedule_entry.testing_environment.compose,
                 schedule_entry.testing_environment.snapshots
             )
             _add_testing_environment(
-                test_case, 'provisioned',
-                schedule_entry.guest.environment.arch,
-                schedule_entry.guest.environment.compose,
-                schedule_entry.guest.environment.snapshots
+                testing_environments, 'provisioned',
+                schedule_entry.provisioned_environment.arch,
+                schedule_entry.provisioned_environment.compose,
+                schedule_entry.provisioned_environment.snapshots
             )
 
             # sorting
             sort_children(properties, lambda child: child.attrs['name'])
             sort_children(logs, lambda child: child.attrs['name'])
+            sort_children(testing_environments, lambda child: child.attrs['name'])
 
         test_suite['tests'] = len(schedule_entry.results)

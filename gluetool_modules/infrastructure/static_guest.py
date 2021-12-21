@@ -29,6 +29,14 @@ DEFAULT_ECHO_TIMEOUT = 10
 #: Follows :doc:`Provisioner Capabilities Protocol </protocols/provisioner-capabilities>`.
 ProvisionerCapabilities = collections.namedtuple('ProvisionerCapabilities', ['available_arches'])
 
+# without the 'type: ignore', mypy reports: 'error: Missing type parameters for generic type "Future"', however, adding
+# a type parameter in python older than 3.9 results in "TypeError: 'type' object has no attribute '__getitem__'" while
+# running the code
+WaitType = NamedTuple('WaitType', (
+    ('done', Set[Future]),  # type: ignore
+    ('not_done', Set[Future])  # type: ignore
+))
+
 
 class StaticGuest(NetworkedGuest):
     """
@@ -181,8 +189,7 @@ class CIStaticGuest(gluetool.Module):
         with ThreadPoolExecutor(thread_name_prefix="connect-thread") as executor:
             futures = {executor.submit(self.guest_connect, guest) for guest in self.option('guest')}
 
-            Wait = NamedTuple('Wait', (('done', Set[Future[Any]]), ('not_done', Set[Future[Any]])))
-            wait_result = cast(Wait, wait(futures))
+            wait_result = cast(WaitType, wait(futures))
 
             for future in wait_result.done:
                 guest = future.result()

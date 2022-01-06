@@ -20,6 +20,30 @@ from gluetool.utils import Result
 from typing import cast, Any, Optional, List  # cast, Callable, Dict, List, NamedTuple, Optional, Tuple  # noqa
 
 
+class RemoteGitRepositoryError(gluetool.GlueError):
+    pass
+
+
+class FailedToClone(RemoteGitRepositoryError):
+    pass
+
+
+class FailedToConfigure(RemoteGitRepositoryError):
+    pass
+
+
+class FailedToFetchRef(RemoteGitRepositoryError):
+    pass
+
+
+class FailedToCheckoutBranch(RemoteGitRepositoryError):
+    pass
+
+
+class FailedToCheckoutRef(RemoteGitRepositoryError):
+    pass
+
+
 class RemoteGitRepository(gluetool.log.LoggerMixin):
     """
     A remote Git repository representation.
@@ -157,7 +181,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
                 cmd.run()
 
             except gluetool.GlueCommandError as exc:
-                return Result.Error('Failed to clone git repository: {}, retrying'.format(exc.output.stderr))
+                return FailedToClone('Failed to clone git repository: {}, retrying'.format(exc.output.stderr))
 
             return Result.Ok(None)
 
@@ -188,7 +212,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
                     '"+refs/merge-requests/*:refs/remotes/origin/merge-requests/*"'
                 ]).run()
             except gluetool.GlueCommandError as exc:
-                raise gluetool.GlueError('Failed to configure git remote fetching: {}'.format(ref, exc.output.stderr))
+                raise FailedToConfigure('Failed to configure git remote fetching: {}'.format(ref, exc.output.stderr))
 
             # Fetch the pull/merge request
             try:
@@ -201,7 +225,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
                 ]).run()
 
             except gluetool.GlueCommandError as exc:
-                raise gluetool.GlueError('Failed to fetch ref {}: {}'.format(ref, exc.output.stderr))
+                raise FailedToFetchRef('Failed to fetch ref {}: {}'.format(ref, exc.output.stderr))
 
             try:
                 gluetool.utils.Command([
@@ -211,7 +235,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
                 ]).run()
 
             except gluetool.GlueCommandError as exc:
-                raise gluetool.GlueError('Failed to checkout branch {}: {}'.format(ref, exc.output.stderr))
+                raise FailedToCheckoutBranch('Failed to checkout branch {}: {}'.format(ref, exc.output.stderr))
 
         elif ref:
             # Default branch name of a checkout via hash, we always checkout a "named" branch
@@ -239,7 +263,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
                 ]).run()
 
             except gluetool.GlueCommandError as exc:
-                raise gluetool.GlueError('Failed to checkout ref {}: {}'.format(ref, exc.output.stderr))
+                raise FailedToCheckoutRef('Failed to checkout ref {}: {}'.format(ref, exc.output.stderr))
 
         # Since we used `dir` when creating repo directory, the path we have is absolute. That is not perfect,
         # we have an agreement with the rest of the world that we're living in current directory, which we consider

@@ -1,0 +1,4 @@
+---
+
+- rule: FAILURE and FAILURE.exc_info and FAILURE.exc_info[0].__name__  == 'GlueError'
+  state: some-mapped-state

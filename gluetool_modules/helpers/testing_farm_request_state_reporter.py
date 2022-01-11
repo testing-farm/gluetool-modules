@@ -134,7 +134,7 @@ class TestingFarmRequestStateReporter(gluetool.Module):
         self.require_shared('evaluate_instructions')
 
         context = gluetool.utils.dict_update(self.shared('eval_context'), {
-            'OVERALL-RESULT': result,
+            'OVERALL_RESULT': result,
             'FAILURE': failure
         })
 
@@ -168,7 +168,8 @@ class TestingFarmRequestStateReporter(gluetool.Module):
         error_message = str(failure.exc_info[1].message)
 
         context = gluetool.utils.dict_update(self.shared('eval_context'), {
-            'ERROR_MESSAGE': error_message
+            'ERROR_MESSAGE': error_message,
+            'FAILURE': failure
         })
 
         for instr in self.summary_map:

@@ -167,6 +167,11 @@ class GuessEnvironment(gluetool.Module):
                 'action': 'append',
                 'default': []
             },
+            'symbolic-compose-pattern-map': {
+                'help': 'Mapping between a symbolic compose name and one real compose name (default: none).',
+                'metavar': '(destination_tag|build_target):PATH',
+                'default': []
+            },
             'image-pattern-map': {
                 'help': 'Test and path to a file with image patterns (default: none).',
                 'metavar': '(destination_tag|build_target):PATH',
@@ -194,7 +199,7 @@ class GuessEnvironment(gluetool.Module):
         })
     ]
 
-    shared_functions = ['compose', 'distro', 'image', 'product', 'wow_relevancy_distro']
+    shared_functions = ['compose', 'actual_compose', 'distro', 'image', 'product', 'wow_relevancy_distro']
 
     supported_dryrun_level = gluetool.glue.DryRunLevels.DRY
 
@@ -230,6 +235,46 @@ class GuessEnvironment(gluetool.Module):
 
         assert self._compose['result'] is not None
         return self._compose['result']
+
+    def actual_compose(self, possibly_symbolic_compose):
+        # type: (str) -> str
+        """
+        Convert symbolic compose name to a real compose name using
+        a mapping file provided by symbolic-compose-pattern map option
+        """
+
+        compose = possibly_symbolic_compose
+        pattern_map_filepath = self.option('symbolic-compose-pattern-map')
+
+        if not pattern_map_filepath:
+            self.logger.debug(
+                "skipping mapping of symbolic compose '{}' to real name because no pattern map available".format(
+                    possibly_symbolic_compose,
+                )
+            )
+            return compose
+
+        self.logger.debug("attempt to map symbolic compose '{}' to real name using '{}' pattern map".format(
+            possibly_symbolic_compose,
+            pattern_map_filepath
+        ))
+
+        pattern_map = PatternMap(
+            pattern_map_filepath,
+            allow_variables=True,
+            logger=self.logger
+        )
+
+        try:
+            compose = cast(str, pattern_map.match(possibly_symbolic_compose))
+            self.logger.debug("symbolic compose '{}' was mapped to '{}'".format(possibly_symbolic_compose, compose))
+        except GlueError as e:
+            self.logger.debug("could not match compose '{}' using the pattern map: {}".format(
+                compose,
+                e
+            ))
+
+        return compose
 
     def distro(self):
         # type: () -> Union[str, List[str]]

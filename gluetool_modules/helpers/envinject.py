@@ -6,6 +6,7 @@ Allow modules to inject enviroment variables via EnvInject module
 """
 
 import gluetool
+import six
 from gluetool.log import format_dict
 from typing import TYPE_CHECKING, List, Dict, Optional # noqa
 
@@ -53,5 +54,5 @@ class EnvInject(gluetool.Module):
         self.debug('variables:\n{}'.format(format_dict(self._variables)))
 
         with open(self.option('file'), 'w') as f:
-            for key, value in sorted(self._variables.iteritems()):
+            for key, value in sorted(six.iteritems(self._variables)):
                 f.write('{}="{}"\n'.format(key, value))

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+import six
 
 import mock
 import pytest
@@ -106,7 +107,7 @@ def test_unregister_event_handler_with_no_handlers(module_with_handler):
     assert 'dummy-event-2' not in module._handlers
 
     saved_handlers = {
-        event: event_handlers[:] for event, event_handlers in module._handlers.iteritems()
+        event: event_handlers[:] for event, event_handlers in six.iteritems(module._handlers)
     }
 
     module.unregister_event_handler('dummy-event-2', MagicMock())
@@ -122,7 +123,7 @@ def test_unregister_event_handler_not_registered(module_with_handler):
     module, _, _, _ = module_with_handler
 
     saved_handlers = {
-        event: event_handlers[:] for event, event_handlers in module._handlers.iteritems()
+        event: event_handlers[:] for event, event_handlers in six.iteritems(module._handlers)
     }
 
     module.unregister_event_handler('dummy-event', MagicMock())

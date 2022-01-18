@@ -3,6 +3,7 @@
 
 import collections
 import re
+import six
 
 import koji
 import requests.exceptions
@@ -904,7 +905,7 @@ class KojiTask(LoggerMixin, object):
             self.debug('task has no artifacts, it is pointless to search them for srpm')
             return None, None
 
-        for subtask, artifacts in self.task_artifacts.iteritems():
+        for subtask, artifacts in six.iteritems(self.task_artifacts):
             for artifact in artifacts:
                 if not artifact.endswith('.src.rpm'):
                     continue

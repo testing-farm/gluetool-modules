@@ -3,6 +3,7 @@
 
 import os
 import re
+import six
 
 import gluetool
 from gluetool.action import Action
@@ -298,7 +299,7 @@ class GuestSetup(gluetool.Module):
 
             if 'extra_vars' in playbooks_set:
                 extra_vars = {
-                    key: render_context(value) for key, value in playbooks_set['extra_vars'].iteritems()
+                    key: render_context(value) for key, value in six.iteritems(playbooks_set['extra_vars'])
                 }
 
                 gluetool.log.log_dict(self.debug, 'using these extra vars', extra_vars)

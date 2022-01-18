@@ -176,7 +176,7 @@ def gather_plan_results(schedule_entry, work_dir):
         return TestScheduleResult.ERROR, results
 
     # iterate through all the test results and create TestResult for each
-    for name, data in results.iteritems():
+    for name, data in six.iteritems(results):
 
         # translate result outcome
         try:
@@ -200,7 +200,7 @@ def gather_plan_results(schedule_entry, work_dir):
         ))
 
     # count the maximum result weight encountered, i.e. the overall result
-    max_weight = max(RESULT_WEIGHT[data['result']] for _, data in results.iteritems())
+    max_weight = max(RESULT_WEIGHT[data['result']] for _, data in six.iteritems(results))
 
     return PLAN_OUTCOME[max_weight], test_results
 
@@ -406,7 +406,7 @@ class TestScheduleTMT(Module):
             '--id', os.path.abspath(work_dirpath)
         ]
 
-        for name, value in variables.iteritems():
+        for name, value in six.iteritems(variables):
             command += [
                 '-e', '{}={}'.format(name, value)
             ]

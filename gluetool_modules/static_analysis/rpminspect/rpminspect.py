@@ -7,6 +7,7 @@ import re
 import shutil
 import stat
 import tempfile
+import six
 
 import gluetool
 from gluetool import GlueError, GlueCommandError
@@ -326,7 +327,7 @@ class CIRpminspect(gluetool.Module):
             parsed_results = []
 
             # Parse results for every test.
-            for test_name, test_info in data.iteritems():
+            for test_name, test_info in six.iteritems(data):
 
                 # Return the worst result from test
                 def _outcome():

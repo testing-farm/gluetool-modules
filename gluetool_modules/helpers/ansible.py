@@ -6,6 +6,7 @@ import re
 import stat
 import subprocess
 import tempfile
+import six
 
 import gluetool
 from gluetool.action import Action
@@ -306,7 +307,7 @@ class Ansible(gluetool.Module):
 
             cmd += [
                 '--extra-vars',
-                ' '.join(['{}="{}"'.format(k, v) for k, v in variables.iteritems()])
+                ' '.join(['{}="{}"'.format(k, v) for k, v in six.iteritems(variables)])
             ]
 
         # Export common context variables

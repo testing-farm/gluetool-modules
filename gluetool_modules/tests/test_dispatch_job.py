@@ -1,6 +1,8 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+import six
+
 import pytest
 
 from mock import MagicMock
@@ -55,7 +57,7 @@ def create_build_params(mod, **kwargs):
 
     params.update(kwargs)
 
-    for name, value in params.iteritems():
+    for name, value in six.iteritems(params):
         # pylint: disable=protected-access
         mod._config[name.replace('_', '-')] = value
 

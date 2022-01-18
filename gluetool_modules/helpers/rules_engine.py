@@ -6,6 +6,7 @@ import imp
 import re
 import sys
 import ast
+import six
 
 import jinja2
 import gluetool
@@ -516,7 +517,7 @@ class RulesEngine(gluetool.Module):
 
         return {
             name: gluetool.utils.render_template(template, logger=self.logger, **context)
-            for name, template in self._user_variable_templates.iteritems()
+            for name, template in six.iteritems(self._user_variable_templates)
         }
 
     @cached_property
@@ -565,7 +566,7 @@ class RulesEngine(gluetool.Module):
 
                 current = AttrDict(**current)
 
-                for k, v in current.iteritems():
+                for k, v in six.iteritems(current):
                     if not isinstance(v, (dict, list)):
                         continue
 
@@ -616,7 +617,8 @@ class RulesEngine(gluetool.Module):
             # type: (ContextType) -> ContextType
 
             return {
-                key: MatchableString(value) if isinstance(value, str) else value for key, value in variables.iteritems()
+                key: MatchableString(value) if isinstance(value, str) else value
+                for key, value in six.iteritems(variables)
             }
 
         # If we don't have a context, get one from the core.
@@ -745,7 +747,7 @@ class RulesEngine(gluetool.Module):
         )
 
         for instruction, instruction_context in instruction_iterator:
-            for command, argument in instruction.iteritems():
+            for command, argument in six.iteritems(instruction):
                 if command == 'rule':
                     continue
 

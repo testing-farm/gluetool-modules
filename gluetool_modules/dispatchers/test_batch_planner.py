@@ -315,7 +315,7 @@ class TestBatchPlanner(gluetool.Module):
             # cannot use section_flags.copy() because section_flags might be an ordered dict,
             # and copy into unordered leads to an exception - we don't care about ordering,
             # we can ignore it.
-            set_flags = {key: value for key, value in section_flags.iteritems()}
+            set_flags = {key: value for key, value in six.iteritems(section_flags)}
 
             if is_component is True:
                 if isinstance(set_commands[0], dict):
@@ -374,7 +374,7 @@ class TestBatchPlanner(gluetool.Module):
 
                     self.debug("command: '{}'".format(command))
 
-                    for job, result_type in self.job_result_types.iteritems():
+                    for job, result_type in six.iteritems(self.job_result_types):
                         if not command.startswith(job):
                             continue
 
@@ -528,7 +528,7 @@ class TestBatchPlanner(gluetool.Module):
 
         component_commands = None  # type: Optional[SubSectionType]
 
-        for pattern, commands in packages_config.iteritems():
+        for pattern, commands in six.iteritems(packages_config):
             self.debug("component: '{}', pattern: '{}'".format(component, pattern))
 
             try:

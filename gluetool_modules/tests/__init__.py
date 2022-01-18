@@ -4,6 +4,7 @@
 import os.path
 
 import bs4
+import six
 
 import gluetool
 # pylint: disable=wildcard-import
@@ -64,8 +65,8 @@ def patch_shared(monkeypatch, module, return_values, callables=None):
 
     callables = callables or {}
 
-    for name, value in return_values.iteritems():
+    for name, value in six.iteritems(return_values):
         monkeypatch.setitem(module.glue.pipelines[-1].shared_functions, name, (None, MagicMock(return_value=value)))
 
-    for name, value in callables.iteritems():
+    for name, value in six.iteritems(callables):
         monkeypatch.setitem(module.glue.pipelines[-1].shared_functions, name, (None, value))

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import six
 
 import gluetool
 from gluetool.utils import new_xml_element
@@ -102,7 +103,7 @@ class TestResult(object):
             maps to ``baseosci.id.testing-thread``.
         """
 
-        for property_name, xunit_name in names.iteritems():
+        for property_name, xunit_name in six.iteritems(names):
             if property_name not in properties:
                 continue
 

@@ -101,7 +101,7 @@ def test_testing_farm_reporter_destroy_failure(module, request_empty, evaluate):
     assert request == {
         'state': 'error',
         'summary': GlueError('message').message,
-        'overall_result': 'error',
+        'overall_result': 'unknown',
         'artifacts_url': None,
         'xunit': None,
     }
@@ -129,7 +129,7 @@ def test_testing_farm_reporter_destroy_no_result(module, request_running, evalua
     request = module.shared('testing_farm_request')
     assert request == {
         'state': 'complete',
-        'overall_result': 'error',
+        'overall_result': 'unknown',
         'xunit': None,
         'summary': None,
         'artifacts_url': None

@@ -54,7 +54,7 @@ def _guest_to_str(guest):
     return '{}\n{}'.format(_env_to_str(guest.environment), guest.name)
 
 
-class EmptyTestScheduleError(gluetool_modules.libs.sentry.PrimaryTaskFingerprintsMixin, gluetool.SoftGlueError):
+class EmptyTestScheduleError(gluetool_modules.libs.sentry.ArtifactFingerprintsMixin, gluetool.SoftGlueError):
     def __init__(self, task):
         # type: (Any) -> None
 
@@ -67,7 +67,7 @@ class EmptyTestScheduleError(gluetool_modules.libs.sentry.PrimaryTaskFingerprint
         return False
 
 
-class InvalidTmtReferenceError(gluetool_modules.libs.sentry.PrimaryTaskFingerprintsMixin, gluetool.SoftGlueError):
+class InvalidTmtReferenceError(gluetool_modules.libs.sentry.ArtifactFingerprintsMixin, gluetool.SoftGlueError):
     def __init__(self, task, tmt_reference):
         # type: (Any, str) -> None
         self.tmt_reference = tmt_reference

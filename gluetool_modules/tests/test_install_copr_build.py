@@ -1,6 +1,9 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+# Copyright Contributors to te Testing Farm project.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 import gluetool
 import os
@@ -86,22 +89,22 @@ def test_setup_guest(module_shared_patched, tmpdir):
 
     calls = [
         call('curl -v dummy_repo_url --output /etc/yum.repos.d/copr_build.repo'),
-        call('yum -y reinstall dummy_rpm_url1'),
-        call('yum -y reinstall dummy_rpm_url2'),
-        call('yum -y downgrade dummy_rpm_url1 dummy_rpm_url2'),
-        call('yum -y update dummy_rpm_url1 dummy_rpm_url2'),
-        call('yum -y install dummy_rpm_url1 dummy_rpm_url2')
+        call('dnf --allowerasing -y reinstall dummy_rpm_url1'),
+        call('dnf --allowerasing -y reinstall dummy_rpm_url2'),
+        call('dnf --allowerasing -y downgrade dummy_rpm_url1 dummy_rpm_url2'),
+        call('dnf --allowerasing -y update dummy_rpm_url1 dummy_rpm_url2'),
+        call('dnf --allowerasing -y install dummy_rpm_url1 dummy_rpm_url2')
     ]
 
     execute_mock.assert_has_calls(calls, any_order=True)
     assert_log_files(guest, str(tmpdir))
 
 
-def test_no_yum(module_shared_patched, tmpdir):
+def test_no_dnf(module_shared_patched, tmpdir):
     module, primary_task_mock = module_shared_patched
 
     def execute_mock_side_effect(cmd):
-        if cmd == 'command -v yum':
+        if cmd == 'command -v dnf':
             raise gluetool.glue.GlueCommandError('dummy_error', MagicMock(exit_code=1, stdout='', stderr=''))
         return MagicMock(stdout='', stderr='')
 
@@ -113,11 +116,11 @@ def test_no_yum(module_shared_patched, tmpdir):
 
     calls = [
         call('curl -v dummy_repo_url --output /etc/yum.repos.d/copr_build.repo'),
-        call('dnf -y reinstall dummy_rpm_url1'),
-        call('dnf -y reinstall dummy_rpm_url2'),
-        call('dnf -y downgrade dummy_rpm_url1 dummy_rpm_url2'),
-        call('dnf -y update dummy_rpm_url1 dummy_rpm_url2'),
-        call('dnf -y install dummy_rpm_url1 dummy_rpm_url2')
+        call('yum -y reinstall dummy_rpm_url1'),
+        call('yum -y reinstall dummy_rpm_url2'),
+        call('yum -y downgrade dummy_rpm_url1 dummy_rpm_url2'),
+        call('yum -y update dummy_rpm_url1 dummy_rpm_url2'),
+        call('yum -y install dummy_rpm_url1 dummy_rpm_url2')
     ]
 
     execute_mock.assert_has_calls(calls, any_order=True)

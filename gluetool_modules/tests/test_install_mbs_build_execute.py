@@ -339,17 +339,17 @@ def test_guest_setup(module, monkeypatch, tmpdir, info_output):
 
     calls = [
         call('curl -v {} --output /etc/yum.repos.d/mbs_build.repo'.format(REPO_URL)),
-        call('yum module reset -y {}'.format(NSVC)),
-        call('yum module enable -y {}'.format(NSVC)),
-        call('yum module install -y {}'.format(NSVC))
+        call('dnf module reset -y {}'.format(NSVC)),
+        call('dnf module enable -y {}'.format(NSVC)),
+        call('dnf module install -y {}'.format(NSVC))
     ]
 
     if primary_task_mock.scratch:
         calls = [
             call('curl -v {} --output /etc/yum.repos.d/mbs_build.repo'.format(REPO_URL)),
-            call('yum module reset -y {}'.format(NSVC_SCRATCH_YUM_RESET)),
-            call('yum module enable -y {}'.format(NSVC_SCRATCH_YUM_ENABLE_INSTALL)),
-            call('yum module install -y {}'.format(NSVC_SCRATCH_YUM_ENABLE_INSTALL))
+            call('dnf module reset -y {}'.format(NSVC_SCRATCH_YUM_RESET)),
+            call('dnf module enable -y {}'.format(NSVC_SCRATCH_YUM_ENABLE_INSTALL)),
+            call('dnf module install -y {}'.format(NSVC_SCRATCH_YUM_ENABLE_INSTALL))
         ]
 
     execute_mock.assert_has_calls(calls, any_order=True)
@@ -388,17 +388,17 @@ def test_use_devel_module_and_profile(module, monkeypatch, tmpdir, info_output):
 
     calls = [
         call('curl -v {} --output /etc/yum.repos.d/mbs_build.repo'.format(REPO_URL)),
-        call('yum module reset -y {}'.format(NSVC_DEVEL_WITH_PROFILE)),
-        call('yum module enable -y {}/common'.format(NSVC_DEVEL_WITH_PROFILE)),
-        call('yum module install -y {}/common'.format(NSVC_DEVEL_WITH_PROFILE))
+        call('dnf module reset -y {}'.format(NSVC_DEVEL_WITH_PROFILE)),
+        call('dnf module enable -y {}/common'.format(NSVC_DEVEL_WITH_PROFILE)),
+        call('dnf module install -y {}/common'.format(NSVC_DEVEL_WITH_PROFILE))
     ]
 
     if primary_task_mock.scratch:
         calls = [
             call('curl -v {} --output /etc/yum.repos.d/mbs_build.repo'.format(REPO_URL)),
-            call('yum module reset -y {}'.format(NSVC_DEVEL_SCRATCH_YUM_RESET)),
-            call('yum module enable -y {}/common'.format(NSVC_DEVEL_SCRATCH_YUM_ENABLE_INSTALL)),
-            call('yum module install -y {}/common'.format(NSVC_DEVEL_SCRATCH_YUM_ENABLE_INSTALL))
+            call('dnf module reset -y {}'.format(NSVC_DEVEL_SCRATCH_YUM_RESET)),
+            call('dnf module enable -y {}/common'.format(NSVC_DEVEL_SCRATCH_YUM_ENABLE_INSTALL)),
+            call('dnf module install -y {}/common'.format(NSVC_DEVEL_SCRATCH_YUM_ENABLE_INSTALL))
         ]
 
     execute_mock.assert_has_calls(calls, any_order=True)
@@ -442,9 +442,9 @@ def test_workarounds(module, monkeypatch, tmpdir, info_output):
         call('workaround command'),
         call('other workaround command'),
         call('curl -v {} --output /etc/yum.repos.d/mbs_build.repo'.format(REPO_URL)),
-        call('yum module reset -y {}'.format(NSVC)),
-        call('yum module enable -y {}'.format(NSVC)),
-        call('yum module install -y {}'.format(NSVC))
+        call('dnf module reset -y {}'.format(NSVC)),
+        call('dnf module enable -y {}'.format(NSVC)),
+        call('dnf module install -y {}'.format(NSVC))
     ]
 
     if primary_task_mock.scratch:
@@ -452,9 +452,9 @@ def test_workarounds(module, monkeypatch, tmpdir, info_output):
             call('workaround command'),
             call('other workaround command'),
             call('curl -v {} --output /etc/yum.repos.d/mbs_build.repo'.format(REPO_URL)),
-            call('yum module reset -y {}'.format(NSVC_SCRATCH_YUM_RESET)),
-            call('yum module enable -y {}'.format(NSVC_SCRATCH_YUM_ENABLE_INSTALL)),
-            call('yum module install -y {}'.format(NSVC_SCRATCH_YUM_ENABLE_INSTALL))
+            call('dnf module reset -y {}'.format(NSVC_SCRATCH_YUM_RESET)),
+            call('dnf module enable -y {}'.format(NSVC_SCRATCH_YUM_ENABLE_INSTALL)),
+            call('dnf module install -y {}'.format(NSVC_SCRATCH_YUM_ENABLE_INSTALL))
         ]
 
     execute_mock.assert_has_calls(calls, any_order=True)

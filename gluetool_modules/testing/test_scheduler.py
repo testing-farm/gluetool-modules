@@ -40,7 +40,7 @@ ProvisionerCapabilities = NamedTuple(
 )
 
 
-class NoTestableArtifactsError(gluetool_modules.libs.sentry.PrimaryTaskFingerprintsMixin, SoftGlueError):
+class NoTestableArtifactsError(gluetool_modules.libs.sentry.ArtifactFingerprintsMixin, SoftGlueError):
     """
     Raised when the artifact we're given to test contains no usable RPMS we could actually test.
     E.g. when the artifact was build for arch A only, while our backend can handle just arches

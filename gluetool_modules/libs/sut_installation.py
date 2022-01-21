@@ -2,13 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import collections
+import re
 import os
 import gluetool
 from gluetool import SoftGlueError
 from gluetool.log import log_dict
 from gluetool.result import Ok, Error
 from gluetool.utils import Result
-from gluetool_modules.libs.sentry import PrimaryTaskFingerprintsMixin
+from gluetool_modules.libs.sentry import ArtifactFingerprintsMixin
 from gluetool_modules.libs import run_and_log
 
 from jq import jq
@@ -32,21 +33,34 @@ StepCallbackType = Callable[[str, gluetool.utils.ProcessOutput], Optional[str]]
 #: :ivar list(str) items: Items to execute command with replaced to `command`.
 #: :ivar bool ignore_exception: Indicates whether to raise `SUTInstallationFailedError` when command fails.
 #: :ivar Callable callback: Callback to additional processing of command output.
-SUTStep = collections.namedtuple('SUTStep', ['label', 'command', 'items', 'ignore_exception', 'callback'])
+SUTStep = collections.namedtuple(
+    'SUTStep', ['label', 'command', 'items', 'ignore_exception', 'callback']
+)
+
+# Pattern for dnf commands which will be extended with --allowerasing
+ALLOW_ERASING_PATTERN = re.compile(r'\b(install|update|reinstall|downgrade)\b')
 
 
-class SUTInstallationFailedError(PrimaryTaskFingerprintsMixin, SoftGlueError):
-    def __init__(self, task, guest, items=None, reason=None, installation_logs=None, installation_logs_location=None):
+class SUTInstallationFailedError(ArtifactFingerprintsMixin, SoftGlueError):
+    def __init__(
+        self,
+        artifact,
+        guest,
+        items=None,
+        reason=None,
+        installation_logs=None,
+        installation_logs_location=None
+    ):
         # type: (Any, gluetool_modules.libs.guest.Guest, Any, Optional[str], Optional[str], Optional[str]) -> None
 
         if reason:
             super(SUTInstallationFailedError, self).__init__(
-                task,
+                artifact,
                 'Test environment installation failed: {}'.format(reason)
             )
         else:
             super(SUTInstallationFailedError, self).__init__(
-                task,
+                artifact,
                 'Test environment installation failed: reason unknown, please escalate'
             )
 
@@ -59,12 +73,12 @@ class SUTInstallationFailedError(PrimaryTaskFingerprintsMixin, SoftGlueError):
 
 class SUTInstallation(object):
 
-    def __init__(self, module, log_dirpath, primary_task, logger=None):
+    def __init__(self, module, log_dirpath, artifact, logger=None):
         # type: (gluetool.Module, str, Any, Optional[gluetool.log.ContextAdapter]) -> None
 
         self.module = module
         self.log_dirpath = log_dirpath
-        self.primary_task = primary_task
+        self.artifact = artifact
         self.steps = []  # type: List[SUTStep]
         self.logger = logger or gluetool.log.Logging.get_logger()
 
@@ -83,10 +97,10 @@ class SUTInstallation(object):
         # type: (gluetool_modules.libs.guest.NetworkedGuest) -> Result[None, SUTInstallationFailedError]
 
         try:
-            guest.execute('command -v yum')
-            yum_present = True
+            guest.execute('command -v dnf')
+            dnf_present = True
         except gluetool.glue.GlueCommandError:
-            yum_present = False
+            dnf_present = False
 
         if not os.path.exists(self.log_dirpath):
             os.mkdir(self.log_dirpath)
@@ -100,9 +114,17 @@ class SUTInstallation(object):
             log_filepath = os.path.join(self.log_dirpath, log_filename)
 
             command = step.command
-            # replace yum with dnf in case yum is not present on guest
-            if not yum_present and command.startswith('yum'):
+
+            # replace yum with dnf in case dnf is present on guest
+            if dnf_present and command.startswith('yum'):
                 command = '{}{}'.format('dnf', command[3:])
+
+            # always use `--allowerasing` with `dnf install`, except `dnf module install`
+            if command.startswith('dnf'):
+                dnf_command = 'dnf'
+                if re.search(ALLOW_ERASING_PATTERN, command) and ' module ' not in command:
+                    dnf_command = 'dnf --allowerasing'
+                command = '{}{}'.format(dnf_command, command[3:])
 
             if not step.items:
                 command_failed, error_message, output = run_and_log(
@@ -117,7 +139,7 @@ class SUTInstallation(object):
                 if command_failed and not step.ignore_exception:
                     return Error(
                         SUTInstallationFailedError(
-                            self.primary_task,
+                            self.artifact,
                             guest,
                             reason=error_message,
                             installation_logs=self.log_dirpath,
@@ -150,7 +172,7 @@ class SUTInstallation(object):
 
                     return Error(
                         SUTInstallationFailedError(
-                            self.primary_task,
+                            self.artifact,
                             guest,
                             items=item,
                             reason=error_message,
@@ -161,7 +183,7 @@ class SUTInstallation(object):
 
                 return Error(
                     SUTInstallationFailedError(
-                        self.primary_task,
+                        self.artifact,
                         guest,
                         items=item,
                         installation_logs=self.log_dirpath,
@@ -174,7 +196,7 @@ class SUTInstallation(object):
 
 def check_ansible_sut_installation(ansible_output,  # type: Dict[str, Any]
                                    guest,  # type: gluetool_modules.libs.guest.NetworkedGuest
-                                   primary_task,  # type: Any
+                                   artifact,  # type: Any
                                    logger=None  # type: Optional[gluetool.log.ContextAdapter]
                                   ):  # noqa
     # type: (...) -> None
@@ -184,7 +206,7 @@ def check_ansible_sut_installation(ansible_output,  # type: Dict[str, Any]
 
     :param ansible_output: output (in json format) to be checked
     :param guest: guest where playbook was run
-    :param primary_task: Object covering installed artifact
+    :param artifact: Object covering installed artifact
     :param logger: Logger object used to log
     :raises SUTInstallationFailedError: if some of ansible installation tasks failed
     """
@@ -222,4 +244,4 @@ def check_ansible_sut_installation(ansible_output,  # type: Dict[str, Any]
     failed_modules = first_fail['items']
 
     guest.warn('Following items have not been installed: {}'.format(','.join(failed_modules)))
-    raise SUTInstallationFailedError(primary_task, guest, failed_modules)
+    raise SUTInstallationFailedError(artifact, guest, failed_modules)

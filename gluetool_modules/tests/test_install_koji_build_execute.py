@@ -8,7 +8,7 @@ from mock import MagicMock, call
 import gluetool_modules.libs.guest as guest_module
 import gluetool_modules.libs.guest_setup
 import gluetool_modules.libs.testing_environment
-import gluetool_modules.helpers.install_repository
+import gluetool_modules.helpers.install_koji_build_execute
 import gluetool_modules.helpers.rules_engine
 
 from . import create_module, patch_shared
@@ -24,24 +24,23 @@ def mock_guest(execute_mock):
 
 @pytest.fixture(name='module')
 def fixture_module(monkeypatch):
-    module = create_module(gluetool_modules.helpers.install_repository.InstallRepository)[1]
+    module = create_module(gluetool_modules.helpers.install_koji_build_execute.InstallKojiBuildExecute)[1]
 
     module._config['log-dir-name'] = 'log-dir-example'
-    module._config['download-path'] = 'dummy-path'
 
     def dummy_testing_farm_request():
         environments_requested = [
             {
                 'artifacts': [
                     {
-                        'id': 'https://example.com/repo1',
+                        'id': '123123123',
                         'packages': None,
-                        'type': 'repository'
+                        'type': 'fedora-koji-build'
                     },
                     {
-                        'id': 'https://example.com/repo2',
+                        'id': '123123124',
                         'packages': None,
-                        'type': 'repository'
+                        'type': 'redhat-brew-build'
                     },
                     {
                         'id': 'wrongid',
@@ -62,9 +61,12 @@ def fixture_module(monkeypatch):
         ]
         return MagicMock(environments_requested=environments_requested)
 
+    def evaluate_instructions_mock(workarounds, callbacks):
+        callbacks['steps']('instructions', 'commands', workarounds, 'context')
+
     patch_shared(monkeypatch, module, {}, callables={
         'testing_farm_request': dummy_testing_farm_request,
-        'evaluate_instructions': gluetool_modules.helpers.rules_engine.RulesEngine.evaluate_instructions,
+        'evaluate_instructions': evaluate_instructions_mock,
         'setup_guest': None
     })
 
@@ -96,14 +98,14 @@ def test_execute(module, local_guest, monkeypatch):
 
     assert module.request_artifacts == [
         {
-            'id': 'https://example.com/repo1',
+            'id': '123123123',
             'packages': None,
-            'type': 'repository'
+            'type': 'fedora-koji-build'
         },
         {
-            'id': 'https://example.com/repo2',
+            'id': '123123124',
             'packages': None,
-            'type': 'repository'
+            'type': 'redhat-brew-build'
         }
     ]
 
@@ -120,14 +122,14 @@ def test_guest_setup(module, local_guest):
 
     calls = [
         call('command -v dnf'),
-        call('mkdir -p dummy-path'),
-        call('cd dummy-path && dnf repoquery -q --queryformat "%{name}" --repofrompath artifacts-repo,https://example.com/repo1               --disablerepo="*" --enablerepo="artifacts-repo" --location | xargs -n1 curl -sO'),  # noqa
-        call('cd dummy-path && dnf repoquery -q --queryformat "%{name}" --repofrompath artifacts-repo,https://example.com/repo2               --disablerepo="*" --enablerepo="artifacts-repo" --location | xargs -n1 curl -sO'),  # noqa
-        call('dnf --allowerasing -y reinstall dummy-path/*[^.src].rpm'),
-        call('dnf --allowerasing -y downgrade dummy-path/*[^.src].rpm'),
-        call('dnf --allowerasing -y update dummy-path/*[^.src].rpm'),
-        call('dnf --allowerasing -y install dummy-path/*[^.src].rpm'),
-        call("ls dummy-path/*[^.src].rpm | sed 's/.*\\/\\(.*\\).rpm$/\\\\1/' | xargs rpm -q")
+        call('koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch src 123123123'),  # noqa
+        call('brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch src 123123124'),  # noqa
+        call('ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | awk "{print \\$2}" | tee rpms-list'),  # noqa
+        call('dnf --allowerasing -y reinstall $(cat rpms-list)'),
+        call('dnf --allowerasing -y downgrade $(cat rpms-list)'),
+        call('dnf --allowerasing -y update $(cat rpms-list)'),
+        call('dnf --allowerasing -y install $(cat rpms-list)'),
+        call("sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q")
     ]
 
     execute_mock.assert_has_calls(calls)

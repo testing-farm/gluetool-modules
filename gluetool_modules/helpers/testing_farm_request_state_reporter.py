@@ -89,7 +89,8 @@ class TestingFarmRequestStateReporter(gluetool.Module):
 
         request.update(
             state=self._get_state(failure),
-            overall_result=self._get_overall_result(test_results['overall-result'] if test_results else '', failure),
+            overall_result=self._get_overall_result(
+                test_results['overall-result'] if test_results else 'unknown', failure),
             summary=self._get_summary(failure),
             xunit=str(test_results) if test_results else None,
             artifacts_url=self.shared('coldstore_url')
@@ -104,7 +105,11 @@ class TestingFarmRequestStateReporter(gluetool.Module):
         if not failure:
             return STATE_COMPLETE
 
+        assert failure.exc_info[1] is not None
+        error_message = str(failure.exc_info[1].message)
+
         context = gluetool.utils.dict_update(self.shared('eval_context'), {
+            'ERROR_MESSAGE': error_message,
             'FAILURE': failure
         })
 
@@ -133,8 +138,15 @@ class TestingFarmRequestStateReporter(gluetool.Module):
 
         self.require_shared('evaluate_instructions')
 
+        if not failure:
+            return result
+
+        assert failure.exc_info[1] is not None
+        error_message = str(failure.exc_info[1].message)
+
         context = gluetool.utils.dict_update(self.shared('eval_context'), {
             'OVERALL_RESULT': result,
+            'ERROR_MESSAGE': error_message,
             'FAILURE': failure
         })
 
@@ -154,7 +166,7 @@ class TestingFarmRequestStateReporter(gluetool.Module):
         if overall_result.result is not None:
             return cast(str, overall_result.result)
 
-        return result or 'error'
+        return result
 
     def _get_summary(self, failure=None):
         # type: (Optional[gluetool.Failure]) -> Optional[str]

@@ -1319,7 +1319,7 @@ class BrewTask(KojiTask):
 
     @cached_property
     def source_members(self):
-        # type: () -> Tuple[str, str]
+        # type: () -> Tuple[Optional[str], Optional[str]]
         """
         Return :py:attr:`source` attribute split into its pieces, a component and a GIT commit hash.
 
@@ -1357,9 +1357,6 @@ class BrewTask(KojiTask):
             component, git_hash
         ])
 
-        assert component is not None
-        assert git_hash is not None
-
         return component, git_hash
 
     @cached_property
@@ -1369,7 +1366,7 @@ class BrewTask(KojiTask):
         :returns: BeatifulSoup4 parsed html from cgit for given component and commit hash
         """
 
-        component, git_hash = self.source_members
+        component, git_hash = cast(Tuple[Optional[str], Optional[str]], self.source_members)
 
         if not component or not git_hash:
             return None

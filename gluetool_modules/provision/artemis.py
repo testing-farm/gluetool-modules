@@ -531,6 +531,10 @@ class ArtemisGuest(NetworkedGuest):
         '''
         Wait till the guest is ready to be provisioned, which it's IP/hostname is available
         '''
+        self.info("guest event log: {}".format(self._module.shared('artifacts_location',
+                                                                   '{}{}'.format(self.artemis_id,
+                                                                                 self._module.option('event-log-suffix')),
+                                                                   self.logger)))
 
         try:
             self.wait('ip_ready', self._check_ip_ready, timeout=timeout, tick=tick)

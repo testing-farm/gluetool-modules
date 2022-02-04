@@ -40,6 +40,7 @@ DEFAULT_SSH_OPTIONS = ['UserKnownHostsFile=/dev/null', 'StrictHostKeyChecking=no
 DEFAULT_SNAPSHOT_READY_TIMEOUT = 600
 DEFAULT_SNAPSHOT_READY_TICK = 10
 DEFAULT_CONNECT_TIMEOUT = 10
+DEFAULT_EVENT_LOG_SUFFIX = '-artemis-guest-log.yaml'
 
 #: Artemis provisioner capabilities.
 #: Follows :doc:`Provisioner Capabilities Protocol </protocols/provisioner-capabilities>`.
@@ -469,7 +470,7 @@ class ArtemisGuest(NetworkedGuest):
                 raise ArtemisResourceError()
 
             guest_events_list = cast(ArtemisProvisioner, self._module).api.inspect_guest_events(self.artemis_id)
-            dump_events(guest_events_list, '{}-artemis-guest-log.yaml'.format(self.artemis_id))
+            dump_events(guest_events_list, '{}{}'.format(self.artemis_id, self._module.option('event-log-suffix')))
 
             error_guest_events_list = [event for event in guest_events_list if event['eventname'] == 'error']
             if error_guest_events_list:
@@ -806,7 +807,13 @@ class ArtemisProvisioner(gluetool.Module):
                 'metavar': 'SNAPSHOT_READY_TICK',
                 'type': int,
                 'default': DEFAULT_SNAPSHOT_READY_TICK
-            }
+            },
+            'event-log-suffix': {
+                'help': 'The guest event log will be the guest ID followed by this string (default: %(default)s)',
+                'metavar': 'EVENT_LOG_SUFFIX',
+                'type': str,
+                'default': DEFAULT_EVENT_LOG_SUFFIX
+            },
         })
     ]
 
@@ -917,6 +924,7 @@ class ArtemisProvisioner(gluetool.Module):
         :returns: ArtemisGuest instance or ``None`` if it wasn't possible to grab the guest.
         '''
 
+
         context = self.shared('eval_context')
         user_data = {var: context.get(var) for var in normalize_multistring_option(self.option('user-data-vars'))}
 
@@ -934,6 +942,10 @@ class ArtemisProvisioner(gluetool.Module):
         guest.info('Guest is being provisioned')
         log_dict(guest.debug, 'Created guest request', response)
 
+        guest.info("guest event log: {}".format(self.shared('artifacts_location',
+                                                                    '{}{}'.format(guest.artemis_id,
+                                                                                  self.option('event-log-suffix')),
+                                                                    self.logger)))
         try:
             guest._wait_ready(timeout=self.option('ready-timeout'), tick=self.option('ready-tick'))
             response = self.api.inspect_guest(guest.artemis_id)

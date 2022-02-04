@@ -276,7 +276,7 @@ class ArtemisAPI(object):
         return self.api_call('guests/{}/events'.format(guest_id)).json()
 
     def get_guest_events(self, guest_id):
-        # type: (str) -> Any
+        # type: (str) -> List[Any]
         '''
         Fetch all guest's events from Artemis API.
 
@@ -287,7 +287,7 @@ class ArtemisAPI(object):
         '''
         max_page = 10000
         page_size = 25
-        events = []
+        events = []  # type: List[Any]
         for page in range(1, max_page):
             self.module.logger.info('guests/{}/events?page_size={}&page={}'.format(guest_id, page_size, page))
             response = self.api_call('guests/{}/events?page_size={}&page={}'.format(guest_id, page_size, page)).json()
@@ -299,32 +299,22 @@ class ArtemisAPI(object):
 
         return events
 
-    def dump_events(self, guest_id, events=None):
-        # type: (str) -> None
+    def dump_events(self, guest, events=None):
+        # type: (ArtemisGuest, Optional[List[Any]]) -> None
         if events is None:
-            self.get_guest_events(guest_id)
-        filename = '{}{}'.format(guest_id, EVENT_LOG_SUFFIX)
-        tmpname = '{}.tmp'.format(filename)
-        dump_yaml(events, tmpname)
-        if os.path.exists(filename):
-            filesize = os.path.getsize(filename)
-        else:
-            filesize = 0
-        if os.path.exists(tmpname):
-            tmpsize = os.path.getsize(tmpname)
-        else:
-            tmpsize = 0
-        command = ['mv', tmpname, filename]
-        try:
-            if tmpsize > filesize:
-                Command(command).run()
-            else:
-                os.remove(tmpname)
-        except GlueCommandError:
-            pass
+            self.get_guest_events(guest.artemis_id)
 
-        event_log_uri = self.module.shared('artifacts_location', filename, self.module.logger)
-        self.module.logger.info("guest event log: {}".format(event_log_uri))
+        tmpname = '{}.tmp'.format(guest.event_log_path)
+
+        dump_yaml(events, tmpname)
+
+        filesize = os.path.getsize(guest.event_log_path) if os.path.exists(guest.event_log_path) else 0
+        tmpsize = os.path.getsize(tmpname) if os.path.exists(tmpname) else 0
+
+        if tmpsize > filesize:
+            os.rename(tmpname, guest.event_log_path)
+        else:
+            os.remove(tmpname)
 
     def cancel_guest(self, guest_id):
         # type: (str) -> Any
@@ -493,6 +483,9 @@ class ArtemisGuest(NetworkedGuest):
                                            options=options)
         self.artemis_id = guestname
         self._snapshots = []  # type: List[ArtemisSnapshot]
+        self.module = module  # type: ArtemisProvisioner
+        self.api = module.api  # type: ArtemisAPI
+        self.event_log_path = '{}{}'.format(guestname, EVENT_LOG_SUFFIX)
 
     def __str__(self):
         # type: () -> str
@@ -502,7 +495,7 @@ class ArtemisGuest(NetworkedGuest):
         # type: () -> Result[bool, str]
 
         try:
-            guest_data = cast(ArtemisProvisioner, self._module).api.inspect_guest(self.artemis_id)
+            guest_data = self.api.inspect_guest(self.artemis_id)
             guest_state = guest_data['state']
             guest_address = guest_data['address']
 
@@ -513,8 +506,8 @@ class ArtemisGuest(NetworkedGuest):
             if guest_state == 'error':
                 raise ArtemisResourceError()
 
-            guest_events_list = cast(ArtemisProvisioner, self._module).api.get_guest_events(self.artemis_id)
-            self._module.api.dump_events(self.artemis_id, guest_events_list)
+            guest_events_list = self.api.get_guest_events(self)
+            self.api.dump_events(self, guest_events_list)
 
             error_guest_events_list = [event for event in guest_events_list if event['eventname'] == 'error']
             if error_guest_events_list:
@@ -607,7 +600,7 @@ class ArtemisGuest(NetworkedGuest):
         :rtype: ArtemisSnapshot
         :returns: newly created snapshot.
         """
-        response = cast(ArtemisProvisioner, self._module).api.create_snapshot(self.artemis_id, start_again)
+        response = self.api.create_snapshot(self.artemis_id, start_again)
 
         snapshot = ArtemisSnapshot(cast(ArtemisProvisioner, self._module), response.get('snapshotname'), self)
 
@@ -636,7 +629,7 @@ class ArtemisGuest(NetworkedGuest):
 
         self.info("rebuilding server with snapshot '{}'".format(snapshot.name))
 
-        cast(ArtemisProvisioner, self._module).api.restore_snapshot(self.artemis_id, snapshot.name)
+        self.api.restore_snapshot(self.artemis_id, snapshot.name)
         snapshot.wait_snapshot_ready(self._module.option('snapshot-ready-timeout'),
                                      self._module.option('snapshot-ready-tick'))
 
@@ -656,7 +649,7 @@ class ArtemisGuest(NetworkedGuest):
 
     def _release_instance(self):
         # type: () -> None
-        cast(ArtemisProvisioner, self._module).api.cancel_guest(self.artemis_id)
+        self.api.cancel_guest(self.artemis_id)
 
     def destroy(self):
         # type: () -> None
@@ -962,7 +955,6 @@ class ArtemisProvisioner(gluetool.Module):
         :returns: ArtemisGuest instance or ``None`` if it wasn't possible to grab the guest.
         '''
 
-
         context = self.shared('eval_context')
         user_data = {var: context.get(var) for var in normalize_multistring_option(self.option('user-data-vars'))}
 
@@ -980,9 +972,9 @@ class ArtemisProvisioner(gluetool.Module):
         guest.info('Guest is being provisioned')
         log_dict(guest.debug, 'Created guest request', response)
 
-        guest.info("guest event log: {}".format(self.shared('artifacts_location',
-                                                            '{}{}'.format(guest.artemis_id, EVENT_LOG_SUFFIX),
-                                                            self.logger)))
+        event_log_uri = self.shared('artifacts_location', guest.event_log_path, self.logger)
+        guest.info("guest event log: {}".format(event_log_uri))
+
         try:
             guest._wait_ready(timeout=self.option('ready-timeout'), tick=self.option('ready-tick'))
             response = self.api.inspect_guest(guest.artemis_id)

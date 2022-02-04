@@ -113,16 +113,16 @@ installation-fedora:
     - pip3 install git+https://github.com/psss/tmt.git
     - tmt run -adddvvv provision -h local plan --name /plans/fedora
 
-# Installation Centos8
-installation-centos8:
+# Installation Centos Stream 8
+installation-centos-stream-8:
   extends: .merge-request
   stage: test
-  image: registry.centos.org/centos/centos:8
+  image: quay.io/centos/centos:stream8
   script:
     # tmt requires rsync
     - dnf -y install python3-pip git rsync
     - pip3 install git+https://github.com/psss/tmt.git
-    - tmt run -adddvvv provision -h local plan --name /plans/centos8
+    - tmt run -adddvvv provision -h local plan --name /plans/centos-stream-8
 
 # Installation RHEL8
 installation-rhel8:

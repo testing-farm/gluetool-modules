@@ -8,9 +8,9 @@ Before moving on to the actual setup, there are few important notes:
 
 - **The only supported and (sort of tested) way of using and developing these modules is using Poetry!**
 
--  The tested distributions (as in "we're using these") are the recent releases of Fedora, CentOS 8 and RHEL8. You could try
-   other distributions but we didn't - please, let us know, and it'd be awesome if your first merge request could
-   update this file :)
+-  The tested distributions (as in "we're using these") are the recent releases of Fedora, CentOS Stream 8 and RHEL 8.
+   You could try other distributions but we didn't - please, let us know, and it'd be awesome if your first merge request
+   could update this file :)
 
 
 Requirements

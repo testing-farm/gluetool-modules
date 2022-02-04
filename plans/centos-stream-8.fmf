@@ -1,8 +1,8 @@
 description: |
-  Test gluetool-moduoles installation on rhel8.
+  Test gluetool-modules installation on centos stream 8.
 
 provision+:
-  image: registry.centos.org/centos/centos:8
+  image: quay.io/centos/centos:stream8
 
 prepare:
   how: shell

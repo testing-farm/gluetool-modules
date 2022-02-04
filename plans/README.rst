@@ -3,7 +3,7 @@ Installation tests for gluetool-modules
 
 This is a collection of installation tests written with the help of `Test Management Tool (tmt) <https://tmt.readthedocs.io/>`
 
-These tests verify that gluetool-modules is installable on recent Fedora, RHEL8 and CentOS8.
+These tests verify that gluetool-modules is installable on recent Fedora, RHEL 8 and CentOS Stream 8.
 
 We are using TMT here to support this great tool and dogfood it.
 

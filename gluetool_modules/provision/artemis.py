@@ -184,7 +184,7 @@ class ArtemisAPI(object):
         :returns: Artemis API response serialized as dictionary or ``None`` in case of failure.
         '''
 
-        compose = environment.compose
+        compose = self.module.option('compose') or environment.compose
         snapshots = environment.snapshots
 
         post_install_script_contents = None

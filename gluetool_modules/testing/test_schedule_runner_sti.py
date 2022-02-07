@@ -406,6 +406,9 @@ sut     ansible_host={} ansible_user=root {}
             self.overloaded_shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
             return
 
+        if not schedule_entry.results:
+            return
+
         for task in schedule_entry.results:
 
             test_case = new_xml_element('testcase', _parent=test_suite, name=task.name, result=task.result)

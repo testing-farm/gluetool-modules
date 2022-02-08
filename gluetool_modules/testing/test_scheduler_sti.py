@@ -108,7 +108,9 @@ class TestSchedulerSTI(gluetool.Module):
         playbooks = glob.glob('{}/{}'.format(repodir, self.option('sti-tests')))
 
         if not playbooks:
-            raise gluetool_modules.libs.test_schedule.EmptyTestScheduleError(self.shared('primary_task'))
+            raise gluetool_modules.libs.test_schedule.EmptyTestScheduleError(
+                self.shared('primary_task') or self.shared('testing_farm_request')
+            )
 
         return playbooks
 

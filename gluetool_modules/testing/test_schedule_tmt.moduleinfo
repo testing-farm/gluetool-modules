@@ -3,11 +3,15 @@
 name: test-schedule-tmt
 description: "Create and run TMT test schedule entries for ``test-scheduler`` and ``test-schedule-runner`` modules."
 
+# We install tmt from epel-testing to be able to consume it sooner
+
 dependencies:
     repo:
-        - name: fedora-updates-testing
-          metalink: https://mirrors.fedoraproject.org/metalink?repo=updates-testing-f$releasever&arch=$basearch
+        - name: epel-testing
+          #baseurl: https://download.fedoraproject.org/pub/epel/testing/$releasever/Everything/$basearch
+          metalink: https://mirrors.fedoraproject.org/metalink?repo=testing-epel$releasever&arch=$basearch
           enabled: 1
           includepkgs: tmt*
     yum:
-        - tmt-all
+        - tmt-provision-virtual
+        - tmt-provision-container

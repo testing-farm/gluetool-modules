@@ -306,10 +306,14 @@ class ArtemisAPI(object):
         filename = '{}{}'.format(guest_id, EVENT_LOG_SUFFIX)
         tmpname = '{}.tmp'.format(filename)
         dump_yaml(events, tmpname)
-        if os.path.exists(filename): filesize = os.path.getsize(filename)
-        else: filesize = 0
-        if os.path.exists(tmpname): tmpsize = os.path.getsize(tmpname)
-        else: tmpsize = 0
+        if os.path.exists(filename):
+            filesize = os.path.getsize(filename)
+        else:
+            filesize = 0
+        if os.path.exists(tmpname):
+            tmpsize = os.path.getsize(tmpname)
+        else:
+            tmpsize = 0
         command = ['mv', tmpname, filename]
         try:
             if tmpsize > filesize:
@@ -319,7 +323,7 @@ class ArtemisAPI(object):
         except GlueCommandError:
             pass
 
-        event_log_uri = self.module.shared('artifacts_location' ,filename, self.module.logger)
+        event_log_uri = self.module.shared('artifacts_location', filename, self.module.logger)
         self.module.logger.info("guest event log: {}".format(event_log_uri))
 
     def cancel_guest(self, guest_id):

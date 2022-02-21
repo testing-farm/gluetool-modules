@@ -7,6 +7,7 @@ import pytest
 import koji
 import functools
 import six
+import requests.exceptions
 
 import gluetool
 import gluetool_modules.helpers.rules_engine
@@ -405,6 +406,23 @@ def test_server_offline(koji_session, koji_module, monkeypatch):
     """
 
     api_mock = MagicMock(side_effect=koji.ServerOffline)
+    monkeypatch.setattr(koji_module, '_call_api', api_mock)
+
+    with pytest.raises(gluetool.GlueError, match=r"Condition 'getting api version' failed to pass within given time"):
+        koji_module.execute()
+
+    assert len(api_mock.mock_calls) > 1
+
+
+@pytest.mark.parametrize('koji_session', [
+    15869828,
+], indirect=True)
+def test_server_issue(koji_session, koji_module, monkeypatch):
+    """
+    Tests if api version call is retried on server error
+    """
+
+    api_mock = MagicMock(side_effect=requests.exceptions.ConnectionError)
     monkeypatch.setattr(koji_module, '_call_api', api_mock)
 
     with pytest.raises(gluetool.GlueError, match=r"Condition 'getting api version' failed to pass within given time"):

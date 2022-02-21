@@ -2249,7 +2249,7 @@ class Koji(gluetool.Module):
 
             try:
                 version = self._call_api('getAPIVersion')
-            except koji.ServerOffline as error:
+            except (koji.ServerOffline, requests.exceptions.ConnectionError) as error:
                 self.warn('Retrying getAPIVersion due to exception: {}'.format(error))
                 return Result.Error(False)
 

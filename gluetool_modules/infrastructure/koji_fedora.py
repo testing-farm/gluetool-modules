@@ -266,25 +266,30 @@ class KojiTask(LoggerMixin, object):
         if not self._is_valid:
             raise NotBuildTaskError(self.id)
 
-        # Wait for the task to be non-waiting
-        wait(
-            'waiting for task to be non waiting',
-            self._check_nonwaiting_task,
-            timeout=wait_timeout
-        )
+        state = self._check_finished_task()
+        if state.is_ok:
+            # Sometimes this happens:
+            self.debug("Task '{}' has finished('{}') before waiting state could be checked.".format(self.id, state.ok()))
+        else:
+            # Wait for the task to be non-waiting
+            wait(
+                'waiting for task to be non waiting',
+                self._check_nonwaiting_task,
+                timeout=wait_timeout
+            )
 
-        # Wait for the task to be finished. This can take some amount of time after the task becomes non-waiting.
-        wait_result = wait(
-            'waiting for task to be finished (closed, canceled or failed)',
-            self._check_finished_task,
-            timeout=wait_timeout
-        )
+            # Wait for the task to be finished. This can take some amount of time after the task becomes non-waiting.
+            state = wait(
+                'waiting for task to be finished (closed, canceled or failed)',
+                self._check_finished_task,
+                timeout=wait_timeout
+            )
 
         if not gluetool.utils.normalize_bool_option(module.option('accept-failed-tasks')):
-            if wait_result == koji.TASK_STATES['CANCELED']:
+            if state == koji.TASK_STATES['CANCELED']:
                 raise SoftGlueError("Task '{}' was canceled".format(self.id))
 
-            if wait_result == koji.TASK_STATES['FAILED']:
+            if state == koji.TASK_STATES['FAILED']:
                 raise SoftGlueError("Task '{}' has failed".format(self.id))
 
         self._assign_build(build_id)

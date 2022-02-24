@@ -353,9 +353,7 @@ class KojiTask(LoggerMixin, object):
         :returns: True if task is non-waiting, False otherwise
         """
 
-        state = self._check_finished_task()
-        if state.is_ok:
-            self.debug("task {} has finished('{}') before waiting state could be checked.".format(self.id, state.ok()))
+        if self._check_finished_task().is_ok:
             return Result.Ok(True)
 
         self._flush_task_info()

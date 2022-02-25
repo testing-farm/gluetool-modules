@@ -262,18 +262,9 @@ class KojiTask(LoggerMixin, object):
         self.pkgs_url = details['pkgs_url']
         self.session = details['session']
 
-        # first check if the task is valid for our case
         if not self._is_valid:
             raise NotBuildTaskError(self.id)
 
-        # Wait for the task to be non-waiting
-        wait(
-            'waiting for task to be non waiting',
-            self._check_nonwaiting_task,
-            timeout=wait_timeout
-        )
-
-        # Wait for the task to be finished. This can take some amount of time after the task becomes non-waiting.
         wait_result = wait(
             'waiting for task to be finished (closed, canceled or failed)',
             self._check_finished_task,
@@ -335,27 +326,15 @@ class KojiTask(LoggerMixin, object):
 
         self._flush_task_info()
 
-        final_states = [
-            koji.TASK_STATES['CLOSED'],
-            koji.TASK_STATES['CANCELED'],
-            koji.TASK_STATES['FAILED']
-        ]
+        if self._task_info['state'] == koji.TASK_STATES['CLOSED'] and not self._task_info['waiting']:
+            return Result.Ok(self._task_info['state'])
 
-        if self._task_info['state'] in final_states:
+        if self._task_info['state'] in [koji.TASK_STATES['CANCELED'], koji.TASK_STATES['FAILED']]:
+            if self._task_info['waiting']:
+                self.warn("task {} has finished('{}') but is still waiting.".format(self.id, self._task_info['state']))
             return Result.Ok(self._task_info['state'])
 
         return Result.Error('task is not closed')
-
-    def _check_nonwaiting_task(self):
-        # type: () -> Result[bool, str]
-        """
-        Check if task is non-waiting, i.e. 'waiting: false' in task info.
-        :returns: True if task is non-waiting, False otherwise
-        """
-
-        self._flush_task_info()
-
-        return Result.Ok(True) if self._task_info['waiting'] is not True else Result.Error('task is still waiting')
 
     @cached_property
     def _subtasks(self):

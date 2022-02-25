@@ -326,9 +326,12 @@ class KojiTask(LoggerMixin, object):
 
         self._flush_task_info()
 
+        # If a task is 'CLOSED' and not 'waiting', it's ready to be acted upon.
         if self._task_info['state'] == koji.TASK_STATES['CLOSED'] and not self._task_info['waiting']:
             return Result.Ok(self._task_info['state'])
 
+        # If a task has 'FAILED' or has been 'CANCELED', it should not be acted upon,
+        # and there is no need to wait for it to be non-waiting.
         if self._task_info['state'] in [koji.TASK_STATES['CANCELED'], koji.TASK_STATES['FAILED']]:
             if self._task_info['waiting']:
                 self.warn("task {} has finished('{}') but is still waiting.".format(self.id, self._task_info['state']))

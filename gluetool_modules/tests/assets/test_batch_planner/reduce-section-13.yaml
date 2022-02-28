@@ -4,12 +4,12 @@
 
 section:
   flags:
-    apply-all: False
+    apply-all: false
     options: bar
 
   set1:
     - BUILD_TARGET.match('dummy-target')
-    - apply-all: True
+    - apply-all: true
     - a command
 
   set2:

@@ -255,11 +255,11 @@ getTaskChildren:
       id: 6935377
       method: buildArch
       request:
-      - cli-build/1526458933.094723.gjtyjVKt/flex-2.5.37-3.el7.src.rpm
-      - 9867
-      - x86_64
-      - false
-      - repo_id: 2501209
+        - cli-build/1526458933.094723.gjtyjVKt/flex-2.5.37-3.el7.src.rpm
+        - 9867
+        - x86_64
+        - false
+        - repo_id: 2501209
 
 listTaskOutput:
   16311218:
@@ -453,9 +453,6 @@ listTagged:
       owner_id: 446
       id: 321266
       nvr: flex-2.5.37-2.el7
-
-
-
 
 dummies:
 

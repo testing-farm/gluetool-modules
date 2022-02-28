@@ -3,7 +3,7 @@
 # disabling 'apply-all'
 
 section:
-  - apply-all: False
+  - apply-all: false
   - a command
   - another command
 

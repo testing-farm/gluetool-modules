@@ -1,9 +1,10 @@
+---
 state_reason: 'null'
 component_builds:
-  - 38974
-  - 38972
-  - 38971
-  - 38973
+    - 38974
+    - 38972
+    - 38971
+    - 38973
 name: rust-toolset
 stream: rhel8
 time_submitted: '2018-11-05T23:43:59Z'

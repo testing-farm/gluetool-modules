@@ -249,11 +249,11 @@ getTaskChildren:
     - method: buildArch
       id: 25004470
       request:
-      - cli-build/1498396792.492652.jYJCrkUF/bash-4.4.19-1.fc27.src.rpm
-      - 425
-      - ppc64le
-      - false
-      - repo_id: 763209
+        - cli-build/1498396792.492652.jYJCrkUF/bash-4.4.19-1.fc27.src.rpm
+        - 425
+        - ppc64le
+        - false
+        - repo_id: 763209
 
 listTaskOutput:
   20166989: []

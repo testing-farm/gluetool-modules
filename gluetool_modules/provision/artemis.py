@@ -12,7 +12,7 @@ import gluetool.utils
 import gluetool_modules.libs
 import requests
 
-from gluetool import GlueError, GlueCommandError, SoftGlueError
+from gluetool import GlueError, SoftGlueError
 from gluetool.log import log_dict, LoggerMixin
 from gluetool.result import Result
 from gluetool.utils import dump_yaml, treat_url, normalize_multistring_option, wait, normalize_path
@@ -275,12 +275,12 @@ class ArtemisAPI(object):
 
         return self.api_call('guests/{}/events'.format(guest_id)).json()
 
-    def get_guest_events(self, guest_id):
-        # type: (str) -> List[Any]
+    def get_guest_events(self, guest):
+        # type: (ArtemisGuest) -> List[Any]
         '''
         Fetch all guest's events from Artemis API.
 
-        :param str guest_id: Artemis guestname (or guest id).
+        :param str guest: Artemis guest
 
         :rtype: list
         :returns: Artemis API response as JSON or Result in case of failure.
@@ -289,20 +289,19 @@ class ArtemisAPI(object):
         page_size = 25
         events = []  # type: List[Any]
         for page in range(1, max_page):
-            self.module.logger.info('guests/{}/events?page_size={}&page={}'.format(guest_id, page_size, page))
-            response = self.api_call('guests/{}/events?page_size={}&page={}'.format(guest_id, page_size, page)).json()
+            response = self.api_call('guests/{}/events?page_size={}&page={}'.format(guest.artemis_id, page_size, page)).json()
             events = events + response
             if len(response) < page_size:
                 break
         else:
-            self.module.logger.error('Max ({}) pages reached. Artemis guest event log too long.'.format(max_page))
+            guest.error('Max ({}) pages reached. Artemis guest event log too long.'.format(max_page))
 
         return events
 
     def dump_events(self, guest, events=None):
         # type: (ArtemisGuest, Optional[List[Any]]) -> None
         if events is None:
-            self.get_guest_events(guest.artemis_id)
+            self.get_guest_events(guest)
 
         tmpname = '{}.tmp'.format(guest.event_log_path)
 
@@ -506,7 +505,7 @@ class ArtemisGuest(NetworkedGuest):
             if guest_state == 'error':
                 raise ArtemisResourceError()
 
-            guest_events_list = self.api.get_guest_events(self.artemis_id)
+            guest_events_list = self.api.get_guest_events(self)
             self.api.dump_events(self, guest_events_list)
 
             error_guest_events_list = [event for event in guest_events_list if event['eventname'] == 'error']

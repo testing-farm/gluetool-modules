@@ -506,7 +506,7 @@ class ArtemisGuest(NetworkedGuest):
             if guest_state == 'error':
                 raise ArtemisResourceError()
 
-            guest_events_list = self.api.get_guest_events(self)
+            guest_events_list = self.api.get_guest_events(self.artemis_id)
             self.api.dump_events(self, guest_events_list)
 
             error_guest_events_list = [event for event in guest_events_list if event['eventname'] == 'error']
@@ -987,7 +987,7 @@ class ArtemisProvisioner(gluetool.Module):
                               self.option('boot-timeout'), self.option('boot-tick'))
             guest.info('Guest has become alive')
 
-            self.api.dump_events(guest.artemis_id)
+            self.api.dump_events(guest)
 
         except (Exception, KeyboardInterrupt) as exc:
             message = 'KeyboardInterrupt' if isinstance(exc, KeyboardInterrupt) else str(exc)
@@ -1080,4 +1080,4 @@ class ArtemisProvisioner(gluetool.Module):
         # type: (Optional[Any]) -> None
         for guest in self.guests[:]:
             guest.destroy()
-            self.api.dump_events(guest.artemis_id)
+            self.api.dump_events(guest)

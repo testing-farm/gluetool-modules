@@ -35,7 +35,7 @@
     #
     - fail:
         msg: "This playbook must be run using system Ansible (/usr/bin/ansible-playbook or similar)!"
-      when: >
+      when: >-
         ansible_playbook_python is not defined or
         not (ansible_playbook_python | regex_search("^/usr/bin/python.*$"))
 

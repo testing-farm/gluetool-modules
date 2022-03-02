@@ -1424,7 +1424,7 @@ class BrewTask(KojiTask):
                 return Result.Error('unknown error')
 
             ret = cast(Union[Result[Union[BeautifulSoup, bool], str], bool], wait(
-                'fetching commit web page', _fetch,
+                'fetching commit web page {}.format(url)', _fetch,
                 logger=self.logger,
                 timeout=self._module.option('commit-fetch-timeout'),
                 tick=self._module.option('commit-fetch-tick')

@@ -289,7 +289,8 @@ class ArtemisAPI(object):
         page_size = 25
         events = []  # type: List[Any]
         for page in range(1, max_page):
-            response = self.api_call('guests/{}/events?page_size={}&page={}'.format(guest.artemis_id, page_size, page)).json()
+            uri = 'guests/{}/events?page_size={}&page={}'.format(guest.artemis_id, page_size, page)
+            response = self.api_call(uri).json()
             events = events + response
             if len(response) < page_size:
                 break

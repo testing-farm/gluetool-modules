@@ -46,6 +46,7 @@ brew-build-task-params = "gluetool_modules.helpers.brew_build_task_params:BrewBu
 brew = "gluetool_modules.infrastructure.koji_fedora:Brew"
 bugzilla = "gluetool_modules.infrastructure.bugzilla:Bugzilla"
 build-dependencies = "gluetool_modules.helpers.build_dependencies:BuildDependencies"
+ci-job = "gluetool_modules.testing.ci_job:CIJob"
 coldstore = "gluetool_modules.helpers.coldstore:ColdStore"
 compose-url = "gluetool_modules.helpers.compose_url:ComposeUrl"
 copr = "gluetool_modules.infrastructure.copr:Copr"

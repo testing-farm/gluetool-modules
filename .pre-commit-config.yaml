@@ -40,3 +40,17 @@ repos:
         args:
           - --license-filepath
           - LICENSE_SPDX
+
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.21.0
+    hooks:
+      - id: yamllint
+        args:
+          - '--format'
+          - 'parsable'
+          - '--strict'
+
+  - repo: https://github.com/ansible-community/ansible-lint.git
+    rev: v5.4.0
+    hooks:
+      - id: ansible-lint

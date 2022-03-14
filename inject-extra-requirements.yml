@@ -35,7 +35,9 @@
     #
     - fail:
         msg: "This playbook must be run using system Ansible (/usr/bin/ansible-playbook or similar)!"
-      when: ansible_playbook_python is not defined or not (ansible_playbook_python | regex_search("^/usr/bin/python.*$"))
+      when: >-
+        ansible_playbook_python is not defined or
+        not (ansible_playbook_python | regex_search("^/usr/bin/python.*$"))
 
     #
     # Check necessary system packages
@@ -64,15 +66,17 @@
       register: openssl_devel_present
 
     - fail:
-        msg: "Install package providing OpenSSL development tools (e.g. openssl-devel, compat-openssl10-devel or similar)"
+        msg: >-
+          Install package providing OpenSSL development tools
+          (e.g. openssl-devel, compat-openssl10-devel or similar)
       when: openssl_devel_present.stat.isreg is not defined or not openssl_devel_present.stat.isreg
 
     - name: "Make sure that autoconf, automake and libtool are installed"
       shell: "rpm -q {{ item }}"
       with_items:
-      - autoconf
-      - automake
-      - libtool
+        - autoconf
+        - automake
+        - libtool
 
     #
     # Modify `activate` script to set additional variables

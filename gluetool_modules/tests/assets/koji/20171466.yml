@@ -29,7 +29,8 @@ getTaskInfo:
       - f27-build
       - ppc64le
       - rm -f /var/lib/rpm/__db*; rm -rf /var/cache/yum/*; set -x; pungi-make-ostree tree
-        --log-dir=/mnt/koji/compose/cd//logs/20170625-19-16/ppc64le/ --treefile=/mnt/koji/compose/cd/fedora-atomic/fedora-atomic-docker-host.json
+        --log-dir=/mnt/koji/compose/cd//logs/20170625-19-16/ppc64le/
+        --treefile=/mnt/koji/compose/cd/fedora-atomic/fedora-atomic-docker-host.json
         --repo=/mnt/koji/atomic-cd/
       - repo_id:
         weight:

@@ -8,7 +8,7 @@ component: flex
 dist_git_repository_name: flex
 destination_tag: rhel-7.3-z-candidate
 full_name: task '16311217' build 'flex-2.5.37-3.el7_3' target 'rhel-7.3-z-candidate' (scratch)
-has_artifacts: True
+has_artifacts: true
 rpm_urls:
   - 'https://kojipkgs.fedoraproject.org/work/flex-devel-2.5.37-3.el7_3.aarch64.rpm'
   - 'https://kojipkgs.fedoraproject.org/work/flex-doc-2.5.37-3.el7_3.aarch64.rpm'

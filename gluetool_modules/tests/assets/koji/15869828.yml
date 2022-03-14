@@ -10,53 +10,53 @@ getBuildTarget:
 
 getTaskInfo:
   15869828:
-      weight: 0.2
-      parent:
-      completion_time: '2016-09-30 08:35:21.640601'
-      start_time: '2016-09-30 08:20:42.560345'
-      start_ts: 1475223642.56034
-      state: 2
-      awaited:
-      label:
-      priority: 20
-      channel_id: 1
-      waiting: false
-      create_time: '2016-09-30 08:20:37.164862'
-      id: 15869828
-      create_ts: 1475223637.16486
-      owner: 3543
-      host_id: 149
-      completion_ts: 1475224521.6406
-      arch: noarch
-      method: build
-      request:
-        - git://pkgs.fedoraproject.org/rpms/bash?#b1104ec130056866f3bdce51a3f77685b702fbde
-        - f25-candidate
-        - {}
+    weight: 0.2
+    parent:
+    completion_time: '2016-09-30 08:35:21.640601'
+    start_time: '2016-09-30 08:20:42.560345'
+    start_ts: 1475223642.56034
+    state: 2
+    awaited:
+    label:
+    priority: 20
+    channel_id: 1
+    waiting: false
+    create_time: '2016-09-30 08:20:37.164862'
+    id: 15869828
+    create_ts: 1475223637.16486
+    owner: 3543
+    host_id: 149
+    completion_ts: 1475224521.6406
+    arch: noarch
+    method: build
+    request:
+      - git://pkgs.fedoraproject.org/rpms/bash?#b1104ec130056866f3bdce51a3f77685b702fbde
+      - f25-candidate
+      - {}
   15869827:
-      weight: 0.2
-      parent:
-      completion_time: '2016-09-30 08:35:21.640601'
-      start_time: '2016-09-30 08:20:42.560345'
-      start_ts: 1475223642.56034
-      state: 2
-      awaited:
-      label:
-      priority: 20
-      channel_id: 1
-      waiting: false
-      create_time: '2016-09-30 08:20:37.164862'
-      id: 15869827
-      create_ts: 1475223637.16486
-      owner: 3543
-      host_id: 149
-      completion_ts: 1475224521.6406
-      arch: noarch
-      method: build
-      request:
-        - git://pkgs.fedoraproject.org/rpms/bash?#b1104ec130056866f3bdce51a3f77685b702fbdf
-        - f24-candidate
-        - {}
+    weight: 0.2
+    parent:
+    completion_time: '2016-09-30 08:35:21.640601'
+    start_time: '2016-09-30 08:20:42.560345'
+    start_ts: 1475223642.56034
+    state: 2
+    awaited:
+    label:
+    priority: 20
+    channel_id: 1
+    waiting: false
+    create_time: '2016-09-30 08:20:37.164862'
+    id: 15869827
+    create_ts: 1475223637.16486
+    owner: 3543
+    host_id: 149
+    completion_ts: 1475224521.6406
+    arch: noarch
+    method: build
+    request:
+      - git://pkgs.fedoraproject.org/rpms/bash?#b1104ec130056866f3bdce51a3f77685b702fbdf
+      - f24-candidate
+      - {}
 
   15736657:
     id: 15736657
@@ -64,9 +64,9 @@ getTaskInfo:
     state: 2
     method: build
     request:
-    - git://pkgs.fedoraproject.org/rpms/bash?#b1104ec130056866f3bdce51a3f77685b702fbde
-    - f25-candidate
-    - {}
+      - git://pkgs.fedoraproject.org/rpms/bash?#b1104ec130056866f3bdce51a3f77685b702fbde
+      - f25-candidate
+      - {}
 
 listBuilds:
   15869828:
@@ -503,8 +503,6 @@ getBuild:
     task_id: 15869828
     volume_name: DEFAULT
     release: 1.fc1
-
-
 
 listBuildRPMs:
   805705:

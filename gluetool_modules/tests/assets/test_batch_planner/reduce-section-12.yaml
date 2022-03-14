@@ -5,7 +5,7 @@
 section:
   set1:
     - BUILD_TARGET.match('dummy-target')
-    - apply-all: False
+    - apply-all: false
     - a command
 
   set2:

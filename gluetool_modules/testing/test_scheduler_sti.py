@@ -144,10 +144,15 @@ class TestSchedulerSTI(gluetool.Module):
             except GlueError as exc:
                 raise GlueError('Could not locate dist-git repository: {}'.format(exc))
 
-            repodir = repository.clone(
-                logger=self.logger,
-                prefix='dist-git-{}-{}-'.format(repository.package, repository.branch)
-            )
+            try:
+                repodir = repository.clone(
+                    logger=self.logger,
+                    prefix='dist-git-{}-{}-'.format(repository.package, repository.branch)
+                )
+
+            except GlueError:
+                raise GlueError('Could not clone {} branch of {} repository'.format(
+                    repository.branch, repository.clone_url))
 
             playbooks = self._playbooks_from_dist_git(repodir)
 

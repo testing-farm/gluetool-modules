@@ -231,7 +231,9 @@ class UploadResults(gluetool.Module):
         self.require_shared('test_schedule', 'compose', 'primary_task')
 
         if not self.shared('test_schedule'):
-            raise gluetool.GlueError('test_schedule is empty.')
+            # Probably cloning failed
+            self.warn('Nothing to upload')
+            return
 
         if not self.option('upload-to-public'):
             return

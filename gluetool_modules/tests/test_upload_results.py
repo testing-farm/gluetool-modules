@@ -155,7 +155,7 @@ def test_destroy(module, monkeypatch):
     assert module.full_target_url == 'https://myGlueResults-download.com/artifacts/results/pull_request3_foo-repo-42-a1b0c3d_fedora-35_fs45da5/artifacts'  # noqa
 
 
-def test_destroy_empty_schedule(module, monkeypatch):
+def test_destroy_empty_schedule(log, module, monkeypatch):
     mock_runinfo = MagicMock()
     mock_runinfo.stdout = ''
     mock_runinfo.stderr = ''
@@ -177,7 +177,8 @@ def test_destroy_empty_schedule(module, monkeypatch):
         'test_schedule': mock_test_schedule
     })
 
-    with pytest.raises(gluetool.GlueError, match=r"^test_schedule is empty.$"):
-        module.destroy()
+    module.destroy()
+
+    assert log.records[-1].message == 'Nothing to upload'
 
     mock_command.assert_not_called()

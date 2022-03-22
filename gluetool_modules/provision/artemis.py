@@ -5,16 +5,17 @@ import collections
 import re
 import six
 import sys
+import os
 
 import gluetool
 import gluetool.utils
 import gluetool_modules.libs
 import requests
 
-from gluetool import GlueError, GlueCommandError, SoftGlueError
+from gluetool import GlueError, SoftGlueError
 from gluetool.log import log_dict, LoggerMixin
 from gluetool.result import Result
-from gluetool.utils import Command, dump_yaml, treat_url, normalize_multistring_option, wait, normalize_path
+from gluetool.utils import dump_yaml, treat_url, normalize_multistring_option, wait, normalize_path
 from gluetool_modules.libs.guest import NetworkedGuest
 
 from gluetool_modules.libs.testing_environment import TestingEnvironment
@@ -24,6 +25,8 @@ from typing import Any, Dict, List, Optional, Tuple, cast  # noqa
 SUPPORTED_API_VERSIONS = (
     'v0.0.16', 'v0.0.17', 'v0.0.18', 'v0.0.19', 'v0.0.20', 'v0.0.21', 'v0.0.24', 'v0.0.26', 'v0.0.27', 'v0.0.28'
 )
+
+EVENT_LOG_SUFFIX = '-artemis-guest-log.yaml'
 
 DEFAULT_PRIORIY_GROUP = 'default-priority'
 DEFAULT_READY_TIMEOUT = 300
@@ -272,6 +275,47 @@ class ArtemisAPI(object):
 
         return self.api_call('guests/{}/events'.format(guest_id)).json()
 
+    def get_guest_events(self, guest):
+        # type: (ArtemisGuest) -> List[Any]
+        '''
+        Fetch all guest's events from Artemis API.
+
+        :param str guest: Artemis guest
+
+        :rtype: list
+        :returns: Artemis API response as JSON or Result in case of failure.
+        '''
+        max_page = 10000
+        page_size = 25
+        events = []  # type: List[Any]
+        for page in range(1, max_page):
+            uri = 'guests/{}/events?page_size={}&page={}'.format(guest.artemis_id, page_size, page)
+            response = self.api_call(uri).json()
+            events = events + response
+            if len(response) < page_size:
+                break
+        else:
+            guest.error('Max ({}) pages reached. Artemis guest event log too long.'.format(max_page))
+
+        return events
+
+    def dump_events(self, guest, events=None):
+        # type: (ArtemisGuest, Optional[List[Any]]) -> None
+        if events is None:
+            self.get_guest_events(guest)
+
+        tmpname = '{}.tmp'.format(guest.event_log_path)
+
+        dump_yaml(events, tmpname)
+
+        filesize = os.path.getsize(guest.event_log_path) if os.path.exists(guest.event_log_path) else 0
+        tmpsize = os.path.getsize(tmpname) if os.path.exists(tmpname) else 0
+
+        if tmpsize > filesize:
+            os.rename(tmpname, guest.event_log_path)
+        else:
+            os.remove(tmpname)
+
     def cancel_guest(self, guest_id):
         # type: (str) -> Any
         '''
@@ -439,6 +483,9 @@ class ArtemisGuest(NetworkedGuest):
                                            options=options)
         self.artemis_id = guestname
         self._snapshots = []  # type: List[ArtemisSnapshot]
+        self.module = module  # type: ArtemisProvisioner
+        self.api = module.api  # type: ArtemisAPI
+        self.event_log_path = '{}{}'.format(guestname, EVENT_LOG_SUFFIX)
 
     def __str__(self):
         # type: () -> str
@@ -447,17 +494,8 @@ class ArtemisGuest(NetworkedGuest):
     def _check_ip_ready(self):
         # type: () -> Result[bool, str]
 
-        def dump_events(events, filename):
-            # type: (List[Any], str) -> None
-            dump_yaml(events, '{}.tmp'.format(filename))
-            command = ['mv', '{}.tmp'.format(filename), filename]
-            try:
-                Command(command).run()
-            except GlueCommandError:
-                pass
-
         try:
-            guest_data = cast(ArtemisProvisioner, self._module).api.inspect_guest(self.artemis_id)
+            guest_data = self.api.inspect_guest(self.artemis_id)
             guest_state = guest_data['state']
             guest_address = guest_data['address']
 
@@ -468,8 +506,8 @@ class ArtemisGuest(NetworkedGuest):
             if guest_state == 'error':
                 raise ArtemisResourceError()
 
-            guest_events_list = cast(ArtemisProvisioner, self._module).api.inspect_guest_events(self.artemis_id)
-            dump_events(guest_events_list, '{}-artemis-guest-log.yaml'.format(self.artemis_id))
+            guest_events_list = self.api.get_guest_events(self)
+            self.api.dump_events(self, guest_events_list)
 
             error_guest_events_list = [event for event in guest_events_list if event['eventname'] == 'error']
             if error_guest_events_list:
@@ -491,7 +529,7 @@ class ArtemisGuest(NetworkedGuest):
     def _wait_ready(self, timeout, tick):
         # type: (int, int)-> None
         '''
-        Wait till the guest is ready to be provisined, which it's IP/hostname is available
+        Wait till the guest is ready to be provisioned, which it's IP/hostname is available
         '''
 
         try:
@@ -562,7 +600,7 @@ class ArtemisGuest(NetworkedGuest):
         :rtype: ArtemisSnapshot
         :returns: newly created snapshot.
         """
-        response = cast(ArtemisProvisioner, self._module).api.create_snapshot(self.artemis_id, start_again)
+        response = self.api.create_snapshot(self.artemis_id, start_again)
 
         snapshot = ArtemisSnapshot(cast(ArtemisProvisioner, self._module), response.get('snapshotname'), self)
 
@@ -591,7 +629,7 @@ class ArtemisGuest(NetworkedGuest):
 
         self.info("rebuilding server with snapshot '{}'".format(snapshot.name))
 
-        cast(ArtemisProvisioner, self._module).api.restore_snapshot(self.artemis_id, snapshot.name)
+        self.api.restore_snapshot(self.artemis_id, snapshot.name)
         snapshot.wait_snapshot_ready(self._module.option('snapshot-ready-timeout'),
                                      self._module.option('snapshot-ready-tick'))
 
@@ -611,7 +649,7 @@ class ArtemisGuest(NetworkedGuest):
 
     def _release_instance(self):
         # type: () -> None
-        cast(ArtemisProvisioner, self._module).api.cancel_guest(self.artemis_id)
+        self.api.cancel_guest(self.artemis_id)
 
     def destroy(self):
         # type: () -> None
@@ -934,6 +972,9 @@ class ArtemisProvisioner(gluetool.Module):
         guest.info('Guest is being provisioned')
         log_dict(guest.debug, 'Created guest request', response)
 
+        event_log_uri = self.shared('artifacts_location', guest.event_log_path, self.logger)
+        guest.info("guest event log: {}".format(event_log_uri))
+
         try:
             guest._wait_ready(timeout=self.option('ready-timeout'), tick=self.option('ready-tick'))
             response = self.api.inspect_guest(guest.artemis_id)
@@ -945,6 +986,8 @@ class ArtemisProvisioner(gluetool.Module):
                               self.option('echo-timeout'), self.option('echo-tick'),
                               self.option('boot-timeout'), self.option('boot-tick'))
             guest.info('Guest has become alive')
+
+            self.api.dump_events(guest)
 
         except (Exception, KeyboardInterrupt) as exc:
             message = 'KeyboardInterrupt' if isinstance(exc, KeyboardInterrupt) else str(exc)
@@ -1037,3 +1080,4 @@ class ArtemisProvisioner(gluetool.Module):
         # type: (Optional[Any]) -> None
         for guest in self.guests[:]:
             guest.destroy()
+            self.api.dump_events(guest)

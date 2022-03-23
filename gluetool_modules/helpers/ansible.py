@@ -103,6 +103,10 @@ class Ansible(gluetool.Module):
                 'command -v ansible-playbook 2> /dev/null || /bin/true',
                 shell=True
             ).strip() or '/usr/bin/ansible-playbook'
+        },
+        'stream-logs': {
+            'help': 'Stream Ansible logs to stdout',
+            'action': 'store_true'
         }
     }
 
@@ -425,7 +429,7 @@ class Ansible(gluetool.Module):
             }
         ):
             try:
-                ansible_call = Command(cmd, logger=logger).run(cwd=cwd, env=env)
+                ansible_call = Command(cmd, logger=logger).run(cwd=cwd, env=env, inspect=self.option('stream-logs'))
 
             except gluetool.GlueCommandError as exc:
                 ansible_call = exc.output

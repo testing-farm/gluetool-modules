@@ -264,8 +264,10 @@ class TestScheduleTMT(Module):
                 'metavar': 'FILTER'
             },
             'how': {
-                'help': 'How to run provisioning - connect plugin or local plugin (default: %(default)s).',
-                'default': 'local'
+                'help': 'How to run provisioning - via connect or container provision plugin (default: %(default)s).',
+                'type': str,
+                'choices': ['container', 'connect'],
+                'default': 'container'
             }
         }),
         ('Result options', {
@@ -577,17 +579,18 @@ class TestScheduleTMT(Module):
                 )
             )
 
-        if self.option('how') == 'local':
-            local_command = [
+        if self.option('how') == 'container':
+            container_command = [
                 # `provision` step
                 'provision',
+                '--how', 'container',
 
                 # `plan` step
                 'plan',
                 '--name', schedule_entry.plan
             ]
-            command += local_command
-            reproducer += local_command
+            command += container_command
+            reproducer += container_command
 
         else:
             reproducer.extend([

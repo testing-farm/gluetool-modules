@@ -322,6 +322,11 @@ class KojiTask(LoggerMixin, object):
         Verify that the task is finished (closed, canceled or failed).
 
         :returns: True if task is closed, canceled or failed, False otherwise
+
+        The koji documentation has been update to explain 'state' and 'waiting' and the behaviour of koji.
+        https://pagure.io/koji/issue/3267
+        https://docs.pagure.org/koji/writing_koji_code/
+
         """
 
         self._flush_task_info()

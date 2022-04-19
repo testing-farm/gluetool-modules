@@ -23,6 +23,8 @@ ENV PYCURL_SSL_BACKEND=openssl
 RUN    ln -s /CONFIG /etc/citool.d \
     && rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
     # TODO: TFT-1025 Workaround until released
+    # odcs --redhat create-module container-tools:rhel8:8070020220401180817:39077419 --sigkey none --arch x86_64
+    #      --module-defaults-url=http://git.host.prod.eng.bos.redhat.com/git/redhat-module-defaults.git --module-defaults-commit=rhel-8.7
     && curl -Lo /etc/yum.repos.d/container-tools.repo http://odcs.engineering.redhat.com/composes/odcs-1184143/compose/Temporary/odcs-1184143.repo \
     && dnf -y update \
     && dnf -y install autoconf automake crun gcc git krb5-devel libcurl-devel \

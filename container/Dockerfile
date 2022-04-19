@@ -22,13 +22,18 @@ ENV PYCURL_SSL_BACKEND=openssl
 # WORKAROUND: use latest tmt from a copr to have TMT_TREE available
 RUN    ln -s /CONFIG /etc/citool.d \
     && rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
-    && dnf -y install ansible autoconf automake gcc git krb5-devel libcurl-devel \
+    # TODO: TFT-1025 Workaround until released
+    && curl -Lo /etc/yum.repos.d/container-tools.repo http://odcs.engineering.redhat.com/composes/odcs-1184143/compose/Temporary/odcs-1184143.repo \
+    && dnf -y update \
+    && dnf -y install autoconf automake crun gcc git krb5-devel libcurl-devel \
                       libpq-devel libtool libxml2-devel make openssl-devel popt-devel \
                       postgresql-devel python3-libselinux python2-devel \
                       redhat-rpm-config standard-test-roles koji python3-virtualenv \
                       rsync python3 beakerlib-libraries \
                       tmt-provision-container tmt-provision-virtual \
     && dnf -y update --enablerepo=epel-testing tmt-provision-container tmt-provision-virtual \
+    # TODO: TFT-1025 Workaround until released
+    && rm -f /etc/yum.repos.d/container-tools.repo \
     && curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3 - \
     && dnf clean all \
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \

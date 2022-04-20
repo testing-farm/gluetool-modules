@@ -323,7 +323,7 @@ class KojiTask(LoggerMixin, object):
 
         :returns: True if task is closed, canceled or failed, False otherwise
 
-        The koji documentation has been update to explain 'state' and 'waiting' and the behaviour of koji.
+        The koji documentation has been updated to explain 'state' and 'waiting' and the behaviour of koji.
         https://pagure.io/koji/issue/3267
         https://docs.pagure.org/koji/writing_koji_code/
 

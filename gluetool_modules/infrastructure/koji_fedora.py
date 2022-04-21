@@ -782,6 +782,10 @@ class KojiTask(LoggerMixin, object):
             self.warn("Unknown baseline method '{}'".format(method), sentry=True)
             return None
 
+        if baseline_task.nvr == self.nvr:
+            self.warn("Baseline task matches task, ignoring")
+            return None
+
         return baseline_task
 
     @cached_property

@@ -68,6 +68,16 @@ getTaskInfo:
       - f25-candidate
       - {}
 
+  11869828:
+    id: 11869828
+    waiting: false
+    state: 2
+    method: build
+    request:
+      - git://pkgs.fedoraproject.org/rpms/bash?#b1104ec130056866f3bdce51a3f77685b702fbde
+      - f24-candidate
+      - {}
+
 listBuilds:
   15869828:
     - package_name: bash
@@ -475,7 +485,7 @@ getBuild:
     volume_id: 0
     creation_ts: 1475223762.6398
     name: bash
-    task_id: 15869828
+    task_id: 11869828
     volume_name: DEFAULT
     release: 1.fc1
   bash-1.1.1-1.fc1:
@@ -500,7 +510,7 @@ getBuild:
     volume_id: 0
     creation_ts: 1475223762.6398
     name: bash
-    task_id: 15869828
+    task_id: 11869828
     volume_name: DEFAULT
     release: 1.fc1
 

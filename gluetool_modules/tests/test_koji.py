@@ -393,6 +393,13 @@ def test_baseline(koji_session, koji_module, log):
 
     koji_module.execute()
 
+    # if the previous release build is the same, there is no baseline task
+    if nvr is None:
+        assert log.match(levelno=logging.DEBUG, message="Baseline task is the same, ignoring")
+        assert log.match(levelno=logging.WARN, message="Baseline build was not found")
+        koji_module._tasks[0].baseline_task == None
+        return
+
     assert koji_module._tasks[0].baseline_task.nvr == nvr
     assert koji_module._tasks[0].baseline == nvr
 

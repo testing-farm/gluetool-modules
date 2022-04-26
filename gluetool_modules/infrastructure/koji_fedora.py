@@ -910,7 +910,8 @@ class KojiTask(LoggerMixin, object):
         :rtype: list(str)
         """
 
-        if self._task_info['state'] != koji.TASK_STATES["CLOSED"]:
+        task_not_closed = self._task_info['state'] != koji.TASK_STATES["CLOSED"]
+        if task_not_closed and not gluetool.utils.normalize_bool_option(self._module.option('accept-failed-tasks')):
             raise GlueError('Task {} is not a successfully completed task'.format(self.id))
 
         # "build container" tasks have no SRPM

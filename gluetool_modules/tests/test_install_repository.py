@@ -127,7 +127,7 @@ def test_guest_setup(module, local_guest):
         call('dnf --allowerasing -y downgrade dummy-path/*[^.src].rpm'),
         call('dnf --allowerasing -y update dummy-path/*[^.src].rpm'),
         call('dnf --allowerasing -y install dummy-path/*[^.src].rpm'),
-        call("ls dummy-path/*[^.src].rpm | sed 's/.*\\/\\(.*\\).rpm$/\\\\1/' | xargs rpm -q")
+        call("ls dummy-path/*[^.src].rpm | sed 's/.*\\/\\(.*\\).rpm$/\\1/' | xargs rpm -q")
     ]
 
     execute_mock.assert_has_calls(calls)

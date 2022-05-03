@@ -28,11 +28,15 @@ def test_coldstore_url(module, monkeypatch):
         }
     })
 
-    assert module.coldstore_url == 'some-url'
+    assert module.coldstore_url() == 'some-url'
 
 
 def test_execute_no_coldstore_url(module, monkeypatch, log):
-    monkeypatch.setattr(gluetool_modules.helpers.coldstore.ColdStore, 'coldstore_url', None)
+    monkeypatch.setattr(
+        gluetool_modules.helpers.coldstore.ColdStore,
+        'coldstore_url',
+        MagicMock(return_value=None)
+    )
 
     module.execute()
 
@@ -41,7 +45,11 @@ def test_execute_no_coldstore_url(module, monkeypatch, log):
 
 
 def test_execute_with_coldstore_url(module, monkeypatch, log):
-    monkeypatch.setattr(gluetool_modules.helpers.coldstore.ColdStore, 'coldstore_url', 'some-url')
+    monkeypatch.setattr(
+        gluetool_modules.helpers.coldstore.ColdStore,
+        'coldstore_url',
+        MagicMock(return_value='some-url')
+    )
 
     module.execute()
 
@@ -50,7 +58,11 @@ def test_execute_with_coldstore_url(module, monkeypatch, log):
 
 
 def test_eval_context(module, monkeypatch):
-    monkeypatch.setattr(gluetool_modules.helpers.coldstore.ColdStore, 'coldstore_url', 'some-url')
+    monkeypatch.setattr(
+        gluetool_modules.helpers.coldstore.ColdStore,
+        'coldstore_url',
+        MagicMock(return_value='some-url')
+    )
 
     assert module.eval_context == {
         'COLDSTORE_URL': 'some-url'

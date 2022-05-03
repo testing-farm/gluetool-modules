@@ -259,7 +259,7 @@ def test_unreachable_copr(module, monkeypatch):
 
     monkeypatch.setattr(gluetool_modules.infrastructure.copr.requests, 'get', mocked_get)
 
-    with pytest.raises(gluetool.GlueError, match=r"^Unable to get:"):
+    with pytest.raises(gluetool.GlueError, match=r"^Could not find copr build id '999999' for chroot 'fedora-28-x86_64'"):
         module.execute()
 
 

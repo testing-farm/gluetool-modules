@@ -8,10 +8,8 @@ from concurrent.futures import ThreadPoolExecutor, wait, Future
 
 import gluetool
 from gluetool import GlueError
-from gluetool.result import Ok
 from gluetool.utils import Command, IncompatibleOptionsError
-from gluetool_modules.libs.guest import NetworkedGuest, Guest, GuestConnectionError
-from gluetool_modules.libs.guest_setup import GuestSetupOutput
+from gluetool_modules.libs.guest import NetworkedGuest, Guest
 
 from gluetool_modules.libs.testing_environment import TestingEnvironment
 
@@ -78,7 +76,6 @@ class StaticGuest(NetworkedGuest):
         """
         Destroy guest. For a remote guest this is no-op.
         """
-        pass
 
 
 class StaticLocalhostGuest(Guest):
@@ -133,7 +130,6 @@ class StaticLocalhostGuest(Guest):
         """
         Destroy guest. For localhost this is no-op.
         """
-        pass
 
 
 class CIStaticGuest(gluetool.Module):

@@ -8,6 +8,7 @@ import six
 
 from typing import Any, Optional  # noqa
 
+
 class HideSecrets(gluetool.Module):
     """
     Hide secrets from all files in the search path, by default
@@ -34,4 +35,6 @@ class HideSecrets(gluetool.Module):
         )
 
         self.info("Hiding secrets from all files under '{}' path".format(self.option('search-path')))
-        os.system("find '{}' -type f | xargs -n1 -I{{}} sed -i '{}' '{{}}'".format(self.option('search-path'), sed_expr))
+        os.system("find '{}' -type f | xargs -n1 -I{{}} sed -i '{}' '{{}}'".format(
+            self.option('search-path'), sed_expr)
+        )

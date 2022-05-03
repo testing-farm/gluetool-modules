@@ -65,7 +65,8 @@ def test_gather_results(module, asset, monkeypatch):
         gluetool.log.Logging().get_logger(),
         # a plan always starts with slash
         '/{}'.format(name),
-        'some-repo-dir'
+        'some-repo-dir',
+        ['exclude1', 'exclude2']
     )
 
     outcome, results = gather_plan_results(schedule_entry, ASSETS_DIR)

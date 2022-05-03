@@ -76,12 +76,14 @@ class InstallCoprBuild(gluetool.Module):
         )
 
         sut_installation = SUTInstallation(self, installation_log_dirpath, builds[0], logger=guest.logger)
-        joined_rpm_urls = ''
+        rpm_urls = []  # type: List[str]
 
         for number, build in enumerate(builds, 1):
             sut_installation.add_step(
                 'Download copr repository',
-                'curl {{}} --output /etc/yum.repos.d/copr_build-{}-{}.repo'.format(build.project.replace('/', '_'), number),
+                'curl {{}} --output /etc/yum.repos.d/copr_build-{}-{}.repo'.format(
+                    build.project.replace('/', '_'), number
+                ),
                 items=build.repo_url
             )
 
@@ -91,7 +93,9 @@ class InstallCoprBuild(gluetool.Module):
 
             # downgrade, update and install commands are called just once with all rpms followed, hence list of
             # rpms is joined to one item
-            joined_rpm_urls = '{} {}'.format(joined_rpm_urls, ' '.join(build.rpm_urls))
+            rpm_urls.extend(build.rpm_urls)
+
+        joined_rpm_urls = ' '.join(rpm_urls)
 
         sut_installation.add_step('Downgrade packages', 'yum -y downgrade {}',
                                   items=joined_rpm_urls, ignore_exception=True)

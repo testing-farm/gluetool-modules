@@ -64,6 +64,7 @@ class TestHandler(LoggerMixin, proton.handlers.MessagingHandler):  # type: ignor
 
         self._step_timeout = None
         self._global_timeout = None
+        self.proton_messages = {}
 
         # note: self.error collides with LoggerMixin's self.error
         self.handler_error = None  # type: Optional[UMBErrorDescription]
@@ -189,6 +190,7 @@ class TestHandler(LoggerMixin, proton.handlers.MessagingHandler):  # type: ignor
 
             delivery = event.sender.send(pending_message)
             self.pending[delivery] = message
+            self.proton_messages[delivery] = pending_message
 
         event.sender.close()
         if not self._module.dryrun_allows('Waiting for messages to be sent'):
@@ -218,7 +220,26 @@ class TestHandler(LoggerMixin, proton.handlers.MessagingHandler):  # type: ignor
         self.debug('on_settled: {}'.format(event))
 
         msg = self.pending[event.delivery]
+
+        proton_msg = self.proton_messages[event.delivery]
+
+        gluetool.log.log_dict(self.info, '  message attributes', msg.__dict__)
+
+        import inspect
+
+        self.info('event.message does exists: {}'.format(hasattr(event, 'message')))
+
+        self.info('proton_msg.id : {}'.format(proton_msg.id))
+        self.info('proton_msg.correlation_id : {}'.format(proton_msg.correlation_id))
+
+        gluetool.log.log_dict(self.info, '  event members', inspect.getmembers(event))
+        gluetool.log.log_dict(self.info, '  event.delivery members', inspect.getmembers(event.delivery))
+
+        gluetool.log.log_dict(self.info, '  proton_msg members', inspect.getmembers(proton_msg))
+        gluetool.log.log_dict(self.info, '  msg members', inspect.getmembers(msg))
+
         self.messages.remove(msg)
+        del self.proton_messages[event.delivery]
 
         self.update_pending(event)
 

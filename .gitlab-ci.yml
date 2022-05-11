@@ -125,17 +125,20 @@ installation-centos-stream-8:
     - tmt run -adddvvv provision -h local plan --name /plans/centos-stream-8
 
 # Installation RHEL8
-installation-rhel8:
-  extends: .merge-request
-  stage: test
-  # using universal base images for RHEL8
-  # https://access.redhat.com/articles/4238681
-  image: registry.access.redhat.com/ubi8/ubi
-  script:
-    # tmt requires rsync
-    - dnf -y install python3-pip git rsync
-    - pip3 install git+https://github.com/psss/tmt.git
-    - tmt run -adddvvv provision -h local plan --name /plans/rhel8
+# DISABLED temporarily due to ubi8 breakage
+# fweimer> Root cause is the pre-8.6 GA UBI repos were pointing at the 8.5 composes
+# Re-enable if this works: podman run registry.access.redhat.com/ubi8/ubi dnf -y install redhat-rpm-config
+# installation-rhel8:
+#   extends: .merge-request
+#   stage: test
+#   # using universal base images for RHEL8
+#   # https://access.redhat.com/articles/4238681
+#   image: registry.access.redhat.com/ubi8/ubi
+#   script:
+#     # tmt requires rsync
+#     - dnf -y install python3-pip git rsync
+#     - pip3 install git+https://github.com/psss/tmt.git
+#     - tmt run -adddvvv provision -h local plan --name /plans/rhel8
 
 # Generate documentation from the sources
 #

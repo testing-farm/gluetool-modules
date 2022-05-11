@@ -58,6 +58,7 @@ RequestEnvironmentType = TypedDict(
         'variables': Dict[str, str],
         'secrets': Dict[str, str],
         'tmt': RequestEnvironmentTMTType,
+        'settings': Dict[Any, Any],
     },
     total=False
 )
@@ -349,7 +350,8 @@ class TestingFarmRequestModule(gluetool.Module):
     ]
 
     required_options = ('api-url', 'api-key', 'request-id')
-    shared_functions = ['testing_farm_request', 'user_variables', 'user_secrets', 'tmt_context']
+    # TODO(mvadkert): user_* and tmt_context functions should move to environments later
+    shared_functions = ['testing_farm_request', 'user_variables', 'user_secrets', 'tmt_context', 'user_settings']
 
     def __init__(self, *args, **kwargs):
         # type: (*Any, **Any) -> None
@@ -372,6 +374,19 @@ class TestingFarmRequestModule(gluetool.Module):
     def testing_farm_request(self):
         # type: () -> Optional[TestingFarmRequest]
         return self._tf_request
+
+    def user_settings(self):
+        # type: () -> Dict[Any, Any]
+        request = self.testing_farm_request()
+        settings = {}  # type: Dict[Any, Any]
+
+        if request and request.environments_requested \
+                and 'settings' in request.environments_requested[0] \
+                and request.environments_requested[0]['settings']:
+
+            settings = request.environments_requested[0]['settings']
+
+        return settings
 
     def user_variables(self, hide_secrets=False, **kwargs):
         # type: (bool, **Any) -> Dict[str, str]
@@ -460,5 +475,6 @@ class TestingFarmRequestModule(gluetool.Module):
             'ref': request.ref,
             'variables': self.user_variables(hide_secrets=True) or '<no variables specified>',
             'environments_requested': _hide_secrets(request.environments_requested),
-            'webhook_url': request.webhook_url or '<no webhook specified>'
+            'webhook_url': request.webhook_url or '<no webhook specified>',
+            'settings': self.user_settings() or '<no settings specified>'
         })

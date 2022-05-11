@@ -195,8 +195,14 @@ class ArtemisAPI(object):
 
         post_install_script_contents = None
         if post_install_script:
-            with open(normalize_path(post_install_script)) as f:
-                post_install_script_contents = f.read()
+            # Check if it's a file, if not - treat it as raw script data
+            # NOTE(ivasilev) To unify logic with artemis-cli should be a 3-step check: a file, a url, a raw script
+            if os.path.isfile(post_install_script):
+                with open(normalize_path(post_install_script)) as f:
+                    post_install_script_contents = f.read()
+            else:
+                # NOTE(ivasilev) Remove possible string escaping
+                post_install_script_contents = post_install_script.replace('\\n', '\n')
 
         # TODO: yes, semver will make this much better... Or better, artemis-cli package provide an easy-to-use
         # bit of code to construct the payload.
@@ -1047,7 +1053,9 @@ class ArtemisProvisioner(gluetool.Module):
         ssh_key = self.option('ssh-key')
         priority = self.option('priority-group')
         options = normalize_multistring_option(self.option('ssh-options'))
-        post_install_script = self.option('post-install-script')
+        # NOTE(ivasilev) Use artemis module requested post-install-script or the one from the environment
+        post_install_script = (self.option('post-install-script') or
+                               self.shared('user_settings').get('provisioning', {}).get('post_install_script'))
 
         if self.option('snapshots'):
             environment.snapshots = True

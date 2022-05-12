@@ -7,7 +7,7 @@ import pytest
 from gluetool.action import Action
 from gluetool.tests.conftest import fixture_enable_logger, fixture_enable_logger_propagate, fixture_log  # noqa
 
-from gluetool_modules.tests import patch_shared
+from gluetool_modules_framework.tests import patch_shared
 
 
 def pytest_addoption(parser):

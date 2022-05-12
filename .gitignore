@@ -18,7 +18,7 @@ libatt.egg-info
 **/.coverage*
 
 # auto-generated *.rst docs
-docs/source/gluetool_modules.*
+docs/source/gluetool_modules_framework.*
 docs/source/modules.rst
 docs/source/module_parsers.py
 

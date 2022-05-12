@@ -23,7 +23,7 @@
       - build
       - source/module_parsers.py
       - source/modules.rst
-      - source/gluetool_modules.*
+      - source/gluetool_modules_framework.*
       - source/modules/*.rst
   tasks:
     - name: Ensure directory hierarchy exists
@@ -58,7 +58,7 @@
       with_items: "{{ base_files }}"
 
     - name: Generate apidoc
-      command: sphinx-apidoc -T -e -o "{{ generate_dir }}/source/" gluetool_modules/
+      command: sphinx-apidoc -T -e -o "{{ generate_dir }}/source/" gluetool_modules_framework/
 
     - name: Generate module page
       command: python docs/generate-module-page.py "{{ generate_dir }}/source"

@@ -50,7 +50,7 @@ py27-unit-tests:
   extends: .tests
   stage: test
   script:
-    - tox -v -e py27-unit-tests -- --cov=gluetool_modules --cov-report=html:coverage-report
+    - tox -v -e py27-unit-tests -- --cov=gluetool_modules_framework --cov-report=html:coverage-report
   artifacts:
     paths:
       - coverage-report
@@ -59,7 +59,7 @@ py37-unit-tests:
   extends: .tests
   stage: test
   script:
-    - tox -v -e py37-unit-tests -- --cov=gluetool_modules --cov-report=html:coverage-report
+    - tox -v -e py37-unit-tests -- --cov=gluetool_modules_framework --cov-report=html:coverage-report
   artifacts:
     paths:
       - coverage-report

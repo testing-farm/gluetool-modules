@@ -21,7 +21,7 @@ tutorial. It will help you to understand the basic principles of creating a modu
 
 For developer documentation, see:
 
- * :doc:`gluetool_modules`
+ * :doc:`gluetool_modules_framework`
  * :doc:`protocols/protocols`
 
 

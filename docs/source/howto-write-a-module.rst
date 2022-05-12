@@ -8,7 +8,7 @@ In this tutorial, you will see a simplicity of writing ``citool`` module. By the
 Name and description
 --------------------
 
-The module is a class that inherits the ``gluetool.Module`` and it's stored in ``gluetool_modules/`` folder.
+The module is a class that inherits the ``gluetool.Module`` and it's stored in ``gluetool_modules_framework/`` folder.
 After inheriting, you need to define class variables ``name`` and ``description``.
 
 The ``name`` identifies a module in a pipeline and must be unique. The ``description`` defines a description of the module and will be visible in ``citool -l`` and module help.
@@ -547,7 +547,7 @@ And the output of ``--help`` is following:
 Testing
 -------
 
-A module isn't complete if it doesn't have tests. Tests are stored in ``gluetool_modules/tests/`` folder and a filename of tests start with ``test_``. Tests are powered by the `pytest <https://docs.pytest.org/en/latest/contents.html#>`_ framework and automated by `tox <https://tox.readthedocs.io/en/latest/>`_.
+A module isn't complete if it doesn't have tests. Tests are stored in ``gluetool_modules_framework/tests/`` folder and a filename of tests start with ``test_``. Tests are powered by the `pytest <https://docs.pytest.org/en/latest/contents.html#>`_ framework and automated by `tox <https://tox.readthedocs.io/en/latest/>`_.
 
 The basic test which will test loadability of the module consists of a `fixture <https://docs.pytest.org/en/latest/fixture.html>`_ that will represent a module and a test case that will try to manually load a module to a pipeline.
 
@@ -557,7 +557,7 @@ The basic test which will test loadability of the module consists of a `fixture 
 
     import pytest # main testing framework
 
-    import gluetool_modules.cat_facts_api # importing of a module that will be tested
+    import gluetool_modules_frameworkcat_facts_api # importing of a module that will be tested
     from . import check_loadable, create_module # helper function to easy creating of a module
 
 
@@ -565,16 +565,16 @@ The basic test which will test loadability of the module consists of a `fixture 
     @pytest.fixture(name='module')
     def fixture_module():
         # the function returns glue and module instances. We are interested in the module only.
-        return create_module(gluetool_modules.cat_facts_api.CatFactsAPI)[1]
+        return create_module(gluetool_modules_framework.cat_facts_api.CatFactsAPI)[1]
 
 
     def test_loadable(module):
-        check_loadable(module.glue, 'gluetool_modules/cat_facts_api.py', 'CatFactsAPI')
+        check_loadable(module.glue, 'gluetool_modules_framework.cat_facts_api.py', 'CatFactsAPI')
 
 .. warning::
-    If you put your module in a subdirectory in `gluetool_modules` the import will change. For example if you put it into subdirectory `testing` the module import would be `import gluetool_modules.testing.cat_facts_api`
+    If you put your module in a subdirectory in `gluetool_modules_framework the import will change. For example if you put it into subdirectory `testing` the module import would be `import gluetool_modules_framework.testing.cat_facts_api`
 
-After that, you can call ``tox`` from the ``gluetool-modules`` folder to run all types of tests for all modules. If you want to reduce waiting of the end of testing, you can call ``tox -e py27-unit-tests -- gluetool_modules/tests/test_cat_facts_api.py`` to unit test the module.
+After that, you can call ``tox`` from the ``gluetool-modules`` folder to run all types of tests for all modules. If you want to reduce waiting of the end of testing, you can call ``tox -e py27-unit-tests -- gluetool_modules_framework/tests/test_cat_facts_api.py`` to unit test the module.
 
 .. note::
     If you have a ``pip`` error that contains ``"no such option: --process-dependency-links"``, try to downgrade the ``pip`` to the version ``18.1`` and install ``tox-virtualenv-no-download`` via ``pip`` to your virtual environment.

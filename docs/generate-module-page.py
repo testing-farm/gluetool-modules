@@ -90,7 +90,7 @@ def gather_module_data():
 
         # strip tox modpath out
         modpath = re.sub(r'\.tox\..*\.site-packages\.', '', modpath)
-        modpath = re.sub(r'\.tox\..*\.gluetool_modules.', '', modpath)
+        modpath = re.sub(r'\.tox\..*\.gluetool_modules_framework.', '', modpath)
 
         # pylint: disable=line-too-long
         if properties.klass.description:

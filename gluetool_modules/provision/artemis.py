@@ -1054,10 +1054,10 @@ class ArtemisProvisioner(gluetool.Module):
         priority = self.option('priority-group')
         options = normalize_multistring_option(self.option('ssh-options'))
         # NOTE(ivasilev) Use artemis module requested post-install-script or the one from the environment
-        post_install_script = (
-            self.option('post-install-script')
-            or self.shared('user_settings').get('provisioning', {}).get('post_install_script', {})
-        )
+        post_install_script = self.option('post-install-script')
+        if not post_install_script:
+            provisioning = self.shared('user_settings').get('provisioning') or {}
+            post_install_script = provisioning.get('post_install_script')
 
         if self.option('snapshots'):
             environment.snapshots = True

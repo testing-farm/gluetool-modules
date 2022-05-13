@@ -582,7 +582,7 @@ class TestScheduleTMT(Module):
 
                 # `plan` step
                 'plan',
-                '--name', schedule_entry.plan
+                '--name', r'^{}$'.format(schedule_entry.plan)
             ]
             command += local_command
             reproducer += local_command
@@ -597,7 +597,7 @@ class TestScheduleTMT(Module):
 
                 # `plan` step
                 'plan',
-                '--name', schedule_entry.plan
+                '--name', r'^{}$'.format(schedule_entry.plan)
             ])
 
             command.extend([

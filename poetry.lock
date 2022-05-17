@@ -421,7 +421,7 @@ gitdb2 = ">=2,<3"
 
 [[package]]
 name = "gluetool"
-version = "1.27.1"
+version = "1.27.4"
 description = "Python framework for constructing command-line pipelines."
 category = "main"
 optional = false
@@ -436,6 +436,7 @@ enum34 = ">=1.1.6,<2.0.0"
 future = {version = "0.18.2", markers = "python_version >= \"2.7\" and python_version < \"2.8\""}
 Jinja2 = ">=2.10,<3.0"
 lxml = ">=4.2.4,<5.0.0"
+markupsafe = "1.1.1"
 mock = ">=3.0.5,<4.0.0"
 mypy-extensions = ">=0.4.3,<0.5.0"
 packaging = ">=20.9,<21.0"
@@ -448,7 +449,7 @@ six = ">=1.12.0,<2.0.0"
 Sphinx = ">=1.5.2,<1.6.0"
 tabulate = ">=0.8.2,<0.9.0"
 typing = {version = ">=3.7.4,<4.0.0", markers = "python_version >= \"2.7\" and python_version < \"2.8\""}
-typing-extensions = {version = ">=3.7.4,<4.0.0", markers = "python_version >= \"2.7\" and python_version < \"2.8\""}
+typing-extensions = {version = ">=3.7.4,<4.0.0", markers = "python_version >= \"2.7\" and python_version < \"2.8\" or python_version >= \"3.7\" and python_version < \"3.8\""}
 urlnormalizer = ">=1.2.0,<2.0.0"
 zipp = [
     {version = "1.2.0", markers = "python_version >= \"2.7\" and python_version < \"2.8\""},
@@ -1059,6 +1060,7 @@ colorama = {version = "*", markers = "sys_platform == \"win32\""}
 importlib-metadata = {version = ">=0.12", markers = "python_version < \"3.8\""}
 more-itertools = ">=4.0.0"
 packaging = "*"
+pathlib2 = {version = ">=2.2.0", markers = "python_version < \"3.6\""}
 pluggy = ">=0.12,<1.0"
 py = ">=1.5.0"
 wcwidth = "*"
@@ -1574,6 +1576,9 @@ category = "main"
 optional = false
 python-versions = "*"
 
+[package.dependencies]
+typing = {version = ">=3.7.4", markers = "python_version < \"3.5\""}
+
 [[package]]
 name = "urllib3"
 version = "1.26.9"
@@ -1963,8 +1968,8 @@ gitpython = [
     {file = "GitPython-2.1.15.tar.gz", hash = "sha256:838c38d882a97b2fd146dbd4eb9baaf857cb65ebaa64e4c06fca48aaa491e1c6"},
 ]
 gluetool = [
-    {file = "gluetool-1.27.1-py2.py3-none-any.whl", hash = "sha256:710d7c20c27f587902bc81bfea42fc2741b6895de2d8a2125917bc79f32bb690"},
-    {file = "gluetool-1.27.1.tar.gz", hash = "sha256:f592d5505860b446f4b9ca152afc285c9ec72d5541aaa25eaebf843ac0ff8a05"},
+    {file = "gluetool-1.27.4-py2.py3-none-any.whl", hash = "sha256:92ab612359ad479e28f33be82114e63b0b0223c2f5204d90b789c1fbd1ad0427"},
+    {file = "gluetool-1.27.4.tar.gz", hash = "sha256:8284ebcabe241016ff50837fc68c5d19324832fb322fb0657fa278ab52010cf3"},
 ]
 gssapi = [
     {file = "gssapi-1.6.2-cp36-cp36m-win_amd64.whl", hash = "sha256:334e1d4af47773afa99b1128c3ab598f007ff0533059259fef3cf1824e618726"},

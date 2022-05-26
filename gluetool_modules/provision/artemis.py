@@ -25,7 +25,9 @@ from gluetool_modules.libs.testing_environment import TestingEnvironment
 from typing import Any, Dict, List, Optional, Tuple, cast  # noqa
 
 SUPPORTED_API_VERSIONS = (
-    'v0.0.16', 'v0.0.17', 'v0.0.18', 'v0.0.19', 'v0.0.20', 'v0.0.21', 'v0.0.24', 'v0.0.26', 'v0.0.27', 'v0.0.28'
+    'v0.0.16', 'v0.0.17', 'v0.0.18', 'v0.0.19',
+    'v0.0.20', 'v0.0.21', 'v0.0.24', 'v0.0.26', 'v0.0.27', 'v0.0.28',
+    'v0.0.38'
 )
 
 EVENT_LOG_SUFFIX = '-artemis-guest-log.yaml'
@@ -206,7 +208,7 @@ class ArtemisAPI(object):
 
         # TODO: yes, semver will make this much better... Or better, artemis-cli package provide an easy-to-use
         # bit of code to construct the payload.
-        if self.version in ('v0.0.19', 'v0.0.20', 'v0.0.21', 'v0.0.24', 'v0.0.26', 'v0.0.27', 'v0.0.28'):
+        if self.version in ('v0.0.19', 'v0.0.20', 'v0.0.21', 'v0.0.24', 'v0.0.26', 'v0.0.27', 'v0.0.28', 'v0.0.38'):
             data = {
                 'keyname': keyname,
                 'environment': {
@@ -226,8 +228,10 @@ class ArtemisAPI(object):
             if pool:
                 data['environment']['pool'] = pool
 
-            if cast(ArtemisProvisioner, self.module).hw_constraints:
-                data['environment']['hw']['constraints'] = cast(ArtemisProvisioner, self.module).hw_constraints
+            hardware = cast(ArtemisProvisioner, self.module).hw_constraints or environment.hardware
+
+            if hardware:
+                data['environment']['hw']['constraints'] = hardware
 
             if self.version in ('v0.0.24'):
                 data['skip_prepare_verify_ssh'] = normalize_bool_option(self.module.option('skip-prepare-verify-ssh'))

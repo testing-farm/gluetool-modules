@@ -45,15 +45,23 @@ class TestingEnvironment(object):
     # of each instance.
     ANY = gluetool_modules.libs.ANY
 
-    _fields = ('arch', 'compose', 'snapshots', 'pool')
+    _fields = ('arch', 'compose', 'snapshots', 'pool', 'hardware')
 
-    def __init__(self, arch=None, compose=None, snapshots=False, pool=None):
-        # type: (Optional[ArchType], Optional[ComposeType], SnapshotsType, Optional[str]) -> None
+    def __init__(
+        self,
+        arch=None,          # type: Optional[ArchType]
+        compose=None,       # type: Optional[ComposeType]
+        snapshots=False,    # type: SnapshotsType
+        pool=None,          # type: Optional[str]
+        hardware=None       # type: Optional[Dict[str, Any]]
+    ):
+        # type: (...) -> None
 
         self.arch = arch
         self.compose = compose
         self.snapshots = snapshots
         self.pool = pool
+        self.hardware = hardware
 
     def __str__(self):
         # type: () -> str

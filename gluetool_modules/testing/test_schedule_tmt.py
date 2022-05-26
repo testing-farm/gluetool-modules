@@ -13,7 +13,8 @@ from gluetool import GlueError, GlueCommandError, Module
 from gluetool.action import Action
 from gluetool.log import Logging, format_blob, log_blob, log_dict
 from gluetool.log import ContextAdapter, LoggingFunctionType  # Ignore PyUnusedCodeBear
-from gluetool.utils import Command, cached_property, load_yaml, new_xml_element, dict_update, normalize_shell_option
+from gluetool.utils import Command, cached_property, from_yaml, load_yaml, new_xml_element, dict_update, \
+    normalize_shell_option
 
 from gluetool_modules.libs import create_inspect_callback, sort_children
 from gluetool_modules.libs.artifacts import artifacts_location
@@ -409,6 +410,40 @@ class TestScheduleTMT(Module):
 
         return normalize_shell_option(excludes)
 
+    def get_tmt_hardware(self, repodir, plan):
+        # type: (str, str) -> Dict[str, Any]
+        command = [self.option('command'), 'plan', 'export', '^{}$'.format(plan)]
+
+        # TODO: tmt is python3 only, parse the excludes from output until our modules run in python3
+        try:
+            tmt_output = Command(command).run(cwd=repodir)
+
+        except GlueCommandError as exc:
+            # workaround until tmt prints errors properly to stderr
+            log_blob(
+                self.error,
+                "Failed to export plan '{}'".format(plan),
+                exc.output.stderr or exc.output.stdout or '<no output>'
+            )
+            raise GlueError('Failed to export plan, TMT metadata are absent or corrupted.')
+
+        output = tmt_output.stdout
+        assert output
+
+        try:
+            exported_plans = from_yaml(output)
+            log_dict(self.debug, "loaded exported plan yaml", exported_plans)
+
+        except GlueError as error:
+            raise GlueError('Could not load exported plan yaml: {}'.format(error))
+
+        if not exported_plans or len(exported_plans) != 1:
+            self.warn('exported plan is not a single item, cowardly skipping extracting hardware')
+            return {}
+
+        provision = exported_plans[0].get('provision') or {}
+        return provision.get('hardware') or {}
+
     def create_test_schedule(self, testing_environment_constraints=None):
         # type: (Optional[List[TestingEnvironment]]) -> TestSchedule
         """
@@ -459,7 +494,8 @@ class TestScheduleTMT(Module):
                     compose=tec.compose,
                     arch=tec.arch,
                     snapshots=tec.snapshots,
-                    pool=tec.pool
+                    pool=tec.pool,
+                    hardware=self.get_tmt_hardware(repodir, plan)
                 )
 
                 schedule.append(schedule_entry)

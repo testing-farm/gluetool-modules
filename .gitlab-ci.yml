@@ -4,7 +4,7 @@ stages:
   - test
 
 # Use our custom image. See https://gitlab.com/testing-farm/images/-/tree/master/python-ci-image
-image: "quay.io/testing-farm/python-ci-image:2022-03-12"
+image: "quay.io/testing-farm/python-ci-image"
 
 #
 # Poetry and MyPy colors

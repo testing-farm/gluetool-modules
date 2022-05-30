@@ -433,7 +433,7 @@ class PipelineStateReporter(gluetool.Module):
             umb_message.pipeline_id = self.shared('thread_id')
 
         umb_message.note = self.option('note')
-        umb_message.generated_at = datetime.datetime.utcnow().isoformat(' ')
+        umb_message.generated_at = datetime.datetime.utcnow().isoformat() + 'Z'
         umb_message.version = self.option('version')
 
         umb_message.contact_docs = self.option('contact-docs')

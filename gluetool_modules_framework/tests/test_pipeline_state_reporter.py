@@ -398,7 +398,7 @@ def test_execute_old_message(ci_info, evaluate, monkeypatch, module, mock_namesp
     }
 
     # check if generated_at has expected format, will traceback if not
-    strptime(generated_at, "%Y-%m-%d %H:%M:%S.%f")
+    strptime(generated_at, "%Y-%m-%dT%H:%M:%S.%fZ")
 
 
 def test_execute_new_message(ci_info, evaluate, monkeypatch, module, mock_namespace, publish_new_messages):
@@ -438,7 +438,7 @@ def test_execute_new_message(ci_info, evaluate, monkeypatch, module, mock_namesp
     }
 
     # check if generated_at has expected format, will traceback if not
-    strptime(generated_at, "%Y-%m-%d %H:%M:%S.%f")
+    strptime(generated_at, "%Y-%m-%dT%H:%M:%S.%fZ")
 
 
 def test_execute_reason_in_note_old_message(
@@ -480,7 +480,7 @@ def test_execute_reason_in_note_old_message(
     }
 
     # check if generated_at has expected format, will traceback if not
-    strptime(generated_at, "%Y-%m-%d %H:%M:%S.%f")
+    strptime(generated_at, "%Y-%m-%dT%H:%M:%S.%fZ")
 
 
 def test_execute_reason_in_note_new_message(
@@ -531,7 +531,7 @@ def test_execute_reason_in_note_new_message(
     }
 
     # check if generated_at has expected format, will traceback if not
-    strptime(generated_at, "%Y-%m-%d %H:%M:%S.%f")
+    strptime(generated_at, "%Y-%m-%dT%H:%M:%S.%fZ")
 
 
 def test_destroy_sysexit(module):

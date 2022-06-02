@@ -28,13 +28,19 @@ class HideSecrets(gluetool.Module):
         if not self.shared('user_secrets'):
             return
 
-        # TODO: this would really need shlex.quote or something to be safe
+        # TODO: this would really need shlex.quote or something to be safe, all input data
+        #       must be sanitized!
+        # TFT-1339 - the value can be empty, make sure to skip it, nothing to hide there
         sed_expr = ';'.join(
             's|{}|*****|g'.format(value)
             for _, value in six.iteritems(self.shared('user_secrets'))
+            if value
         )
 
-        self.info("Hiding secrets from all files under '{}' path".format(self.option('search-path')))
-        os.system("find '{}' -type f | xargs -n1 -I{{}} sed -i '{}' '{{}}'".format(
-            self.option('search-path'), sed_expr)
-        )
+        if sed_expr:
+            self.info("Hiding secrets from all files under '{}' path".format(self.option('search-path')))
+            os.system("find '{}' -type f | xargs -n1 -I{{}} sed -i '{}' '{{}}'".format(
+                self.option('search-path'), sed_expr)
+            )
+        else:
+            self.warn("No secrets to hide, all secrets had empty values")

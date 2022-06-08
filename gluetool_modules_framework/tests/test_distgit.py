@@ -14,7 +14,7 @@ from gluetool.log import Logging
 
 import gluetool_modules_framework.infrastructure.distgit
 from gluetool_modules_framework.infrastructure.distgit import DistGitRepository
-from . import assert_shared, create_module, patch_shared, testing_asset
+from . import create_module, patch_shared, testing_asset
 
 Response = collections.namedtuple('Response', ['status_code', 'content', 'text'])
 

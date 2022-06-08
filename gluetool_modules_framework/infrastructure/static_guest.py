@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, wait, Future
 
 import gluetool
 from gluetool import GlueError
-from gluetool.utils import Command
+from gluetool.utils import Command, IncompatibleOptionsError
 from gluetool_modules_framework.libs.guest import NetworkedGuest, Guest
 
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment

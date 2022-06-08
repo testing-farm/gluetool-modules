@@ -366,7 +366,7 @@ class TestScheduleTMT(Module):
 
         return plans
 
-    def get_tmt_excludes(self, repodir, plan):
+    def excludes_from_tmt(self, repodir, plan):
         # type: (str, str) -> List[str]
         command = [self.option('command'), 'plan', 'show', '-v', '^{}$'.format(plan)]
 
@@ -410,7 +410,16 @@ class TestScheduleTMT(Module):
 
         return normalize_shell_option(excludes)
 
-    def get_tmt_hardware(self, repodir, plan):
+    def hardware_from_request(self):
+        # type: () -> Dict[str, Any]
+        request = self.shared('testing_farm_request')
+
+        if not request:
+            return {}
+
+        return request.environments_requested[0].get('hardware') or {}
+
+    def hardware_from_tmt(self, repodir, plan):
         # type: (str, str) -> Dict[str, Any]
         command = [self.option('command'), 'plan', 'export', '^{}$'.format(plan)]
 
@@ -486,7 +495,7 @@ class TestScheduleTMT(Module):
                     Logging.get_logger(),
                     plan,
                     repodir,
-                    self.get_tmt_excludes(repodir, plan)
+                    self.excludes_from_tmt(repodir, plan)
                 )
 
                 schedule_entry.tmt_reproducer.extend(repository.commands)
@@ -496,7 +505,7 @@ class TestScheduleTMT(Module):
                     arch=tec.arch,
                     snapshots=tec.snapshots,
                     pool=tec.pool,
-                    hardware=self.get_tmt_hardware(repodir, plan)
+                    hardware=self.hardware_from_request() or self.hardware_from_tmt(repodir, plan)
                 )
 
                 schedule.append(schedule_entry)

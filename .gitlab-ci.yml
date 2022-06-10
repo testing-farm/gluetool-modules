@@ -43,6 +43,18 @@ image: "quay.io/testing-farm/python-ci-image"
   before_script:
     - dnf -y install krb5-devel libcurl-devel popt-devel postgresql-devel libxml2-devel
 
+# Build the container image
+container:
+  extends: .merge-request
+  stage: test
+  image: quay.io/buildah/stable:latest
+  script:
+    - dnf -y install make poetry python3.7
+    - buildah login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
+    - IMAGE_TAG=$CI_PIPELINE_ID make build
+    - IMAGE_TAG=$CI_PIPELINE_ID make push
+
+
 # Run unit tests
 #
 # Note: this step also generates coverage report (HTML).

@@ -267,6 +267,7 @@ def fixture_publish_new_messages(module):
         'test-type': 'some-type',
         'thread-id': 'some-thread-id',
         'version': '1.1.6',
+        'final-message-file': 'message.json'
     })
 
     def mock_publish_bus_messages(message, topic):
@@ -556,6 +557,13 @@ def test_destroy_new_messages(module, evaluate, publish_new_messages, mock_names
     module.destroy(failure=MagicMock(sentry_event_url='sentry-url'))
     assert publish_new_messages['message'].body['test']['result'] == 'unknown'
     assert publish_new_messages['message'].body['error']['issue_url'] == 'sentry-url'
+
+    # test `--final-message-file` option saving the message to a file
+    message = gluetool.utils.load_json('message.json')
+    assert message['body']['test']['result'] == 'unknown'
+    assert message['body']['error']['issue_url'] == 'sentry-url'
+    assert message['topic'] == 'topic'
+    assert message['headers'] == VERSION_1_ARTIFACT
 
 
 def test_destroy_with_results_and_recipients_old_messages(module, evaluate, mock_namespace, publish_old_messages):

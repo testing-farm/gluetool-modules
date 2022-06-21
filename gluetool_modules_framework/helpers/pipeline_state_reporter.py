@@ -10,6 +10,7 @@ https://docs.google.com/document/d/16L5odC-B4L6iwb9dp8Ry0Xk5Sc49h9KvTHrG86fdfQM/
 import argparse
 import base64
 import datetime
+import json
 import re
 import six
 import zlib
@@ -221,6 +222,13 @@ class PipelineStateReporter(gluetool.Module):
             },
             'bus-topic': {
                 'help': 'Topic of the messages sent to the message bus.'
+            },
+            'final-message-file': {
+                'help':
+                    """
+                    If specified, save the final message to given file.
+                    All message details are saved - `topic`, `headers` and `body`.'
+                    """
             }
         })
     ]
@@ -380,7 +388,8 @@ class PipelineStateReporter(gluetool.Module):
         test_results=None,  # type: Optional[str]
         distros=None,  # type: Optional[List[Tuple[str, str, str, str]]]
         error_message=None,  # type: Optional[str]
-        error_url=None  # type: Optional[str]
+        error_url=None,  # type: Optional[str]
+        message_file=None  # type: Optional[str]
     ):
         # type: (...) -> None
         """
@@ -410,6 +419,7 @@ class PipelineStateReporter(gluetool.Module):
         :param str error_message: Error message which can be presented to the common user.
         :param str error_url: URL of the issue in a tracking system which tracks the error. For example,
             link to an automatically created Sentry issue, or link to a Jira issue discissing the error.
+        :param str message_file: File to store message content into.
         """
 
         distros = distros or cast(List[Tuple[str, str, str, str]], ())
@@ -491,6 +501,16 @@ class PipelineStateReporter(gluetool.Module):
         message = gluetool.utils.Bunch(headers=umb_message.headers, body=umb_message.body)
 
         self.shared('publish_bus_messages', message, topic=topic)
+
+        if not message_file:
+            return
+
+        with open(message_file, 'w') as msgfile:
+            msgfile.write(json.dumps({
+                'topic': topic,
+                'headers': umb_message.headers,
+                'body': umb_message.body
+            }))
 
     def _set_pr_status(self, status, description):
         # type: (str, str) -> None
@@ -722,7 +742,11 @@ class PipelineStateReporter(gluetool.Module):
         if self.option('pr-label'):
             self._set_pr_status(overall_result, 'Test finished')
 
-        self.report_pipeline_state(self._get_final_state(failure), **kwargs)
+        self.report_pipeline_state(
+            self._get_final_state(failure),
+            message_file=self.option('final-message-file'),
+            **kwargs
+        )
 
 
 class UMBMessage():

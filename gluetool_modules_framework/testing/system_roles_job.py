@@ -156,7 +156,8 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
         """
         In Ansible the 'EL' platform means both RHEL and CentOS.
         It is needed to be transformed to simplify compose check.
-        The method replaces `EL` platform with `RHEL` and `CentOS`.
+        The method replaces `EL` platform with `RHEL` and `CentOS`
+        and `CentOS-Stream`.
         """
         platforms = self.parse_platforms_from_meta
         if not platforms:
@@ -167,6 +168,7 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
             if platform['name'] == 'EL':
                 transformed_platforms.append({'name': 'RHEL', 'versions': platform['versions']})
                 transformed_platforms.append({'name': 'CentOS', 'versions': platform['versions']})
+                transformed_platforms.append({'name': 'CentOS-Stream', 'versions': platform['versions']})
             else:
                 transformed_platforms.append(platform)
         return transformed_platforms

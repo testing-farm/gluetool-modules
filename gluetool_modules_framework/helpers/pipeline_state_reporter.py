@@ -142,7 +142,15 @@ class PipelineStateReporter(gluetool.Module):
                         Label identifying PR status. If specified, status will be reported using 'set_pr_status'
                         shared function.
                         """
-            }
+            },
+            'dont-upload-url-pending': {
+                'help': 'Do not upload URL with pending message',
+                'action': 'store_false'
+            },
+            'dont-upload-url-finished': {
+                'help': 'Do not upload URL with test finished message',
+                'action': 'store_false'
+            },
         }),
         ('Test options', {
             'test-category': {
@@ -512,15 +520,18 @@ class PipelineStateReporter(gluetool.Module):
                 'body': umb_message.body
             }))
 
-    def _set_pr_status(self, status, description):
-        # type: (str, str) -> None
+    def _set_pr_status(self, status, description, upload_status_url=True):
+        # type: (str, str, Optional[bool]) -> None
         self.require_shared('set_pr_status')
 
-        # The PR_TESTING_ARTIFACTS_URL represents an URL where testing artifacts will be stored
-        # The variable will be used by system roles pipelines to store link to artifacts in GitHub CI
-        pr_status_url = self.shared('eval_context').get('PR_TESTING_ARTIFACTS_URL')
-        if not pr_status_url:
-            pr_status_url = self.shared('eval_context').get('JENKINS_BUILD_URL')
+        if upload_status_url:
+            # The PR_TESTING_ARTIFACTS_URL represents an URL where testing artifacts will be stored
+            # The variable will be used by system roles pipelines to store link to artifacts in GitHub CI
+            pr_status_url = self.shared('eval_context').get('PR_TESTING_ARTIFACTS_URL')
+            if not pr_status_url:
+                pr_status_url = self.shared('eval_context').get('JENKINS_BUILD_URL')
+        else:
+            pr_status_url = None
 
         self.shared('set_pr_status', status, description, context=self.option('pr-label'),
                     target_url=pr_status_url)
@@ -534,7 +545,7 @@ class PipelineStateReporter(gluetool.Module):
         self.info('reporting pipeline beginning')
 
         if self.option('pr-label'):
-            self._set_pr_status('pending', 'Test started')
+            self._set_pr_status('pending', 'Test started', self.option('dont-upload-url-pending'))
 
         self.report_pipeline_state(STATE_RUNNING)
 
@@ -740,7 +751,7 @@ class PipelineStateReporter(gluetool.Module):
             })
 
         if self.option('pr-label'):
-            self._set_pr_status(overall_result, 'Test finished')
+            self._set_pr_status(overall_result, 'Test finished', self.option('dont-upload-url-finished'))
 
         self.report_pipeline_state(
             self._get_final_state(failure),

@@ -13,6 +13,8 @@ from gluetool.utils import Command
 from typing import AnyStr, List, Optional, Dict, Any, cast # noqa
 
 
+SUMMARY_PAGE_TEMPLATE = "<html>\n<head>\n</head>\n<body>{}\n</body>\n</html>"
+
 class UploadResults(gluetool.Module):
     """
     This module is for uploading test results in linux-system-roles BaseOS CI use-case.
@@ -83,7 +85,11 @@ class UploadResults(gluetool.Module):
             'help': 'The directory in target host where artifacts will be uploaded',
             'metavar': 'PATH',
             'type': str
-        }
+        },
+        'create-summary-page': {
+            'help': 'Create summary page with tests summary if set',
+            'action': 'store_true'
+        },
     }
 
     def __init__(self, *args, **kwargs):
@@ -147,7 +153,7 @@ class UploadResults(gluetool.Module):
 
         return None
 
-    def _get_files_to_upload(self):
+    def _get_entry_files_to_upload_map(self):
         # type: () -> List[Dict[str, str]]
         """
         Get the results to be uploaded to the server.
@@ -157,7 +163,7 @@ class UploadResults(gluetool.Module):
         schedule = self.shared('test_schedule')
         dest_file_postfix = self.option('artifact-dest-file-postfix')
 
-        files = []
+        entry_files_map = []
         for entry in schedule:
             dest_filename = "{}-{}{}".format(
                 os.path.splitext(
@@ -167,14 +173,17 @@ class UploadResults(gluetool.Module):
                 dest_file_postfix
             )
 
-            files.append({
-                'src-file-path': os.path.join(entry.work_dirpath, self.option('artifact-src-filenames')),
-                'dest-filename': dest_filename
-            })
+            entry_files_map.append({
+                'schedule_entry': entry,
+                'entry_file': {
+                    'src-file-path': os.path.join(entry.work_dirpath, self.option('artifact-src-filenames')),
+                    'dest-filename': dest_filename,
+                    'dest-url': '{}/{}'.format(self.full_target_url, dest_filename)
+            }})
 
-        return files
+        return entry_files_map
 
-    def _upload_results(self, destination_path, user_and_domain, results_files):
+    def _upload_results(self, destination_path, user_and_domain, entry_files_map):
         # type: (str, str, List[Dict[str, str]]) -> None
         """
         It uploads the artifacts to the server.
@@ -183,6 +192,7 @@ class UploadResults(gluetool.Module):
         :param str user_and_domain: User login to the server. Example: ``root@domain.com``
         :param dict results_files: Full paths to the source artifacts and destination filenames.
         """
+        results_files = [list_entry['entry_file'] for list_entry in entry_files_map]
         for results_file in results_files:
             cmd_upload = ['scp', '-i', cast(str, self.option('key-path'))]  # type: Optional[List[str]]
             assert cmd_upload is not None
@@ -201,6 +211,39 @@ class UploadResults(gluetool.Module):
                 assert exc.output.stderr is not None
                 raise GlueError('Uploading results failed: {} cmd: {}'.format(exc, cmd_upload))
 
+    def _create_summary_file(self, entry_files_map):
+        """
+        Creates summary html with results summary
+        """
+        summary_page = SUMMARY_PAGE_TEMPLATE
+        body = ""
+
+        primary_task = self.shared('primary_task')
+        if primary_task:
+            body += '<h>Pull request - {}</h>\n<h>Tested on {}</h>'.format(
+                primary_task.html_url,
+                self.shared('compose')[0]
+            )
+
+        for entry in entry_files_map:
+            line = '<p> Testing: <a href={}>{}</a> - {}</p>\n'.format(
+                entry['entry_file']['dest-url'],
+                entry['entry_file']['dest-filename'],
+                entry['schedule_entry'].result
+            )
+            body += line
+        body += '\n<a href={}>INDEX</a>\n'.format(self.full_target_url)
+        summary_page = summary_page.format(body)
+
+        with open('summary.html', 'w') as f:
+            f.write(summary_page)
+
+        return {'entry_file': {
+                'src-file-path': 'summary.html',
+                'dest-filename': 'summary.html',
+        }}
+
+
     @property
     def _full_target_url(self):
         # type: () -> Optional[str]
@@ -215,7 +258,7 @@ class UploadResults(gluetool.Module):
                           """
         }
         return {
-            'PR_TESTING_ARTIFACTS_URL': self._full_target_url
+            'PR_TESTING_ARTIFACTS_URL': '{}/summary.html'.format(self._full_target_url)
         }
 
     def destroy(self, failure=None):
@@ -258,5 +301,11 @@ class UploadResults(gluetool.Module):
         download_domain = self.option('download-domain') or domain
         self.full_target_url = "https://{}/{}".format(download_domain, self.destination_url)
 
-        files = self._get_files_to_upload()
-        self._upload_results(self.destination_dir, user_and_domain, files)
+        entry_files_map = self._get_entry_files_to_upload_map()
+
+        if self.option('create-summary-page'):
+            self.info('creating summary page')
+            summary_file = self._create_summary_file(entry_files_map)
+
+            entry_files_map.append(summary_file)
+        self._upload_results(self.destination_dir, user_and_domain, entry_files_map)

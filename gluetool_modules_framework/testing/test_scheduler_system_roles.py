@@ -4,9 +4,10 @@
 import os
 import shutil
 import tempfile
+import tarfile
 
 import gluetool
-from gluetool.utils import normalize_path
+from gluetool.utils import normalize_path, Command
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from gluetool_modules_framework.libs.test_schedule import TestSchedule
 from gluetool_modules_framework.testing.test_schedule_runner_sti import TestScheduleEntry
@@ -85,7 +86,27 @@ class TestSchedulerSystemRoles(gluetool.Module):
             shutil.rmtree(os.path.join(repo_path, 'tests'))
             # Move the converted collection
             coll_path = os.path.join(repo_path, '.collection')
-            shutil.move(lsr_coll_tmp, coll_path)
+            if not os.path.isdir(coll_path):
+                shutil.move(lsr_coll_tmp, coll_path)
+            else:
+                tar_file = os.path.join(repo_path, '.collection.tar')
+                _cwd = os.getcwd()
+                with tarfile.open(tar_file, "w") as _tar:
+                    os.chdir(lsr_coll_tmp)
+                    dlist = os.listdir(lsr_coll_tmp)
+
+                    exclude_files = ["ansible_collections/{}/{}/.collection".format(coll_namespace, coll_name)]
+                    def exclude_function(tarinfo):
+                        filename = tarinfo.name
+                        return None if filename in exclude_files or os.path.splitext(filename)[1] in exclude_files else tarinfo
+
+                    for _item in dlist:
+                        _tar.add(_item, filter=exclude_function)
+                    os.chdir(_cwd)
+                with tarfile.open(tar_file, "r") as _tar:
+                    os.chdir(coll_path)
+                    _tar.extractall()
+                    os.chdir(_cwd)
             # Move the converted tests
             os.rename(os.path.join(coll_path, 'ansible_collections', coll_namespace, coll_name, 'tests', role),
                       os.path.join(repo_path, 'tests'))
@@ -94,6 +115,53 @@ class TestSchedulerSystemRoles(gluetool.Module):
             if lsr_coll_tmp:
                 shutil.rmtree(lsr_coll_tmp)
             raise gluetool.GlueError('Converting of role to collection failed with {}'.format(exc))
+
+    def _install_requirements(self, ansible_path, logger):
+        """
+        If collection-requirements.yml contains the collections, install reqs
+        from meta/collection-requirements.yml at repo_path/.collection.
+        """
+        repo_path = self.shared('dist_git_repository').path
+        collection_path = os.path.join(repo_path, '.collection')
+        if not os.path.isdir(collection_path):
+            os.mkdir(collection_path)
+        reqfile = os.path.join(repo_path, "meta", "collection-requirements.yml")
+        # see if reqfile is in legacy role format
+        if os.path.isfile(reqfile):
+            cmd = [
+                "{}/ansible-galaxy".format(ansible_path),
+                "collection",
+                "install",
+                "-p",
+                collection_path,
+                "-vv",
+                "-r",
+                reqfile
+            ]
+            try:
+                Command(cmd, logger=logger).run()
+            except gluetool.GlueCommandError as exc:
+                raise gluetool.GlueError("ansible-galaxy failed with {}".format(exc.returncode))
+
+            # Check if the collection(s) are installed or not.
+            import yaml
+            with open(reqfile) as rqff:
+                obj = yaml.safe_load(rqff)
+                for coll in obj['collections']:
+                    if isinstance(coll, dict):
+                        name_coll = coll['name']
+                    else:
+                        name_coll = coll
+                    colldir = os.path.join(
+                        collection_path,
+                        "ansible_collections",
+                        name_coll.replace('.', '/')
+                    )
+                    if not os.path.isdir(colldir):
+                        raise gluetool.GlueError("{} is not installed at {}".format(name_coll, colldir))
+
+            # Set collection_path to ANSIBLE_COLLECTIONS_PATHS
+            os.environ['ANSIBLE_COLLECTIONS_PATHS'] = collection_path
 
     def create_test_schedule(self, testing_environment_constraints=None):
         # type: (Optional[List[TestingEnvironment]]) -> TestSchedule
@@ -106,6 +174,8 @@ class TestSchedulerSystemRoles(gluetool.Module):
             'create_test_schedule', testing_environment_constraints=testing_environment_constraints
         )  # type: TestSchedule
 
+        _logger = None
+        _ansible_path = None
         if self.option('ansible-playbook-filepath'):
             for entry in schedule:
 
@@ -114,7 +184,16 @@ class TestSchedulerSystemRoles(gluetool.Module):
 
                 assert isinstance(entry, TestScheduleEntry)
                 entry.ansible_playbook_filepath = normalize_path(self.option('ansible-playbook-filepath'))
+                _logger = entry.logger
+                _ansible_path = os.path.dirname(entry.ansible_playbook_filepath)
 
+        if not _ansible_path:
+            raise gluetool.GlueError("ansible-playbook-filepath is not specified.")
+        # Install collections from ansible-galaxy if specified in collection-requirements.yml
+        self._install_requirements(_ansible_path, _logger)
+
+        # If linux_system_roles collection is already installed from ansible-galaxy,
+        # the being-tested role is overwritten by this conversion.
         if self.option('collection'):
             self._convert_to_collection()
 

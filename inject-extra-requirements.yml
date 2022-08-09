@@ -37,7 +37,10 @@
         msg: "This playbook must be run using system Ansible (/usr/bin/ansible-playbook or similar)!"
       when: >-
         ansible_playbook_python is not defined or
-        not (ansible_playbook_python | regex_search("^/usr/bin/python.*$"))
+        not (
+          (ansible_playbook_python | regex_search("^/usr/bin/python.*$")) or
+          (ansible_playbook_python | regex_search("^/usr/libexec/platform-python.*$"))
+        )
 
     #
     # Check necessary system packages
@@ -101,11 +104,20 @@
         regexp: '^export PYCURL_SSL_LIBRARY=.*$'
         line: 'export PYCURL_SSL_LIBRARY={{ pycurl_ssl_library }}'
 
+    - name: "Check if pycurl is installed"
+      command: pip list --format=freeze | grep pycurl == 0
+      register: pycurl_installed
+
     - name: "Reinstall pycurl with correct backend"
       shell: |
+        # Plain pip freeze does not show versions, but cached files.
+        # We got hit by this after poetry 1.1.0 and later, which introduced caching.
+        # https://stackoverflow.com/questions/64194634/why-pip-freeze-returns-some-gibberish-instead-of-package-version
+        # https://github.com/pypa/pip/issues/8176
         pycurl=$(pip list --format=freeze | grep pycurl)
         pip uninstall -y pycurl
         PYCURL_SSL_LIBRARY={{ pycurl_ssl_library }} pip install --no-cache-dir $pycurl
+      when: pycurl_installed.rc == 0
 
     - name: "Force requests to use system CA bundle"
       lineinfile:

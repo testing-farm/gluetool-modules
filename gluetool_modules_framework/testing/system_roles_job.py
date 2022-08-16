@@ -262,6 +262,9 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
                     ansible_path
                 )
 
+                if ansible_version != '2.9':
+                    self.build_params['test_scheduler_system_roles_options'] += ' --collection'
+
                 self.build_params['pipeline_state_reporter_options'] += ' --pr-label={}'.format(pr_label)
 
                 self.shared('jenkins').invoke_job('ci-test-github-ts_sti-artemis-system-roles', self.build_params)

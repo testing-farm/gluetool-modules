@@ -267,4 +267,9 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
 
                 self.build_params['pipeline_state_reporter_options'] += ' --pr-label={}'.format(pr_label)
 
+                self.build_params['ansible_options'] += (
+                    ' --ansible-playbook-options=--extra-vars=ansible_playbook_filepath={}'.format(
+                        ansible_path
+                        ))
+
                 self.shared('jenkins').invoke_job('ci-test-github-ts_sti-artemis-system-roles', self.build_params)

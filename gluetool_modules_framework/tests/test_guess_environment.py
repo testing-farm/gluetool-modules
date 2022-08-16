@@ -3,6 +3,7 @@
 
 import pytest
 import os
+import six
 
 from mock import call, MagicMock
 
@@ -424,7 +425,11 @@ def test_recent_broken_regexp(monkeypatch, module):
     module._image['specification'] = '[foo'
     module._image['method'] = 'recent'
 
-    with pytest.raises(gluetool.GlueError, match=r"cannot compile hint pattern '\^\[foo\$': unexpected end of regular expression"):
+    with pytest.raises(
+        gluetool.GlueError,
+        match=r"cannot compile hint pattern '\^\[foo\$': "
+            r"unexpected end of regular expression" if six.PY2 else r"unterminated character set at position 1"
+    ):
         module._guess_recent(module._image)
 
 

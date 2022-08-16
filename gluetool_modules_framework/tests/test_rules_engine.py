@@ -5,6 +5,7 @@ import collections
 import logging
 import re
 import types
+import six
 
 import pytest
 
@@ -86,7 +87,7 @@ def test_compile_sanity(rule):
         1,
         gluetool_modules_framework.helpers.rules_engine.RulesTypeError,
         r'Cannot parse rules',
-        'expected a readable buffer object'
+        'expected a readable buffer object' if six.PY2 else 'compile() arg 1 must be a string, bytes or AST object'
     )
 ])
 def test_compile_error(rule, error_klass, error_message, error_detail):

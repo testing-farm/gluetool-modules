@@ -126,8 +126,10 @@ class RulesASTVisitor(ast.NodeTransformer):
     Custom AST visitor, making sure no disallowed nodes are present in the rules' AST.
     """
 
+    # In Python 3, values such as `None`, `False`, `True` are parsed by `ast` module as `NameConstant` objects.
+    # In Python 2, they are parsed as `Name` objects.
     _valid_classes = tuple([
-        getattr(_ast, node_class) for node_class in (
+        getattr(_ast, node_class) for node_class in [
             'Expression', 'Expr', 'Compare', 'Name', 'Load', 'BoolOp', 'UnaryOp',
             'Str', 'Num', 'List', 'Tuple', 'Dict',
             'Subscript', 'Index', 'ListComp', 'comprehension',
@@ -136,7 +138,7 @@ class RulesASTVisitor(ast.NodeTransformer):
             'And', 'Or', 'Not',
             'IfExp',
             'Attribute', 'Call'
-        )
+        ] + (['NameConstant'] if six.PY3 else [])
     ])
 
     def __init__(self, rules):
@@ -233,7 +235,7 @@ class Rules(object):
 
         except NameError as exc:
             raise RulesExecutionError(
-                'Unknown variable used in rule: {}'.format(exc.message),
+                'Unknown variable used in rule: {}'.format(exc),
                 self._rules,
                 our_locals,
                 our_globals,
@@ -242,7 +244,7 @@ class Rules(object):
 
         except Exception as exc:
             raise RulesExecutionError(
-                'Cannot execute the rule: `{}` => {}'.format(self._rules, exc.message),
+                'Cannot execute the rule: `{}` => {}'.format(self._rules, exc),
                 self._rules,
                 our_locals,
                 our_globals,

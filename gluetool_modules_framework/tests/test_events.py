@@ -214,7 +214,7 @@ def test_execute(module, monkeypatch):
 
     handler = dummy_event_handlers[0]
     assert handler.callback is not None
-    assert handler.callback.func_code.co_name == '_callback'
+    assert handler.callback.func_code.co_name if six.PY2 else handler.callback.__code__.co_name == '_callback'
     assert handler.args == tuple()
     assert handler.kwargs == {
         'commands': [

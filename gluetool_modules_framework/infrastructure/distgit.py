@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
+import six
 
 import gluetool
 
@@ -441,7 +442,7 @@ class DistGit(gluetool.Module):
         return render_template(value, **context)
 
     def dist_git_bugs(self):
-        # type: () -> Set[int]
+        # type: () -> Set[six.binary_type]
         """
         Finds and returns bugs referenced in commit logs between primary artifact and a baseline package version.
         See module help for more information about baseline package version.

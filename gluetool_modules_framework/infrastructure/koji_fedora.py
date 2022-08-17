@@ -879,8 +879,8 @@ class KojiTask(LoggerMixin, object):
         :rtype: bool
         """
 
-        has_task_artifacts = [bool(subtask_artifacts) for subtask_artifacts in self.task_artifacts.itervalues()]
-        has_build_artifacts = [bool(arch_artifacts) for arch_artifacts in self.build_artifacts.itervalues()]
+        has_task_artifacts = [bool(subtask_artifacts) for subtask_artifacts in six.itervalues(self.task_artifacts)]
+        has_build_artifacts = [bool(arch_artifacts) for arch_artifacts in six.itervalues(self.build_artifacts)]
 
         return bool(has_task_artifacts and all(has_task_artifacts)) \
             or bool(has_build_artifacts and all(has_build_artifacts))
@@ -1772,7 +1772,7 @@ class BrewTask(KojiTask):
         # are the task artifacts.
         repositories = [
             ImageRepository(image['arch'], max(image['repositories'], key=len), image['repositories'], image['manifest'])  # noqa
-            for image in images.itervalues()  # noqa
+            for image in six.itervalues(images)  # noqa
         ]
 
         log_dict(self.debug, 'image repositories', repositories)

@@ -544,7 +544,7 @@ class RulesEngine(gluetool.Module):
                e.keys()  # e.keys is now "foo", not callable...
             """
 
-            for k in d.iterkeys():
+            for k in six.iterkeys(d):
                 if k not in dir(d):
                     continue
 

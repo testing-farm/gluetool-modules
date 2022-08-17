@@ -324,7 +324,7 @@ class TestBatchPlanner(gluetool.Module):
                     set_flags.update(set_commands[0])
                     del set_commands[0]
 
-                for flag in set_flags.iterkeys():
+                for flag in six.iterkeys(set_flags):
                     if flag in TestBatchPlanner.KNOWN_FLAGS:
                         continue
 
@@ -513,7 +513,7 @@ class TestBatchPlanner(gluetool.Module):
                 raise GlueError('Top-level section {} must reduce to a single command set'.format(name))
 
             self.debug('reduced to:\n{}'.format(format_dict(commands)))
-            return commands.values()[0]
+            return list(commands.values())[0]
 
         global_all_commands = _reduce_global_section('all')
         self.debug('global "all" commands:\n{}'.format(format_dict(global_all_commands)))

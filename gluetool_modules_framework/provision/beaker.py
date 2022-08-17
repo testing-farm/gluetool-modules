@@ -699,7 +699,7 @@ class BeakerProvisioner(gluetool.Module):
         self.debug('all results: {}'.format(results))
 
         systems = []
-        for result in results.itervalues():
+        for result in six.itervalues(results):
             for recipe_set in result.find_all('recipeSet', response='ack'):
                 for recipe in recipe_set.find_all('recipe'):
                     if not recipe.get('system'):

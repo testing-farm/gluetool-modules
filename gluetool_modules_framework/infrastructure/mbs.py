@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import collections
-import urllib
 
 import re
 import six
@@ -134,10 +133,10 @@ class MBSApi(object):
         if params:
             # keep params sorted in the URL - makes testing possible
             sorted_params = collections.OrderedDict([
-                (name, params[name]) for name in sorted(params.iterkeys())
+                (name, params[name]) for name in sorted(six.iterkeys(params))
             ])
 
-            url = '{}?{}'.format(url, urllib.urlencode(sorted_params))
+            url = '{}?{}'.format(url, six.moves.urllib.parse.urlencode(sorted_params))
 
         self.module.debug('[MBS API]: {}'.format(url))
 

@@ -3,11 +3,18 @@
 
 import collections
 import logging
+import six
 
 import gluetool
 
 # Type annotations
-from typing import Any, List, Dict  # noqa
+from typing import Any, List, Dict, Union, TYPE_CHECKING  # noqa
+
+if six.PY2:
+    logging_name_to_level = logging_level_to_name = logging._levelNames
+else:
+    logging_name_to_level = logging._nameToLevel
+    logging_level_to_name = logging._levelToName
 
 
 #: A note.
@@ -45,7 +52,7 @@ class Notes(gluetool.Module):
         self._notes = []  # type: List[Note]
 
     def add_note(self, text, level=logging.INFO):
-        # type: (str, int) -> None
+        # type: (str, Union[int, str]) -> None
         """
         Add new note.
 
@@ -58,12 +65,16 @@ class Notes(gluetool.Module):
         if isinstance(level, str):
             level_name = level.upper()
 
-            if level_name not in logging._levelNames:
+            if level_name not in logging_name_to_level:
                 raise gluetool.GlueError("Cannot deduce note level from '{}'".format(level))
 
-            level = logging._levelNames[level_name]
+            level = logging_name_to_level[level_name]
 
-        note = Note(text=text, level=level, level_name=logging._levelNames.get(level, None))
+        note = Note(
+            text=text,
+            level=level,
+            level_name=logging_level_to_name.get(level, None)
+        )
 
         if note in self._notes:
             gluetool.log.log_dict(self.debug, 'already noted', note)

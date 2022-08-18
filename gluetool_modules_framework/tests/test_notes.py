@@ -4,6 +4,7 @@
 import pytest
 from mock import MagicMock
 import logging
+import six
 
 from gluetool import GlueError
 from gluetool_modules_framework.helpers.notes import Notes, Note
@@ -55,7 +56,7 @@ def test_int_level(module, level_int, level):
 
     note = Note(text='dummy-text',
                 level=level if level else level_int,
-                level_name=logging._levelNames.get(level, None))
+                level_name=logging._levelNames.get(level, None) if six.PY2 else logging._levelToName.get(level, None))
 
     assert module._notes == [note]
     assert 'NOTES' in module.eval_context and module.eval_context['NOTES'] == [note]

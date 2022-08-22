@@ -72,7 +72,7 @@ class PostgreSQL(gluetool.Module):
                                                     dbname=self.option('dbname'))
 
             except Exception as exc:
-                raise gluetool.GlueError("Could not connect to PostgreSQL server '{}': {}".format(host, exc.message))
+                raise gluetool.GlueError("Could not connect to PostgreSQL server '{}': {}".format(host, exc))
 
         return self._connection
 

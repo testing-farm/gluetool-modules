@@ -292,7 +292,7 @@ class MBSTask(LoggerMixin, object):
         if not platform_stream:
             raise gluetool.GlueError('Could not detect platform stream in modulemd document')
 
-        return cast(str, platform_stream.encode('ascii'))
+        return cast(str, platform_stream.encode('ascii') if six.PY2 else platform_stream)
 
     @cached_property
     def _modulemd(self):
@@ -355,7 +355,7 @@ class MBSTask(LoggerMixin, object):
         #
         # ``set`` to filter out duplicities, ``list`` to convert the set back to a list of uniq arches,
         # and ``sorted`` to make it easier to grab & read & test.
-        arches = sorted(list(set([arch.encode('ascii') for arch in all_arches])))
+        arches = sorted(list(set([arch.encode('ascii') if six.PY2 else arch for arch in all_arches])))
 
         log_dict(self.debug, 'unique module arches', arches)
 
@@ -392,7 +392,8 @@ class MBSTask(LoggerMixin, object):
         :returns: Dist-git ref of the build source.
         """
         try:
-            return self._build_info['scmurl'].split('#')[1].encode('ascii')
+            distgit_ref = self._build_info['scmurl'].split('#')[1]
+            return distgit_ref.encode('ascii') if six.PY2 else distgit_ref
         except (AttributeError, IndexError):
             self.debug('Distgit ref not found in scmurl: {}'.format(self._build_info['scmurl']))
         return None

@@ -96,9 +96,14 @@ class TestSchedulerSystemRoles(gluetool.Module):
                     dlist = os.listdir(lsr_coll_tmp)
 
                     exclude_files = ["ansible_collections/{}/{}/.collection".format(coll_namespace, coll_name)]
+
                     def exclude_function(tarinfo):
+                        # type: (Any) -> Optional[Any]
                         filename = tarinfo.name
-                        return None if filename in exclude_files or os.path.splitext(filename)[1] in exclude_files else tarinfo
+                        if filename in exclude_files or os.path.splitext(filename)[1] in exclude_files:
+                            return None
+                        else:
+                            return tarinfo
 
                     for _item in dlist:
                         _tar.add(_item, filter=exclude_function)
@@ -117,6 +122,7 @@ class TestSchedulerSystemRoles(gluetool.Module):
             raise gluetool.GlueError('Converting of role to collection failed with {}'.format(exc))
 
     def _install_requirements(self, ansible_path, logger):
+        # type: (str, gluetool.log.ContextAdapter) -> None
         """
         If collection-requirements.yml contains the collections, install reqs
         from meta/collection-requirements.yml at repo_path/.collection.
@@ -141,7 +147,7 @@ class TestSchedulerSystemRoles(gluetool.Module):
             try:
                 Command(cmd, logger=logger).run()
             except gluetool.GlueCommandError as exc:
-                raise gluetool.GlueError("ansible-galaxy failed with {}".format(exc.returncode))
+                raise gluetool.GlueError("ansible-galaxy failed with {}".format(exc))
 
             # Check if the collection(s) are installed or not.
             import yaml

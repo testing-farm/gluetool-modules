@@ -7,13 +7,13 @@ import tempfile
 import tarfile
 
 import gluetool
-from gluetool.utils import normalize_path, Command
+from gluetool.utils import normalize_path, load_yaml
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from gluetool_modules_framework.libs.test_schedule import TestSchedule
 from gluetool_modules_framework.testing.test_schedule_runner_sti import TestScheduleEntry
 
 # Type annotations
-from typing import Optional, List, cast  # noqa
+from typing import Optional, List, Any, cast  # noqa
 
 
 class TestSchedulerSystemRoles(gluetool.Module):
@@ -121,19 +121,26 @@ class TestSchedulerSystemRoles(gluetool.Module):
                 shutil.rmtree(lsr_coll_tmp)
             raise gluetool.GlueError('Converting of role to collection failed with {}'.format(exc))
 
-    def _install_requirements(self, ansible_path, logger):
-        # type: (str, gluetool.log.ContextAdapter) -> None
+    def _install_requirements(self):
+        # type: () -> None
         """
         If collection-requirements.yml contains the collections, install reqs
         from meta/collection-requirements.yml at repo_path/.collection.
         """
+        self.info('Trying to install requirements.')
+
         repo_path = self.shared('dist_git_repository').path
+        ansible_path = os.path.dirname(self.option('ansible-playbook-filepath'))
+
         collection_path = os.path.join(repo_path, '.collection')
         if not os.path.isdir(collection_path):
             os.mkdir(collection_path)
-        reqfile = os.path.join(repo_path, "meta", "collection-requirements.yml")
+
+        requirements_filepath = os.path.join(repo_path, "meta", "collection-requirements.yml")
+
         # see if reqfile is in legacy role format
-        if os.path.isfile(reqfile):
+        if os.path.isfile(requirements_filepath):
+            self.info('The {} requirements file was found'.format(requirements_filepath))
             cmd = [
                 "{}/ansible-galaxy".format(ansible_path),
                 "collection",
@@ -142,29 +149,31 @@ class TestSchedulerSystemRoles(gluetool.Module):
                 collection_path,
                 "-vv",
                 "-r",
-                reqfile
+                requirements_filepath
             ]
             try:
-                Command(cmd, logger=logger).run()
+                gluetool.utils.Command(cmd).run()
+                self.info('Requirements were successfully installed')
             except gluetool.GlueCommandError as exc:
-                raise gluetool.GlueError("ansible-galaxy failed with {}".format(exc))
+                raise gluetool.GlueError("ansible-galaxy failed with: {}".format(exc))
 
             # Check if the collection(s) are installed or not.
-            import yaml
-            with open(reqfile) as rqff:
-                obj = yaml.safe_load(rqff)
-                for coll in obj['collections']:
-                    if isinstance(coll, dict):
-                        name_coll = coll['name']
-                    else:
-                        name_coll = coll
-                    colldir = os.path.join(
-                        collection_path,
-                        "ansible_collections",
-                        name_coll.replace('.', '/')
-                    )
-                    if not os.path.isdir(colldir):
-                        raise gluetool.GlueError("{} is not installed at {}".format(name_coll, colldir))
+            requirements_yaml = load_yaml(requirements_filepath)
+
+            for collection in requirements_yaml['collections']:
+                if isinstance(collection, dict):
+                    collection_name = collection['name']
+                else:
+                    collection_name = collection
+
+                collection_dir = os.path.join(
+                    collection_path,
+                    "ansible_collections",
+                    collection_name.replace('.', '/')
+                )
+
+                if not os.path.isdir(collection_dir):
+                    raise gluetool.GlueError("{} is not installed at {}".format(collection_name, collection_dir))
 
             # Set collection_path to ANSIBLE_COLLECTIONS_PATHS
             os.environ['ANSIBLE_COLLECTIONS_PATHS'] = collection_path
@@ -180,8 +189,6 @@ class TestSchedulerSystemRoles(gluetool.Module):
             'create_test_schedule', testing_environment_constraints=testing_environment_constraints
         )  # type: TestSchedule
 
-        _logger = None
-        _ansible_path = None
         if self.option('ansible-playbook-filepath'):
             for entry in schedule:
 
@@ -190,13 +197,9 @@ class TestSchedulerSystemRoles(gluetool.Module):
 
                 assert isinstance(entry, TestScheduleEntry)
                 entry.ansible_playbook_filepath = normalize_path(self.option('ansible-playbook-filepath'))
-                _logger = entry.logger
-                _ansible_path = os.path.dirname(entry.ansible_playbook_filepath)
 
-        if not _ansible_path:
-            raise gluetool.GlueError("ansible-playbook-filepath is not specified.")
-        # Install collections from ansible-galaxy if specified in collection-requirements.yml
-        self._install_requirements(_ansible_path, _logger)
+            # Install collections from ansible-galaxy if specified in collection-requirements.yml
+            self._install_requirements()
 
         # If linux_system_roles collection is already installed from ansible-galaxy,
         # the being-tested role is overwritten by this conversion.

@@ -3,6 +3,7 @@
 
 import json
 import sys
+import six
 
 import gluetool
 import gluetool_modules_framework.libs.results
@@ -107,7 +108,7 @@ class TestingResults(gluetool.Module):
 
     writers = {
         'json': lambda stream, results: stream.write(gluetool.log.format_dict([result for result in results])),
-        'xunit': lambda stream, results: stream.write(results.prettify(encoding='utf-8'))
+        'xunit': lambda stream, results: stream.write(results.prettify(encoding='utf-8' if six.PY2 else None))
     }
 
     def serialize_results(self, output_format, results=None):

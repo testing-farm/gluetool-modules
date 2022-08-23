@@ -4,6 +4,7 @@
 import hashlib
 import json
 import time
+import six
 
 import bs4
 import gluetool
@@ -112,7 +113,7 @@ class TestingThread(gluetool.Module):
         self.debug("creating a thread ID from string: '{}'".format(s))
 
         sha = hashlib.sha1()
-        sha.update(s)
+        sha.update(s if six.PY2 else s.encode('utf-8'))
 
         return sha.hexdigest()[0:self.option('id-length')]
 

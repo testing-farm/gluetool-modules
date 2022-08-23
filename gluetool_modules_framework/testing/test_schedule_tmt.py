@@ -7,6 +7,7 @@ import tempfile
 
 import enum
 import six
+import re
 
 import gluetool
 from gluetool import GlueError, GlueCommandError, Module
@@ -368,7 +369,7 @@ class TestScheduleTMT(Module):
 
     def excludes_from_tmt(self, repodir, plan):
         # type: (str, str) -> List[str]
-        command = [self.option('command'), 'plan', 'show', '-v', '^{}$'.format(plan)]
+        command = [self.option('command'), 'plan', 'show', '-v', '^{}$'.format(re.escape(plan))]
 
         # TODO: tmt is python3 only, parse the excludes from output until our modules run in python3
         try:
@@ -421,7 +422,7 @@ class TestScheduleTMT(Module):
 
     def hardware_from_tmt(self, repodir, plan):
         # type: (str, str) -> Dict[str, Any]
-        command = [self.option('command'), 'plan', 'export', '^{}$'.format(plan)]
+        command = [self.option('command'), 'plan', 'export', '^{}$'.format(re.escape(plan))]
 
         # TODO: tmt is python3 only, parse the excludes from output until our modules run in python3
         try:
@@ -628,7 +629,7 @@ class TestScheduleTMT(Module):
 
                 # `plan` step
                 'plan',
-                '--name', r'^{}$'.format(schedule_entry.plan)
+                '--name', r'^{}$'.format(re.escape(schedule_entry.plan))
             ]
             command += local_command
             reproducer += local_command
@@ -643,7 +644,7 @@ class TestScheduleTMT(Module):
 
                 # `plan` step
                 'plan',
-                '--name', r'^{}$'.format(schedule_entry.plan)
+                '--name', r'^{}$'.format(re.escape(schedule_entry.plan))
             ])
 
             command.extend([
@@ -655,7 +656,7 @@ class TestScheduleTMT(Module):
 
                 # `plan` step
                 'plan',
-                '--name', schedule_entry.plan
+                '--name', r'^{}$'.format(re.escape(schedule_entry.plan))
             ])
 
         # add tmt reproducer suitable for local execution

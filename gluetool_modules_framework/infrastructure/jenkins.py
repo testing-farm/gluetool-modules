@@ -401,7 +401,7 @@ class CIJenkins(gluetool.Module):
             os.makedirs(config_dir)
 
         # save the configuration
-        with open(config_file, 'wb') as f:
+        with open(config_file, 'w') as f:
             config.write(f)
 
         self.info("created jjb configuration in '{}'".format(config_file))

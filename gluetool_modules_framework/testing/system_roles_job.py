@@ -76,14 +76,8 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
                 'help': 'Additional options for test-schedule-runner-sti module.',
                 'default': ''
             },
-
-            'composes-to-test-on': {
-                'help': 'List of composes which will be tested on',
-                'action': 'append',
-                'default': []
-            },
-            'system-roles-ansibles': {
-                'help': 'List of ansible playbook filepaths and versions values',
+            'composes-ansibles-matrix': {
+                'help': 'List of composes/ansibles variants which will be tested.',
                 'action': 'append',
                 'default': []
             },
@@ -99,15 +93,17 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
         }
     )
 
-    def system_roles_ansibles(self):
-        # type: () -> Dict[str, str]
-        mapping = {}
-
-        for pair in self.option('system-roles-ansibles').split(',\n'):
-            splitted_pair = pair.split(':')
-            mapping[splitted_pair[0]] = splitted_pair[1]
-
-        return mapping
+    def composes_ansibles_matrix(self):
+        # type: () -> List[Dict[str, Any]]
+        matrix = []
+        for line in self.option('composes-ansibles-matrix').split(',\n'):
+            splitted_line = line.split(':')
+            matrix.append({
+                'compose': render_template(splitted_line[0], **self.shared('eval_context')),
+                'ansible-version': splitted_line[1],
+                'ansible-path': splitted_line[2]
+            })
+        return matrix
 
     def compose_sub_to_artemis_options(self):
         # type: () -> Dict[str, str]
@@ -218,58 +214,57 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
 
         primary_task = self.shared('primary_task')
 
-        composes_to_test_on = []
-        for compose_template in self.option('composes-to-test-on').split(','):
-            composes_to_test_on.append((render_template(compose_template, **self.shared('eval_context'))))
+        for compose_ansible_dict in self.composes_ansibles_matrix():
 
-        for compose in composes_to_test_on:
-            for ansible_version, ansible_path in self.system_roles_ansibles().items():
+            compose = compose_ansible_dict['compose']
+            ansible_version = compose_ansible_dict['ansible-version']
+            ansible_path = compose_ansible_dict['ansible-path']
 
-                pr_label = '{}/ansible-{}/(citool)'.format(
-                    compose, ansible_version
+            pr_label = '{}/ansible-{}/(citool)'.format(
+                compose, ansible_version
+            )
+
+            if not self.is_compose_supported(compose):
+                self.shared(
+                    'set_pr_status',
+                    'success',
+                    'The role does not support this platform. Skipping.',
+                    context=pr_label
                 )
+                continue
 
-                if not self.is_compose_supported(compose):
-                    self.shared(
-                        'set_pr_status',
-                        'success',
-                        'The role does not support this platform. Skipping.',
-                        context=pr_label
-                    )
-                    continue
+            if primary_task.comment and primary_task.commit_statuses.get(pr_label):
+                # if comment is [citest bad] comment, trigger only failure or error tests
+                if '[citest bad]' in primary_task.comment.lower():
+                    if primary_task.commit_statuses[pr_label]['state'] not in ['error', 'failure']:
+                        self.info('skipping {}, not error nor failure'.format(pr_label))
+                        continue
+                # if comment is [citest pending] comment, trigger only pending tests
+                if '[citest pending]' in primary_task.comment.lower():
+                    if primary_task.commit_statuses[pr_label]['state'] != 'pending':
+                        self.info('skipping {}, not pending'.format(pr_label))
+                        continue
 
-                if primary_task.comment and primary_task.commit_statuses.get(pr_label):
-                    # if comment is [citest bad] comment, trigger only failure or error tests
-                    if '[citest bad]' in primary_task.comment.lower():
-                        if primary_task.commit_statuses[pr_label]['state'] not in ['error', 'failure']:
-                            self.info('skipping {}, not error nor failure'.format(pr_label))
-                            continue
-                    # if comment is [citest pending] comment, trigger only pending tests
-                    if '[citest pending]' in primary_task.comment.lower():
-                        if primary_task.commit_statuses[pr_label]['state'] != 'pending':
-                            self.info('skipping {}, not pending'.format(pr_label))
-                            continue
+            self.build_params = common_build_params.copy()
 
-                self.build_params = common_build_params.copy()
+            for substring, option in self.compose_sub_to_artemis_options().items():
+                if substring in compose.lower():
+                    self.build_params['artemis_options'] += option
 
-                for substring, option in self.compose_sub_to_artemis_options().items():
-                    if substring in compose.lower():
-                        self.build_params['artemis_options'] += option
+            self.build_params['guess_environment_options'] += ' --compose-method=force --compose={}'.format(compose)
 
-                self.build_params['guess_environment_options'] += ' --compose-method=force --compose={}'.format(compose)
+            self.build_params['test_scheduler_system_roles_options'] += ' --ansible-playbook-filepath={}'.format(
+                ansible_path
+            )
 
-                self.build_params['test_scheduler_system_roles_options'] += ' --ansible-playbook-filepath={}'.format(
+            if ansible_version != '2.9':
+                self.build_params['test_scheduler_system_roles_options'] += ' --collection'
+
+            self.build_params['pipeline_state_reporter_options'] += ' --pr-label={}'.format(pr_label)
+
+            self.build_params['ansible_options'] += (
+                ' --ansible-playbook-options=--extra-vars=ansible_playbook_filepath={}'.format(
                     ansible_path
-                )
+                    ))
 
-                if ansible_version != '2.9':
-                    self.build_params['test_scheduler_system_roles_options'] += ' --collection'
-
-                self.build_params['pipeline_state_reporter_options'] += ' --pr-label={}'.format(pr_label)
-
-                self.build_params['ansible_options'] += (
-                    ' --ansible-playbook-options=--extra-vars=ansible_playbook_filepath={}'.format(
-                        ansible_path
-                        ))
-
-                self.shared('jenkins').invoke_job('ci-test-github-ts_sti-artemis-system-roles', self.build_params)
+            self.shared('jenkins').invoke_job('ci-test-github-ts_sti-artemis-system-roles', self.build_params)

@@ -89,7 +89,7 @@ class TeDuDe(gluetool.Module):
 
         # get bug IDs from the changelog
         # need to convert bug_id from string to int since bugzilla xmlrpc has bug_id in dictionary as int
-        bug_ids = map(int, self.shared('dist_git_bugs'))
+        bug_ids = list(map(int, self.shared('dist_git_bugs')))
 
         # read bug attributes from bugzilla
         if bug_ids:

@@ -19,11 +19,10 @@ WORKDIR /var/ARTIFACTS
 ENV PYCURL_SSL_BACKEND=openssl
 
 # install all required dependencies
-# WORKAROUND: use latest tmt from a copr to have TMT_TREE available
 RUN    ln -s /CONFIG /etc/citool.d \
     && rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
-    && dnf -y update \
-    && dnf -y install autoconf automake crun gcc git krb5-devel libcurl-devel \
+    && dnf -y install centos-release-ansible-29 \
+    && dnf -y install ansible-2.9.27 autoconf automake crun gcc git krb5-devel libcurl-devel \
                       libpq-devel libtool libxml2-devel make openssl-devel popt-devel \
                       postgresql-devel python3-libselinux python2-devel \
                       redhat-rpm-config standard-test-roles koji python3-virtualenv \

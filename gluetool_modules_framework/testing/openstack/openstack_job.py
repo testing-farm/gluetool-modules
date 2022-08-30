@@ -100,6 +100,10 @@ class OpenStackJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkinsJ
             'action': 'store',
             'default': DEFAULT_WOW_OPTIONS_SEPARATOR
         },
+        'use-general-test-plan': {
+            'help': 'Ask wow to retrieve plan id from component general test plan.',
+            'action': 'store_true'
+        },
 
         # following options are passed to brew-build-task-params module
         'install-rpms-blacklist': {
@@ -161,5 +165,6 @@ class OpenStackJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkinsJ
             'test_schedule_runner_restraint_options': self.option('test-schedule-runner-restraint-options'),
             'pipeline_install_ancestors_options': self.option('pipeline-install-ancestors-options'),
             'github_options': self.option('github-options'),
-            'compose_url_options': self.option('compose-url-options')
+            'compose_url_options': self.option('compose-url-options'),
+            'wow_module_options': '--use-general-test-plan' if self.option('use-general-test-plan') else ''
         })

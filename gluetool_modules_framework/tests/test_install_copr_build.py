@@ -32,10 +32,11 @@ def assert_log_files(guest, log_dirpath, file_names=None):
         file_names = [
             '0-Download-copr-repository.txt',
             '1-Reinstall-packages.txt',
-            '2-Downgrade-packages.txt',
-            '3-Update-packages.txt',
-            '4-Install-packages.txt',
-            '5-Verify-packages-installed.txt'
+            '2-Download-packages.txt',
+            '3-Downgrade-packages.txt',
+            '4-Update-packages.txt',
+            '5-Install-packages.txt',
+            '6-Verify-packages-installed.txt'
         ]
 
     installation_log_dir = os.path.join(
@@ -92,6 +93,8 @@ def test_setup_guest(module_shared_patched, tmpdir):
     calls = [
         call('command -v dnf'),
         call('curl dummy_repo_url --output /etc/yum.repos.d/copr_build-copr_project-1.repo'),
+        call('curl -LO dummy_rpm_url1'),
+        call('curl -LO dummy_rpm_url2'),
         call('dnf --allowerasing -y reinstall dummy_rpm_url1'),
         call('dnf --allowerasing -y reinstall dummy_rpm_url2'),
         call('dnf --allowerasing -y downgrade dummy_rpm_url1 dummy_rpm_url2'),
@@ -102,6 +105,7 @@ def test_setup_guest(module_shared_patched, tmpdir):
     ]
 
     execute_mock.assert_has_calls(calls, any_order=True)
+    assert execute_mock.call_count == 11
     assert_log_files(guest, str(tmpdir))
 
 
@@ -122,6 +126,8 @@ def test_no_dnf(module_shared_patched, tmpdir):
     calls = [
         call('command -v dnf'),
         call('curl dummy_repo_url --output /etc/yum.repos.d/copr_build-copr_project-1.repo'),
+        call('curl -LO dummy_rpm_url1'),
+        call('curl -LO dummy_rpm_url2'),
         call('yum -y reinstall dummy_rpm_url1'),
         call('yum -y reinstall dummy_rpm_url2'),
         call('yum -y downgrade dummy_rpm_url1 dummy_rpm_url2'),
@@ -132,6 +138,7 @@ def test_no_dnf(module_shared_patched, tmpdir):
     ]
 
     execute_mock.assert_has_calls(calls, any_order=True)
+    assert execute_mock.call_count == 11
     assert_log_files(guest, str(tmpdir))
 
 

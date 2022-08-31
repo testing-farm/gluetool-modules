@@ -13,7 +13,7 @@ from gluetool_modules_framework.libs.test_schedule import TestSchedule
 from gluetool_modules_framework.testing.test_schedule_runner_sti import TestScheduleEntry
 
 # Type annotations
-from typing import Optional, List, Any, cast  # noqa
+from typing import Optional, List, Any, Tuple, Set, cast  # noqa
 
 
 class TestSchedulerSystemRoles(gluetool.Module):
@@ -35,20 +35,44 @@ class TestSchedulerSystemRoles(gluetool.Module):
             'help': 'Run test using converted collection',
             'action': 'store_true'
         },
-        'collection_namespace': {
+        'collection-namespace': {
             'help': 'Namespace to use for converted collection (default: %(default)s)',
             'type': str,
             'default': 'fedora'
         },
-        'collection_name': {
+        'collection-name': {
             'help': 'Name to use for converted collection (default: %(default)s)',
             'type': str,
             'default': 'linux_system_roles'
         },
-        'collection_script_url':  {
+        'collection-script-url':  {
             'help': 'Location of conversion script (default: %(default)s)',
             'type': str,
             'default': 'https://raw.githubusercontent.com/linux-system-roles/auto-maintenance/master'
+        },
+        'vault-pwd-file': {
+            'help': """
+                    Name of vault password file (if not absolute path, relative to tests directory)
+                    (default: %(default)s)
+                    """,
+            'type': str,
+            'default': 'vault_pwd'
+        },
+        'vault-variables-file': {
+            'help': """
+                    Name of vault variables file (if not absolute path, relative to tests directory)
+                    (default: %(default)s)
+                    """,
+            'type': str,
+            'default': 'vars/vault-variables.yml'
+        },
+        'vault-no-variables-file': {
+            'help': """
+                    Name of file listing tests not to use vault (if not absolute path, relative to tests directory)
+                    (default: %(default)s)
+                    """,
+            'type': str,
+            'default': 'no-vault-variables.txt'
         }
     }
 
@@ -61,10 +85,10 @@ class TestSchedulerSystemRoles(gluetool.Module):
         """
         repo_path = self.shared('dist_git_repository').path
         role = self.shared('primary_task').component
-        base_url = self.option('collection_script_url')
+        base_url = self.option('collection-script-url')
         lsr_coll_tmp = None
-        coll_namespace = self.option('collection_namespace')
-        coll_name = self.option('collection_name')
+        coll_namespace = self.option('collection-namespace')
+        coll_name = self.option('collection-name')
         lsr_role2coll_path = os.path.join(repo_path, 'lsr_role2collection.py')
         lsr_runtime_path = os.path.join(repo_path, 'runtime.yml')
         with gluetool.utils.requests() as request:
@@ -178,6 +202,53 @@ class TestSchedulerSystemRoles(gluetool.Module):
             # Set collection_path to ANSIBLE_COLLECTIONS_PATHS
             os.environ['ANSIBLE_COLLECTIONS_PATHS'] = collection_path
 
+    # Returns a Set of the basenames of test playbooks that we do not want
+    # to provide vault variables for
+    def get_no_vault_tests(self, repo_path):
+        # type: (str) -> Set[str]
+        no_vault_file = self.option('vault-no-variables-file')
+        if not os.path.isabs(no_vault_file):
+            no_vault_file = os.path.join(repo_path, 'tests', no_vault_file)
+        if os.path.exists(no_vault_file):
+            no_vault_tests = set([playbook.strip() for playbook in open(no_vault_file).readlines()])
+        else:
+            no_vault_tests = set()
+        return no_vault_tests
+
+    def _setup_for_vault(self):
+        # type: () -> Tuple[bool, Set[str], str]
+        repo_path = self.shared('dist_git_repository').path
+        vault_pwd_file = self.option('vault-pwd-file')
+        if not os.path.isabs(vault_pwd_file):
+            vault_pwd_file = os.path.join(repo_path, 'tests', vault_pwd_file)
+        vault_variables_file = self.option('vault-variables-file')
+        if not os.path.isabs(vault_variables_file):
+            vault_variables_file = os.path.join(repo_path, 'tests', vault_variables_file)
+        if os.path.exists(vault_pwd_file) and os.path.exists(vault_variables_file):
+            os.environ['ANSIBLE_VAULT_PASSWORD_FILE'] = vault_pwd_file
+            uses_vault = True
+            no_vault_tests = self.get_no_vault_tests(repo_path)
+        else:
+            uses_vault = False
+            no_vault_tests = set()  # empty
+        return (uses_vault, no_vault_tests, vault_variables_file)
+
+    def _fix_playbook_for_vault(self, playbook_filepath, vault_variables_file):
+        # type: (str, str) -> None
+        with open(playbook_filepath) as pbf:
+            playbook = pbf.read()
+            playbook = playbook.replace('---\n', '')
+        with open(playbook_filepath, 'w') as pbf:
+            pbf.write('''- hosts: all
+  gather_facts: false
+  tasks:
+    - name: Include vault variables
+      include_vars:
+        file: {}
+
+{}
+'''.format(vault_variables_file, playbook))
+
     def create_test_schedule(self, testing_environment_constraints=None):
         # type: (Optional[List[TestingEnvironment]]) -> TestSchedule
         """
@@ -189,17 +260,24 @@ class TestSchedulerSystemRoles(gluetool.Module):
             'create_test_schedule', testing_environment_constraints=testing_environment_constraints
         )  # type: TestSchedule
 
-        if self.option('ansible-playbook-filepath'):
+        uses_vault, no_vault_tests, vault_variables_file = self._setup_for_vault()
+        if self.option('ansible-playbook-filepath') or uses_vault:
             for entry in schedule:
 
                 if entry.runner_capability != 'sti':
                     continue
 
                 assert isinstance(entry, TestScheduleEntry)
-                entry.ansible_playbook_filepath = normalize_path(self.option('ansible-playbook-filepath'))
+                if self.option('ansible-playbook-filepath'):
+                    entry.ansible_playbook_filepath = normalize_path(self.option('ansible-playbook-filepath'))
+                if uses_vault:
+                    test_pb_file = os.path.basename(entry.playbook_filepath)
+                    if test_pb_file not in no_vault_tests:
+                        self._fix_playbook_for_vault(entry.playbook_filepath, vault_variables_file)
 
             # Install collections from ansible-galaxy if specified in collection-requirements.yml
-            self._install_requirements()
+            if self.option('ansible-playbook-filepath'):
+                self._install_requirements()
 
         # If linux_system_roles collection is already installed from ansible-galaxy,
         # the being-tested role is overwritten by this conversion.

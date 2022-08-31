@@ -1,4 +1,8 @@
 ---
+environment:
+    # poetry installer cannot update to 1.20+, ignore that fact, we are locked to 1.13
+    GET_POETRY_IGNORE_DEPRECATION: 1
+
 provision:
     how: container
 
@@ -6,7 +10,7 @@ execute:
     how: tmt
     script:
       - curl -sSLO https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py
-      - python3 get-poetry.py --version 1.1.4
+      - python3 get-poetry.py --version 1.1.13
       # NOTE:
       #   We have seen issues with Poetry and default parallel installation.
       #

@@ -26,7 +26,10 @@ class MockClientSession(object):
     """
 
     def __init__(self, source_file):
-        data = gluetool.utils.load_yaml(source_file)
+        # do not use gluetool.utils.load_yaml here, as log_dict is not happy about integer keys
+        # we use in the test data, because this is something synthetic, rather workaround it here
+        with open(source_file, 'r') as file:
+            data = gluetool.utils.YAML().load(file)
 
         assert data, 'Empty mock data provided in {}'.format(source_file)
 

@@ -38,7 +38,8 @@ def create_openstack_build_params(mod, **kwargs):
         'dist_git_options': 'some dist-git options',
         'pipeline_install_ancestors_options': 'some pipeline-install-ancestors options',
         'github_options': 'some github options',
-        'compose_url_options': 'some compose-url options'
+        'compose_url_options': 'some compose-url options',
+        'wow_module_options': ''
     }
 
     params.update(kwargs)
@@ -80,5 +81,18 @@ def test_build_params(module_with_primary_task, rpm_blacklist):
     })
 
     expected_params = create_openstack_build_params(mod)
+
+    assert mod.build_params == expected_params
+
+
+def test_build_params_use_general_test_plan(module_with_primary_task):
+    mod = module_with_primary_task
+
+    mod._config.update({
+        'wow-options-separator': gluetool_modules_framework.testing.openstack.openstack_job.DEFAULT_WOW_OPTIONS_SEPARATOR,
+        'use-general-test-plan': True,
+    })
+
+    expected_params = create_openstack_build_params(mod, wow_module_options='--use-general-test-plan')
 
     assert mod.build_params == expected_params

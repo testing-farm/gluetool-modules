@@ -88,7 +88,7 @@ class JobEngine(object):
 
         self._jobs = []  # type: List[Job]
         self._executor = None  # type: Optional[concurrent.futures.ThreadPoolExecutor]
-        self._futures = {}  # type: Dict[Any, Any]
+        self._futures = {}  # type: Dict[concurrent.futures.Future[Any], Job]
         self.errors = []  # type: List[JobErrorType]
 
         self.max_workers = max_workers
@@ -105,7 +105,7 @@ class JobEngine(object):
         table = [
             ['Future', 'Job']
         ] + [
-            [future, job.name] for future, job in six.iteritems(self._futures)
+            [str(future), job.name] for future, job in six.iteritems(self._futures)
         ]
 
         gluetool.log.log_table(self.logger.debug, label, table, headers='firstrow', tablefmt='psql')
@@ -195,11 +195,12 @@ class JobEngine(object):
             else:
                 job.logger.debug("job '{}' crashed".format(job.name))
 
-                exc_info = future.exception_info()
+                exception, traceback = (future.exception_info() if six.PY2 else
+                                        (future.exception(), future.exception().__traceback__))
 
                 # Exception info returned by future does not contain exception class while the info returned
                 # by sys.exc_info() does and all users of it expect the first item to be exception class.
-                full_exc_info = (exc_info[0].__class__, exc_info[0], exc_info[1])
+                full_exc_info = (exception.__class__, exception, traceback)
 
                 self.errors.append((job, full_exc_info))
 

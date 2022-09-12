@@ -29,7 +29,7 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       rsync python3 beakerlib-libraries \
                       tmt-provision-container tmt-provision-virtual \
     && dnf -y update --enablerepo=epel-testing tmt-provision-container tmt-provision-virtual \
-    && curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3 - \
+    && curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3 - --version 1.1.13 \
     && dnf clean all \
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \

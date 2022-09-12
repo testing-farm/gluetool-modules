@@ -29,10 +29,12 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       postgresql-devel python3-libselinux python2-devel \
                       redhat-rpm-config standard-test-roles koji python3-virtualenv \
                       rsync python3 beakerlib-libraries \
-                      tmt-provision-container tmt-provision-virtual \
+                      tmt-provision-container tmt-provision-virtual tmt-report-polarion \
     # install tmt from updates-testing, an agreement with tmt folks to be able to test tmt releases sooner.
     && dnf -y update --enablerepo=epel-testing tmt-provision-container tmt-provision-virtual \
     && dnf clean all \
+    # TFT-1503 - install pylero from PyPI
+    && pip3 install -t /usr/lib/python3.6/site-packages pylero \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \

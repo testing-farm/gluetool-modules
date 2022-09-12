@@ -27,13 +27,14 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       postgresql-devel python3-libselinux python2-devel \
                       redhat-rpm-config standard-test-roles koji python3-virtualenv \
                       rsync python3 beakerlib-libraries \
-                      tmt-provision-container tmt-provision-virtual \
+                      tmt-provision-container tmt-provision-virtual tmt-report-polarion \
     && dnf -y update --enablerepo=epel-testing tmt-provision-container tmt-provision-virtual \
     && curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python3 - --version 1.1.13 \
     && dnf clean all \
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \
-    && bash -c "echo '  UserKnownHostsFile /dev/null' >> /etc/ssh/ssh_config"
+    && bash -c "echo '  UserKnownHostsFile /dev/null' >> /etc/ssh/ssh_config" \
+    && pip3 install -t /usr/lib/python3.6/site-packages pylero  # TFT-1503 - pylero needs to be installed from PyPI until packaged
 
 # copy the built package
 COPY . /opt/gluetool-modules

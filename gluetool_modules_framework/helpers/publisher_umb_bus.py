@@ -4,6 +4,7 @@
 import copy
 import itertools
 import time
+from uuid import uuid4
 
 import gluetool
 from gluetool.log import ContextAdapter, LoggerMixin
@@ -179,9 +180,11 @@ class TestHandler(LoggerMixin, proton.handlers.MessagingHandler):  # type: ignor
             gluetool.log.log_dict(self.debug, '  header', message.headers)
             gluetool.log.log_dict(self.debug, '  body', message.body)
 
+            correlation_id = uuid4()
             pending_message = proton.Message(address=self.topic, body=gluetool.log.format_dict(message.body),
-                                             content_type='text/json')
+                                             content_type='text/json', correlation_id=correlation_id)
             self.debug('  pending message: {}'.format(pending_message))
+            self.debug('  message correlation id: {}'.format(correlation_id))
 
             if not self._module.dryrun_allows('Sending messages to the message bus'):
                 self.messages.remove(message)

@@ -133,10 +133,7 @@ jaeger-client = "4.0.0"
 jenkinsapi = "0.3.8"
 jenkins-job-builder = "1.6.2"
 jinja2 = "2.10"
-jq = [
-    {version = "1.2.2", python = "~3.7"},
-    {version = "0.1.6", python = "~2.7"}
-]
+jq = "0.1.6"
 koji = "^1.22"
 mako = "1.0.6"
 markupsafe = "1.1.1"

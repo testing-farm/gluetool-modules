@@ -12,7 +12,17 @@ prepare:
     - dnf install -y popt-devel postgresql-devel python3-libselinux python2-devel
     - dnf install -y python-unversioned-command redhat-rpm-config
     # Note: python2-virtualenv is not available on Fedora anymore, we need to install it from pip
-    - dnf install -y python2
+    - dnf install -y python2 python3.7
     - python2 -m ensurepip
     - pip2 install -U 'pip<20.3'
     - pip2 install --user virtualenv
+
+/py27:
+  environment+:
+    PYTHON: python2.7
+
+/py37:
+  provision+:
+    image: registry.fedoraproject.org/fedora:36
+  environment+:
+    PYTHON: python3.7

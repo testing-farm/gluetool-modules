@@ -115,7 +115,7 @@ pre-commit:
     - pre-commit run --all-files
 
 # Installation Fedora
-installation-fedora:
+installation-fedora-py27:
   extends: .merge-request
   stage: test
   image: registry.fedoraproject.org/fedora:32
@@ -123,7 +123,17 @@ installation-fedora:
     # tmt requires rsync
     - dnf -y install python3-pip git rsync
     - pip3 install git+https://github.com/psss/tmt.git
-    - tmt run -adddvvv provision -h local plan --name /plans/fedora
+    - tmt run -adddvvv provision -h local plan --name /plans/fedora/py27
+
+installation-fedora-py37:
+  extends: .merge-request
+  stage: test
+  image: registry.fedoraproject.org/fedora:36
+  script:
+    # tmt requires rsync
+    - dnf -y install python3-pip git rsync
+    - pip3 install git+https://github.com/psss/tmt.git
+    - tmt run -adddvvv provision -h local plan --name /plans/fedora/py37
 
 # Installation Centos Stream 8
 installation-centos-stream-8:

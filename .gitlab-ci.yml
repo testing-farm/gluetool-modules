@@ -116,11 +116,17 @@ static-coala:
     - /usr/bin/coala --non-interactive --config .coafile
 
 # Static analysis - type checks
-type-check:
+py27-type-check:
   extends: [.colors, .merge-request]
   stage: test
   script:
-    - tox -v -e type-check
+    - tox -v -e py27-type-check
+
+py37-type-check:
+  extends: [.colors, .merge-request]
+  stage: test
+  script:
+    - tox -v -e py37-type-check
 
 # Static analysis - pre-commit
 pre-commit:

@@ -190,7 +190,7 @@ class Guest(LoggerMixin, object):
         """
 
         with tempfile.NamedTemporaryFile() as f:
-            f.write(content)
+            f.write(six.ensure_binary(content))
             f.flush()
 
             self.copy_to(f.name, dst)

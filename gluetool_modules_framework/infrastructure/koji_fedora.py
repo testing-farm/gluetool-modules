@@ -1076,7 +1076,7 @@ class KojiTask(LoggerMixin, object):
         if self.is_build_task:
             name, version, release, _, _ = self._split_srcrpm
 
-            return cast(str, '-'.join([name, version, release]))
+            return six.ensure_str('-'.join([name, version, release]))
 
         raise GlueError('Cannot deduce NVR for task {}'.format(self.id))
 
@@ -1466,7 +1466,7 @@ class BrewTask(KojiTask):
             if self.has_build:
                 return cast(str, self._build['nvr'])
 
-            return cast(str, '-'.join([self.component, self.version, self.release]))
+            return six.ensure_str('-'.join([self.component, self.version, self.release]))
 
         return cast(str, super(BrewTask, self).nvr)
 
@@ -1588,7 +1588,7 @@ class BrewTask(KojiTask):
 
         try:
             branches = [branch.string for branch in self._parsed_commit_html.find_all(class_='branch-deco')]
-            return cast(str, ' '.join(branches))
+            return six.ensure_str(' '.join(branches))
         except AttributeError:
             raise GlueError("could not find 'branch-deco' class in html output of cgit, please inspect")
 

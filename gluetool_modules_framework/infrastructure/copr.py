@@ -47,7 +47,7 @@ class CoprApi(object):
         # type: (str, str, bool) -> str
         # Using `.content` instead of `.text` - `text` provides unicode string, and we'd have to encode them
         # anyway.
-        output = self._api_request(url, label, full_url=full_url).content
+        output = six.ensure_str(self._api_request(url, label, full_url=full_url).content)
         log_blob(self.module.debug, '[copr API] {} output'.format(label), output)
         return six.ensure_str(output, 'utf-8')
 

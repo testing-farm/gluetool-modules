@@ -393,7 +393,9 @@ class MBSTask(LoggerMixin, object):
         """
         try:
             distgit_ref = self._build_info['scmurl'].split('#')[1]
-            return distgit_ref.encode('ascii') if six.PY2 else distgit_ref
+            if six.PY2:
+                return distgit_ref.encode('ascii')
+            return distgit_ref
         except (AttributeError, IndexError):
             self.debug('Distgit ref not found in scmurl: {}'.format(self._build_info['scmurl']))
         return None

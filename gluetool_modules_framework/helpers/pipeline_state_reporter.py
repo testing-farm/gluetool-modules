@@ -393,7 +393,7 @@ class PipelineStateReporter(gluetool.Module):
         test_namespace=None,  # type: Optional[str]
         test_type=None,  # type: Optional[str]
         test_overall_result=None,  # type: Optional[str]
-        test_results=None,  # type: Optional[str]
+        test_results=None,  # type: Optional[bs4.element.Tag]
         distros=None,  # type: Optional[List[Tuple[str, str, str, str]]]
         error_message=None,  # type: Optional[str]
         error_url=None,  # type: Optional[str]
@@ -473,8 +473,8 @@ class PipelineStateReporter(gluetool.Module):
             umb_message.test_result = test_overall_result
 
             if test_results is not None:
-                compressed = zlib.compress(str(test_results))
-                umb_message.test_xunit = base64.b64encode(compressed)
+                compressed = zlib.compress(six.ensure_binary(str(test_results)))
+                umb_message.test_xunit = six.ensure_str(base64.b64encode(compressed))
 
             if self.has_shared('notification_recipients') and self.shared('notification_recipients'):
                 umb_message.recipients = self.shared('notification_recipients')

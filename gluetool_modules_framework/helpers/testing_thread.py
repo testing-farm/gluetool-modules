@@ -113,7 +113,7 @@ class TestingThread(gluetool.Module):
         self.debug("creating a thread ID from string: '{}'".format(s))
 
         sha = hashlib.sha1()
-        sha.update(s if six.PY2 else s.encode('utf-8'))
+        sha.update(six.ensure_binary(s))
 
         return sha.hexdigest()[0:self.option('id-length')]
 

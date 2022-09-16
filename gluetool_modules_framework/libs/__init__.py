@@ -129,10 +129,10 @@ def strptime(*args, **kwargs):
 def create_inspect_callback(logger):
     # type: (gluetool.log.ContextAdapter) -> Callable[[gluetool.utils.StreamReader, Optional[str], bool], None]
 
-    # Note that we're using `warn` for stderr, to make it pop up in the output.
+    # Note that we're using `warning` for stderr, to make it pop up in the output.
     streams = {
         '<stdout>': StreamHandler(buff=[], log_fn=StreamAdapter(logger, 'stdout').info),
-        '<stderr>': StreamHandler(buff=[], log_fn=StreamAdapter(logger, 'stderr').warn)
+        '<stderr>': StreamHandler(buff=[], log_fn=StreamAdapter(logger, 'stderr').warning)
     }
 
     def _callback(stream, data, flush=False):

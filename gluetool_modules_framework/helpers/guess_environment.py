@@ -430,7 +430,7 @@ class GuessEnvironment(gluetool.Module):
 
         log_dict(self.debug, 'available composes:', composes)
 
-        for name, href in sorted(composes, key=lambda x: x[0], reverse=True):
+        for name, href in sorted(composes, key=lambda x: cast(Tuple[str, str], x[0]), reverse=True):
             self.debug("checking status of '{}'".format(name))
 
             # Check compose status
@@ -541,7 +541,7 @@ class GuessEnvironment(gluetool.Module):
 
         log_dict(self.debug, 'possible images', possible_images)
 
-        source['result'] = sorted(possible_images, key=lambda x: x.key)[-1].name
+        source['result'] = sorted(possible_images, key=lambda x: cast(str, x.key))[-1].name
 
     def _guess_nightly(self, source):
         # type: (SourceType) -> None

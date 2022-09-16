@@ -195,8 +195,12 @@ class JobEngine(object):
             else:
                 job.logger.debug("job '{}' crashed".format(job.name))
 
-                exception, traceback = (future.exception_info() if six.PY2 else
-                                        (future.exception(), future.exception().__traceback__))
+                if six.PY2:
+                    exception, traceback = future.exception_info()
+                else:
+                    exception = future.exception()
+                    assert exception is not None
+                    traceback = exception.__traceback__
 
                 # Exception info returned by future does not contain exception class while the info returned
                 # by sys.exc_info() does and all users of it expect the first item to be exception class.

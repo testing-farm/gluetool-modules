@@ -383,7 +383,7 @@ class CIRpminspect(gluetool.Module):
         payload.extend(_parse_results(json_output))
 
         # Return sorted list - the key is a testcase name. This presents deterministic output one can test.
-        return sorted(payload, key=lambda x: x['testcase']['name'])
+        return sorted(payload, key=lambda x: cast(str, x['testcase']['name']))
 
     def _publish_results(self, task, json_output):
         # type: (Any, Dict[str, List[Dict[str, str]]]) -> None

@@ -3,7 +3,7 @@
 
 import json
 import threading
-import urllib
+from six.moves.urllib.parse import unquote
 
 from pymemcache.client import base  # type: ignore
 
@@ -226,7 +226,7 @@ class Cache(LoggerMixin, object):
 
                 # key can contain "weird" characters, e.g. strange things like '/' or '#' - they are encoded
                 # in metadump (%2F and so on), `unquote` will give us the decoded string
-                key = urllib.unquote(key)
+                key = unquote(key)
 
                 key_path = key.split(separator)
 

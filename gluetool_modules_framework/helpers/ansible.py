@@ -99,10 +99,10 @@ class Ansible(gluetool.Module):
                     If not specified, the default executable is used (default: %(default)s).
                     """,
             'metavar': 'PATH',
-            'default': subprocess.check_output(
+            'default': six.ensure_str(subprocess.check_output(
                 'command -v ansible-playbook 2> /dev/null || /bin/true',
                 shell=True
-            ).strip() or '/usr/bin/ansible-playbook'
+            ).strip()) or '/usr/bin/ansible-playbook'
         }
     }
 
@@ -174,7 +174,7 @@ class Ansible(gluetool.Module):
                 delete=False
             ) as f:
                 f.write(
-                    gluetool.utils.render_template(template, logger=logger, **context)
+                    six.ensure_binary(gluetool.utils.render_template(template, logger=logger, **context))
                 )
 
                 f.flush()

@@ -307,7 +307,7 @@ class TestScheduleTMT(Module):
                 delete=False
             ) as f:
                 f.write(
-                    gluetool.utils.render_template(template, logger=logger, **context)
+                    six.ensure_binary(gluetool.utils.render_template(template, logger=logger, **context))
                 )
 
                 f.flush()

@@ -130,7 +130,7 @@ class TestingEnvironment(object):
             ]
         }  # type: Dict[str, Any]
 
-        cls._assert_env_properties(env_properties.keys())
+        cls._assert_env_properties(list(env_properties.keys()))
 
         if 'snapshots' in env_properties:
             env_properties['snapshots'] = gluetool.utils.normalize_bool_option(env_properties['snapshots'])
@@ -147,7 +147,7 @@ class TestingEnvironment(object):
         :rtype: TestingEnvironment
         """
 
-        cls._assert_env_properties(serialized.keys())
+        cls._assert_env_properties(list(serialized.keys()))
 
         return TestingEnvironment(**serialized)
 

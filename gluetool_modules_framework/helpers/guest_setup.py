@@ -391,7 +391,7 @@ class GuestSetup(gluetool.Module):
             log_dict(logger.debug, 'detected interpreters', guest_interpreters)
 
             if not guest_interpreters:
-                logger.warn('Cannot deduce Python interpreter for Ansible', sentry=True)
+                logger.warning('Cannot deduce Python interpreter for Ansible', sentry=True)
 
             else:
                 variables['ansible_python_interpreter'] = guest_interpreters[0]

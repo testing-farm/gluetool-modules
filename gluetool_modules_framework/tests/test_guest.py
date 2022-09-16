@@ -3,6 +3,7 @@
 
 import os
 import tempfile
+import six
 
 import pytest
 from mock import MagicMock
@@ -100,7 +101,7 @@ def test_create_file(guest, monkeypatch):
     guest.create_file('/dst/filepath', 'some dummy content')
 
     # pylint: disable=no-member
-    mock_file.write.assert_called_once_with('some dummy content')
+    mock_file.write.assert_called_once_with(six.ensure_binary('some dummy content'))
     assert mock_file.flush.called
     guest.copy_to.assert_called_once_with('dummy.txt', '/dst/filepath')
 

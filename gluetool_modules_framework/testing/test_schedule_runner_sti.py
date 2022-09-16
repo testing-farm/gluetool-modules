@@ -6,6 +6,7 @@ import tempfile
 import os
 import re
 import stat
+import six
 
 from concurrent.futures import ThreadPoolExecutor
 import inotify.adapters
@@ -202,7 +203,7 @@ sut     ansible_host={} ansible_user=root {}
         with tempfile.NamedTemporaryFile(delete=False, dir=work_dir, prefix='inventory-') as inventory:
             log_blob(schedule_entry.info, 'using inventory', inventory_content)
 
-            inventory.write(inventory_content)
+            inventory.write(six.ensure_binary(inventory_content))
             inventory.flush()
 
         # Inventory file's permissions are limited to user only, u=rw,go=. That's far from being perfect, hard

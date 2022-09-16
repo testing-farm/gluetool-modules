@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, cast  # noqa
 import collections
 import re
 import requests
+import six
 
 from six.moves.urllib.parse import quote as urlquote
 from six.moves.urllib.parse import urlencode
@@ -296,7 +297,7 @@ class GitHubAPI(object):
 
         response = self._get(response.json()['download_url'])
 
-        return response.content
+        return six.ensure_str(response.content)
 
 
 class GitHubPullRequest(object):

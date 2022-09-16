@@ -512,7 +512,11 @@ class ArtemisGuest(NetworkedGuest):
             error_guest_events_list = [event for event in guest_events_list if event['eventname'] == 'error']
             if error_guest_events_list:
                 # There was/were error(s) while provisioning
-                last_error = sorted(error_guest_events_list, key=lambda event: event['updated'], reverse=True)[0]
+                last_error = sorted(
+                    error_guest_events_list,
+                    key=lambda event: cast(str, event['updated']),
+                    reverse=True
+                )[0]
                 err_msg = "Guest provisioning error(s) from Artemis, newest error: {}".format(
                     last_error['details']['error']
                 )

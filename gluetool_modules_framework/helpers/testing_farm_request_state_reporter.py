@@ -106,7 +106,7 @@ class TestingFarmRequestStateReporter(gluetool.Module):
             return STATE_COMPLETE
 
         assert failure.exc_info[1] is not None
-        error_message = str(failure.exc_info[1].message)
+        error_message = str(failure.exc_info[1])
 
         context = gluetool.utils.dict_update(self.shared('eval_context'), {
             'ERROR_MESSAGE': error_message,
@@ -142,7 +142,7 @@ class TestingFarmRequestStateReporter(gluetool.Module):
             return result
 
         assert failure.exc_info[1] is not None
-        error_message = str(failure.exc_info[1].message)
+        error_message = str(failure.exc_info[1])
 
         context = gluetool.utils.dict_update(self.shared('eval_context'), {
             'OVERALL_RESULT': result,
@@ -177,7 +177,7 @@ class TestingFarmRequestStateReporter(gluetool.Module):
             return None
 
         assert failure.exc_info[1] is not None
-        error_message = str(failure.exc_info[1].message)
+        error_message = str(failure.exc_info[1])
 
         context = gluetool.utils.dict_update(self.shared('eval_context'), {
             'ERROR_MESSAGE': error_message,

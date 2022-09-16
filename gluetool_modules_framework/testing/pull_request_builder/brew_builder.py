@@ -46,7 +46,7 @@ class BrewBuilder(gluetool.Module):
         # type: (str, Optional[str], Optional[BrewBuildFailedError]) -> None
         self.info('Result of testing: {}'.format(result))
 
-        comment = exception.message if exception else None
+        comment = str(exception) if exception else None
         process_output = exception.output if exception else None
 
         publish_result(self, BrewBuildTestResult, result, build_url, comment, process_output)

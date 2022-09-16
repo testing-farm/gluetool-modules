@@ -198,7 +198,7 @@ class TestScheduler(gluetool.Module):
         try:
             return self.compose_constraint_arches_map.match(compose, multiple=True)
         except GlueError as exc:
-            self.warn(exc.message)
+            self.warn(str(exc))
             self.warn('Return empty compose constraint arches')
             return []
 

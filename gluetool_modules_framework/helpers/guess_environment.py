@@ -585,7 +585,7 @@ class GuessEnvironment(gluetool.Module):
             return True
 
         except GlueError as exc:
-            if exc.message.startswith('Could not match string'):
+            if str(exc).startswith('Could not match string'):
                 return False
 
             # in case ther matching failed for some unexpected reason

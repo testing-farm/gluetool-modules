@@ -136,13 +136,13 @@ def test_request_type_error(module_api):
     try:
         module_api._request('', None, None)
     except gluetool.GlueError as e:
-        assert e.message == 'No request type specified'
+        assert str(e) == 'No request type specified'
 
     module_api._module._config.update({'retry-timeout': 1, 'retry-tick': 1})
     try:
         module_api._request('', type='sometype')
     except gluetool.GlueError as e:
-        assert e.message == "Invalid request type 'sometype'"
+        assert str(e) == "Invalid request type 'sometype'"
 
 
 def test_get_request(module_api):
@@ -156,7 +156,7 @@ def test_get_request_404(module_api):
     try:
         module_api.get_request('1', 'fakekey')
     except gluetool.GlueError as e:
-        assert e.message == "Request '1' was not found"
+        assert str(e) == "Request '1' was not found"
 
 
 def test_get_request_no_response(module_api):
@@ -165,7 +165,8 @@ def test_get_request_no_response(module_api):
     try:
         module_api.get_request('1', 'fakekey')
     except gluetool.GlueError as e:
-        assert e.message == "Condition 'getting get response from dummy-module/v0.1/requests/1?api_key=fakekey' failed to pass within given time"
+        assert str(e) == ("Condition 'getting get response from dummy-module/v0.1/requests/1?api_key=fakekey' "
+                          "failed to pass within given time")
 
 
 def test_get_request_invalid_json(module_api):
@@ -183,14 +184,15 @@ def test_get_request_http_error(module_api):
     try:
         module_api.get_request('1', 'fakekey')
     except gluetool.GlueError as e:
-        assert e.message == "Condition 'getting get response from dummy-module/v0.1/requests/1?api_key=fakekey' failed to pass within given time"
+        assert str(e) == ("Condition 'getting get response from dummy-module/v0.1/requests/1?api_key=fakekey' "
+                          "failed to pass within given time")
 
 
 def test_put_request_error(module_api):
     try:
         module_api.put_request('', None)
     except gluetool.GlueError as e:
-        assert e.message == "payload is required for 'post' and 'put' requests"
+        assert str(e) == "payload is required for 'post' and 'put' requests"
 
 
 def test_put_request(module_api):
@@ -204,7 +206,7 @@ def test_put_request_404(module_api):
     try:
         module_api.put_request('1', {'hello': 'world'})
     except gluetool.GlueError as e:
-        assert e.message == 'Request failed: None'
+        assert str(e) == 'Request failed: None'
 
 
 # TestingFarmRequest class tests
@@ -254,7 +256,7 @@ def test_webhook_invalid_bool(module, requests_mock, request2):
     try:
         request.webhook()
     except gluetool.GlueError as e:
-        assert e.message == "Condition 'posting update to webhook someurl' failed to pass within given time"
+        assert str(e) == "Condition 'posting update to webhook someurl' failed to pass within given time"
 
 
 def test_webhook_http_error(module, requests_mock, request2):
@@ -266,7 +268,7 @@ def test_webhook_http_error(module, requests_mock, request2):
     try:
         request.webhook()
     except gluetool.GlueError as e:
-        assert e.message == "Condition 'posting update to webhook someurl' failed to pass within given time"
+        assert str(e) == "Condition 'posting update to webhook someurl' failed to pass within given time"
 
 
 # TestingFarmRequestModule class tests

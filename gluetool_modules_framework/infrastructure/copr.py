@@ -1,16 +1,17 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
-import re
 import collections
+import re
 import requests
+import six
 
 import gluetool
 from gluetool.utils import cached_property, dict_update, render_template
 from gluetool.log import log_dict, log_blob
 
 # Type annotations
-from typing import cast, Any, Dict, List, Optional, Union  # noqa
+from typing import Tuple, cast, Any, Dict, List, Optional, Union  # noqa
 
 #: Information about task architectures.
 #:
@@ -48,7 +49,7 @@ class CoprApi(object):
         # anyway.
         output = self._api_request(url, label, full_url=full_url).content
         log_blob(self.module.debug, '[copr API] {} output'.format(label), output)
-        return output
+        return six.ensure_str(output, 'utf-8')
 
     def _get_json(self, url, label, full_url=False):
         # type: (str, str, bool) -> Dict[str, Any]
@@ -60,110 +61,63 @@ class CoprApi(object):
         log_dict(self.module.debug, '[copr API] {} output'.format(label), output)
         return output
 
-    def _get_build_info(self, build_id):
-        # type: (int) -> Dict[str, Any]
-        return self._get_json('api_2/builds/{}'.format(build_id), 'build info')
-
     def get_build_info(self, build_id):
-        # type: (int) -> Any
-        build_info = self._get_build_info(build_id)
+        # type: (int) -> Dict[str, Any]
+        build_info = self._get_json('api_3/build/{}'.format(build_id), 'build info')
 
-        if build_info.get('message', '') == 'Build with id `{}` not found'.format(build_id):
-            self.module.warn('Build {} not found'.format(build_id))
-
+        error = build_info.get('error')
+        if error:
+            self.module.warn(error)
             return {
-                'package_version': 'UNKNOWN-COPR-VERSION',
-                'package_name': 'UNKNOWN-COPR-COMPONENT'
+                'error': error,
+                'ownername': 'UNKNOWN-COPR-OWNER',
+                'projectname': 'UNKNOWN-COPR-PROJECT',
+                'source_package': {
+                    'name': 'UNKNOWN-COPR-COMPONENT',
+                    'version': 'UNKNOWN-COPR-VERSION',
+                }
             }
 
-        return build_info['build']
-
-    def get_build_tasks(self, build_id):
-        # type: (int) -> Any
-        build_info = self._get_build_info(build_id)
-
-        return self._get_json(build_info['_links']['build_tasks']['href'], 'build tasks')['build_tasks']
+        return build_info
 
     def get_build_task_info(self, build_id, chroot_name):
         # type: (int, str) -> Any
-        build_task_info = self._get_json('api_2/build_tasks/{}/{}'.format(build_id, chroot_name), 'build tasks info')
+        build_task_info = self._get_json(
+            'api_3/build-chroot?build_id={}&chrootname={}'.format(build_id, chroot_name),
+            'build tasks info'
+        )
 
-        # copr api actually returns message with {}, no .format() is missing
-        if build_task_info.get('message', '') == 'Build task {} for build {} not found' or \
-                build_task_info.get('error', '') == "Request wasn't successful, there is probably a bug in the API code.":  # noqa: E501  # line too long
-            self.module.warn('Build task {}:{} not found'.format(build_id, chroot_name))
+        error = build_task_info.get('error')
+        if error:
+            self.module.warn('Build task info for {}:{} not found: {}'.format(build_id, chroot_name, error))
             return {
-                'state': 'UNKNOWN-COPR-STATUS'
+                'state': 'UNKNOWN-COPR-STATUS',
+                'error': error
             }
 
-        return build_task_info['build_task']
+        return build_task_info
 
-    def get_project_id(self, build_id):
-        # type: (int) -> Optional[str]
-        build_info = self._get_build_info(build_id)
+    def get_project_builds(self, ownername, projectname):
+        # type: (str, str) -> Any
+        return self._get_json(
+            'api_3/build/list/?ownername={}&projectname={}'.format(ownername, projectname),
+            'get project builds'
+        )['items']
 
-        try:
-            project_id = build_info['_links']['project']['href'].split('/')[-1]  # type: Optional[str]
-        except KeyError:
-            project_id = None
-
-        return project_id
-
-    def _get_project_info(self, project_id):
-        # type: (str) -> Optional[Dict[str, Any]]
-
-        if not project_id:
-            return None
-
-        return self._get_json('api_2/projects/{}'.format(project_id), 'project info')
-
-    def get_project_info(self, project_id):
-        # type: (Optional[str]) -> Any
-        unknown_project = {
-            'owner': 'UNKNOWN-COPR-OWNER',
-            'name': 'UNKNOWN-COPR-PROJECT'
-        }
-
-        if not project_id:
-            self.module.warn('No project info obtained - invalid `project_id`.')
-            return unknown_project
-
-        project_info = self._get_project_info(project_id)
-
-        assert project_info is not None
-
-        if project_info.get('message', '') == 'Project with id `{}` not found'.format(project_id):
-            self.module.warn('Project {} not found'.format(project_id))
-            return unknown_project
-
-        if project_info['project'] is None:
-            self.module.warn('Api provided no information about project `{}`'.format(project_id))
-            return unknown_project
-
-        return project_info['project']
-
-    def get_project_builds(self, project_id):
-        # type: (str) -> Any
-        project_info = self._get_project_info(project_id)
-
-        assert project_info is not None
-
-        return self._get_json(project_info['_links']['builds']['href'], 'project builds')['builds']
-
-    def _result_dir_url(self, build_id, chroot_name):
+    def _result_url(self, build_id, chroot_name):
         # type: (int, str) -> Any
         build_task_info = self.get_build_task_info(build_id, chroot_name)
-        return build_task_info.get('result_dir_url', 'UNKNOWN-COPR-RESULT-DIR-URL')
+        return build_task_info.get('result_url', 'UNKNOWN-COPR-RESULT-DIR-URL')
 
     def _get_builder_live_log(self, build_id, chroot_name):
         # type: (int, str) -> Optional[str]
-        result_dir_url = self._result_dir_url(build_id, chroot_name)
+        result_url = self._result_url(build_id, chroot_name)
 
-        if result_dir_url == 'UNKNOWN-COPR-RESULT-DIR-URL':
+        if result_url == 'UNKNOWN-COPR-RESULT-DIR-URL':
             return None
 
-        result_dir_url = '{}/builder-live.log.gz'.format(result_dir_url)
-        return self._get_text(result_dir_url, 'builder live log', full_url=True)
+        result_url = '{}/builder-live.log.gz'.format(result_url)
+        return self._get_text(result_url, 'builder live log', full_url=True)
 
     def _find_in_log(self, regex, build_id, chroot_name):
         # type: (str, int, str) -> List[str]
@@ -182,10 +136,10 @@ class CoprApi(object):
         # type: (int, str) -> List[str]
         return self._find_in_log(r'Wrote: /builddir/build/SRPMS/(.*)\.src\.rpm', build_id, chroot_name)
 
-    def add_result_dir_url(self, build_id, chroot_name, file_names):
+    def add_result_url(self, build_id, chroot_name, file_names):
         # type: (int, str, str) -> List[str]
-        result_dir_url = self._result_dir_url(build_id, chroot_name)
-        return ['{}{}.rpm'.format(result_dir_url, file_name) for file_name in file_names]
+        result_url = self._result_url(build_id, chroot_name)
+        return ['{}{}.rpm'.format(result_url, file_name) for file_name in file_names]
 
     def get_repo_url(self, owner, project, chroot):
         # type: (str, str, str) -> str
@@ -246,17 +200,16 @@ class CoprTask(object):
 
         build = self.copr_api.get_build_info(task_id.build_id)
         build_task = self.copr_api.get_build_task_info(task_id.build_id, task_id.chroot_name)
-        project_id = self.copr_api.get_project_id(self.task_id.build_id)
-        project = self.copr_api.get_project_info(project_id)
 
+        self.error = build.get('error') or build_task.get('error')
         self.status = build_task['state']
-        self.component = build['package_name']  # type: str
+        self.component = build['source_package']['name']  # type: str
         self.target = task_id.chroot_name
         # required API for our modules providing artifacts, we have no tags in copr, use target
         self.destination_tag = self.target
-        self.nvr = '{}-{}'.format(self.component, build['package_version'])
-        self.owner = project['owner']
-        self.project = project['name']
+        self.nvr = '{}-{}'.format(self.component, build['source_package']['version'])
+        self.owner = build['ownername']
+        self.project = build['projectname']
         # issuer is optional item
         self.issuer = build.get('submitter', 'UNKNOWN-COPR-ISSUER')
         self.repo_url = self.copr_api.get_repo_url(self.owner, self.project, self.task_id.chroot_name)
@@ -264,7 +217,8 @@ class CoprTask(object):
         # this string identifies component in static config file
         self.component_id = '{}/{}/{}'.format(self.owner, self.project, self.component)
 
-        self.module.info('Initialized with {}: {} ({})'.format(self.id, self.full_name, self.url))
+        if not self.error:
+            self.module.info('Initialized with {}: {} ({})'.format(self.id, self.full_name, self.url))
 
     @cached_property
     def has_artifacts(self):
@@ -286,7 +240,7 @@ class CoprTask(object):
     @cached_property
     def rpm_urls(self):
         # type: () -> List[str]
-        return self.copr_api.add_result_dir_url(
+        return self.copr_api.add_result_url(
             self.task_id.build_id,
             self.task_id.chroot_name,
             self.rpm_names
@@ -295,7 +249,7 @@ class CoprTask(object):
     @cached_property
     def srpm_urls(self):
         # type: () -> List[str]
-        return self.copr_api.add_result_dir_url(
+        return self.copr_api.add_result_url(
             self.task_id.build_id,
             self.task_id.chroot_name,
             self.srpm_names
@@ -383,8 +337,8 @@ class Copr(gluetool.Module):
         # type: () -> Optional[CoprTask]
         return self.task
 
-    def tasks(self, task_ids=None):
-        # type: (Optional[List[str]]) -> Optional[List[CoprTask]]
+    def tasks(self, task_ids=None, **kwargs):
+        # type: (Optional[List[str]], Any) -> Optional[List[CoprTask]]
 
         if not task_ids:
             return self._tasks
@@ -463,12 +417,9 @@ class Copr(gluetool.Module):
 
         build_task_id = BuildTaskID(int(build_id), chroot_name)
 
-        try:
-            self.task = CoprTask(build_task_id, self)
-        except gluetool.GlueError as error:
-            self.error(str(error))
-            raise gluetool.GlueError(
-                "Could not find copr build id '{}' for chroot '{}'".format(build_id, chroot_name)
-            )
+        self.task = CoprTask(build_task_id, self)
+
+        if self.task.error:
+            raise gluetool.GlueError('Error resolving copr build {}:{}: {}'.format(build_id, chroot_name, self.task.error))
 
         self._tasks = [self.task]

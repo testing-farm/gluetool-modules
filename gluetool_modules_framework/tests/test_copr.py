@@ -207,6 +207,7 @@ def test_execute(module, monkeypatch):
 
     assert primary_task.url == 'dummy-web-url-802020:fedora-28-x86_64'
 
+
 @pytest.mark.parametrize(
     'build_info, error, raise_match',
     [

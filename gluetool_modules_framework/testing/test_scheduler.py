@@ -136,6 +136,18 @@ class TestScheduler(gluetool.Module):
             'metavar': 'FILE',
             'default': None
         },
+        'with-arch': {
+            'help': 'If specified, ARCH would be added to the list of environments (default: none).',
+            'metavar': 'ARCH',
+            'action': 'append',
+            'default': []
+        },
+        'without-arch': {
+            'help': 'If specified, ARCH would be removed from the list of environments (default: none).',
+            'metavar': 'ARCH',
+            'action': 'append',
+            'default': []
+        }
     }
 
     shared_functions = ['test_schedule']
@@ -365,6 +377,12 @@ class TestScheduler(gluetool.Module):
 
         log_dict(self.debug, 'constraint arches (duplicities pruned)', constraint_arches)
 
+        with_arches = self.option('with-arch')
+        log_dict(self.debug, 'arches to forcefully include', with_arches)
+
+        without_arches = self.option('without-arch')
+        log_dict(self.debug, 'arches to forcefully drop', without_arches)
+
         # Create constraints, for composes and arches
         composes = self.shared('compose')
         constraints = []  # type: List[TestingEnvironment]
@@ -372,6 +390,10 @@ class TestScheduler(gluetool.Module):
         for compose in composes:
 
             compose_constraint_arches = constraint_arches or self.compose_constraint_arches(compose)
+            log_dict(self.debug, 'compose constraint arches', compose_constraint_arches)
+
+            compose_constraint_arches += with_arches
+            log_dict(self.debug, 'compose constraint arches with forcefully arches', compose_constraint_arches)
 
             for arch in compose_constraint_arches:
                 constraints += [
@@ -387,6 +409,10 @@ class TestScheduler(gluetool.Module):
         patched_constraints = []
 
         for tec in constraints:
+            if tec.arch in without_arches:
+                self.debug('testing constraint {} dropped by --without-arch'.format(tec))
+                continue
+
             context = gluetool.utils.dict_update(
                 self.shared('eval_context'),
                 {
@@ -425,7 +451,7 @@ class TestScheduler(gluetool.Module):
             )
 
             if patch_action.action == PatchAction.DROP:
-                self.debug('testing constraint {} dropped'.format(tec))
+                self.debug('testing constraint {} dropped by patch'.format(tec))
 
             else:
                 patched_constraints.append(tec)

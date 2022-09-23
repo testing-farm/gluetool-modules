@@ -46,6 +46,12 @@ def create_openstack_build_params(mod, **kwargs):
 
     params = create_build_params(mod, **params)
 
+    for arch in mod._config.get('with-arch'):
+        params['test_scheduler_options'] = '{} --with-arch={}'.format(params['test_scheduler_options'], arch)
+
+    for arch in mod._config.get('without-arch'):
+        params['test_scheduler_options'] = '{} --without-arch={}'.format(params['test_scheduler_options'], arch)
+
     if mod._config.get('install-rpms-blacklist', None):
         params['brew_build_task_params_options'] = '{} --install-rpms-blacklist={}'.format(
             params['brew_build_task_params_options'], mod._config['install-rpms-blacklist'])
@@ -77,7 +83,9 @@ def test_build_params(module_with_primary_task, rpm_blacklist):
         'install-rpms-blacklist': rpm_blacklist,
         'wow-options-separator': gluetool_modules_framework.testing.openstack.openstack_job.DEFAULT_WOW_OPTIONS_SEPARATOR,
         'dist-git-options': 'some dist-git options',
-        'install-mbs-build-options': 'some install mbs build options'
+        'install-mbs-build-options': 'some install mbs build options',
+        'with-arch': ['arch-foo', 'arch-bar'],
+        'without-arch': ['arch-baz']
     })
 
     expected_params = create_openstack_build_params(mod)
@@ -91,6 +99,8 @@ def test_build_params_use_general_test_plan(module_with_primary_task):
     mod._config.update({
         'wow-options-separator': gluetool_modules_framework.testing.openstack.openstack_job.DEFAULT_WOW_OPTIONS_SEPARATOR,
         'use-general-test-plan': True,
+        'with-arch': [],
+        'without-arch': []
     })
 
     expected_params = create_openstack_build_params(mod, wow_module_options='--use-general-test-plan')

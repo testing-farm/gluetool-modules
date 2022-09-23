@@ -126,6 +126,20 @@ class OpenStackJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkinsJ
         'brew-options': {
             'help': 'Additional options for brew module.',
             'type': str,
+        },
+
+        # Following options are passed to test-scheduler module
+        'with-arch': {
+            'help': 'If specified, ARCH would be added to the list of environments (default: none).',
+            'metavar': 'ARCH',
+            'action': 'append',
+            'default': []
+        },
+        'without-arch': {
+            'help': 'If specified, ARCH would be removed from the list of environments (default: none).',
+            'metavar': 'ARCH',
+            'action': 'append',
+            'default': []
         }
     })
 
@@ -135,6 +149,13 @@ class OpenStackJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkinsJ
         brew_build_task_params_options = self.option('brew-build-task-params-options')
         install_rpms_blacklist = self.option('install-rpms-blacklist')
         install_method = self.option('install-method')
+        test_scheduler_options = self.option('test-scheduler-options')
+
+        for arch in self.option('with-arch'):
+            test_scheduler_options = '{} --with-arch={}'.format(test_scheduler_options, arch)
+
+        for arch in self.option('without-arch'):
+            test_scheduler_options = '{} --without-arch={}'.format(test_scheduler_options, arch)
 
         if install_rpms_blacklist:
             brew_build_task_params_options = '{} --install-rpms-blacklist={}'.format(brew_build_task_params_options,
@@ -158,7 +179,7 @@ class OpenStackJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkinsJ
             'brew_options': self.option('brew-options'),
             'install_brew_build_options': self.option('install-brew-build-options'),
             'brew_build_task_params_options': brew_build_task_params_options,
-            'test_scheduler_options': self.option('test-scheduler-options'),
+            'test_scheduler_options': test_scheduler_options,
             'test_scheduler_sti_options': self.option('test-scheduler-sti-options'),
             'test_scheduler_upgrades_options': self.option('test-scheduler-upgrades-options'),
             'test_schedule_runner_options': self.option('test-schedule-runner-options'),

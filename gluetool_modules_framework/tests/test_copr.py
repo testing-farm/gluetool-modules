@@ -134,6 +134,7 @@ PROJECT_BUILDS = {
     }
 }
 
+
 @pytest.fixture(name='module')
 def fixture_module():
     module = create_module(Copr)[1]

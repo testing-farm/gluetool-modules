@@ -746,7 +746,7 @@ class PipelineStateReporter(gluetool.Module):
         if failure:
             assert failure.exc_info[1] is not None
             kwargs.update({
-                'error_message': str(failure.exc_info[1].message),
+                'error_message': str(failure.exc_info[1]),
                 'error_url': failure.sentry_event_url
             })
 

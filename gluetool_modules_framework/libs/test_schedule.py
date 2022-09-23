@@ -340,7 +340,7 @@ class TestSchedule(List[TestScheduleEntry]):
                 for _, exc, _ in se.exceptions:
                     table.append([
                         se.id,
-                        exc.message if hasattr(exc, 'message') else str(exc)  # type: ignore  # handles even `None`
+                        str(exc)
                     ])
 
             log_table(

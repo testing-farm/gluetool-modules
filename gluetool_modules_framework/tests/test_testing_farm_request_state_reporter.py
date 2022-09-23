@@ -100,7 +100,7 @@ def test_testing_farm_reporter_destroy_failure(module, request_empty, evaluate):
     request = module.shared('testing_farm_request')
     assert request == {
         'state': 'error',
-        'summary': GlueError('message').message,
+        'summary': str(GlueError('message')),
         'overall_result': 'unknown',
         'artifacts_url': None,
         'xunit': None,
@@ -117,7 +117,7 @@ def test_testing_farm_reporter_destroy_failure_mapping(module, request_empty, ev
     request = module.shared('testing_farm_request')
     assert request == {
         'state': 'some-mapped-state',
-        'summary': GlueError('message').message,
+        'summary': str(GlueError('message')),
         'overall_result': 'some-mapped-overall-result',
         'artifacts_url': None,
         'xunit': None,

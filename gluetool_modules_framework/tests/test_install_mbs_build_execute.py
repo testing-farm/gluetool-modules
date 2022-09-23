@@ -542,7 +542,7 @@ def test_execute_command_fail(module, monkeypatch, tmpdir):
     assert isinstance(outputs[0].additional_data, gluetool_modules_framework.libs.sut_installation.SUTInstallation)
 
     assert isinstance(exc, SUTInstallationFailedError)
-    assert exc.message == 'Test environment installation failed: reason unknown, please escalate'
+    assert str(exc) == 'Test environment installation failed: reason unknown, please escalate'
 
 
 @pytest.mark.parametrize('info_output_and_error', [
@@ -589,4 +589,4 @@ def test_sut_installation_fail(module, monkeypatch, info_output_and_error, tmpdi
     assert isinstance(outputs[0].additional_data, gluetool_modules_framework.libs.sut_installation.SUTInstallation)
 
     assert isinstance(exc, SUTInstallationFailedError)
-    assert exc.message == error
+    assert str(exc) == error

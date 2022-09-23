@@ -101,7 +101,7 @@ class BuildDependencies(gluetool.Module):
         except koji.GenericError as exc:
             # Some targets exist in multiple versions, mixing lower- and upper case. Deal with it.
             # We're giving our users chance to use another target and try again.
-            if exc.message == 'No such entry in table tag: {}'.format(target):
+            if str(exc) == 'No such entry in table tag: {}'.format(target):
                 if self.companion_target_fallback_map is None:
                     self.warn("No companion target map set, cannot fall back from '{}'".format(target), sentry=True)
                     self.warn("No builds found for component '{}' and target '{}'".format(component, target))

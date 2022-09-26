@@ -9,103 +9,46 @@ from gluetool_modules_framework.infrastructure.copr import Copr, TaskArches
 from . import create_module, check_loadable
 
 BUILD_INFO = {
-    '_links': {
-        'build_tasks': {
-            'href': '/api_2/build_tasks?build_id=802020'
-        },
-        'project': {
-            'href': '/api_2/projects/19741'
-        },
-        'self': {
-            'href': '/api_2/builds/802020'
-        }
-    },
-    'build': {
-        'built_packages': [
-            {
-                'name': 'pycho',
-                'version': '0.84'
-            }
-        ],
-        'enable_net': 'false',
-        'id': 802020,
-        'package_name': 'pycho',
-        'package_version': '0.84-1.fc27',
-        'repos': [],
-        'source_metadata': {
-            'pkg': 'pycho-0.84-1.fc27.src.rpm',
-            'tmp': 'tmpw7y826ay',
-            'url': 'https://copr.fedorainfracloud.org/tmp/tmpw7y826ay/pycho-0.84-1.fc27.src.rpm'
-        },
-        'source_type': 'upload',
-        'state': 'succeeded',
-        'submitted_on': 1537775125,
-        'submitter': 'mkluson'
-    }
-}
-
-BUILD_INFO_NOT_FOUND = {
-    'data': {
-        'build_id': 999999
-    },
-    'message': 'Build with id `999999` not found'
-}
-
-PROJECT_INFO = {
-    '_links': {
-        'build_tasks': {
-            'href': '/api_2/build_tasks?project_id=19741'
-        },
-        'builds': {
-            'href': '/api_2/builds?project_id=19741'
-        },
-        'chroots': {
-            'href': '/api_2/projects/19741/chroots'
-        },
-        'self': {
-            'href': '/api_2/projects/19741'
-        }
-    },
-    'project': {
-        'build_enable_net': 'false',
-        'contact': '',
-        'description': 'Package for testing purposes',
-        'disable_createrepo': 'false',
-        'id': 19741,
-        'instructions': '',
-        'is_a_group_project': 'false',
+    'chroots': [
+        'fedora-28-x86_64'
+    ],
+    'ended_on': 1537775303,
+    'id': 802020,
+    'is_background': False,
+    'ownername': 'mkluson',
+    'project_dirname': 'pycho',
+    'projectname': 'pycho',
+    'repo_url': 'https://download.copr.fedorainfracloud.org/results/mkluson/pycho',
+    'source_package': {
         'name': 'pycho',
-        'owner': 'mkluson',
-        'repos': []
-    }
-}
-
-BUILD_TASK_INFO = {
-    '_links': {
-        'build': {
-            'href': '/api_2/builds/802020'
-        },
-        'project': {
-            'href': '/api_2/projects/19741'
-        },
-        'self': {
-            'href': '/api_2/build_tasks/802020/fedora-28-x86_64'
-        }
+        'url': 'https://copr.fedorainfracloud.org/tmp/tmpw7y826ay/pycho-0.84-1.fc27.src.rpm',
+        'version': '0.84-1.fc27',
     },
-    'build_task': {
-        'build_id': 802020,
-        'chroot_name': 'fedora-28-x86_64',
-        'ended_on': 1537775303,
-        'git_hash': '01cbdd2f3d4156b9c05a216111b41075b5fd398d',
-        'result_dir_url':
-            'https://copr-be.cloud.fedoraproject.org/results/mkluson/pycho/fedora-28-x86_64/00802020-pycho/',
-        'started_on': 1537775126,
-        'state': 'succeeded'
-    }
+    'started_on': 1537775025,
+    'state': 'succeeded',
+    'submitted_on': 1537775125,
+    'submitter': 'mkluson'
 }
 
 BUILD_TASK_INFO_NOT_FOUND = {
-    'message': 'Build task {} for build {} not found'
+    'error': 'Chroot fedora-38-x86_64 does not exist'
+}
+
+BUILD_INFO_NOT_FOUND = {
+    'error': 'Build 999999 does not exist'
+}
+
+BUILD_TASK_INFO = {
+    'ended_on': 1537775303,
+    'name': 'fedora-28-x86_64',
+    'result_url':
+        'https://copr-be.cloud.fedoraproject.org/results/mkluson/pycho/fedora-28-x86_64/00802020-pycho/',
+    'started_on': 1537775126,
+    'state': 'succeeded'
+}
+
+BUILD_TASK_INFO_ERROR = {
+    'error': 'Build task {} for build {} not found'
 }
 
 BUILDER_LIVE_LOG = '''
@@ -131,6 +74,65 @@ INFO: unmounting tmpfs.
 Finish: clean chroot
 Finish: run
 '''
+
+
+PROJECT_BUILDS = {
+    'items': [
+        {
+            'chroots': [
+                'fedora-28-x86_64',
+                'epel-7-x86_64',
+                'epel-8-x86_64',
+            ],
+            'ended_on': 1640047998,
+            'id': 802020,
+            'is_background': False,
+            'ownername': 'mkluson',
+            'project_dirname': 'pycho',
+            'projectname': 'pycho',
+            'repo_url': 'https://download.copr.fedorainfracloud.org/results/mkluson/pycho',
+            'source_package': {
+                'name': 'pycho',
+                'url': 'https://copr.fedorainfracloud.org/tmp/tmpw7y826ay/pycho-0.84-1.fc27.src.rpm',
+                'version': '0.84-1.fc27',
+            },
+            'started_on': 1640047883,
+            'state': 'succeeded',
+            'submitted_on': 1640047818,
+            'submitter': 'mkluson'
+        },
+        {
+            'chroots': [
+                'fedora-35-x86_64',
+                'epel-7-x86_64',
+                'epel-8-x86_64',
+                'fedora-rawhide-x86_64'
+            ],
+            'ended_on': 1639654676,
+            'id': 3058549,
+            'is_background': False,
+            'ownername': 'mkluson',
+            'project_dirname': 'pycho',
+            'projectname': 'pycho',
+            'repo_url': 'https://download.copr.fedorainfracloud.org/results/mkluson/pycho',
+            'source_package': {
+                'name': 'pycho',
+                'url': 'https://download.copr.fedorainfracloud.org/results/mkluson/pycho/srpm-builds/03058549/pycho-0.84-1.fc32.src.rpm',
+                'version': '0.84-1.fc32'
+            },
+            'started_on': 1639654581,
+            'state': 'succeeded',
+            'submitted_on': 1639654557,
+            'submitter': 'optak'
+        }
+    ],
+    'meta': {
+        'limit': None,
+        'offset': 0,
+        'order': 'id',
+        'order_type': 'ASC'
+    }
+}
 
 
 @pytest.fixture(name='module')
@@ -160,12 +162,12 @@ def test_execute(module, monkeypatch):
             return self.source
 
     def mocked_get(url):
-        if 'api_2/build_tasks' in url:
+        if 'api_3/build-chroot' in url:
             source = BUILD_TASK_INFO
-        elif 'api_2/builds' in url:
+        elif 'api_3/build/list' in url:
+            source = PROJECT_BUILDS
+        elif 'api_3/build' in url:
             source = BUILD_INFO
-        elif 'api_2/projects' in url:
-            source = PROJECT_INFO
         elif 'builder-live.log' in url:
             source = BUILDER_LIVE_LOG
 
@@ -207,7 +209,23 @@ def test_execute(module, monkeypatch):
     assert primary_task.url == 'dummy-web-url-802020:fedora-28-x86_64'
 
 
-def test_not_found(module, monkeypatch):
+@pytest.mark.parametrize(
+    'build_info, error, raise_match',
+    [
+        (
+            BUILD_INFO_NOT_FOUND,
+            BUILD_INFO_NOT_FOUND['error'],
+            r'^Error resolving copr build 999999:fedora-28-x86_64: {}$'.format(BUILD_INFO_NOT_FOUND['error'])
+        ),
+        (
+            BUILD_INFO,
+            BUILD_TASK_INFO_NOT_FOUND['error'],
+            r'^Error resolving copr build 999999:fedora-28-x86_64: {}$'.format(BUILD_TASK_INFO_NOT_FOUND['error'])
+        ),
+    ],
+    ids=('build_info_not_found', 'build_task_info_not_found')
+)
+def test_not_found(module, monkeypatch, build_info, error, raise_match):
     module._config['task-id'] = '999999:fedora-28-x86_64'
 
     class dummy_request(object):
@@ -221,27 +239,39 @@ def test_not_found(module, monkeypatch):
             return self.source
 
     def mocked_get(url):
-        if 'api_2/build_tasks' in url:
+        if 'api_3/build-chroot' in url:
             source = BUILD_TASK_INFO_NOT_FOUND
-        elif 'api_2/builds' in url:
-            source = BUILD_INFO_NOT_FOUND
+        elif 'api_3/build' in url:
+            source = build_info
 
         return dummy_request(source)
 
     monkeypatch.setattr(gluetool_modules_framework.infrastructure.copr.requests, 'get', mocked_get)
 
-    module.execute()
+    with pytest.raises(gluetool.GlueError, match=raise_match):
+        module.execute()
 
     primary_task = module.primary_task()
 
+    assert primary_task.error == error
+
+    if build_info == BUILD_INFO:
+        assert primary_task.component == 'pycho'
+        assert primary_task.nvr == 'pycho-0.84-1.fc27'
+        assert primary_task.owner == 'mkluson'
+        assert primary_task.project == 'pycho'
+        assert primary_task.issuer == 'mkluson'
+        assert primary_task.component_id == 'mkluson/pycho/pycho'
+    else:
+        assert primary_task.component == 'UNKNOWN-COPR-COMPONENT'
+        assert primary_task.nvr == 'UNKNOWN-COPR-COMPONENT-UNKNOWN-COPR-VERSION'
+        assert primary_task.owner == 'UNKNOWN-COPR-OWNER'
+        assert primary_task.project == 'UNKNOWN-COPR-PROJECT'
+        assert primary_task.issuer == 'UNKNOWN-COPR-ISSUER'
+        assert primary_task.component_id == 'UNKNOWN-COPR-OWNER/UNKNOWN-COPR-PROJECT/UNKNOWN-COPR-COMPONENT'
+
     assert primary_task.status == 'UNKNOWN-COPR-STATUS'
-    assert primary_task.component == 'UNKNOWN-COPR-COMPONENT'
     assert primary_task.target == 'fedora-28-x86_64'
-    assert primary_task.nvr == 'UNKNOWN-COPR-COMPONENT-UNKNOWN-COPR-VERSION'
-    assert primary_task.owner == 'UNKNOWN-COPR-OWNER'
-    assert primary_task.project == 'UNKNOWN-COPR-PROJECT'
-    assert primary_task.issuer == 'UNKNOWN-COPR-ISSUER'
-    assert primary_task.component_id == 'UNKNOWN-COPR-OWNER/UNKNOWN-COPR-PROJECT/UNKNOWN-COPR-COMPONENT'
 
     assert primary_task.rpm_names == []
     assert primary_task.rpm_urls == []
@@ -275,12 +305,12 @@ def test_tasks(module, monkeypatch):
             return self.source
 
     def mocked_get(url):
-        if 'api_2/build_tasks' in url:
+        if 'api_3/build-chroot' in url:
             source = BUILD_TASK_INFO
-        elif 'api_2/builds' in url:
+        elif 'api_3/build/list' in url:
+            source = PROJECT_BUILDS
+        elif 'api_3/build' in url:
             source = BUILD_INFO
-        elif 'api_2/projects' in url:
-            source = PROJECT_INFO
         elif 'builder-live.log' in url:
             source = BUILDER_LIVE_LOG
 

@@ -21,6 +21,6 @@ execute:
       #   option which disables the new installer and also the parallel installation.
       # - ~/.poetry/bin/poetry config experimental.new-installer false
       - ~/.poetry/bin/poetry env use $PYTHON
-      - ~/.poetry/bin/poetry install
+      - ~/.poetry/bin/poetry install -v
       - ~/.poetry/bin/poetry run /usr/bin/ansible-playbook inject-extra-requirements.yml
       - ~/.poetry/bin/poetry run citool -l |& grep koji

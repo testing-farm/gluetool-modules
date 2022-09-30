@@ -193,37 +193,37 @@ class KojiTask(LoggerMixin, object):
             raise GlueError('instance details do not contain all required keys')
 
     @overload  # noqa F811  # flake8 thinks the method is being redefined but only the types are being overloaded
-    def _call_api(self, method, *args, **kwargs):
+    def _call_api(self, method, *args, **kwargs):  # noqa F811
         # type: (Literal['listBuilds'], *Any, **Any) -> Optional[List[Dict[str, str]]]
         pass
 
     @overload  # noqa F811
-    def _call_api(self, method, *args, **kwargs):
+    def _call_api(self, method, *args, **kwargs):  # noqa F811
         # type: (Literal['getFullInheritance', 'getTaskChildren', 'listBuildRPMs'], *Any, **Any) -> List[Dict[str, str]]
         pass
 
     @overload  # noqa F811
-    def _call_api(self, method, *args, **kwargs):
+    def _call_api(self, method, *args, **kwargs):  # noqa F811
         # type: (Literal['listArchives', 'listTagged'], *Any, **Any) -> List[Dict[str, Any]]
         pass
 
     @overload  # noqa F811
-    def _call_api(self, method, *args, **kwargs):
+    def _call_api(self, method, *args, **kwargs):  # noqa F811
         # type: (Literal['getBuild', 'getUser', 'getTaskResult', 'getBuildTarget'], *Any, **Any) -> Dict[str, Any]
         pass
 
     @overload  # noqa F811
-    def _call_api(self, method, *args, **kwargs):
+    def _call_api(self, method, *args, **kwargs):  # noqa F811
         # type: (Literal['getTaskInfo'], *Any, **Any) -> TaskInfoType
         pass
 
     @overload  # noqa F811
-    def _call_api(self, method, *args, **kwargs):
+    def _call_api(self, method, *args, **kwargs):  # noqa F811
         # type: (Literal['listTaskOutput'], *Any, **Any) -> List[str]
         pass
 
     @overload  # noqa F811
-    def _call_api(self, method, *args, **kwargs):
+    def _call_api(self, method, *args, **kwargs):  # noqa F811
         # type: (Literal['getAPIVersion'], *Any, **Any) -> str
         pass
 

@@ -108,7 +108,7 @@ upload-results = "gluetool_modules_framework.helpers.upload_results:UploadResult
 url-shortener = "gluetool_modules_framework.helpers.url_shortener:URLShortener"
 
 [tool.poetry.dependencies]
-python = "~2.7 || ~3.7"
+python = "~2.7 || ~3.7 || ~3.9"
 
 ansible = "2.8.5"
 # NOTE: without this dependency the installation will fail with
@@ -121,19 +121,19 @@ commonmark = "0.8.0"
 docker = "3.5.1"
 docker-pycreds = "0.3.0"
 docutils = "0.14"
-enum34 = "1.1.6"
+enum34 = {version = "^1.1.6", python = "~2.7"}
 fmf = "0.6.1"
 future = "0.18.2"
 futures = {version = "3.2.0", python = "~2.7"}
 gitdb2 = "2.0.6"
 GitPython = "2.1.15"
-gluetool = "^1.27.1"
+gluetool = "^1.28"
 inotify = "0.2.10"
 jaeger-client = "4.0.0"
 jenkinsapi = "0.3.8"
 jenkins-job-builder = "1.6.2"
 jinja2 = "2.10"
-jq = "0.1.6"
+jq = "1.1.3"
 koji = "^1.22"
 mako = "1.0.6"
 markupsafe = "1.1.1"
@@ -156,7 +156,7 @@ simplejson = "^3.17.2"
 sphinx = "1.5.2"
 sphinx-argparse = "0.2.0"
 sphinxcontrib-programoutput = "0.11"
-typing-extensions = { version = "^3.7.4", python = "~3.7" }
+typing-extensions = { version = "^3.7.4", python = "^3.7" }
 sphinx-rtd-theme = "0.5.2"
 
 [tool.poetry.dev-dependencies]
@@ -164,12 +164,12 @@ sphinx-rtd-theme = "0.5.2"
 attrs = "^21.4"
 flake8 = "3.7.8"
 lazy-object_proxy = [
-    {version = "1.7.1", python = "~3.7"},
+    {version = "1.7.1", python = "^3.7"},
     {version = "1.6.0", python = "~2.7"}
 ]
 pylint = {version = "1.9.5", python = "~2.7"}
 pytest = [
-    {version = "5.4.3", python = "~3.7"},
+    {version = "5.4.3", python = "^3.7"},
     {version = "4.6.5", python = "~2.7"}
 ]
 pytest-catchlog = "1.2.2"

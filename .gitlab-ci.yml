@@ -59,7 +59,7 @@ container:
 # Run unit tests
 #
 # Note: this step also generates coverage report (HTML).
-py27-unit-tests:
+py27-unit:
   extends: .tests
   stage: test
   script:
@@ -68,7 +68,7 @@ py27-unit-tests:
     paths:
       - coverage-report
 
-py37-unit-tests:
+py37-unit:
   extends: .tests
   stage: test
   script:
@@ -77,23 +77,38 @@ py37-unit-tests:
     paths:
       - coverage-report
 
+py39-unit:
+  extends: .tests
+  stage: test
+  script:
+    - tox -v -e py39-unit-tests -- --cov=gluetool_modules_framework --cov-report=html:coverage-report
+  artifacts:
+    paths:
+      - coverage-report
+
 # Static analysis - pylint, flake8
-py27-static-analysis:
+py27-static:
   extends: .tests
   stage: test
   script:
     - tox -v -e py27-static-analysis
 
-py37-static-analysis:
+py37-static:
   extends: .tests
   stage: test
   script:
     - tox -v -e py37-static-analysis
 
+py39-static:
+  extends: .tests
+  stage: test
+  script:
+    - tox -v -e py39-static-analysis
+
 # Static analysis - coala
 #
 # Note: coala integration is better done directly via gitlab's docker support
-static-analysis-coala:
+static-coala:
   extends: .merge-request
   stage: test
   image: quay.io/testing-farm/coala:latest
@@ -116,7 +131,7 @@ pre-commit:
     - pre-commit run --all-files
 
 # Installation Fedora
-installation-fedora-py27:
+py27-install-fedora-32:
   extends: .merge-request
   stage: test
   image: registry.fedoraproject.org/fedora:32
@@ -126,7 +141,7 @@ installation-fedora-py27:
     - pip3 install git+https://github.com/psss/tmt.git
     - tmt run -adddvvv provision -h local plan --name /plans/fedora/py27
 
-installation-fedora-py37:
+py37-install-fedora-36:
   extends: .merge-request
   stage: test
   image: registry.fedoraproject.org/fedora:36
@@ -136,8 +151,18 @@ installation-fedora-py37:
     - pip3 install git+https://github.com/psss/tmt.git
     - tmt run -adddvvv provision -h local plan --name /plans/fedora/py37
 
+py39-install-fedora-36:
+  extends: .merge-request
+  stage: test
+  image: registry.fedoraproject.org/fedora:36
+  script:
+    # tmt requires rsync
+    - dnf -y install python3-pip git rsync
+    - pip3 install git+https://github.com/psss/tmt.git
+    - tmt run -adddvvv provision -h local plan --name /plans/fedora/py39
+
 # Installation Centos Stream 8
-installation-centos-stream-8:
+py27-install-centos-stream-8:
   extends: .merge-request
   stage: test
   image: quay.io/centos/centos:stream8

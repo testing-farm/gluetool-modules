@@ -126,19 +126,22 @@ class RulesASTVisitor(ast.NodeTransformer):
     Custom AST visitor, making sure no disallowed nodes are present in the rules' AST.
     """
 
-    # In Python 3, values such as `None`, `False`, `True` are parsed by `ast` module as `NameConstant` objects.
-    # In Python 2, they are parsed as `Name` objects.
+    # Almost each minor Python version has different supported node classes in the ast module.
+    # Str, Num, Index are deprecated in Python 3.9.
+    # NameConstant is Python 3 only, but deprecated in Python 3.8.
+    # Constant is used since Python 3.8.
     _valid_classes = tuple([
         getattr(_ast, node_class) for node_class in [
-            'Expression', 'Expr', 'Compare', 'Name', 'Load', 'BoolOp', 'UnaryOp',
-            'Str', 'Num', 'List', 'Tuple', 'Dict',
-            'Subscript', 'Index', 'ListComp', 'comprehension',
-            'Store',
-            'Eq', 'NotEq', 'Lt', 'LtE', 'Gt', 'GtE', 'Is', 'IsNot', 'In', 'NotIn',
-            'And', 'Or', 'Not',
-            'IfExp',
-            'Attribute', 'Call'
-        ] + (['NameConstant'] if six.PY3 else [])
+            'Expression', 'Expr', 'Compare', 'Name', 'Load', 'BoolOp', 'UnaryOp', 'List', 'Tuple', 'Dict', 'Subscript',
+            'ListComp', 'comprehension', 'Store', 'Eq', 'NotEq', 'Lt', 'LtE', 'Gt', 'GtE', 'Is', 'IsNot', 'In', 'NotIn',
+            'And', 'Or', 'Not', 'IfExp', 'Attribute', 'Call'
+        ] + (
+            ['Str', 'Num', 'Index'] if sys.version_info < (3, 8) else []
+        ) + (
+            ['NameConstant'] if six.PY3 and sys.version_info < (3, 8) else []
+        ) + (
+            ['Constant'] if sys.version_info >= (3, 8) else []
+        )
     ])
 
     def __init__(self, rules):

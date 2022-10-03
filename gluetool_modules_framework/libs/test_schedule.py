@@ -352,7 +352,7 @@ class TestSchedule(List[TestScheduleEntry]):
 
         if include_logs and module is not None:
             table = [
-                ['SE', 'Stage', 'Log', 'Location']
+                ['SE', 'SE Result', 'Stage', 'Log', 'Location']
             ]
 
             # Collect all logs - guest-setup logs are in their own container, because those have their own substages.
@@ -361,6 +361,7 @@ class TestSchedule(List[TestScheduleEntry]):
                     for output in [_output for _output in se.outputs if _output.stage == stage]:
                         table.append([
                             se.id,
+                            se.result.name,
                             stage.value,
                             output.label,
                             artifacts_location(module, output.log_path, logger=module.logger)
@@ -373,6 +374,7 @@ class TestSchedule(List[TestScheduleEntry]):
                             for guest_setup_output in outputs:
                                 table.append([
                                     se.id,
+                                    se.result.name,
                                     # pseudo-stage, to display both schedule stage and guest setup stage
                                     '{}.{}'.format(stage.value, guest_setup_stage.value),
                                     guest_setup_output.label,

@@ -32,6 +32,9 @@ from typing import Any, Dict, List, NamedTuple, Optional  # noqa
 # TMT run log file
 TMT_LOG = 'tmt-run.log'
 
+CONTEXT_FILENAME_PREFIX = 'context-'
+CONTEXT_FILENAME_SUFFIX = '.yaml'
+
 # Weight of a test result, used to count the overall result. Higher weight has precendence
 # when counting the overall result. See https://tmt.readthedocs.io/en/latest/spec/steps.html#execute
 RESULT_WEIGHT = {
@@ -118,6 +121,8 @@ class TestScheduleEntry(BaseTestScheduleEntry):
         self.work_dirpath = None  # type: Optional[str]
         self.results = None  # type: Any
         self.repodir = repodir
+
+        self.context_files = []  # type: List[str]
 
     def log_entry(self, log_fn=None):
         # type: (Optional[LoggingFunctionType]) -> None
@@ -226,6 +231,14 @@ class TestScheduleTMT(Module):
             'plan-filter': {
                 'help': "Use the given filter passed to 'tmt plan ls --filter'. See pydoc fmf.filter for details.",
                 'metavar': 'FILTER'
+            },
+            'context-template-file': {
+                'help': """
+                        If specified, files are treated as templates for YAML mappings which, when rendered,
+                        are passed to ``tmt`` via ``-c @foo`` option. (default: none)
+                        """,
+                'action': 'append',
+                'default': []
             }
         })
     ]
@@ -235,6 +248,76 @@ class TestScheduleTMT(Module):
     def __init__(self, *args, **kwargs):
         # type: (*Any, **Any) -> None
         super(TestScheduleTMT, self).__init__(*args, **kwargs)
+
+    @gluetool.utils.cached_property
+    def context_template_files(self):
+        # type: () -> List[str]
+
+        return gluetool.utils.normalize_path_option(self.option('context-template-file'))
+
+    def _context_templates(self, filepaths):
+        # type: (List[str]) -> List[str]
+
+        templates = []
+
+        for filepath in filepaths:
+            try:
+                with open(filepath, 'r') as f:
+                    templates.append(f.read())
+
+            except IOError as exc:
+                raise gluetool.GlueError('Cannot open template file {}: {}'.format(filepath, exc))
+
+        return templates
+
+    def render_context_templates(
+        self,
+        logger,  # type: gluetool.log.ContextAdapter
+        context,  # type: Dict[str, Any]
+        template_filepaths=None,  # type: Optional[List[str]]
+        filepath_dir=None,  # type: Optional[str]
+        filename_prefix=CONTEXT_FILENAME_PREFIX,  # type: str
+        filename_suffix=CONTEXT_FILENAME_SUFFIX  # type: str
+    ):
+        # type: (...) -> List[str]
+        """
+        Render context template files. For each template file, a file with rendered content is created.
+
+        :param logger: logger to use for logging.
+        :param dict context: context to use for rendering.
+        :param str template_filepaths: list of paths to template files. If not set, paths set via
+            ``--context-template-file`` option are used.
+        :param str filepath_dir: all files are created in this directory. If not set, current working directory
+            is used.
+        :param str filename_prefix: all file names begin with this prefix.
+        :param str filename_suffix: all file names end with this suffix.
+        :returns: list of paths to rendered files, one for each template.
+        """
+
+        template_filepaths = template_filepaths or self.context_template_files
+        filepath_dir = filepath_dir or os.getcwd()
+
+        filepaths = []
+
+        for template in self._context_templates(template_filepaths):
+            with tempfile.NamedTemporaryFile(
+                prefix=filename_prefix,
+                suffix=filename_suffix,
+                dir=filepath_dir,
+                delete=False
+            ) as f:
+                f.write(
+                    gluetool.utils.render_template(template, logger=logger, **context)
+                )
+
+                f.flush()
+
+            # Make the "temporary" file readable for investigation when pipeline's done.
+            os.chmod(f.name, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
+
+            filepaths.append(f.name)
+
+        return filepaths
 
     def _plans_from_dist_git(self, repodir, filter=None):
         # type: (str, Optional[str]) -> List[str]
@@ -328,6 +411,16 @@ class TestScheduleTMT(Module):
                     snapshots=tec.snapshots
                 )
 
+                # Prepare tmt context files
+                context = gluetool.utils.dict_update(
+                    self.shared('eval_context'),
+                    {
+                        'TEC': tec
+                    }
+                )
+
+                schedule_entry.context_files = self.render_context_templates(schedule_entry.logger, context)
+
                 schedule.append(schedule_entry)
 
         schedule.log(self.debug, label='complete schedule')
@@ -399,6 +492,11 @@ class TestScheduleTMT(Module):
         # so it recognizes it as a path instead of run directory name
         command = [
             self.option('command')
+        ]
+
+        command += [
+            '--context=@{}'.format(filepath)
+            for filepath in schedule_entry.context_files
         ]
 
         command += [

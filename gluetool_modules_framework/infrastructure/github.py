@@ -325,6 +325,7 @@ class GitHubPullRequest(object):
         pull_request = self.github_api.get_pull_request(self.owner, self.repo, self.pull_number)
 
         self.title = pull_request['title']
+        self.state = pull_request['state']
 
         self.clone_url = pull_request['base']['repo']['clone_url']
         self.source_clone_url = pull_request['head']['repo']['clone_url']
@@ -507,6 +508,10 @@ class GitHub(gluetool.Module):
                 'help': 'Print pull request info.',
                 'action': 'store_true'
             },
+            'skip-closed-pull-requests': {
+                'help': 'Do not test closed pull request if set',
+                'action': 'store_true'
+            },
         }),
     ]
 
@@ -617,6 +622,14 @@ class GitHub(gluetool.Module):
         :type target_url: str
         """
 
+        pull_request = self._pull_request
+
+        assert pull_request is not None
+
+        if pull_request.state == 'closed' and self.option('skip-closed-pull-requests'):
+            self.warn('Skipping setting pr status to closed pull request')
+            return
+
         upload_full_url = gluetool.utils.normalize_bool_option(self.option('upload-full-url'))
 
         if status not in VALID_STATUSES:
@@ -639,9 +652,6 @@ class GitHub(gluetool.Module):
                 # network that must not be posted to external network
                 status_data['target_url'] = self.shared('get_shortened_url', target_url)
 
-        pull_request = self._pull_request
-
-        assert pull_request is not None
         self.github_api().set_commit_status(pull_request, status_data)
 
         self.info('Status for {pull_id} with context \'{context}\' successfully set to \'{status}\''.format(
@@ -692,6 +702,9 @@ class GitHub(gluetool.Module):
                 self._pull_request.pull_request_id,
                 self._pull_request.html_url
             ))
+
+            if self.option('skip-closed-pull-requests'):
+                raise gluetool.SoftGlueError('The {} pull requested was closed'.format(self._pull_request.html_url))
 
         set_status_option = self.option('set-status')
         if set_status_option:

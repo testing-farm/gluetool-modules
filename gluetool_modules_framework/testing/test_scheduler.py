@@ -393,7 +393,14 @@ class TestScheduler(gluetool.Module):
             log_dict(self.debug, 'compose constraint arches', compose_constraint_arches)
 
             compose_constraint_arches += with_arches
-            log_dict(self.debug, 'compose constraint arches with forcefully arches', compose_constraint_arches)
+            log_dict(self.debug, 'compose constraint arches with forcefully added arches', compose_constraint_arches)
+
+            compose_constraint_arches = list(set(compose_constraint_arches))
+            log_dict(
+                self.debug,
+                'compose constraint arches with forcefully added arches (duplicites pruned)',
+                compose_constraint_arches
+            )
 
             for arch in compose_constraint_arches:
                 constraints += [

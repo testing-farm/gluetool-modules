@@ -9,6 +9,7 @@ from gluetool import Failure
 from gluetool import GlueCommandError
 from gluetool import GlueError
 from gluetool.utils import Command
+from gluetool_modules_framework.libs.test_schedule import TestScheduleEntryState
 
 from typing import AnyStr, List, Optional, Dict, Any, cast # noqa
 
@@ -166,6 +167,11 @@ class UploadResults(gluetool.Module):
 
         files = []
         for entry in schedule:
+
+            # If entry errored, there is no files to upload
+            if entry.state == TestScheduleEntryState.ERROR:
+                continue
+
             dest_filename = "{}-{}{}".format(
                 os.path.splitext(
                     entry.playbook_filepath.split('/')[-1]
@@ -232,6 +238,16 @@ class UploadResults(gluetool.Module):
                 results_file['result']
             )
             body += line
+
+        # Check for errored entries and mention them in summary page
+        schedule = self.shared('test_schedule')
+        for entry in schedule:
+            if entry.state == TestScheduleEntryState.ERROR:
+                line = '<p> Testing error: {}</p>\n'.format(
+                    os.path.splitext(entry.playbook_filepath.split('/')[-1])[0]
+                )
+                body += line
+
         body += '\n<a href={}>INDEX</a>\n'.format(self.full_target_url)
         summary_page = summary_page.format(body)
 

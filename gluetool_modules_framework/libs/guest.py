@@ -18,6 +18,7 @@ from functools import partial
 from gluetool.log import LoggerMixin
 from gluetool.result import Result
 from gluetool.utils import Command
+from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 
 import gluetool
 
@@ -76,7 +77,7 @@ class Guest(LoggerMixin, object):
         self.attach_logger(GuestLoggingAdapter(logger, name))
 
     def __init__(self, module, name, environment=None):
-        # type: (gluetool.glue.Module, str, Optional[Any]) -> None
+        # type: (gluetool.glue.Module, str, Optional[TestingEnvironment]) -> None
 
         self._module = module
         self.name = name

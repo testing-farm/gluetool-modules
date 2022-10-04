@@ -657,9 +657,9 @@ class TestScheduleTMT(Module):
             # test properties
             assert schedule_entry.guest is not None
             assert schedule_entry.guest.environment is not None
-            _add_property(properties, 'arch', schedule_entry.guest.environment.arch)
+            _add_property(properties, 'arch', str(schedule_entry.guest.environment.arch))
             _add_property(properties, 'connectable_host', schedule_entry.guest.hostname)
-            _add_property(properties, 'distro', schedule_entry.guest.environment.compose)
+            _add_property(properties, 'distro', str(schedule_entry.guest.environment.compose))
             _add_property(properties, 'status', schedule_entry.stage.value.capitalize())
             _add_property(properties, 'testcase.source.url', self.shared('dist_git_repository').web_url)
             _add_property(properties, 'variant', '')

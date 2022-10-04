@@ -42,7 +42,7 @@ class InstallMBSBuild(gluetool.Module):
             '--redhat', 'create',
             'module', module_nsvc,
             '--sigkey', 'none',
-            '--arch', guest.environment.arch
+            '--arch', str(guest.environment.arch)
         ]
 
         # TO improve: raise OdcsError if command fails

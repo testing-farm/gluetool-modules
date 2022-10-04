@@ -94,9 +94,10 @@ class InstallMBSBuild(gluetool.Module):
             ]
 
         assert guest.environment is not None
+        assert guest.environment.arch is not None
         # Inner list gather all arches, `set` gets rid of duplicities, and final `list` converts set to a list.
         command += [
-            '--arch', guest.environment.arch
+            '--arch', str(guest.environment.arch)
         ]
 
         if self.option('odcs-options'):

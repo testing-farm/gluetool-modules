@@ -141,7 +141,7 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
         # type: () -> Optional[PlatformType]
 
         meta_file = from_yaml(
-            self.shared('primary_task').get_file(self.option('metadata-path'))
+            self.shared('primary_task').get_file_from_pull_request(self.option('metadata-path'))
         )
 
         return cast(Optional[PlatformType], meta_file['galaxy_info'].get('platforms', None))

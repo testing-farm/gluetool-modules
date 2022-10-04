@@ -299,6 +299,31 @@ class GitHubAPI(object):
 
         return six.ensure_str(response.content)
 
+    def get_file_from_pull_request(self, pull_request, file_path):
+        # type: (GitHubPullRequest, str) -> str
+        """
+        Get a single file from the pull request changed repository.
+
+        Refer to https://docs.github.com/en/rest/reference/repos#get-repository-content
+        for the API endpoint documentation.
+        """
+        path = 'repos/{owner}/{repo}/contents/{file_path}'.format(
+            owner=pull_request.source_repo_owner,
+            repo=pull_request.source_repo_name,
+            file_path=file_path,
+        )
+
+        url = self._compose_url(path, params={'ref': pull_request.source_branch})
+
+        response = self._get(url)
+
+        if isinstance(response.json(), list):
+            raise gluetool.GlueError('The {file_path} is a directory'.format(file_path=file_path))
+
+        response = self._get(response.json()['download_url'])
+
+        return response.content
+
 
 class GitHubPullRequest(object):
     ARTIFACT_NAMESPACE = 'github-pr'
@@ -337,9 +362,9 @@ class GitHubPullRequest(object):
         self.html_url = links['html']['href']
         self.comments_url = links['comments']['href']
 
-        self.source_branch = pull_request['head']['ref']
-        self.source_repo_owner = pull_request['head']['repo']['owner']['login']
-        self.source_repo_name = pull_request['head']['repo']['name']
+        self.source_branch = pull_request['head']['ref']  # type: str
+        self.source_repo_owner = pull_request['head']['repo']['owner']['login']  # type: str
+        self.source_repo_name = pull_request['head']['repo']['name']  # type: str
 
         self.target_branch = pull_request['base']['ref']
 
@@ -421,6 +446,15 @@ class GitHubPullRequest(object):
         Return the content of a file in the pull request.
         """
         content = self.github_api.get_file(self, path)
+        assert isinstance(content, str)
+        return content
+
+    def get_file_from_pull_request(self, path):
+        # type: (str) -> str
+        """
+        Return the content of a file in the pull request.
+        """
+        content = self.github_api.get_file_from_pull_request(self, path)
         assert isinstance(content, str)
         return content
 

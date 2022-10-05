@@ -272,6 +272,10 @@ class UploadResults(gluetool.Module):
         """
         self.require_shared('test_schedule', 'compose', 'primary_task')
 
+        # If failure and no test schedule, there is nothing to upload
+        if failure and not self.shared('test_schedule'):
+            return
+
         if not self.shared('test_schedule'):
             # Probably cloning failed
             self.warn('Nothing to upload')

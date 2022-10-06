@@ -66,7 +66,8 @@ class OpenStackJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkinsJ
             'default': ''
         },
         'test-scheduler-options': {
-            'help': 'Additional options for test-scheduler module.'
+            'help': 'Additional options for test-scheduler module.',
+            'default': ''
         },
         'test-scheduler-sti-options': {
             'help': 'Additional options for test-scheduler-sti module.'

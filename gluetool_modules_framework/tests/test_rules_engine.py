@@ -11,7 +11,7 @@ import pytest
 
 import gluetool
 import gluetool_modules_framework.helpers.rules_engine
-from gluetool_modules_framework.helpers.rules_engine import RulesEngine, Rules, MatchableString, RulesSyntaxError, InvalidASTNodeError
+from gluetool_modules_framework.helpers.rules_engine import RulesEngine, Rules, MatchableString, RulesSyntaxError
 
 from mock import MagicMock
 from . import create_module, check_loadable
@@ -76,12 +76,6 @@ def test_compile_sanity(rule):
         RulesSyntaxError,
         r'Cannot parse rules',
         'Position 1:5: unexpected EOF while parsing (<unknown>, line 1)'
-    ),
-    (
-        '1 * 1',
-        InvalidASTNodeError,
-        r"It is not allowed to use 'BinOp' in rules",
-        "It is not allowed to use 'BinOp' in rules."
     ),
     (
         1,

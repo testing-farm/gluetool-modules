@@ -130,7 +130,7 @@ class RulesASTVisitor(ast.NodeTransformer):
     # In Python 2, they are parsed as `Name` objects.
     _valid_classes = tuple([
         getattr(_ast, node_class) for node_class in [
-            'Expression', 'Expr', 'Compare', 'Name', 'Load', 'BoolOp', 'UnaryOp',
+            'Expression', 'Expr', 'Compare', 'Name', 'Load', 'BoolOp', 'UnaryOp', 'BinOp', 'Add',
             'Str', 'Num', 'List', 'Tuple', 'Dict',
             'Subscript', 'Index', 'ListComp', 'comprehension',
             'Store',

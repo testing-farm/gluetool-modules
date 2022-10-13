@@ -322,7 +322,7 @@ class GitHubAPI(object):
 
         response = self._get(response.json()['download_url'])
 
-        return response.content
+        return six.ensure_str(response.content)
 
 
 class GitHubPullRequest(object):

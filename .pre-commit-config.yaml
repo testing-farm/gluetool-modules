@@ -54,3 +54,14 @@ repos:
     rev: v5.4.0
     hooks:
       - id: ansible-lint
+
+  - repo: local
+    hooks:
+      - id: poetry-lock
+        name: poetry-lock
+        files: pyproject.toml
+        language: python
+        language_version: python3.9
+        entry: poetry lock --no-update
+        pass_filenames: false
+        stages: [manual]

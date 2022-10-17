@@ -380,7 +380,7 @@ class TestScheduleTMT(Module):
 
         options = []  # type: List[str]
 
-        for name, value in context.iteritems():
+        for name, value in six.iteritems(context):
             options += [
                 '-c', '{}={}'.format(name, value)
             ]

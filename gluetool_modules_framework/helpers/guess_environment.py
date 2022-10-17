@@ -86,17 +86,17 @@ class GuessEnvironment(gluetool.Module):
             },
             'distro-method': {
                 'help': 'What method to use for distro "guessing" (default: %(default)s).',
-                'choices': ('autodetect', 'target-autodetection', 'force', 'nightly', 'buc'),
+                'choices': ('autodetect', 'target-autodetection', 'force', 'nightly', 'buc', 'testing-farm-request'),
                 'default': 'autodetect'
             },
             'image-method': {
                 'help': 'What method to use for image "guessing" (default: %(default)s).',
-                'choices': ('autodetect', 'target-autodetection', 'force', 'recent'),
+                'choices': ('autodetect', 'target-autodetection', 'force', 'recent', 'testing-farm-request'),
                 'default': 'autodetect'
             },
             'product-method': {
                 'help': 'What method to use for product "guessing" (default: %(default)s).',
-                'choices': ('autodetect', 'target-autodetection', 'force'),
+                'choices': ('autodetect', 'target-autodetection', 'force', 'testing-farm-request'),
                 'default': 'autodetect'
             },
             'wow-relevancy-distro-method': {

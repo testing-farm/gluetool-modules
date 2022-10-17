@@ -154,6 +154,32 @@ If you are in an poetry shell, you can run citool directly:
     citool -l
     ... pile of modules ...
 
+8. Locally run a test pipeline
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Every testing farm artifact includes a ``pipeline.log`` with the ``gluetool`` invocation. This pipeline can be modified
+to run against a local VM. First, check out the production configuration:
+
+.. code-block:: bash
+
+    git clone -b testing-farm https://gitlab.com/testing-farm/infrastructure/
+
+Then pick a particular request, e.g one with a COPR installation, and run a pipeline with the `static-guest` provisioner.
+
+.. code-block:: bash
+
+    gluetool -c --module-config-path infrastructure/ranch/public/citool-config/config \
+       rules-engine \
+       ansible \
+       static-guest --guest root@VMHOST:VMSSHPORT --ssh-key PATH/TO/identity \
+       testing-farm-request --api-url https://internal.api.dev.testing-farm.io --api-key YOURAPIKEY --request-id REQUEST_ID \
+       guest-setup \
+       fedora-copr:copr \
+       install-copr-build \
+       guess-environment-testing-farm-request:guess-environment \
+       dist-git-testing-farm:dist-git \
+       test-schedule-tmt-connect:test-schedule-tmt \
+       test-scheduler-noconfig:test-scheduler \
+       test-schedule-runner
 
 Test suites
 -----------

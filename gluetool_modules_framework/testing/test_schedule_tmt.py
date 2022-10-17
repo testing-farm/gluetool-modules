@@ -516,6 +516,7 @@ class TestScheduleTMT(Module):
             '--how', 'connect',
             '--guest', schedule_entry.guest.hostname,
             '--key', schedule_entry.guest.key,
+            '--port', schedule_entry.guest.port,
 
             # `plan` step
             'plan',

@@ -85,15 +85,22 @@ def test_setup_guest(module_shared_patched, tmpdir):
 
     module.setup_guest(guest, stage=GuestSetupStage.ARTIFACT_INSTALLATION, log_dirpath=str(tmpdir))
 
-    calls = [
-        call('curl -v dummy_repo_url --output /etc/yum.repos.d/copr_build.repo'),
-        call('dnf --allowerasing -y reinstall dummy_rpm_url1 || true'),
-        call('dnf --allowerasing -y reinstall dummy_rpm_url2 || true'),
-        call('dnf --allowerasing -y install dummy_rpm_url1 dummy_rpm_url2')
+    commands = [
+        'curl -v dummy_repo_url --output /etc/yum.repos.d/copr_build.repo',
+        'dnf --allowerasing -y reinstall dummy_rpm_url1 || true',
+        'dnf --allowerasing -y reinstall dummy_rpm_url2 || true',
+        'dnf --allowerasing -y install dummy_rpm_url1 dummy_rpm_url2',
+        'rpm -q dummy_rpm_names1',
+        'rpm -q dummy_rpm_names2',
     ]
 
-    execute_mock.assert_has_calls(calls, any_order=True)
+    calls = [call('command -v dnf')] * 2 + [call(c) for c in commands]
+    execute_mock.assert_has_calls(calls, any_order=False)
+    assert execute_mock.call_count == len(calls)
     assert_log_files(guest, str(tmpdir))
+
+    module.require_shared('sut_install_commands')
+    assert module.shared('sut_install_commands') == commands
 
 
 def test_no_dnf(module_shared_patched, tmpdir):

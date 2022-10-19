@@ -492,7 +492,7 @@ class TestScheduleTMT(Module):
         # so it recognizes it as a path instead of run directory name
         command = [
             self.option('command')
-        ]
+        ]  # type: List[str]
 
         command += [
             '--context=@{}'.format(filepath)
@@ -510,13 +510,14 @@ class TestScheduleTMT(Module):
                 '-e', '{}={}'.format(name, value)
             ]
 
+        assert schedule_entry.guest.key is not None
         command += [
             # `provision` step
             'provision',
             '--how', 'connect',
             '--guest', schedule_entry.guest.hostname,
             '--key', schedule_entry.guest.key,
-            '--port', schedule_entry.guest.port,
+            '--port', str(schedule_entry.guest.port),
 
             # `plan` step
             'plan',

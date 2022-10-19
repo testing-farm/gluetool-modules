@@ -412,6 +412,7 @@ class TestSchedule(List[TestScheduleEntry]):
                             '-p', str(se.guest.port)
                         ]
 
+                    assert se.guest.hostname
                     ssh_command_stack += [se.guest.hostname]
 
                     ssh_command = ' '.join(ssh_command_stack)

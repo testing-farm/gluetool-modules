@@ -464,7 +464,7 @@ class ArtemisGuest(NetworkedGuest):
     def __init__(self,
                  module,  # type: ArtemisProvisioner
                  guestname,  # type: str
-                 hostname,  # type: str
+                 hostname,  # type: Optional[str]
                  environment,  # type: TestingEnvironment
                  port=None,  # type: Optional[int]
                  username=None,  # type: Optional[str]
@@ -969,8 +969,9 @@ class ArtemisProvisioner(gluetool.Module):
                                          post_install_script=post_install_script)
 
         guestname = response.get('guestname')
-        guest = ArtemisGuest(self, guestname, response['address'], environment,
-                             port=response['ssh']['port'], username=response['ssh']['username'],
+        hostname = six.ensure_str(response['address']) if response['address'] is not None else None
+        guest = ArtemisGuest(self, guestname, hostname, environment,
+                             port=response['ssh']['port'], username=six.ensure_str(response['ssh']['username']),
                              key=ssh_key, options=options)
         guest.info('Guest is being provisioned')
         log_dict(guest.debug, 'Created guest request', response)
@@ -981,7 +982,7 @@ class ArtemisProvisioner(gluetool.Module):
         try:
             guest._wait_ready(timeout=self.option('ready-timeout'), tick=self.option('ready-tick'))
             response = self.api.inspect_guest(guest.artemis_id)
-            guest.hostname = response['address']
+            guest.hostname = six.ensure_str(response['address']) if response['address'] is not None else None
             guest.info("Guest is ready: {}".format(guest))
 
             guest._wait_alive(self.option('connect-timeout'),

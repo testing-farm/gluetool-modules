@@ -241,7 +241,7 @@ class NetworkedGuest(Guest):
     # pylint: disable=too-many-arguments
     def __init__(self,
                  module,  # type: gluetool.Module
-                 hostname,  # type: str
+                 hostname,  # type: Optional[str]
                  name=None,  # type: Optional[str]
                  port=None,  # type: Optional[int]
                  username=None,  # type: Optional[str]
@@ -252,6 +252,7 @@ class NetworkedGuest(Guest):
         # type: (...) -> None
 
         name = name or hostname
+        assert name
         super(NetworkedGuest, self).__init__(module, name, **kwargs)
 
         self.hostname = hostname
@@ -354,6 +355,7 @@ class NetworkedGuest(Guest):
                 'ServerAliveCountMax=1'
             ]
 
+        assert self.hostname
         return self._execute(self._ssh + sshize_options(ssh_options) + [self.hostname] + [cmd], **kwargs)
 
     def _discover_rc_support(self):

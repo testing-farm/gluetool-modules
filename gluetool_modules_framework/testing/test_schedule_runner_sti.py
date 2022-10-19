@@ -427,6 +427,7 @@ sut     ansible_host={} ansible_user=root {}
             # test properties
             assert schedule_entry.guest is not None
             assert schedule_entry.guest.environment is not None
+            assert schedule_entry.guest.hostname is not None
             _add_property(properties, 'arch', str(schedule_entry.guest.environment.arch))
             _add_property(properties, 'connectable_host', schedule_entry.guest.hostname)
             _add_property(properties, 'distro', str(schedule_entry.guest.environment.compose))

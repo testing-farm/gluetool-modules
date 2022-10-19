@@ -283,7 +283,6 @@ class TestScheduleReport(gluetool.Module):
 
             self.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
 
-            sort_children(testsuite_logs, lambda child: child.attrs['name'])
             sort_children(testsuite_properties, lambda child: child.attrs['name'])
 
         self._result = test_suites

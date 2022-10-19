@@ -182,6 +182,17 @@ Then pick a particular request, e.g one with a COPR installation, and run a pipe
        test-schedule-runner \
        test-schedule-report
 
+If you need to run pre/post setup playbooks as well, add these parameters to
+the ``guest-setup`` module (the production config assumes a container bind
+mount, which doesn't work locally):
+
+.. code-block:: bash
+
+       guest-setup --playbooks 'pre-artifact-installation:infrastructure/ranch/public/citool-config/guest-setup/pre-artifact-installation/entrypoint.yml,post-artifact-installation:infrastructure/ranch/public/citool-config/guest-setup/post-artifact-installation/entrypoint.yml' --extra-vars pre-artifact-installation:IMAGE_NAME=<image-name>,post-artifact-installation:TESTING_FARM_REQUEST_ID=<request-id>
+
+Replace ``<image-name>`` with e.g. ``Fedora-37``, and ``<request-id>`` with the
+same ID as for the ``testing-farm-request`` module above.
+
 Test suites
 -----------
 

@@ -142,9 +142,7 @@ py27-install-fedora-32:
   stage: test
   image: registry.fedoraproject.org/fedora:32
   script:
-    # tmt requires rsync
-    - dnf -y install python3-pip git rsync
-    - pip3 install git+https://github.com/psss/tmt.git
+    - dnf -y install tmt
     - tmt run -adddvvv provision -h local plan --name /plans/fedora/py27
 
 py37-install-fedora-36:
@@ -152,9 +150,8 @@ py37-install-fedora-36:
   stage: test
   image: registry.fedoraproject.org/fedora:36
   script:
-    # tmt requires rsync
-    - dnf -y install python3-pip git rsync
-    - pip3 install git+https://github.com/psss/tmt.git
+    - dnf -y install tmt
+    - dnf -y install tmt-provision-container
     - tmt run -adddvvv provision -h local plan --name /plans/fedora/py37
 
 py39-install-fedora-36:
@@ -162,9 +159,8 @@ py39-install-fedora-36:
   stage: test
   image: registry.fedoraproject.org/fedora:36
   script:
-    # tmt requires rsync
-    - dnf -y install python3-pip git rsync
-    - pip3 install git+https://github.com/psss/tmt.git
+    - dnf -y install tmt
+    - dnf -y install tmt-provision-container
     - tmt run -adddvvv provision -h local plan --name /plans/fedora/py39
 
 # Installation Centos Stream 8
@@ -173,9 +169,9 @@ py27-install-centos-stream-8:
   stage: test
   image: quay.io/centos/centos:stream8
   script:
-    # tmt requires rsync
-    - dnf -y install python3-pip git rsync
-    - pip3 install git+https://github.com/psss/tmt.git
+    - dnf -y install epel-release
+    - dnf -y install tmt
+    - dnf -y install tmt-provision-container
     - tmt run -adddvvv provision -h local plan --name /plans/centos-stream-8
 
 # Installation RHEL8

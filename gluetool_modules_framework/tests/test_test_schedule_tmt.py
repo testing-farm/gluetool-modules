@@ -6,6 +6,7 @@ import os
 import pytest
 
 import gluetool
+from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 import gluetool_modules_framework.testing.test_schedule_tmt
 from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 from gluetool_modules_framework.testing.test_schedule_tmt import gather_plan_results, TestScheduleEntry
@@ -63,6 +64,7 @@ def test_gather_results(module, asset, monkeypatch):
 
     schedule_entry = TestScheduleEntry(
         gluetool.log.Logging().get_logger(),
+        TestingEnvironment('x86_64', 'rhel-9'),
         # a plan always starts with slash
         '/{}'.format(name),
         'some-repo-dir'

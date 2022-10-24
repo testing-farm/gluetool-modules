@@ -20,7 +20,7 @@ from gluetool_modules_framework.libs import create_inspect_callback, sort_childr
 from gluetool_modules_framework.libs.artifacts import artifacts_location
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleResult, TestScheduleEntryOutput, \
-    TestScheduleEntryStage
+    TestScheduleEntryStage, TestScheduleEntryAdapter
 from gluetool_modules_framework.libs.test_schedule import TestScheduleEntry as BaseTestScheduleEntry
 
 # Type annotations
@@ -101,8 +101,19 @@ class TMTExitCodes(enum.IntEnum):
 
 
 class TestScheduleEntry(BaseTestScheduleEntry):
-    def __init__(self, logger, plan, repodir):
-        # type: (ContextAdapter, str, Dict[str, Any]) -> None
+    @staticmethod
+    def construct_id(tec, plan=None):
+        # type: (TestingEnvironment, Optional[str]) -> str
+
+        entry_id = '{}:{}'.format(tec.compose, tec.arch)
+
+        if plan is None:
+            return entry_id
+
+        return '{}:{}'.format(entry_id, plan)
+
+    def __init__(self, logger, tec, plan, repodir):
+        # type: (ContextAdapter, TestingEnvironment, str, Dict[str, Any]) -> None
         """
         Test schedule entry, suited for use with TMT runners.
 
@@ -113,7 +124,7 @@ class TestScheduleEntry(BaseTestScheduleEntry):
         # As the ID use the test plan name
         super(TestScheduleEntry, self).__init__(
             logger,
-            plan,
+            TestScheduleEntry.construct_id(tec, plan),
             'tmt'
         )
 
@@ -229,7 +240,11 @@ class TestScheduleTMT(Module):
                 'default': 'tmt'
             },
             'plan-filter': {
-                'help': "Use the given filter passed to 'tmt plan ls --filter'. See pydoc fmf.filter for details.",
+                'help': """
+                        Use the given filter passed to 'tmt plan ls --filter'. See pydoc fmf.filter for details.
+                        (default: %(default)s).
+                        """,
+                'default': 'enabled:true',
                 'metavar': 'FILTER'
             },
             'context-template-file': {
@@ -319,8 +334,8 @@ class TestScheduleTMT(Module):
 
         return filepaths
 
-    def _plans_from_dist_git(self, repodir, filter=None):
-        # type: (str, Optional[str]) -> List[str]
+    def _plans_from_dist_git(self, repodir, context_files, filter):
+        # type: (str, List[str], str) -> List[str]
         """
         Return list of plans from given repository.
 
@@ -328,10 +343,12 @@ class TestScheduleTMT(Module):
         :param str filter: use the given filter when listing plans.
         """
 
-        command = [self.option('command'), 'plan', 'ls']
-
-        if filter:
-            command.append(['--filter', filter])
+        command = [self.option('command')] + [
+            '--context=@{}'.format(filepath)
+            for filepath in context_files
+        ] + [
+            'plan', 'ls' '--filter', filter
+        ]
 
         try:
             tmt_output = Command(command).run(cwd=repodir)
@@ -390,20 +407,40 @@ class TestScheduleTMT(Module):
             prefix='workdir-{}-{}-'.format(repository.package, repository.branch)
         )
 
-        plans = self._plans_from_dist_git(repodir)
-
-        log_dict(self.info, 'creating schedule for {} plans'.format(len(plans)), plans)
+        root_logger = Logging.get_logger()  # type: ContextAdapter
 
         schedule = TestSchedule()
 
-        # For each plan, architecture and compose, create a schedule entry
-        for plan in plans:
-            for tec in testing_environment_constraints:
-                if tec.arch == tec.ANY:
-                    self.warn('TMT scheduler does not support open constraints', sentry=True)
-                    continue
+        for tec in testing_environment_constraints:
+            if tec.arch == tec.ANY:
+                self.warn('TMT scheduler does not support open constraints', sentry=True)
+                continue
 
-                schedule_entry = TestScheduleEntry(Logging.get_logger(), plan, repodir)
+            # Construct a custom logger for this particular TEC, to provide more context.
+            # If we ever construct a schedule entry based on this TEC, such an entry would
+            # construct the very similar logger, too.
+            logger = TestScheduleEntryAdapter(root_logger, TestScheduleEntry.construct_id(tec))  # type: ContextAdapter
+
+            logger.info('looking for plans')
+
+            # Prepare tmt context files
+            context = gluetool.utils.dict_update(
+                self.shared('eval_context'),
+                {
+                    'TEC': tec
+                }
+            )
+
+            context_files = self.render_context_templates(logger, context)
+
+            plans = self._plans_from_dist_git(repodir, context_files, self.option('plan-filter'))
+
+            if not plans:
+                logger.info('no plans found')
+                continue
+
+            for plan in plans:
+                schedule_entry = TestScheduleEntry(root_logger, tec, plan, repodir)
 
                 schedule_entry.testing_environment = TestingEnvironment(
                     compose=tec.compose,
@@ -411,15 +448,7 @@ class TestScheduleTMT(Module):
                     snapshots=tec.snapshots
                 )
 
-                # Prepare tmt context files
-                context = gluetool.utils.dict_update(
-                    self.shared('eval_context'),
-                    {
-                        'TEC': tec
-                    }
-                )
-
-                schedule_entry.context_files = self.render_context_templates(schedule_entry.logger, context)
+                schedule_entry.context_files = context_files
 
                 schedule.append(schedule_entry)
 

@@ -92,9 +92,9 @@ def test_setup_guest(module_shared_patched, tmpdir):
 
     calls = [
         call('command -v dnf'),
-        call('curl dummy_repo_url --output /etc/yum.repos.d/copr_build-copr_project-1.repo'),
-        call('curl -LO dummy_rpm_url1'),
-        call('curl -LO dummy_rpm_url2'),
+        call('curl dummy_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project-1.repo'),
+        call('curl --retry 5 -LO dummy_rpm_url1'),
+        call('curl --retry 5 -LO dummy_rpm_url2'),
         call('dnf --allowerasing -y reinstall dummy_rpm_url1'),
         call('dnf --allowerasing -y reinstall dummy_rpm_url2'),
         call('dnf --allowerasing -y downgrade dummy_rpm_url1 dummy_rpm_url2'),
@@ -125,9 +125,9 @@ def test_no_dnf(module_shared_patched, tmpdir):
 
     calls = [
         call('command -v dnf'),
-        call('curl dummy_repo_url --output /etc/yum.repos.d/copr_build-copr_project-1.repo'),
-        call('curl -LO dummy_rpm_url1'),
-        call('curl -LO dummy_rpm_url2'),
+        call('curl dummy_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project-1.repo'),
+        call('curl --retry 5 -LO dummy_rpm_url1'),
+        call('curl --retry 5 -LO dummy_rpm_url2'),
         call('yum -y reinstall dummy_rpm_url1'),
         call('yum -y reinstall dummy_rpm_url2'),
         call('yum -y downgrade dummy_rpm_url1 dummy_rpm_url2'),

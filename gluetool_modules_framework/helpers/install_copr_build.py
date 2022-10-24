@@ -81,7 +81,7 @@ class InstallCoprBuild(gluetool.Module):
         for number, build in enumerate(builds, 1):
             sut_installation.add_step(
                 'Download copr repository',
-                'curl {{}} --output /etc/yum.repos.d/copr_build-{}-{}.repo'.format(
+                'curl {{}} --retry 5 --output /etc/yum.repos.d/copr_build-{}-{}.repo'.format(
                     build.project.replace('/', '_'), number
                 ),
                 items=build.repo_url
@@ -97,7 +97,7 @@ class InstallCoprBuild(gluetool.Module):
 
         joined_rpm_urls = ' '.join(rpm_urls)
 
-        sut_installation.add_step('Download packages', 'curl -LO {}',
+        sut_installation.add_step('Download packages', 'curl --retry 5 -LO {}',
                                   items=rpm_urls)
         sut_installation.add_step('Downgrade packages', 'yum -y downgrade {}',
                                   items=joined_rpm_urls, ignore_exception=True)

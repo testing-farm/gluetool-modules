@@ -3,6 +3,7 @@
 
 import gluetool
 import re
+import six
 
 from gluetool.log import log_dict
 from gluetool_modules_framework.libs.artifacts import splitFilename
@@ -84,7 +85,9 @@ class TestSchedulerUpgrades(gluetool.Module):
                         metadata_rpms_json['payload']['rpms'][repo_name]['x86_64'][srpm_name].keys()
                     )
 
-        binary_rpms_set = {package.encode('utf-8') for package in binary_rpms_set if not package.endswith('.src')}
+        binary_rpms_set = {
+            six.ensure_str(package) for package in binary_rpms_set if not package.endswith('.src')
+        }
         log_dict(self.debug, 'binary rpm nevrs', sorted(binary_rpms_set))
 
         binary_rpms_list = sorted({splitFilename(package)[0] for package in binary_rpms_set})

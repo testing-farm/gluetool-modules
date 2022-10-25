@@ -421,7 +421,7 @@ gitdb2 = ">=2,<3"
 
 [[package]]
 name = "gluetool"
-version = "1.28"
+version = "1.29"
 description = "Python framework for constructing command-line pipelines."
 category = "main"
 optional = false
@@ -1705,7 +1705,7 @@ testing = ["func-timeout", "jaraco.itertools", "pytest (>=6)", "pytest-black (>=
 [metadata]
 lock-version = "1.1"
 python-versions = "~2.7 || ~3.7 || ~3.9"
-content-hash = "c0b5c2b1c159388dd075c4aaa8d01fb038b51437ea2af947730a29cff3d9753f"
+content-hash = "899e3ba117c9102b3eafae96cded1b450fb736bb139336c68cb7da11af4ffb19"
 
 [metadata.files]
 alabaster = [
@@ -1980,8 +1980,8 @@ gitpython = [
     {file = "GitPython-2.1.15.tar.gz", hash = "sha256:838c38d882a97b2fd146dbd4eb9baaf857cb65ebaa64e4c06fca48aaa491e1c6"},
 ]
 gluetool = [
-    {file = "gluetool-1.28-py2.py3-none-any.whl", hash = "sha256:7c6301f075272f3f01638c96705a4e7ae4f268d74bc0b5d0bdae94d756425b7d"},
-    {file = "gluetool-1.28.tar.gz", hash = "sha256:e5bfc3c3fa329b7fc4b00340a03b9c23e3d1cb01db3cb95b4056b6484d334ba8"},
+    {file = "gluetool-1.29-py2.py3-none-any.whl", hash = "sha256:e4c4217efb46a6bab7e3845cc88ee774c6a3f3210988e6ad51cc049ade36483b"},
+    {file = "gluetool-1.29.tar.gz", hash = "sha256:7f793d56ee77b2730b657fdceada65a821793a2a29d1b3159d5f1a09e93ee784"},
 ]
 gssapi = [
     {file = "gssapi-1.6.2-cp36-cp36m-win_amd64.whl", hash = "sha256:334e1d4af47773afa99b1128c3ab598f007ff0533059259fef3cf1824e618726"},

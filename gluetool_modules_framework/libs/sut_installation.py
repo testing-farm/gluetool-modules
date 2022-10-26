@@ -45,7 +45,7 @@ class SUTInstallationFailedError(ArtifactFingerprintsMixin, SoftGlueError):
     def __init__(
         self,
         artifact,                        # type: Any
-        guest,                           # type: gluetool_modules_framework.libs.guest.Guest
+        guest,                           # type: Optional[gluetool_modules_framework.libs.guest.Guest]
         items=None,                      # type: Any
         reason=None,                     # type: Optional[str]
         installation_logs=None,          # type: Optional[str]

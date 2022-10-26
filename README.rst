@@ -13,7 +13,7 @@ Testing
 
 Install the test dependencies:
 
-    sudo dnf install tox poetry libcurl-devel libpq
+    sudo dnf install tox poetry libcurl-devel libpq-devel popt-devel
 
 Run a particular `test scenario <./tox.ini>`_ with:
 

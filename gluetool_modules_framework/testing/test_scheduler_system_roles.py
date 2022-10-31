@@ -134,7 +134,26 @@ class TestSchedulerSystemRoles(gluetool.Module):
                     os.chdir(_cwd)
                 with tarfile.open(tar_file, "r") as _tar:
                     os.chdir(coll_path)
-                    _tar.extractall()
+                    def is_within_directory(directory, target):
+                        
+                        abs_directory = os.path.abspath(directory)
+                        abs_target = os.path.abspath(target)
+                    
+                        prefix = os.path.commonprefix([abs_directory, abs_target])
+                        
+                        return prefix == abs_directory
+                    
+                    def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+                    
+                        for member in tar.getmembers():
+                            member_path = os.path.join(path, member.name)
+                            if not is_within_directory(path, member_path):
+                                raise Exception("Attempted Path Traversal in Tar File")
+                    
+                        tar.extractall(path, members, numeric_owner=numeric_owner) 
+                        
+                    
+                    safe_extract(_tar)
                     os.chdir(_cwd)
             # Move the converted tests
             os.rename(os.path.join(coll_path, 'ansible_collections', coll_namespace, coll_name, 'tests', role),

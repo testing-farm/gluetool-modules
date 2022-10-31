@@ -139,18 +139,22 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         ))
         cmd = gluetool.utils.Command(['git', 'clone'], logger=logger)
 
-        cmd.options += clone_args or self.clone_args
+        def _get_options(shallow_clone=True):
+            # type: (bool) -> List[str]
+            # Asserts are required here, see
+            # https://mypy.readthedocs.io/en/latest/common_issues.html#narrowing-and-inner-functions
+            assert branch is not None
+            assert clone_url is not None
+            options = []  # Create a fresh list to avoid referencing a variable from out of this function's scope
+            options += clone_args or self.clone_args
+            if not ref:
+                if shallow_clone:
+                    options += ['--depth', '1']
+                options += ['-b', branch]
+            options += [clone_url, actual_path]
+            return options
 
-        if not ref:
-            cmd.options += [
-                '--depth', '1',
-                '-b', branch
-            ]
-
-        cmd.options += [
-            clone_url,
-            actual_path
-        ]
+        cmd.options = _get_options()
 
         def _clone():
             # type: () -> Result[None, str]
@@ -158,6 +162,11 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
                 cmd.run()
 
             except gluetool.GlueCommandError as exc:
+                # Some git servers do not support shallow cloning over http(s)
+                # Retry without shallow clone in the next try
+                if exc.output.stderr is not None and \
+                        'dumb http transport does not support shallow capabilities' in exc.output.stderr:
+                    cmd.options = _get_options(shallow_clone=False)
                 return Result.Error('Failed to clone git repository: {}, retrying'.format(exc.output.stderr))
 
             return Result.Ok(None)

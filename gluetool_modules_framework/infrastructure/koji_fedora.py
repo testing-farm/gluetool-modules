@@ -963,7 +963,7 @@ class KojiTask(LoggerMixin, object):
         :rtype: str
         """
         try:
-            return cast(str, self._task_request.source.split('#')[1].encode('ascii'))
+            return six.ensure_str(self._task_request.source.split('#')[1].encode('ascii'))
         except IndexError:
             self.debug('Distgit ref not found')
         return None

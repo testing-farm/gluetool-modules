@@ -705,7 +705,7 @@ class BeakerProvisioner(gluetool.Module):
                     if not recipe.get('system'):
                         continue
 
-                    systems.append(recipe.get('system').encode('ascii'))
+                    systems.append(six.ensure_str(recipe.get('system').encode('ascii')))
 
         log_dict(self.debug, 'systems', systems)
 
@@ -820,12 +820,12 @@ class BeakerProvisioner(gluetool.Module):
         # Download the remaining info and create the guest instance.
         guest_info = cache.get(self._key('guests', fqdn, 'info'))
 
-        guest = BeakerGuest(self, guest_info['fqdn'].encode('ascii'),
+        guest = BeakerGuest(self, six.ensure_str(guest_info['fqdn'].encode('ascii')),
                             environment=environment, is_static=False,
-                            name=guest_info['fqdn'].encode('ascii'),
-                            username=guest_info['ssh_user'].encode('ascii'),
-                            key=guest_info['ssh_key'].encode('ascii'),
-                            options=[s.encode('ascii') for s in guest_info['ssh_options']])
+                            name=six.ensure_str(guest_info['fqdn'].encode('ascii')),
+                            username=six.ensure_str(guest_info['ssh_user'].encode('ascii')),
+                            key=six.ensure_str(guest_info['ssh_key'].encode('ascii')),
+                            options=[six.ensure_str(s.encode('ascii')) for s in guest_info['ssh_options']])
 
         guest.debug('grabbed from the cache: {}, use-by {}'.format(environment, use_by))
 

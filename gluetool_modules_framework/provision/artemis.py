@@ -61,7 +61,7 @@ class ArtemisAPIError(SoftGlueError):
 
         self.status_code = response.status_code
         self.json = {}  # type: Dict[str, str]
-        self.text = response.text.encode('ascii', 'replace')  # type: str
+        self.text = six.ensure_str(response.text.encode('ascii', 'replace'))
         self._errors = error
 
         # We will look at response's headers to try to guess if response's content is json serializable
@@ -152,7 +152,7 @@ class ArtemisAPI(object):
         def error(response):
             # type: (Any) -> ArtemisAPIError
             err_msg = 'URL {} does not point to Artemis API. Expected list, got {}' \
-                .format(self.url, response.text.encode('ascii', 'replace'))
+                .format(self.url, six.ensure_str(response.text.encode('ascii', 'replace')))
             err = ArtemisAPIError(response, error=err_msg)
             return err
 

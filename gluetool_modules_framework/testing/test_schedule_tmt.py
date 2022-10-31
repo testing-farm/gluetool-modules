@@ -347,7 +347,7 @@ class TestScheduleTMT(Module):
             '--context=@{}'.format(filepath)
             for filepath in context_files
         ] + [
-            'plan', 'ls' '--filter', filter
+            'plan', 'ls', '--filter', filter
         ]
 
         try:

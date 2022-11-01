@@ -248,8 +248,18 @@ class KojiTask(LoggerMixin, object):
             self.id, build_id, self._build.get('nvr', '<unknown NVR>')
         ))
 
-    def __init__(self, details, task_id, module, logger=None, wait_timeout=None, build_id=None):
-        # type: (InitDetailsType, int, Koji, Optional[ContextAdapter], Optional[int], Optional[int]) -> None
+    def __init__(
+            self,
+            details,  # type: InitDetailsType
+            task_id,  # type: int
+            module,   # type: Koji
+            logger=None,  # type: Optional[ContextAdapter]
+            wait_timeout=None,  # type: Optional[int]
+            build_id=None,  # type: Optional[int]
+            artifact_namespace=None  # type: Optional[str]
+    ):
+
+        # type: (...) -> None
         super(KojiTask, self).__init__(logger or Logging.get_logger())
 
         self._check_required_instance_keys(details)
@@ -261,6 +271,10 @@ class KojiTask(LoggerMixin, object):
         self.web_url = details['web_url']
         self.pkgs_url = details['pkgs_url']
         self.session = details['session']
+
+        if artifact_namespace:
+            module.warn("Forcing ARTIFACT_NAMESPACE to '{}'".format(artifact_namespace))
+            self.ARTIFACT_NAMESPACE = artifact_namespace
 
         if not self._is_valid:
             raise NotBuildTaskError(self.id)
@@ -1265,12 +1279,23 @@ class BrewTask(KojiTask):
         if not all(key in details for key in required_instance_keys):
             raise GlueError('instance details do not contain all required keys')
 
-    def __init__(self, details, task_id, module, logger=None, wait_timeout=None, build_id=None):
-        # type: (InitDetailsType, int, Brew, Optional[ContextAdapter], Optional[int], Optional[int]) -> None
+    def __init__(
+            self,
+            details,  # type: InitDetailsType
+            task_id,  # type: int
+            module,   # type: Brew
+            logger=None,  # type: Optional[ContextAdapter]
+            wait_timeout=None,  # type: Optional[int]
+            build_id=None,  # type: Optional[int]
+            artifact_namespace=None  # type: Optional[str]
+    ):
+
+        # type: (...) -> None
         super(BrewTask, self).__init__(details, task_id, module,
                                        logger=logger,
                                        wait_timeout=wait_timeout,
-                                       build_id=build_id)
+                                       build_id=build_id,
+                                       artifact_namespace=artifact_namespace)
 
         self.automation_user_ids = details['automation_user_ids']
 
@@ -1897,6 +1922,11 @@ class Koji(gluetool.Module):
                 'metavar': 'yes|no',
                 'default': 'no'
             },
+            'artifact-namespace': {
+                 'help': """
+                         If set, forces the ARTIFACT_NAMESPACE property of KojiTask/BrewTask to the given value.
+                         """,
+            },
             'commit-fetch-timeout': {
                 'help': """
                         The maximum time for trying to fetch one (dist-git) URL with commit info
@@ -1975,7 +2005,8 @@ class Koji(gluetool.Module):
         task = task_class(details, task_initializer.task_id, self,
                           logger=self.logger,
                           wait_timeout=wait_timeout if wait_timeout else self.option('wait'),
-                          build_id=task_initializer.build_id)
+                          build_id=task_initializer.build_id,
+                          artifact_namespace=self.option('artifact-namespace'))
 
         return task
 

@@ -129,7 +129,9 @@ def fixture_brew_module(monkeypatch, rules_engine):
         'automation-user-ids': '2863',
         'dist-git-commit-urls': 'http://kojipkgs.fedoraproject.org/cgit/rpms/{component}/commit/?id={commit},http://kojipkgs.fedoraproject.org/cgit/rpms/{component}.git/commit/?id={commit}',
         'docker-image-url-template': "{{ MODULE.option('pkgs-url') }}/packages/{{ TASK.component }}/{{ TASK.version }}/{{ TASK.release }}/images/{{ ARCHIVE['filename'] }}",
-        'baseline-tag-map': testing_asset('koji', 'baseline-tag-map.yaml')
+        'baseline-tag-map': testing_asset('koji', 'baseline-tag-map.yaml'),
+        'api-version-retry-tick': 1,
+        'api-version-retry-timeout': 2
     }
 
     patch_shared(monkeypatch, mod, {}, callables={
@@ -439,3 +441,40 @@ def test_server_issue(koji_session, koji_module, monkeypatch):
         koji_module.execute()
 
     assert len(api_mock.mock_calls) > 1
+
+
+@pytest.mark.parametrize('koji_session', [
+    (15869828, 'koji-build'),
+    (15869828, 'brew-build'),
+    (15869828, 'redhat-container-image')
+], ids=lambda x: x[0], indirect=True)
+def test_artifact_namespace(koji_session, koji_module, brew_module, log):
+    """
+    Test if artifact namespace correctly set and can be forced.
+    """
+
+    task_id, artifact = koji_session
+
+    module_map = {
+        'koji-build': koji_module,
+        'brew-build': brew_module,
+        'redhat-container-image': brew_module
+    }
+
+    module = module_map[artifact]
+
+    module._config['task-id'] = [task_id]
+
+    # custom artifact namespace
+    if artifact == 'redhat-container-image':
+        module._config['artifact-namespace'] = artifact
+
+    module.execute()
+    assert module.primary_task().ARTIFACT_NAMESPACE == artifact
+
+    # custom artifact namespace
+    if artifact == 'redhat-container-image':
+        assert log.match(
+            levelno=logging.WARN,
+            message="Forcing ARTIFACT_NAMESPACE to '{}'".format(artifact)
+        )

@@ -213,12 +213,13 @@ class Ansible(gluetool.Module):
             '--module-name', 'raw',
             '--args', 'command -v ' + ' '.join(ansible_python_interpreters),
             '--ssh-common-args',
-            ' '.join(['-o ' + option for option in guest.options]),
-            guest.hostname
+            ' '.join(['-o ' + option for option in guest.options])
         ]
 
         if guest.username:
             cmd += ['--user', guest.username]
+
+        cmd.append(guest.hostname)
 
         try:
             ansible_call = Command(cmd, logger=guest.logger).run()
@@ -253,7 +254,8 @@ class Ansible(gluetool.Module):
                      extra_options=None,  # type: Optional[List[str]]
                      extra_vars_filename_prefix=EXTRA_VARS_FILENAME_PREFIX,  # type: str
                      extra_vars_filename_suffix=EXTRA_VARS_FILENAME_SUFFIX,  # type: str
-                     ansible_playbook_filepath=None  # type: Optional[str]
+                     ansible_playbook_filepath=None,  # type: Optional[str]
+                     **kwargs  # type: Any
                     ):  # noqa
         # type: (...) -> AnsibleOutput
         """
@@ -294,6 +296,8 @@ class Ansible(gluetool.Module):
         log_filepath = log_filepath or os.path.join(os.getcwd(), ANSIBLE_OUTPUT)
 
         ansible_playbook_filepath = ansible_playbook_filepath or self.option('ansible-playbook-filepath')
+
+        extra_options = extra_options or []
 
         cmd = [
             ansible_playbook_filepath,

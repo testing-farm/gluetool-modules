@@ -122,7 +122,12 @@ def test_run_playbooks(module, local_guest, monkeypatch, assert_output):
     monkeypatch.setattr(gluetool.utils.Command, '__init__', mock_command_init)
     monkeypatch.setattr(gluetool.utils.Command, 'run', mock_command_run)
 
-    output = module.run_playbook(['playbook1', 'playbook2'], local_guest, json_output=False)
+    output = module.run_playbook(
+        ['playbook1', 'playbook2'],
+        local_guest,
+        json_output=False,
+        extra_options=['-t', 'classic']
+    )
 
     assert output.execution_output is mock_output
     assert output.json_output is None
@@ -131,6 +136,7 @@ def test_run_playbooks(module, local_guest, monkeypatch, assert_output):
         '/usr/bin/ansible-playbook',
         '-i', '127.0.0.1,',
         '--private-key', local_guest.key,
+        '-t', 'classic',
         '-v',
         os.path.abspath('playbook1'),
         os.path.abspath('playbook2')

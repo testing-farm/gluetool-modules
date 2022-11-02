@@ -18,7 +18,7 @@ Requirements
 
 To begin digging into sources, there are few requirements to mention:
 
-- ``poetry``, installed as described on the `installation page <https://python-poetry.org/docs/#installation>`__ - prefered version is **1.1.11**.
+- ``poetry``, installed as described on the `installation page <https://python-poetry.org/docs/#installation>`__ - preferred version is **1.1.15**.
 
 - ``ansible-playbook`` installed on your localhost
 
@@ -63,8 +63,7 @@ Run all commands listed in the TMT test plan's ``prepare`` section. Test plan is
 
 .. code-block:: bash
 
-    curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
-    poetry self update 1.1.11
+    curl -sSL https://install.python-poetry.org | python3 - --version 1.1.15
 
 .. note::
     You might need to open a new shell to have ``poetry`` command available.
@@ -75,7 +74,7 @@ Run all commands listed in the TMT test plan's ``prepare`` section. Test plan is
 
 .. code-block:: bash
 
-   git clone git@gitlab.com:testing-farm/gluetool-modules.git gluetool-modules
+   git clone git@gitlab.com:testing-farm/gluetool-modules.git
    cd gluetool-modules
 
 
@@ -154,7 +153,10 @@ If you are in an poetry shell, you can run citool directly:
     citool -l
     ... pile of modules ...
 
-8. Locally run a test pipeline
+Testing Farm how-tos
+-------------------
+
+Locally run a test pipeline
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Every testing farm artifact includes a ``pipeline.log`` with the ``gluetool`` invocation. This pipeline can be modified
 to run against a local VM. First, check out the production configuration:

@@ -191,6 +191,12 @@ def gather_plan_results(schedule_entry, work_dir):
         schedule_entry.warn('Could not load results.yaml file: {}'.format(error))
         return TestScheduleResult.ERROR, results
 
+    # Something went wrong, there should be results. There were tests, otherwise we wouldn't
+    # be running `tmt run`, but where are results? Reporting an error...
+    if not results:
+        schedule_entry.warn('Could not find any results in results.yaml file')
+        return TestScheduleResult.ERROR, test_results
+
     # iterate through all the test results and create TestResult for each
     for name, data in six.iteritems(results):
 

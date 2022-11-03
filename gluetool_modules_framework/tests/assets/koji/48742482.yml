@@ -1,0 +1,431 @@
+---
+
+# Represents task for a container build
+
+getAPIVersion: Mock Koji Session 1.0
+
+getBuildTarget:
+  rhel-9.0.0-z-containers-candidate:
+    dest_tag_name: rhel-9.0.0-z-candidate
+
+getBuild:
+  2242565:
+    build_id: 2242565
+    cg_id: 1
+    cg_name: atomic-reactor
+    completion_time: '2022-11-02 17:18:44.459573'
+    completion_ts: 1667409524.45957
+    creation_event_id: 47798684
+    creation_time: '2022-11-02 17:14:35.358852'
+    creation_ts: 1667409275.35885
+    epoch: null
+    extra:
+      container_koji_task_id: 48742482
+      image:
+        help: help.md
+        index:
+          digests:
+            application/vnd.docker.distribution.manifest.list.v2+json:
+              sha256:0a4d321c3dd8678d31b5ff4017fc9051e4538dbb6163f39d6ec6500f808365d0
+          floating_tags:
+            - latest
+            - '1'
+          pull:
+            - registry-proxy.example.com/rh-osbs/rhel9-tang@sha256:0a4d321c3dd8678d31b5ff4017fc9051e4538dbb6163f39d6ec6500f808365d0
+            - registry-proxy.example.com/rh-osbs/rhel9-tang:1-104
+          tags:
+            - 1-104
+          unique_tags:
+            - rhel-9.0.0-z-containers-candidate-84225-20221102171316
+        isolated: false
+        media_types:
+          - application/vnd.docker.distribution.manifest.list.v2+json
+          - application/vnd.docker.distribution.manifest.v1+json
+          - application/vnd.docker.distribution.manifest.v2+json
+        odcs:
+          compose_ids:
+            - 1576189
+            - 1576190
+            - 1576191
+            - 1576192
+          signing_intent: release
+          signing_intent_overridden: false
+        parent_build_id: 2231661
+        parent_image_builds:
+          registry-proxy.example.com/rh-osbs/ubi9-minimal:latest:
+            id: 2231661
+            nvr: ubi9-minimal-container-9.0.0-1687
+        parent_images:
+          - registry-proxy.example.com/rh-osbs/ubi9-minimal:latest
+        yum_repourls:
+          - https://cts.example.com/api/1/composes/RHEL-9.0.0-updates-20221027.1/repo/?variant=BaseOS
+          - https://cts.example.com/api/1/composes/RHEL-9.0.0-updates-20221027.1/repo/?variant=AppStream
+      osbs_build:
+        engine: podman
+        kind: container_build
+        subtypes: []
+      submitter: osbs
+      typeinfo:
+        image:
+          help: help.md
+          index:
+            digests:
+              application/vnd.docker.distribution.manifest.list.v2+json:
+                sha256:0a4d321c3dd8678d31b5ff4017fc9051e4538dbb6163f39d6ec6500f808365d0
+            floating_tags:
+              - latest
+              - '1'
+            pull:
+              - registry-proxy.example.com/rh-osbs/rhel9-tang@sha256:0a4d321c3dd8678d31b5ff4017fc9051e4538dbb6163f39d6ec6500f808365d0
+              - registry-proxy.example.com/rh-osbs/rhel9-tang:1-104
+            tags:
+              - 1-104
+            unique_tags:
+              - rhel-9.0.0-z-containers-candidate-84225-20221102171316
+          isolated: false
+          media_types:
+            - application/vnd.docker.distribution.manifest.list.v2+json
+            - application/vnd.docker.distribution.manifest.v1+json
+            - application/vnd.docker.distribution.manifest.v2+json
+          odcs:
+            compose_ids:
+              - 1576189
+              - 1576190
+              - 1576191
+              - 1576192
+            signing_intent: release
+            signing_intent_overridden: false
+          parent_build_id: 2231661
+          parent_image_builds:
+            registry-proxy.example.com/rh-osbs/ubi9-minimal:latest:
+              id: 2231661
+              nvr: ubi9-minimal-container-9.0.0-1687
+          parent_images:
+            - registry-proxy.example.com/rh-osbs/ubi9-minimal:latest
+          yum_repourls:
+            - https://cts.example.com/api/1/composes/RHEL-9.0.0-updates-20221027.1/repo/?variant=BaseOS
+            - https://cts.example.com/api/1/composes/RHEL-9.0.0-updates-20221027.1/repo/?variant=AppStream
+    id: 2242565
+    name: tang-container
+    nvr: tang-container-1-104
+    owner_id: 5706
+    owner_name: rhel8-errata-bot/prod.user-cont.example.com
+    package_id: 79024
+    package_name: tang-container
+    release: '104'
+    source: git://pkgs.example.com/containers/tang#53ebaec552f7c93eff1576558a19c3b394a2c056
+    start_time: '2022-11-02 17:14:35.351242'
+    start_ts: 1667409275.35124
+    state: 1
+    task_id: null
+    version: '1'
+    volume_id: 0
+    volume_name: DEFAULT
+
+getTaskInfo:
+  48742482:
+    arch: noarch
+    awaited: null
+    channel_id: 38
+    completion_time: '2022-11-02 17:20:04.460119'
+    completion_ts: 1667409604.46012
+    create_time: '2022-11-02 16:25:51.743267'
+    create_ts: 1667406351.74327
+    host_id: 392
+    id: 48742482
+    label: null
+    method: buildContainer
+    owner: 5706
+    parent: null
+    priority: 20
+    request:
+      - git://pkgs.example.com/containers/tang#origin/rhel-9.0.0
+      - rhel-9.0.0-z-containers-candidate
+      - git_branch: rhel-9.0.0
+        koji_parent_build: ubi9-minimal-container-9.0.0-1687
+        yum_repourls:
+          - https://cts.example.com/api/1/composes/RHEL-9.0.0-updates-20221027.1/repo/?variant=BaseOS
+          - https://cts.example.com/api/1/composes/RHEL-9.0.0-updates-20221027.1/repo/?variant=AppStream
+    start_time: '2022-11-02 17:13:09.745861'
+    start_ts: 1667409189.74586
+    state: 2
+    waiting: null
+    weight: 2.0
+
+listArchives:
+  - btype: image
+    btype_id: 4
+    build_id: 2242565
+    buildroot_id: 9336093
+    checksum: 04503d928ac680336353ceddcf7b484e
+    checksum_type: 0
+    extra:
+      docker:
+        digests:
+          application/vnd.docker.distribution.manifest.v2+json:
+            sha256:15433c41969986246f4236589eba5ebc92ccaa8fbf23375f2352e193db0d1616
+        id: sha256:4f0586d0a1880a2b41a57624395e03dcaa9c147430f9115f2ebc3ce420a2f97e
+        layer_sizes:
+          - diff_id: sha256:dcda851acc9c539d6456572b6c222f94fe57c3d9527b4e979d137bc3c7d9f57b
+            size: 117848064
+          - diff_id: sha256:1e8f36beee0c2da58f5b914a9392f61ddbb501a753959d3a17f0f8d4e52bb3e4
+            size: 75350016
+        parent_id: sha256:6a830311ce8ae52f3b95ac72144338f3367cb5c4130beaf066b2762bcce588ee
+        repositories:
+          - registry-proxy.example.com/rh-osbs/rhel9-tang:rhel-9.0.0-z-containers-candidate-84225-20221102171316-ppc64le
+          - registry-proxy.example.com/rh-osbs/rhel9-tang@sha256:15433c41969986246f4236589eba5ebc92ccaa8fbf23375f2352e193db0d1616
+        tags:
+          - rhel-9.0.0-z-containers-candidate-84225-20221102171316-ppc64le
+      image:
+        arch: ppc64le
+    filename: docker-image-sha256:4f0586d0a1880a2b41a57624395e03dcaa9c147430f9115f2ebc3ce420a2f97e.ppc64le.tar.gz
+    id: 7213071
+    metadata_only: false
+    size: 295
+    type_description: Tar file
+    type_extensions: tar tar.gz tar.bz2 tar.xz tgz
+    type_id: 4
+    type_name: tar
+  - btype: image
+    btype_id: 4
+    build_id: 2242565
+    buildroot_id: 9336094
+    checksum: 62ad8f17afedd13080ac89024a1d8a82
+    checksum_type: 0
+    extra:
+      docker:
+        digests:
+          application/vnd.docker.distribution.manifest.v2+json:
+            sha256:7b24f4b6a0f60072db857d6302ea5543ad3ace8a0bff874d8b552bb60510ff24
+        id: sha256:062333cedf06667c5c4e31e537083bd0af349c5ff73bfa74e5d121344c9601d5
+        layer_sizes:
+          - diff_id: sha256:d25baff3db3a990c91c9abbc57f87095664595aeed6f358e5a6911cc1dd7c709
+            size: 95430656
+          - diff_id: sha256:5aab76d33e647560f9b1bb2137da4e950f29181e40aafdab14584169e0cf3222
+            size: 58541056
+        parent_id: sha256:63d193c6800dd8c48729e0a2e0976ec22f387fcfecdf181d5e882a03c8482b0e
+        repositories:
+          - registry-proxy.example.com/rh-osbs/rhel9-tang:rhel-9.0.0-z-containers-candidate-84225-20221102171316-s390x
+          - registry-proxy.example.com/rh-osbs/rhel9-tang@sha256:7b24f4b6a0f60072db857d6302ea5543ad3ace8a0bff874d8b552bb60510ff24
+        tags:
+          - rhel-9.0.0-z-containers-candidate-84225-20221102171316-s390x
+      image:
+        arch: s390x
+    filename: docker-image-sha256:062333cedf06667c5c4e31e537083bd0af349c5ff73bfa74e5d121344c9601d5.s390x.tar.gz
+    id: 7213072
+    metadata_only: false
+    size: 294
+    type_description: Tar file
+    type_extensions: tar tar.gz tar.bz2 tar.xz tgz
+    type_id: 4
+    type_name: tar
+  - btype: image
+    btype_id: 4
+    build_id: 2242565
+    buildroot_id: 9336095
+    checksum: a1d8b459237bf7d0fab2efc2ae51aaf8
+    checksum_type: 0
+    extra:
+      docker:
+        digests:
+          application/vnd.docker.distribution.manifest.v2+json:
+            sha256:2ecf31647bb0a888a1c9b49506523fe5c56b0b28b07d03a6e123572eefae913f
+        id: sha256:cad9b77d03962f7f124be5370e931e61ebc90f56d6b79e5a94f067a6a73944da
+        layer_sizes:
+          - diff_id: sha256:6139044550ba783c27131f1444a0e5ffe6a39a517ccd56d08cfc0df0bddb5222
+            size: 97376256
+          - diff_id: sha256:952703ec10429b33aec3785b59b237a7ef5c6d87e1e2f93f699fe94d4addb26b
+            size: 60003328
+        parent_id: sha256:88824124f91358eaeb077d2943ad3135bff7882bea842f21eae15d9c58bf80dd
+        repositories:
+          - registry-proxy.example.com/rh-osbs/rhel9-tang:rhel-9.0.0-z-containers-candidate-84225-20221102171316-x86_64
+          - registry-proxy.example.com/rh-osbs/rhel9-tang@sha256:2ecf31647bb0a888a1c9b49506523fe5c56b0b28b07d03a6e123572eefae913f
+        tags:
+          - rhel-9.0.0-z-containers-candidate-84225-20221102171316-x86_64
+      image:
+        arch: x86_64
+    filename: docker-image-sha256:cad9b77d03962f7f124be5370e931e61ebc90f56d6b79e5a94f067a6a73944da.x86_64.tar.gz
+    id: 7213073
+    metadata_only: false
+    size: 296
+    type_description: Tar file
+    type_extensions: tar tar.gz tar.bz2 tar.xz tgz
+    type_id: 4
+    type_name: tar
+  - btype: image
+    btype_id: 4
+    build_id: 2242565
+    buildroot_id: 9336092
+    checksum: 37ae43bfe051ceaa00b94c62db2a4f60
+    checksum_type: 0
+    extra:
+      docker:
+        digests:
+          application/vnd.docker.distribution.manifest.v2+json:
+            sha256:ff9b0c8576605829fc573914bd9023ef82e1f6b4e47e2aa456bc3462fa1c080c
+        id: sha256:c8e57ca65e283542bcad58c1fcfb810a8c0e45cfa72a79617cd6fe93082d78e5
+        layer_sizes:
+          - diff_id: sha256:d6ff5758caae610407ecef747e126ae8c83059ffe1b2ebd51332f7fea3072f62
+            size: 101036544
+          - diff_id: sha256:5d7a2effc8af4f9db7769ccce3ad2631d15248b001ed9d40ab6031a9b188d188
+            size: 70028288
+        parent_id: sha256:1cd5e073061aaec09f45fc5f96e2daad693e50e67446d4a89dbc8c2f722218a8
+        repositories:
+          - registry-proxy.example.com/rh-osbs/rhel9-tang:rhel-9.0.0-z-containers-candidate-84225-20221102171316-aarch64
+          - registry-proxy.example.com/rh-osbs/rhel9-tang@sha256:ff9b0c8576605829fc573914bd9023ef82e1f6b4e47e2aa456bc3462fa1c080c
+        tags:
+          - rhel-9.0.0-z-containers-candidate-84225-20221102171316-aarch64
+      image:
+        arch: aarch64
+    filename: docker-image-sha256:c8e57ca65e283542bcad58c1fcfb810a8c0e45cfa72a79617cd6fe93082d78e5.aarch64.tar.gz
+    id: 7213074
+    metadata_only: false
+    size: 294
+    type_description: Tar file
+    type_extensions: tar tar.gz tar.bz2 tar.xz tgz
+    type_id: 4
+    type_name: tar
+
+listBuilds:
+  - build_id: 2242565
+    cg_id: 1
+    cg_name: atomic-reactor
+    completion_time: '2022-11-02 17:18:44.459573'
+    completion_ts: 1667409524.45957
+    creation_event_id: 47798684
+    creation_time: '2022-11-02 17:14:35.358852'
+    creation_ts: 1667409275.35885
+    epoch: null
+    extra:
+      container_koji_task_id: 48742482
+      image:
+        help: help.md
+        index:
+          digests:
+            application/vnd.docker.distribution.manifest.list.v2+json:
+              sha256:0a4d321c3dd8678d31b5ff4017fc9051e4538dbb6163f39d6ec6500f808365d0
+          floating_tags:
+            - latest
+            - '1'
+          pull:
+            - registry-proxy.example.com/rh-osbs/rhel9-tang@sha256:0a4d321c3dd8678d31b5ff4017fc9051e4538dbb6163f39d6ec6500f808365d0
+            - registry-proxy.example.com/rh-osbs/rhel9-tang:1-104
+          tags:
+            - 1-104
+          unique_tags:
+            - rhel-9.0.0-z-containers-candidate-84225-20221102171316
+        isolated: false
+        media_types:
+          - application/vnd.docker.distribution.manifest.list.v2+json
+          - application/vnd.docker.distribution.manifest.v1+json
+          - application/vnd.docker.distribution.manifest.v2+json
+        odcs:
+          compose_ids:
+            - 1576189
+            - 1576190
+            - 1576191
+            - 1576192
+          signing_intent: release
+          signing_intent_overridden: false
+        parent_build_id: 2231661
+        parent_image_builds:
+          registry-proxy.example.com/rh-osbs/ubi9-minimal:latest:
+            id: 2231661
+            nvr: ubi9-minimal-container-9.0.0-1687
+        parent_images:
+          - registry-proxy.example.com/rh-osbs/ubi9-minimal:latest
+        yum_repourls:
+          - https://cts.example.com/api/1/composes/RHEL-9.0.0-updates-20221027.1/repo/?variant=BaseOS
+          - https://cts.example.com/api/1/composes/RHEL-9.0.0-updates-20221027.1/repo/?variant=AppStream
+      osbs_build:
+        engine: podman
+        kind: container_build
+        subtypes: []
+      submitter: osbs
+      typeinfo:
+        image:
+          help: help.md
+          index:
+            digests:
+              application/vnd.docker.distribution.manifest.list.v2+json:
+                sha256:0a4d321c3dd8678d31b5ff4017fc9051e4538dbb6163f39d6ec6500f808365d0
+            floating_tags:
+              - latest
+              - '1'
+            pull:
+              - registry-proxy.example.com/rh-osbs/rhel9-tang@sha256:0a4d321c3dd8678d31b5ff4017fc9051e4538dbb6163f39d6ec6500f808365d0
+              - registry-proxy.example.com/rh-osbs/rhel9-tang:1-104
+            tags:
+              - 1-104
+            unique_tags:
+              - rhel-9.0.0-z-containers-candidate-84225-20221102171316
+          isolated: false
+          media_types:
+            - application/vnd.docker.distribution.manifest.list.v2+json
+            - application/vnd.docker.distribution.manifest.v1+json
+            - application/vnd.docker.distribution.manifest.v2+json
+          odcs:
+            compose_ids:
+              - 1576189
+              - 1576190
+              - 1576191
+              - 1576192
+            signing_intent: release
+            signing_intent_overridden: false
+          parent_build_id: 2231661
+          parent_image_builds:
+            registry-proxy.example.com/rh-osbs/ubi9-minimal:latest:
+              id: 2231661
+              nvr: ubi9-minimal-container-9.0.0-1687
+          parent_images:
+            - registry-proxy.example.com/rh-osbs/ubi9-minimal:latest
+          yum_repourls:
+            - https://cts.example.com/api/1/composes/RHEL-9.0.0-updates-20221027.1/repo/?variant=BaseOS
+            - https://cts.example.com/api/1/composes/RHEL-9.0.0-updates-20221027.1/repo/?variant=AppStream
+    id: 2242565
+    name: tang-container
+    nvr: tang-container-1-104
+    owner_id: 5706
+    owner_name: rhel8-errata-bot/prod.user-cont.example.com
+    package_id: 79024
+    package_name: tang-container
+    release: '104'
+    source: git://pkgs.example.com/containers/tang#53ebaec552f7c93eff1576558a19c3b394a2c056
+    start_time: '2022-11-02 17:14:35.351242'
+    start_ts: 1667409275.35124
+    state: 1
+    task_id: null
+    version: '1'
+    volume_id: 0
+    volume_name: DEFAULT
+
+getTaskResult:
+  48742482:
+    koji_builds:
+      - 2242565
+    repositories:
+      - registry-proxy.example.com/rh-osbs/rhel9-tang:1-104
+      - registry-proxy.example.com/rh-osbs/rhel9-tang:rhel-9.0.0-z-containers-candidate-84225-20221102171316
+      - registry-proxy.example.com/rh-osbs/rhel9-tang:latest
+      - registry-proxy.example.com/rh-osbs/rhel9-tang:1
+
+getTaskChildren:
+  48742482: []
+
+listTaskOutput:
+  48742482:
+    - checkout-for-labels.log
+    - osbs-client.log
+    - osbs-build.log
+    - x86_64.log
+    - s390x.log
+    - aarch64.log
+    - ppc64le.log
+
+getUser:
+  5706:
+    status: 0
+    usertype: 0
+    id: 5706
+    name: rhel8-errata-bot/prod.user-cont.example.com
+    krb_principal:

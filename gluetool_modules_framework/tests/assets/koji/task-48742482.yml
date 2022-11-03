@@ -1,0 +1,30 @@
+---
+
+baseline: None
+build_id: 2242565
+component: tang-container
+dist_git_repository_name: tang
+destination_tag: rhel-9.0.0-z-candidate
+full_name: task '48742482' build 'tang-container-1-104' target 'rhel-9.0.0-z-containers-candidate'
+has_artifacts: true
+issuer: rhel8-errata-bot/prod.user-cont.example.com
+owner: rhel8-errata-bot/prod.user-cont.example.com
+nvr: tang-container-1-104
+pkgs_url: http://kojipkgs.fedoraproject.org/brewroot
+release: '104'
+scratch: false
+short_name: 48742482:tang-container-1-104
+source: git://pkgs.example.com/containers/tang#53ebaec552f7c93eff1576558a19c3b394a2c056
+srpm_names: []
+srpm_urls: []
+rpm_urls: []
+target: rhel-9.0.0-z-containers-candidate
+id: 48742482
+dispatch_id: 2242565:48742482
+url: https://kojipkgs.fedoraproject.org.com/brew/taskinfo?taskID=48742482
+version: '1'
+rhel: '9'
+image_full_names:
+  - registry-proxy.example.com/rh-osbs/rhel9-tang@sha256:0a4d321c3dd8678d31b5ff4017fc9051e4538dbb6163f39d6ec6500f808365d0
+  - registry-proxy.example.com/rh-osbs/rhel9-tang:1-104
+image_id: sha256:0a4d321c3dd8678d31b5ff4017fc9051e4538dbb6163f39d6ec6500f808365d0

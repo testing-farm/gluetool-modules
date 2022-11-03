@@ -194,6 +194,19 @@ def test_task_by_id(koji_session, koji_module):
 
 
 @pytest.mark.parametrize('koji_session', [
+    48742482
+], indirect=True)
+def test_brew_task_by_id(koji_session, brew_module):
+    """
+    Tasks are specified directly by their IDs.
+    """
+
+    brew_module.tasks(task_ids=[koji_session])
+
+    assert_task_attributes(brew_module, koji_session)
+
+
+@pytest.mark.parametrize('koji_session', [
     (15869828, True),
     (20166983, False),
     (16311217, True)

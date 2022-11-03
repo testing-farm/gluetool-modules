@@ -1804,6 +1804,62 @@ class BrewTask(KojiTask):
 
         return repositories
 
+    @cached_property
+    def extra(self):
+        # type: () -> Dict[str, Any]
+        """
+        :returns: extra field from build, empty dictionary otherwise
+        """
+        return cast(Dict[str, Any], self._build.get('extra', {}))
+
+    @cached_property
+    def image_full_names(self):
+        # type: () -> List[str]
+        """
+        :returns: list of image full names extracted from the build extra field, empty list otherwise
+        """
+        if not self.extra:
+            self.warn('No extra field found, returning empty list for image full names')
+            return []
+
+        images = self.extra.get('image', {}).get('index', {}).get('pull', [])  # type: List[str]
+
+        if not images:
+            self.warn('Could not extract image full names from extra field, returning empty list')
+
+        return images
+
+    @cached_property
+    def image_id(self):
+        # type: () -> Optional[str]
+        """
+        :returns: image id represented as sha256 digest,
+                  i.e. sha256:67dad89757a55bfdfabec8abd0e22f8c7c12a1856514726470228063ed86593b
+        """
+        if not self.extra:
+            self.warn('No extra field found in build metadata, returning None as image ID', sentry=True)
+            return None
+
+        digests = self.extra.get('image', {}).get('index', {}).get('digests', {})
+
+        if not digests:
+            log_dict(
+                self.warn,
+                'Could not extract image ID from extra fields image digests, returning None',
+                self.extra
+            )
+            return None
+
+        # Warn if things are unexpected, rather then fail.
+        # This extra fields API is not something set to stone.
+        # It might change unexpectedly, for example the docker manifest might get v3 sometime.
+        # Rather not make the code fail here, as it would blow up the testing.
+        # Rather scream about it, inform sentry, but expect the right side of the first element is the one.
+        if len(digests.keys()) > 1 or 'application/vnd.docker.distribution.manifest.list.v2+json' not in digests.keys():
+            log_dict(self.warn, 'image.index.digest in extra field has unexpected keys', self.extra)
+
+        return cast(str, list(digests.values())[0])
+
 
 class Koji(gluetool.Module):
     """
@@ -2457,7 +2513,7 @@ class Brew(Koji, (gluetool.Module)):
                 cleansed_build_ids.append(build_id)
                 continue
 
-            if 'extra' not in build or not 'container_koji_task_id':
+            if 'extra' not in build or 'container_koji_task_id' not in build['extra']:
                 cleansed_build_ids.append(build_id)
                 continue
 

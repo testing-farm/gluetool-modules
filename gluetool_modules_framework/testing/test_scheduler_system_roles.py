@@ -134,7 +134,33 @@ class TestSchedulerSystemRoles(gluetool.Module):
                     os.chdir(_cwd)
                 with tarfile.open(tar_file, "r") as _tar:
                     os.chdir(coll_path)
-                    _tar.extractall()
+
+                    # Workaround for CVE-2007-4559
+                    # See https://github.com/testing-farm/gluetool-modules/pull/1
+
+                    def is_within_directory(directory, target):
+                        # type: (str, str) -> bool
+
+                        abs_directory = os.path.abspath(directory)
+                        abs_target = os.path.abspath(target)
+
+                        prefix = os.path.commonprefix([abs_directory, abs_target])
+
+                        result = cast(bool, prefix == abs_directory)
+                        return result
+
+                    def safe_extract(tar, path=".", members=None):
+                        # type: (tarfile.TarFile, str, Optional[List[tarfile.TarInfo]]) -> None
+
+                        for member in tar.getmembers():
+                            member_path = os.path.join(path, member.name)
+                            if not is_within_directory(path, member_path):
+                                raise gluetool.GlueError("Attempted Path Traversal in Tar File")
+
+                        tar.extractall(path, members)
+
+                    safe_extract(_tar)
+
                     os.chdir(_cwd)
             # Move the converted tests
             os.rename(os.path.join(coll_path, 'ansible_collections', coll_namespace, coll_name, 'tests', role),

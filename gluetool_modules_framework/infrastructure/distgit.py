@@ -442,12 +442,12 @@ class DistGit(gluetool.Module):
         return render_template(value, **context)
 
     def dist_git_bugs(self):
-        # type: () -> Set[six.binary_type]
+        # type: () -> Set[str]
         """
         Finds and returns bugs referenced in commit logs between primary artifact and a baseline package version.
         See module help for more information about baseline package version.
 
-        :returns set(int): Set of Bugzilla IDs found in commit log.
+        :returns set(str): Set of Bugzilla IDs found in commit log.
         """
         artifact = self.shared('primary_task')
         baseline = self.shared('primary_task').baseline_task
@@ -478,7 +478,7 @@ class DistGit(gluetool.Module):
         for line in log.split('\n'):
             if self._regex_resolves.search(line):
                 for bug in self._regex_bugzilla.findall(line):
-                    bugs.add(bug.encode('utf-8'))
+                    bugs.add(six.ensure_str(bug))
 
         log_dict(self.info, 'Found bugs in dist-git log', {
             'tail..head': tail_head,

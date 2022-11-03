@@ -45,15 +45,6 @@ def fixture_dummy_repository_path(module):
     ('selinux-policy', {
         '1782925', '1782925', '1779098', '1791557', '1790795', '1787298', '1778126', '1777761', '1777042'
     })
-] if six.PY2 else [
-    ('systemd', {
-        bytes('1777110', 'utf-8'), bytes('1702565', 'utf-8')
-    }),
-    ('selinux-policy', {
-        bytes('1782925', 'utf-8'), bytes('1782925', 'utf-8'), bytes('1779098', 'utf-8'), bytes('1791557', 'utf-8'),
-        bytes('1790795', 'utf-8'), bytes('1787298', 'utf-8'), bytes('1778126', 'utf-8'), bytes('1777761', 'utf-8'),
-        bytes('1777042', 'utf-8')
-    })
 ])
 def fixture_git_log(request, module, monkeypatch, dummy_repository):
     with open(testing_asset('distgit', request.param[0]), 'r') as logfile:

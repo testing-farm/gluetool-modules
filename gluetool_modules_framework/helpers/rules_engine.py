@@ -138,9 +138,9 @@ class RulesASTVisitor(ast.NodeTransformer):
         ] + (
             ['Str', 'Num', 'Index'] if sys.version_info < (3, 8) else []
         ) + (
-            ['NameConstant'] if six.PY3 and sys.version_info < (3, 8) else []
+            ['NameConstant', 'USub'] if six.PY3 and sys.version_info < (3, 8) else []
         ) + (
-            ['Constant'] if sys.version_info >= (3, 8) else []
+            ['Constant', 'USub'] if sys.version_info >= (3, 8) else []
         )
     ])
 

@@ -57,6 +57,7 @@ compose-url = "gluetool_modules_framework.helpers.compose_url:ComposeUrl"
 copr = "gluetool_modules_framework.infrastructure.copr:Copr"
 copr-builder = "gluetool_modules_framework.testing.pull_request_builder.copr_builder:CoprBuilder"
 dashboard = "gluetool_modules_framework.helpers.dashboard:Dashboard"
+debug = "gluetool_modules_framework.development.debug:Debug"
 dist-git = "gluetool_modules_framework.infrastructure.distgit:DistGit"
 docker = "gluetool_modules_framework.infrastructure._docker:Docker"
 docker-provisioner = "gluetool_modules_framework.provision.docker:DockerProvisioner"
@@ -133,6 +134,7 @@ gitdb2 = "2.0.6"
 GitPython = "2.1.15"
 gluetool = "^2.1"
 inotify = "0.2.10"
+ipdb = { version = "^0.13.9", optional = true }
 jaeger-client = "4.0.0"
 jenkinsapi = "0.3.8"
 jenkins-job-builder = "1.6.2"
@@ -184,6 +186,9 @@ types-simplejson = "*"
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://gitlab.com/testing-farm/gluetool-modules/issues"
+
+[tool.poetry.extras]
+development = ["ipdb"]
 
 [build-system]
 requires = ["poetry>=0.12"]

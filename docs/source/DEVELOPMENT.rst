@@ -85,6 +85,9 @@ Run all commands listed in the TMT test plan's ``prepare`` section. Test plan is
 
    poetry install
 
+.. note::
+    If you want to install also useful development modules, use ``poetry install -E development``
+
 
 4. Install extra requirements
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

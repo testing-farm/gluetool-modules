@@ -88,24 +88,31 @@ class InstallCoprBuild(gluetool.Module):
                 items=build.repo_url
             )
 
-            # reinstall command has to be called for each rpm separately, hence list of rpms is used
-            sut_installation.add_step('Reinstall packages', 'yum -y reinstall {}',
-                                      items=build.rpm_urls, ignore_exception=True)
-
-            # downgrade, update and install commands are called just once with all rpms followed, hence list of
+            # install command is called just once with all rpms followed, hence list of
             # rpms is joined to one item
             rpm_urls.extend(build.rpm_urls)
 
         joined_rpm_urls = ' '.join(rpm_urls)
 
-        sut_installation.add_step('Download packages', 'curl --retry 5 -LO {}',
-                                  items=rpm_urls)
-        sut_installation.add_step('Downgrade packages', 'yum -y downgrade {}',
-                                  items=joined_rpm_urls, ignore_exception=True)
-        sut_installation.add_step('Update packages', 'yum -y update {}',
-                                  items=joined_rpm_urls, ignore_exception=True)
-        sut_installation.add_step('Install packages', 'yum -y install {}',
-                                  items=joined_rpm_urls, ignore_exception=True)
+        try:
+            guest.execute('command -v dnf')
+            has_dnf = True
+        except gluetool.glue.GlueCommandError:
+            has_dnf = False
+
+        if has_dnf:
+            # HACK: this is *really* awkward wrt. error handling: https://bugzilla.redhat.com/show_bug.cgi?id=1831022
+            # reinstall command has to be called for each rpm separately, hence list of rpms is used
+            sut_installation.add_step('Reinstall packages', 'dnf -y reinstall {} || true', items=build.rpm_urls)
+            sut_installation.add_step('Install packages', 'dnf -y install {}', items=joined_rpm_urls)
+        else:
+            sut_installation.add_step('Reinstall packages', 'yum -y reinstall {}',
+                                      items=build.rpm_urls, ignore_exception=True)
+            # yum install refuses downgrades, do it explicitly
+            sut_installation.add_step('Downgrade packages', 'yum -y downgrade {}',
+                                      items=joined_rpm_urls, ignore_exception=True)
+            sut_installation.add_step('Install packages', 'yum -y install {}',
+                                      items=joined_rpm_urls, ignore_exception=True)
 
         for build in builds:
             sut_installation.add_step('Verify packages installed', 'rpm -q {}', items=build.rpm_names)

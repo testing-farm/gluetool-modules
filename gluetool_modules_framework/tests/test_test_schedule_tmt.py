@@ -229,14 +229,10 @@ def test_tmt_output_copr(module, guest, monkeypatch, tmpdir):
 git clone http://example.com/git/myproject testcode
 git -C testcode checkout -b testbranch myfix
 cd testcode
-dummytmt run --all --verbose provision --how virtual --image dummy-compose prepare --how shell --script 'set +e
+dummytmt run --all --verbose provision --how virtual --image dummy-compose prepare --how shell --script '
 curl http://copr/project.repo --retry 5 --output /etc/yum.repos.d/copr_build-owner_project-1.repo
-dnf --allowerasing -y reinstall http://copr/project/one.rpm
-dnf --allowerasing -y reinstall http://copr/project/two.rpm
-curl --retry 5 -LO http://copr/project/one.rpm
-curl --retry 5 -LO http://copr/project/two.rpm
-dnf --allowerasing -y downgrade http://copr/project/one.rpm http://copr/project/two.rpm
-dnf --allowerasing -y update http://copr/project/one.rpm http://copr/project/two.rpm
+dnf --allowerasing -y reinstall http://copr/project/one.rpm || true
+dnf --allowerasing -y reinstall http://copr/project/two.rpm || true
 dnf --allowerasing -y install http://copr/project/one.rpm http://copr/project/two.rpm
 rpm -q one
 rpm -q two

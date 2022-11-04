@@ -32,11 +32,8 @@ def assert_log_files(guest, log_dirpath, file_names=None):
         file_names = [
             '0-Download-copr-repository.txt',
             '1-Reinstall-packages.txt',
-            '2-Download-packages.txt',
-            '3-Downgrade-packages.txt',
-            '4-Update-packages.txt',
-            '5-Install-packages.txt',
-            '6-Verify-packages-installed.txt'
+            '2-Install-packages.txt',
+            '3-Verify-packages-installed.txt'
         ]
 
     installation_log_dir = os.path.join(
@@ -92,12 +89,8 @@ def test_setup_guest(module_shared_patched, tmpdir):
 
     commands = [
         'curl dummy_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project-1.repo',
-        'dnf --allowerasing -y reinstall dummy_rpm_url1',
-        'dnf --allowerasing -y reinstall dummy_rpm_url2',
-        'curl --retry 5 -LO dummy_rpm_url1',
-        'curl --retry 5 -LO dummy_rpm_url2',
-        'dnf --allowerasing -y downgrade dummy_rpm_url1 dummy_rpm_url2',
-        'dnf --allowerasing -y update dummy_rpm_url1 dummy_rpm_url2',
+        'dnf --allowerasing -y reinstall dummy_rpm_url1 || true',
+        'dnf --allowerasing -y reinstall dummy_rpm_url2 || true',
         'dnf --allowerasing -y install dummy_rpm_url1 dummy_rpm_url2',
         'rpm -q dummy_rpm_names1',
         'rpm -q dummy_rpm_names2'
@@ -105,7 +98,7 @@ def test_setup_guest(module_shared_patched, tmpdir):
 
     calls = [call('command -v dnf')] + [call(c) for c in commands]
     execute_mock.assert_has_calls(calls, any_order=False)
-    assert execute_mock.call_count == 11
+    assert execute_mock.call_count == 8
     assert_log_files(guest, str(tmpdir))
 
     module.require_shared('sut_install_commands')
@@ -129,20 +122,23 @@ def test_no_dnf(module_shared_patched, tmpdir):
     calls = [
         call('command -v dnf'),
         call('curl dummy_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project-1.repo'),
-        call('curl --retry 5 -LO dummy_rpm_url1'),
-        call('curl --retry 5 -LO dummy_rpm_url2'),
         call('yum -y reinstall dummy_rpm_url1'),
         call('yum -y reinstall dummy_rpm_url2'),
         call('yum -y downgrade dummy_rpm_url1 dummy_rpm_url2'),
-        call('yum -y update dummy_rpm_url1 dummy_rpm_url2'),
         call('yum -y install dummy_rpm_url1 dummy_rpm_url2'),
         call('rpm -q dummy_rpm_names1'),
         call('rpm -q dummy_rpm_names2')
     ]
 
-    execute_mock.assert_has_calls(calls, any_order=True)
-    assert execute_mock.call_count == 11
-    assert_log_files(guest, str(tmpdir))
+    execute_mock.assert_has_calls(calls, any_order=False)
+    assert execute_mock.call_count == 9
+    assert_log_files(guest, str(tmpdir), file_names=[
+        '0-Download-copr-repository.txt',
+        '1-Reinstall-packages.txt',
+        '2-Downgrade-packages.txt',
+        '3-Install-packages.txt',
+        '4-Verify-packages-installed.txt'
+        ])
 
 
 def test_nvr_check_fails(module_shared_patched, tmpdir):

@@ -793,7 +793,7 @@ class TestScheduleTMT(Module):
                 # `prepare` step
                 'prepare',
                 '--how', 'shell',
-                '--script', "'set +e\n" + commands + "\n'"
+                '--script', "'\n" + commands + "\n'"
             ])
         else:
             self.debug('no sut_install_commands available')

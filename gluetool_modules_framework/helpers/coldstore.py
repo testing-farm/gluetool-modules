@@ -37,9 +37,8 @@ class ColdStore(gluetool.Module):
 
     required_options = ('coldstore-url-template',)
 
-    shared_functions = ['artifacts_location']
+    shared_functions = ['artifacts_location', 'coldstore_url']
 
-    @property
     def coldstore_url(self):
         # type: () -> str
         return gluetool.utils.render_template(self.option('coldstore-url-template'), **self.shared('eval_context'))
@@ -60,7 +59,7 @@ class ColdStore(gluetool.Module):
         }
 
         return {
-            'COLDSTORE_URL': self.coldstore_url
+            'COLDSTORE_URL': self.coldstore_url()
         }
 
     def artifacts_location(self, local_path, logger=None, context=None):
@@ -111,8 +110,8 @@ class ColdStore(gluetool.Module):
 
     def execute(self):
         # type: () -> None
-        if not self.coldstore_url:
+        if not self.coldstore_url():
             self.warn('Cold store URL seems to be empty')
             return
 
-        self.info('For the pipeline artifacts, see {}'.format(self.coldstore_url))
+        self.info('For the pipeline artifacts, see {}'.format(self.coldstore_url()))

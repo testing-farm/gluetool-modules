@@ -69,6 +69,26 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         """
         return bool(self._instance)
 
+    def _get_clone_options(
+        self,
+        branch,  # type: str
+        clone_url,  # type: str
+        path,  # type: str
+        shallow_clone=True,  # type: bool
+        ref=None,  # type: Optional[str]
+        clone_args=None,  # type: Optional[List[str]]
+    ):
+        # type: (...) -> List[str]
+
+        options = []
+        options += clone_args or self.clone_args
+        if not ref:
+            if shallow_clone:
+                options += ['--depth', '1']
+            options += ['-b', branch]
+        options += [clone_url, path]
+        return options
+
     def clone(
         self,
         logger=None,  # type: Optional[gluetool.log.ContextAdapter]
@@ -112,6 +132,9 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
         logger = logger or self.logger
 
+        if (branch or self.branch) and (ref or self.ref):
+            raise gluetool.GlueError('Both ref and branch specified, misunderstood arguments?')
+
         branch = branch or self.branch or 'master'
         clone_url = clone_url or self.clone_url
         ref = ref or self.ref
@@ -121,52 +144,86 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
         path = path or self.path
         original_path = path  # save the original path for later
+        self.path = actual_path = self._generate_path(path=path, prefix=prefix)
 
-        if path:
-            actual_path = path
+        # NOTE: when we need to checkout a specific ref, we cannot do it directly with clone,
+        # it requires another step: _checkout_ref().
+        self._do_clone(
+            logger=logger,
+            clone_url=clone_url, branch=branch, actual_path=actual_path,
+            clone_timeout=clone_timeout, clone_tick=clone_tick, ref=ref, clone_args=clone_args
+        )
 
-        elif prefix:
-            actual_path = tempfile.mkdtemp(dir=os.getcwd(), prefix=prefix)
+        # Make sure it's possible to enter this directory for other parties. We're not that concerned with privacy,
+        # we'd rather let common users inside the repository when inspecting the pipeline artifacts. Therefore
+        # setting clone directory permissions to ug=rwx,o=rx.
+        self._set_clone_directory_permissions(actual_path=actual_path)
 
-        else:
-            actual_path = tempfile.mkdtemp(dir=os.getcwd())
-        self.path = actual_path
+        if ref:
+            self._checkout_ref(actual_path, ref)
+
+        # Since we used `dir` when creating repo directory, the path we have is absolute. That is not perfect,
+        # we have an agreement with the rest of the world that we're living in current directory, which we consider
+        # a workdir (yes, it would be better to have an option to specify it explicitly), we should get the relative
+        # path instead.
+        # This applies to path *we* generated only - if we were given a path, we won't touch it.
+        path = actual_path if original_path else os.path.relpath(actual_path, os.getcwd())
+        self.initialize_from_path(path)
+
+        return actual_path
+
+    def _do_clone(
+        self,
+        logger,  # type: gluetool.log.ContextAdapter
+        clone_url,  # type: str
+        branch,  # type: str
+        actual_path,  # type: str
+        clone_timeout,  # type: int
+        clone_tick,  # type: int
+        ref=None,  # type: Optional[str]
+        clone_args=None  # type: Optional[List[str]]
+    ):
+        # type: (...) -> None
 
         logger.info('cloning repo {} (branch {}, ref {})'.format(
             clone_url,
             branch,
             ref if ref else 'not specified'
         ))
+
         cmd = gluetool.utils.Command(['git', 'clone'], logger=logger)
 
-        def _get_options(shallow_clone=True):
-            # type: (bool) -> List[str]
-            # Asserts are required here, see
-            # https://mypy.readthedocs.io/en/latest/common_issues.html#narrowing-and-inner-functions
-            assert branch is not None
-            assert clone_url is not None
-            options = []  # Create a fresh list to avoid referencing a variable from out of this function's scope
-            options += clone_args or self.clone_args
-            if not ref:
-                if shallow_clone:
-                    options += ['--depth', '1']
-                options += ['-b', branch]
-            options += [clone_url, actual_path]
-            return options
-
-        cmd.options = _get_options()
+        cmd.options = self._get_clone_options(
+            branch=branch, clone_url=clone_url, path=actual_path, ref=ref, clone_args=clone_args
+        )
 
         def _clone():
             # type: () -> Result[None, str]
+
+            # Log the 'git clone' command that's about to run. This log is used for unit tests too.
+            logger.debug("{}".format(cmd.executable + cmd.options))
+
             try:
                 cmd.run()
 
             except gluetool.GlueCommandError as exc:
                 # Some git servers do not support shallow cloning over http(s)
                 # Retry without shallow clone in the next try
+
+                # Asserts are required here, see
+                # https://mypy.readthedocs.io/en/latest/common_issues.html#narrowing-and-inner-functions
+                assert branch
+                assert clone_url
                 if exc.output.stderr is not None and \
                         'dumb http transport does not support shallow capabilities' in exc.output.stderr:
-                    cmd.options = _get_options(shallow_clone=False)
+                    cmd.options = self._get_clone_options(
+                        branch=branch,
+                        clone_url=clone_url,
+                        path=actual_path,
+                        shallow_clone=False,
+                        ref=ref,
+                        clone_args=clone_args
+                    )
                 return Result.Error('Failed to clone git repository: {}, retrying'.format(exc.output.stderr))
 
             return Result.Ok(None)
@@ -178,36 +235,37 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
             tick=clone_tick
         )
 
-        # Make sure it's possible to enter this directory for other parties. We're not that concerned with privacy,
-        # we'd rather let common users inside the repository when inspecting the pipeline artifacts. Therefore
-        # setting clone directory permissions to ug=rwx,o=rx.
-
+    def _set_clone_directory_permissions(
+        self,
+        actual_path  # type: str
+    ):
+        # type: (...) -> None
         os.chmod(
             actual_path,
             stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH  # noqa: E501  # line too long
         )
 
-        if ref:
-            try:
-                gluetool.utils.Command([
-                    'git',
-                    '-C', actual_path,
-                    'checkout', ref
-                ]).run()
+    def _generate_path(self, path=None,  prefix=None):
+        # type: (Optional[str], Optional[str]) -> str
+        if path:
+            return path
 
-            except gluetool.GlueCommandError as exc:
-                raise gluetool.GlueError('Failed to checkout ref {}: {}'.format(ref, exc.output.stderr))
+        elif prefix:
+            return tempfile.mkdtemp(dir=os.getcwd(), prefix=prefix)
 
-        # Since we used `dir` when creating repo directory, the path we have is absolute. That is not perfect,
-        # we have an agreement with the rest of the world that we're living in current directory, which we consider
-        # a workdir (yes, it would be better to have an option to specify it explicitly), we should get the relative
-        # path instead.
-        # This applies to path *we* generated only - if we were given a path, we won't touch it.
-        path = actual_path if original_path else os.path.relpath(actual_path, os.getcwd())
+        return tempfile.mkdtemp(dir=os.getcwd())
 
-        self.initialize_from_path(path)
+    def _checkout_ref(self, actual_path, ref):
+        # type: (str, str) -> None
+        try:
+            gluetool.utils.Command([
+                'git',
+                '-C', actual_path,
+                'checkout', ref
+            ]).run()
 
-        return path
+        except gluetool.GlueCommandError as exc:
+            raise gluetool.GlueError('Failed to checkout ref {}: {}'.format(ref, exc.output.stderr))
 
     def initialize_from_path(self, path):
         # type: (str) -> Any

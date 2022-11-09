@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import re
 
 import gluetool
 import six
@@ -32,7 +33,7 @@ class HideSecrets(gluetool.Module):
         #       must be sanitized!
         # TFT-1339 - the value can be empty, make sure to skip it, nothing to hide there
         sed_expr = ';'.join(
-            's|{}|*****|g'.format(value)
+            's|{}|*****|g'.format(re.escape(value))
             for _, value in six.iteritems(self.shared('user_secrets'))
             if value
         )

@@ -51,11 +51,11 @@ from gluetool_modules_framework.libs.guest import NetworkedGuest
 import gluetool_modules_framework.libs
 from gluetool_modules_framework.libs import strptime
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
+from gluetool_modules_framework.infrastructure.memcached import Cache as CacheType
 
 from typing import Any, Dict, List, TYPE_CHECKING, Union, Optional, cast  # noqa
 
 if TYPE_CHECKING:
-    from gluetool_modules_framework.infrastructure.memcached import Cache as CacheType
     from gluetool_modules_framework.helpers.rules_engine import ContextType
     from gluetool_modules_framework.helpers.rules_engine import EntryType
 

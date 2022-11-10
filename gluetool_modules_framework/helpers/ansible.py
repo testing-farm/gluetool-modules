@@ -73,6 +73,12 @@ class Ansible(gluetool.Module):
             'action': 'append',
             'default': []
         },
+        'ansible-playbook-environment-variables': {
+            'help': "Additional environment variables for ansible-playbook execution. (default: none)",
+            'metavar': 'KEY1=VALUE1,KEY2=VALUE2,...',
+            'action': 'append',
+            'default': []
+        },
         'extra-variables-template-file': {
             'help': """
                     If specified, the templates in files are rendered into a YAML file which is then passed to every
@@ -115,6 +121,20 @@ class Ansible(gluetool.Module):
         # type: () -> List[str]
 
         return gluetool.utils.normalize_multistring_option(self.option('ansible-playbook-options'))
+
+    @gluetool.utils.cached_property
+    def additional_environment_variables(self):
+        # type: () -> Dict[str,str]
+
+        envs_list = gluetool.utils.normalize_multistring_option(self.option('ansible-playbook-environment-variables'))
+
+        envs_dict = {}
+        for env in envs_list:
+            key = env.split('=')[0].strip()
+            value = env.split('=')[1].strip()
+            envs_dict[key] = value
+
+        return envs_dict
 
     @gluetool.utils.cached_property
     def extra_variables_template_files(self):
@@ -292,6 +312,8 @@ class Ansible(gluetool.Module):
         inventory = inventory or '{},'.format(guest.hostname)  # note the comma
 
         env = env or os.environ.copy()
+
+        env.update(self.additional_environment_variables)
 
         log_filepath = log_filepath or os.path.join(os.getcwd(), ANSIBLE_OUTPUT)
 

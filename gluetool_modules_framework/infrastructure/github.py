@@ -661,7 +661,7 @@ class GitHub(gluetool.Module):
 
         assert pull_request is not None
 
-        if pull_request.state == 'closed' and self.option('skip-closed-pull-requests'):
+        if pull_request.state in ['closed', 'merged'] and self.option('skip-closed-pull-requests'):
             self.warn('Skipping setting pr status to closed pull request')
             return
 
@@ -738,7 +738,7 @@ class GitHub(gluetool.Module):
                 self._pull_request.html_url
             ))
 
-            if self.option('skip-closed-pull-requests'):
+            if self._pull_request.state in ['closed', 'merged'] and self.option('skip-closed-pull-requests'):
                 raise gluetool.SoftGlueError('The {} pull requested was closed'.format(self._pull_request.html_url))
 
         set_status_option = self.option('set-status')

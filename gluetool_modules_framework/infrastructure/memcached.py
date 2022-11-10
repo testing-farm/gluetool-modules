@@ -3,6 +3,7 @@
 
 import json
 import threading
+from six import ensure_binary, ensure_str
 from six.moves.urllib.parse import unquote
 
 from pymemcache.client import base  # type: ignore
@@ -71,21 +72,21 @@ class Cache(LoggerMixin, object):
         """
 
         with self._lock:
-            value = self._client.get(key, default=default)
+            value = self._client.get(ensure_binary(key), default=default)
 
         log_dict(self.debug, "get '{}'".format(key), value)
 
         return value
 
     def gets(self, key, default=None, cas_default=None):
-        # type: (str, Optional[Any], Optional[str]) -> Tuple[Any, str]
+        # type: (str, Optional[Any], Optional[bytes]) -> Tuple[Any, bytes]
         """
         Retrieve value for a given key and its CAS tag.
 
         :param str key: cache key.
         :param default: value returned in case the key is not present in the cache.
-        :param str cas_default: CAS tag returned in case the key is not present in the cache.
-        :rtype: tuple(object, str)
+        :param bytes cas_default: CAS tag returned in case the key is not present in the cache.
+        :rtype: tuple(object, bytes)
         :returns: tuple of two items, either value and CAS tag when the key exists, or provided default values
             when it does not.
         """
@@ -112,7 +113,7 @@ class Cache(LoggerMixin, object):
         log_dict(self.debug, "add '{}'".format(key), value)
 
         with self._lock:
-            return cast(bool, self._client.add(key, value, noreply=False))
+            return cast(bool, self._client.add(ensure_binary(key), value, noreply=False))
 
     def set(self, key, value):
         # type: (str, Any) -> bool
@@ -128,10 +129,10 @@ class Cache(LoggerMixin, object):
         log_dict(self.debug, "set '{}'".format(key), value)
 
         with self._lock:
-            return cast(bool, self._client.set(key, value, noreply=False))
+            return cast(bool, self._client.set(ensure_binary(key), value, noreply=False))
 
     def cas(self, key, value, tag):
-        # type: (str, Any, str) -> Optional[bool]
+        # type: (str, Any, bytes) -> Optional[bool]
         """
         *Check And Set* operation. Set a value of a given key but only when it didn't change - to honor this
         condition, a CAS tag is used. It is retrieved with the value via ``gets`` method and passed to ``cas``
@@ -141,19 +142,19 @@ class Cache(LoggerMixin, object):
 
         :param str key: cache key.
         :param value: desired value of the key.
-        :param str tag: CAS tag previously recieved in return value of ``gets``.
+        :param bytes tag: CAS tag previously recieved in return value of ``gets``.
         :returns: ``None`` when the key didn't exist - in such case it is **not** created! ``True`` when new value
             was successfully set, or ``False`` when the key has changed and CAS tag didn't match the one stored
             in cache.
         """
 
-        log_dict(self.debug, "cas '{}' (CAS {})".format(key, tag), value)
+        log_dict(self.debug, "cas '{}' (CAS {})".format(key, ensure_str(tag)), value)
 
-        if not isinstance(tag, str):
-            raise gluetool.GlueError('CAS tag must be a string, {} found instead'.format(type(tag)))
+        if not isinstance(tag, bytes):
+            raise gluetool.GlueError('CAS tag must be of type bytes, {} found instead'.format(type(tag)))
 
         with self._lock:
-            return cast(Optional[bool], self._client.cas(key, value, tag, noreply=False))
+            return cast(Optional[bool], self._client.cas(ensure_binary(key), value, tag, noreply=False))
 
     def delete(self, key):
         # type: (str) -> bool
@@ -168,7 +169,7 @@ class Cache(LoggerMixin, object):
         self.debug("delete '{}'".format(key))
 
         with self._lock:
-            return cast(bool, self._client.delete(key, noreply=False))
+            return cast(bool, self._client.delete(ensure_binary(key), noreply=False))
 
     def dump(self, separator='/'):
         # type: (str) -> Dict[str, Any]
@@ -188,17 +189,17 @@ class Cache(LoggerMixin, object):
         # keys to their bits, and we construct pile of nested dictionaries of keys and values.
 
         def _fetch_metadump():
-            # type: () -> Result[List[str], str]
+            # type: () -> Result[List[bytes], str]
             with self._lock:
-                response = cast(List[str], self._client._misc_cmd(
-                    ['lru_crawler metadump all\r\n'],
+                response = cast(List[bytes], self._client._misc_cmd(
+                    [b'lru_crawler metadump all\r\n'],
                     'metadump all',
                     False
                 ))
 
             log_dict(self.debug, 'metadump response', response)
 
-            if response and response[0] == 'BUSY currently processing crawler request':
+            if response and response[0] == b'BUSY currently processing crawler request':
                 return Result.Error('remote server is busy')
 
             return Result.Ok(response)
@@ -212,8 +213,8 @@ class Cache(LoggerMixin, object):
         # metadump consists of a list of strings
         for part in metadump:
             # each string contains multiple lines
-            for line in part.splitlines():
-                line = line.strip()
+            for line_bytes in part.splitlines():
+                line = ensure_str(line_bytes).strip()
 
                 if line == 'END':
                     break

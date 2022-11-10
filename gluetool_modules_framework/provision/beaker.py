@@ -934,7 +934,7 @@ class BeakerProvisioner(gluetool.Module):
         guest.debug('adding to list of cached guests')
 
         while True:
-            guests, cas_tag = cache.gets(guests_key, default=None, cas_default='0')
+            guests, cas_tag = cache.gets(guests_key, default=None, cas_default=b'0')
 
             # Are we adding the very first guest?
             if guests is None:
@@ -1011,7 +1011,7 @@ class BeakerProvisioner(gluetool.Module):
         guests_key = self._key('environments', environment.compose, environment.arch, 'guests')
 
         while True:
-            guests, cas_tag = cache.gets(guests_key, default=None, cas_default='0')
+            guests, cas_tag = cache.gets(guests_key, default=None, cas_default=b'0')
 
             # Is the list empty? At least our guest should be there... Cache may have been pruned
             # by an external event, nothing to do.

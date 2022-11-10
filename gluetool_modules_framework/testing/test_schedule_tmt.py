@@ -703,21 +703,21 @@ class TestScheduleTMT(Module):
             _add_property(properties, 'testcase.source.url', self.shared('dist_git_repository').web_url)
             _add_property(properties, 'variant', '')
 
-            # add main log
-            _add_log(
-                logs,
-                name='testout.log',
-                path=task.log,
-                href=artifacts_location(self, task.log, logger=schedule_entry.logger),
-                schedule_entry=schedule_entry
-            )
-
             # add log_dir
             _add_log(
                 logs,
                 name="log_dir",
                 path=task.artifacts_dir,
                 href=artifacts_location(self, task.artifacts_dir, logger=schedule_entry.logger),
+                schedule_entry=schedule_entry
+            )
+
+            # add main log
+            _add_log(
+                logs,
+                name='testout.log',
+                path=task.log,
+                href=artifacts_location(self, task.log, logger=schedule_entry.logger),
                 schedule_entry=schedule_entry
             )
 
@@ -737,6 +737,5 @@ class TestScheduleTMT(Module):
 
             # sorting
             sort_children(properties, lambda child: child.attrs['name'])
-            sort_children(logs, lambda child: child.attrs['name'])
 
         test_suite['tests'] = len(schedule_entry.results)

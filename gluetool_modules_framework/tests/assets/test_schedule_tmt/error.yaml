@@ -3,13 +3,22 @@ outcome: FAILED
 results:
   - name: /install
     result: passed
-    log: error/execute/logs/install/out.log
-    artifacts_dir: error/execute/logs/install
+    artifacts:
+      - name: log_dir
+        path: error/execute/logs/install
+      - name: testout.log
+        path: error/execute/logs/install/out.log
   - name: /update
     result: failed
-    log: error/execute/logs/update/out.log
-    artifacts_dir: error/execute/logs/update
+    artifacts:
+      - name: log_dir
+        path: error/execute/logs/update
+      - name: testout.log
+        path: error/execute/logs/update/out.log
   - name: /remove
     result: error
-    log: error/execute/logs/remove/out.log
-    artifacts_dir: error/execute/logs/remove
+    artifacts:
+      - name: log_dir
+        path: error/execute/logs/remove
+      - name: testout.log
+        path: error/execute/logs/remove/out.log

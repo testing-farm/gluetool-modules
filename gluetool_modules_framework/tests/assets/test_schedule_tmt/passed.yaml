@@ -3,9 +3,17 @@ outcome: PASSED
 results:
   - name: /tests/core/docs
     result: passed
-    log: passed/execute/logs/tests/core/docs/out.log
-    artifacts_dir: passed/execute/logs/tests/core/docs
+    artifacts:
+      - name: log_dir
+        path: passed/execute/logs/tests/core/docs
+      - name: testout.log
+        path: passed/execute/logs/tests/core/docs/out.log
+      - name: journal.txt
+        path: passed/execute/logs/tests/core/docs/journal.txt
   - name: /tests/core/dry
     result: passed
-    log: passed/execute/logs/tests/core/dry/out.log
-    artifacts_dir: passed/execute/logs/tests/core/dry
+    artifacts:
+      - name: log_dir
+        path: passed/execute/logs/tests/core/dry
+      - name: testout.log
+        path: passed/execute/logs/tests/core/dry/out.log

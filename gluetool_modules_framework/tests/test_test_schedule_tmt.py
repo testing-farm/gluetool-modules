@@ -68,8 +68,10 @@ def _assert_results(results, expected_results):
     for result, expected in zip(results, expected_results):
         assert result.name == expected['name']
         assert result.result == expected['result']
-        assert result.log == os.path.join(ASSETS_DIR, expected['log'])
-        assert result.artifacts_dir == os.path.join(ASSETS_DIR, expected['artifacts_dir'])
+        assert len(result.artifacts) == len(expected['artifacts'])
+        for ta, ea in zip(result.artifacts, expected['artifacts']):
+            assert ta.name == ea['name']
+            assert ta.path == os.path.join(ASSETS_DIR, ea['path'])
 
 
 @pytest.mark.parametrize('asset', [
@@ -140,13 +142,15 @@ def test_serialize_test_schedule_entry_results(module, guest, monkeypatch):
     assert testcase_docs.name == 'testcase'
     assert testcase_docs['name'] == '/tests/core/docs'
     assert testcase_docs['result'] == 'passed'
-    # expecting log_dir and testout.log, in exactly that order; current code ignores journal.txt
-    assert len(testcase_docs.logs) == 2
+    # expecting log_dir, testout.log, and journal.txt, in exactly that order
+    assert len(testcase_docs.logs) == 3
     assert testcase_docs.logs.contents[0].name == 'log'
     assert testcase_docs.logs.contents[0]['name'] == 'log_dir'
     assert testcase_docs.logs.contents[0]['href'].endswith('/passed/execute/logs/tests/core/docs')
     assert testcase_docs.logs.contents[1]['name'] == 'testout.log'
     assert testcase_docs.logs.contents[1]['href'].endswith('/passed/execute/logs/tests/core/docs/out.log')
+    assert testcase_docs.logs.contents[2]['name'] == 'journal.txt'
+    assert testcase_docs.logs.contents[2]['href'].endswith('/passed/execute/logs/tests/core/docs/journal.txt')
 
     assert testcase_dry['name'] == '/tests/core/dry'
     assert testcase_dry['result'] == 'passed'

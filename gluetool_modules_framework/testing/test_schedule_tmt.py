@@ -78,17 +78,21 @@ PLAN_OUTCOME = {
 # Results YAML file, contains list of test run results, relative to plan workdir
 RESULTS_YAML = "execute/results.yaml"
 
+#: Represents a test output artifact (in particular, log files)
+TestArtifact = NamedTuple('TestArtifact', (
+    ('name', str),
+    ('path', str)
+))
+
 #: Represents a test run result
 #:
 #: :ivar name: name of the test.
 #: :ivar result: test result.
-#: :ivar log: output log of the test.
-#: :ivar artifacts_dir: directory
+#: :ivar artifacts: artifacts/log files declared by the test
 TestResult = NamedTuple('TestResult', (
     ('name', str),
     ('result', str),
-    ('log', str),
-    ('artifacts_dir', str)
+    ('artifacts', List[TestArtifact]),
 ))
 
 
@@ -207,19 +211,32 @@ def gather_plan_results(schedule_entry, work_dir):
             schedule_entry.warn("Encountered invalid result '{}' in runner results".format(data['result']))
             return TestScheduleResult.ERROR, results
 
-        # log can be a string or a list, in case it is a list, the main log is the first one
-        log = data['log'][0] if isinstance(data['log'], list) else data['log']
+        # log can be a string or a list
+        logs = data['log']
+        if not isinstance(data['log'], list):
+            logs = [logs]
 
-        # get the relative path to the log file
-        test_log_path = os.path.join(work_dir, plan_path, 'execute', log)
+        artifacts_dir = os.path.join(work_dir, plan_path, 'execute')
+        artifacts = []
 
-        # NOTE: directory of log file is used as artifacts log, in case the tests produced more log files
-        test_results.append(TestResult(
-            name,
-            outcome,
-            test_log_path,
-            os.path.split(test_log_path)[0]
-        ))
+        # attach the artifacts directory itself, useful for browsing;
+        # usually all artifacts are in the same dir
+        if logs:
+            artifacts.append(TestArtifact(
+                'log_dir',
+                os.path.join(artifacts_dir, os.path.dirname(logs[0]))
+            ))
+
+            # the first log is the main one for developers, traditionally called "testout.log"
+            testout = logs.pop(0)
+            artifacts.append(TestArtifact('testout.log', os.path.join(artifacts_dir, testout)))
+
+        # attach all other logs; name them after their filename; eventually, tmt results.yaml should
+        # allow more meta-data, like declaring a HTML viewer
+        for log in logs:
+            artifacts.append(TestArtifact(os.path.basename(log), os.path.join(artifacts_dir, log)))
+
+        test_results.append(TestResult(name, outcome, artifacts))
 
     # count the maximum result weight encountered, i.e. the overall result
     max_weight = max(RESULT_WEIGHT[data['result']] for _, data in six.iteritems(results))
@@ -644,7 +661,7 @@ class TestScheduleTMT(Module):
             # type: (Any, str, str) -> Any
             return new_xml_element('property', _parent=properties, name='baseosci.{}'.format(name), value=value or '')
 
-        def _add_log(logs, name, path, href, schedule_entry=None):
+        def _add_artifact(logs, name, path, href, schedule_entry=None):
             # type: (Any, str, str, str, Optional[TestScheduleEntry]) -> Any
 
             attrs = {
@@ -703,23 +720,15 @@ class TestScheduleTMT(Module):
             _add_property(properties, 'testcase.source.url', self.shared('dist_git_repository').web_url)
             _add_property(properties, 'variant', '')
 
-            # add log_dir
-            _add_log(
-                logs,
-                name="log_dir",
-                path=task.artifacts_dir,
-                href=artifacts_location(self, task.artifacts_dir, logger=schedule_entry.logger),
-                schedule_entry=schedule_entry
-            )
-
-            # add main log
-            _add_log(
-                logs,
-                name='testout.log',
-                path=task.log,
-                href=artifacts_location(self, task.log, logger=schedule_entry.logger),
-                schedule_entry=schedule_entry
-            )
+            # artifacts
+            for artifact in task.artifacts:
+                _add_artifact(
+                    logs,
+                    name=artifact.name,
+                    path=artifact.path,
+                    href=artifacts_location(self, artifact.path, logger=schedule_entry.logger),
+                    schedule_entry=schedule_entry
+                )
 
             assert schedule_entry.testing_environment is not None
             _add_testing_environment(

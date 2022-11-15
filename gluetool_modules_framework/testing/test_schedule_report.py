@@ -257,6 +257,7 @@ class TestScheduleReport(gluetool.Module):
         for schedule_entry in schedule:
             test_suite = gluetool.utils.new_xml_element('testsuite', _parent=test_suites, tests='0')
             test_suite['result'] = schedule_entry.result.name.lower()
+            test_suite['name'] = schedule_entry.id
 
             testsuite_logs = gluetool.utils.new_xml_element('logs', _parent=test_suite)
             testsuite_properties = gluetool.utils.new_xml_element('properties', _parent=test_suite)

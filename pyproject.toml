@@ -108,7 +108,7 @@ upload-results = "gluetool_modules_framework.helpers.upload_results:UploadResult
 url-shortener = "gluetool_modules_framework.helpers.url_shortener:URLShortener"
 
 [tool.poetry.dependencies]
-python = "~2.7 || ~3.7 || ~3.9"
+python = "~3.7 || ~3.9"
 
 ansible = "2.8.5"
 # NOTE: without this dependency the installation will fail with
@@ -121,10 +121,8 @@ commonmark = "0.8.0"
 docker = "3.5.1"
 docker-pycreds = "0.3.0"
 docutils = "0.14"
-enum34 = {version = "^1.1.6", python = "~2.7"}
 fmf = "0.6.1"
 future = "0.18.2"
-futures = {version = "3.2.0", python = "~2.7"}
 gitdb2 = "2.0.6"
 GitPython = "2.1.15"
 gluetool = "^1.29"
@@ -156,27 +154,19 @@ simplejson = "^3.17.2"
 sphinx = "1.5.2"
 sphinx-argparse = "0.2.0"
 sphinxcontrib-programoutput = "0.11"
-typing-extensions = { version = "^3.7.4", python = "^3.7" }
+typing-extensions = "^3.7.4"
 sphinx-rtd-theme = "0.5.2"
 
 [tool.poetry.dev-dependencies]
 # attrs 21.4 is the last one supporting Python 2.
 attrs = "^21.4"
 flake8 = "3.7.8"
-lazy-object_proxy = [
-    {version = "1.7.1", python = "^3.7"},
-    {version = "1.6.0", python = "~2.7"}
-]
-pylint = {version = "1.9.5", python = "~2.7"}
-pytest = [
-    {version = "5.4.3", python = "^3.7"},
-    {version = "4.6.5", python = "~2.7"}
-]
+lazy-object_proxy = "1.7.1"
+pytest = "5.4.3"
 pytest-catchlog = "1.2.2"
 pytest-cov = "2.7.1"
 pytest-flake8 = "1.0.4"
 pytest-mock = "1.10.4"
-pytest-pylint = {version = "0.14.1", python = "~2.7"}
 tox = "3.8.6"
 yamllint = "1.16.0"
 

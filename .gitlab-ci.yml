@@ -4,8 +4,7 @@ stages:
   - test
 
 # Use our custom image. See https://gitlab.com/testing-farm/images/-/tree/master/python-ci-image
-# Because we still need py27 support, use the f32 based image, with updated poetry
-image: "quay.io/testing-farm/python-ci-image:f32-poetry-1.1.15"
+image: "quay.io/testing-farm/python-ci-image:latest"
 
 #
 # Poetry and MyPy colors
@@ -16,18 +15,6 @@ image: "quay.io/testing-farm/python-ci-image:f32-poetry-1.1.15"
     POETRY_ADDOPTS: "--ansi"
     MYPY_FORCE_COLOR: "1"
     PYTEST_ADDOPTS: "--color=yes"
-
-
-#
-# Some of the jobs require locale to be set, some fail with is. Those which need it can inherit this section.
-#
-.locale:
-  variables:
-    # See https://click.palletsprojects.com/en/7.x/python3/#python-3-surrogate-handling
-    # Export these for Python 3.6 - from 3.7 forward, Python is smarter when picking
-    # default locales.
-    LC_ALL: "en_US.utf8"
-    LANG: "en_US.utf8"
 
 #
 # Mark tests to run for merge requests
@@ -40,7 +27,7 @@ image: "quay.io/testing-farm/python-ci-image:f32-poetry-1.1.15"
 # TEST steps
 #
 .tests:
-  extends: [.colors, .locale, .merge-request]
+  extends: [.colors, .merge-request]
   before_script:
     - dnf -y install krb5-devel libcurl-devel popt-devel postgresql-devel libxml2-devel
 
@@ -65,15 +52,6 @@ container:
 # Run unit tests
 #
 # Note: this step also generates coverage report (HTML).
-py27-unit:
-  extends: .tests
-  stage: test
-  script:
-    - tox -v -e py27-unit-tests -- --cov=gluetool_modules_framework --cov-report=html:coverage-report
-  artifacts:
-    paths:
-      - coverage-report
-
 py37-unit:
   extends: .tests
   stage: test
@@ -93,12 +71,6 @@ py39-unit:
       - coverage-report
 
 # Static analysis - pylint, flake8
-py27-static:
-  extends: .tests
-  stage: test
-  script:
-    - tox -v -e py27-static-analysis
-
 py37-static:
   extends: .tests
   stage: test
@@ -122,17 +94,11 @@ static-coala:
     - /usr/bin/coala --non-interactive --config .coafile
 
 # Static analysis - type checks
-py27-type-check:
+type-check:
   extends: [.colors, .merge-request]
   stage: test
   script:
-    - tox -v -e py27-type-check
-
-py37-type-check:
-  extends: [.colors, .merge-request]
-  stage: test
-  script:
-    - tox -v -e py37-type-check
+    - tox -v -e type-check
 
 # Static analysis - pre-commit
 pre-commit:
@@ -144,14 +110,6 @@ pre-commit:
     - pre-commit run --show-diff-on-failure --hook-stage manual --all-files
 
 # Installation Fedora
-py27-install-fedora-32:
-  extends: .merge-request
-  stage: test
-  image: registry.fedoraproject.org/fedora:32
-  script:
-    - dnf -y install tmt
-    - tmt run -adddvvv provision -h local plan --name /plans/fedora/py27
-
 py37-install-fedora-36:
   extends: .merge-request
   stage: test
@@ -169,17 +127,6 @@ py39-install-fedora-36:
     - dnf -y install tmt
     - dnf -y install tmt-provision-container
     - tmt run -adddvvv provision -h local plan --name /plans/fedora/py39
-
-# Installation Centos Stream 8
-py27-install-centos-stream-8:
-  extends: .merge-request
-  stage: test
-  image: quay.io/centos/centos:stream8
-  script:
-    - dnf -y install epel-release
-    - dnf -y install tmt
-    - dnf -y install tmt-provision-container
-    - tmt run -adddvvv provision -h local plan --name /plans/centos-stream-8
 
 # Installation RHEL8
 # DISABLED temporarily due to ubi8 breakage
@@ -211,12 +158,3 @@ py37-generate-docs:
   artifacts:
     paths:
       - .tox/py37-doctest/tmp/docs/build/html
-
-py27-generate-docs:
-  extends: .tests
-  stage: test
-  script:
-    - tox -v -e py27-doctest -- ./docs
-  artifacts:
-    paths:
-      - .tox/py27-doctest/tmp/docs/build/html

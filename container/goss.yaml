@@ -1,0 +1,86 @@
+---
+packages:
+  ansible-2.9.27:
+    installed: true
+
+  beakerlib:
+    installed: true
+
+  beakerlib-libraries:
+    installed: true
+
+  python2.7:
+    installed: false
+
+  python3.9:
+    installed: true
+
+  standard-test-roles:
+    installed: true
+
+  tmt:
+    installed: true
+
+  tmt-provision-container:
+    installed: true
+
+  tmt-provision-virtual:
+    installed: true
+
+  tmt-report-polarion:
+    installed: true
+
+file:
+  /opt/gluetool/bin/citool:
+    exists: true
+    mode: "0755"
+    filetype: file
+
+  /opt/gluetool:
+    exists: true
+    mode: "0755"
+    owner: root
+    group: root
+    filetype: directory
+
+  /etc/ssh/ssh_config:
+    exists: true
+    mode: "0644"
+    owner: root
+    group: root
+    filetype: file
+    contains:
+      - Host *
+      - StrictHostKeyChecking no
+      - UserKnownHostsFile /dev/null
+
+  /usr/lib/python3.9/site-packages/pylero:
+    exists: true
+    mode: "0755"
+    owner: root
+    group: root
+    filetype: directory
+
+command:
+  citool -l:
+    exit-status: 0
+    timeout: 100000
+
+  citool ansible --help:
+    exit-status: 0
+    timeout: 100000
+
+  env:
+    exit-status: 0
+    timeout: 100000
+    stdout:
+      - GLUETOOL_TRACING_DISABLE=1
+      - /PATH=.*/opt/gluetool/bin/
+
+  koji version:
+    exit-status: 0
+    timeout: 100000
+
+  tmt --version:
+    exit-status: 0
+    timeout: 100000

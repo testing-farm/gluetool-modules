@@ -16,6 +16,12 @@ WORKDIR /var/ARTIFACTS
 # PycURL needs to be compiled against openssl to work properly
 ENV PYCURL_SSL_BACKEND=openssl
 
+# Disable gluetool tracing, we do not use it currently
+ENV GLUETOOL_TRACING_DISABLE=1
+
+# Virtual environment bin path
+ENV PATH="/opt/gluetool/bin:$PATH"
+
 # install all required dependencies
 # WORKAROUNDS:
 #   * ansible-core is incompatible with standard-test-roles, so ansible-2.9.27 from centos-release-ansible-29
@@ -26,15 +32,15 @@ RUN    ln -s /CONFIG /etc/citool.d \
     && dnf install -y --allowerasing ansible-2.9.27 \
     && dnf -y install autoconf automake crun gcc git krb5-devel libcurl-devel \
                       libpq-devel libtool libxml2-devel make openssl-devel popt-devel \
-                      postgresql-devel python3-libselinux python2-devel \
+                      postgresql-devel python39 python39-devel python39-pip python3-libselinux \
                       redhat-rpm-config standard-test-roles koji python3-virtualenv \
-                      rsync python3 beakerlib-libraries \
+                      rsync beakerlib-libraries rpm-devel \
                       tmt-provision-container tmt-provision-virtual tmt-report-polarion \
     # install tmt from updates-testing, an agreement with tmt folks to be able to test tmt releases sooner.
     && dnf -y update --enablerepo=epel-testing tmt-provision-container tmt-provision-virtual \
     && dnf clean all \
-    # TFT-1503 - install pylero from PyPI
-    && pip3 install -t /usr/lib/python3.6/site-packages pylero \
+    # TFT-1503 - install pylero from PyPI, not yet available as a package
+    && pip3.9 install -t /usr/lib/python3.9/site-packages pylero \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \
@@ -44,12 +50,12 @@ RUN    ln -s /CONFIG /etc/citool.d \
 COPY dist/gluetool_modules_framework*.whl .
 
 # install gluetool-modules-framework & citool
-RUN    virtualenv -p python2 /opt/gluetool-venv \
-    && source /opt/gluetool-venv/bin/activate \
-    && pip install gluetool_modules_framework*.whl \
-    && rm -f tft_cli*.whl \
+RUN    virtualenv -p python3.9 /opt/gluetool \
+    && source /opt/gluetool/bin/activate \
+    && pip3.9 install gluetool_modules_framework*.whl \
+    && rm -f gluetool_modules_framework*.whl \
     && rm -rf ~/.cache
 
 # run citool as entrypoint
-ENTRYPOINT ["/usr/bin/citool"]
+ENTRYPOINT ["citool"]
 CMD ["--help"]

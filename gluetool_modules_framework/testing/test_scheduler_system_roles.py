@@ -176,6 +176,7 @@ class TestSchedulerSystemRoles(gluetool.Module):
         """
         If collection-requirements.yml contains the collections, install reqs
         from meta/collection-requirements.yml at repo_path/.collection.
+        Also install test requirements from tests/collection-requirements.yml
         """
         self.info('Trying to install requirements.')
 
@@ -187,46 +188,48 @@ class TestSchedulerSystemRoles(gluetool.Module):
             os.mkdir(collection_path)
 
         requirements_filepath = os.path.join(repo_path, "meta", "collection-requirements.yml")
+        test_requirements_filepath = os.path.join(repo_path, "tests", "collection-requirements.yml")
 
         # see if reqfile is in legacy role format
-        if os.path.isfile(requirements_filepath):
-            self.info('The {} requirements file was found'.format(requirements_filepath))
-            cmd = [
-                "{}/ansible-galaxy".format(ansible_path),
-                "collection",
-                "install",
-                "-p",
-                collection_path,
-                "-vv",
-                "-r",
-                requirements_filepath
-            ]
-            try:
-                gluetool.utils.Command(cmd).run()
-                self.info('Requirements were successfully installed')
-            except gluetool.GlueCommandError as exc:
-                raise gluetool.GlueError("ansible-galaxy failed with: {}".format(exc))
-
-            # Check if the collection(s) are installed or not.
-            requirements_yaml = load_yaml(requirements_filepath)
-
-            for collection in requirements_yaml['collections']:
-                if isinstance(collection, dict):
-                    collection_name = collection['name']
-                else:
-                    collection_name = collection
-
-                collection_dir = os.path.join(
+        for req_file in [requirements_filepath, test_requirements_filepath]:
+            if os.path.isfile(req_file):
+                self.info('The {} requirements file was found'.format(req_file))
+                cmd = [
+                    "{}/ansible-galaxy".format(ansible_path),
+                    "collection",
+                    "install",
+                    "-p",
                     collection_path,
-                    "ansible_collections",
-                    collection_name.replace('.', '/')
-                )
+                    "-vv",
+                    "-r",
+                    req_file
+                ]
+                try:
+                    gluetool.utils.Command(cmd).run()
+                    self.info('Requirements were successfully installed from {}'.format(req_file))
+                except gluetool.GlueCommandError as exc:
+                    raise gluetool.GlueError("ansible-galaxy failed with: {}".format(exc))
 
-                if not os.path.isdir(collection_dir):
-                    raise gluetool.GlueError("{} is not installed at {}".format(collection_name, collection_dir))
+                # Check if the collection(s) are installed or not.
+                requirements_yaml = load_yaml(req_file)
 
-            # Set collection_path to ANSIBLE_COLLECTIONS_PATHS
-            os.environ['ANSIBLE_COLLECTIONS_PATHS'] = collection_path
+                for collection in requirements_yaml['collections']:
+                    if isinstance(collection, dict):
+                        collection_name = collection['name']
+                    else:
+                        collection_name = collection
+
+                    collection_dir = os.path.join(
+                        collection_path,
+                        "ansible_collections",
+                        collection_name.replace('.', '/')
+                    )
+
+                    if not os.path.isdir(collection_dir):
+                        raise gluetool.GlueError("{} is not installed at {}".format(collection_name, collection_dir))
+
+                # Set collection_path to ANSIBLE_COLLECTIONS_PATHS
+                os.environ['ANSIBLE_COLLECTIONS_PATHS'] = collection_path
 
     # Returns a Set of the basenames of test playbooks that we do not want
     # to provide vault variables for

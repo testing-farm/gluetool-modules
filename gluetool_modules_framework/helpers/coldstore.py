@@ -99,6 +99,10 @@ class ColdStore(gluetool.Module):
 
         logger.debug("mapping artifacts location '{}' => {}".format(local_path, final_path))
 
+        # NOTE(TFT-1542): artifact location can contain '#', treat it specially, because urlnormalizer
+        # module treats it as an URL fragment, which it drops by default
+        final_path = final_path.replace('#', '%23')
+
         # The rendered location may be URL, but also it may be something completely different.
         # Try to treat it like the URL, but ignore failures - ``treat_url`` would fail when
         # the string didn't start with schema, for example.

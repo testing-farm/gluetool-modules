@@ -31,6 +31,22 @@ def test_coldstore_url(module, monkeypatch):
     assert module.coldstore_url() == 'some-url'
 
 
+@pytest.mark.parametrize('path,expected', [
+    ('some-path', 'some-path'),
+    ('log/TC#1245.log', 'log/TC%231245.log')
+])
+def test_coldstore_url(module, monkeypatch, path, expected):
+    module._config['artifacts-location-template'] = '{{ URL }}/{{ ARTIFACTS_LOCATION }}'
+
+    patch_shared(monkeypatch, module, {
+        'eval_context': {
+            'URL': 'some-url'
+        }
+    })
+
+    assert module.artifacts_location(path) == 'some-url/{}'.format(expected)
+
+
 def test_execute_no_coldstore_url(module, monkeypatch, log):
     monkeypatch.setattr(
         gluetool_modules_framework.helpers.coldstore.ColdStore,

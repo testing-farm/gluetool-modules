@@ -5,6 +5,7 @@ import pytest
 
 from mock import MagicMock, call
 
+import gluetool
 import gluetool_modules_framework.libs.guest as guest_module
 import gluetool_modules_framework.libs.guest_setup
 import gluetool_modules_framework.libs.testing_environment
@@ -129,6 +130,37 @@ def test_guest_setup(module, local_guest):
         call('dnf --allowerasing -y downgrade $(cat rpms-list)'),
         call('dnf --allowerasing -y update $(cat rpms-list)'),
         call('dnf --allowerasing -y install $(cat rpms-list)'),
+        call("sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q")
+    ]
+
+    execute_mock.assert_has_calls(calls)
+
+
+def test_guest_setup_yum(module, local_guest):
+    module.execute()
+
+    stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
+
+    def execute_mock_side_effect(cmd):
+        if cmd == 'command -v dnf':
+            raise gluetool.glue.GlueCommandError('dummy_error', MagicMock(exit_code=1, stdout='', stderr=''))
+        return MagicMock(stdout='', stderr='')
+
+    execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
+    execute_mock.side_effect = execute_mock_side_effect
+    guest = mock_guest(execute_mock)
+
+    module.setup_guest(guest, stage=stage)
+
+    calls = [
+        call('command -v dnf'),
+        call('koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch src 123123123'),  # noqa
+        call('brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch src 123123124'),  # noqa
+        call('ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | awk "{print \\$2}" | tee rpms-list'),  # noqa
+        call('yum -y reinstall $(cat rpms-list)'),
+        call('yum -y downgrade $(cat rpms-list)'),
+        call('yum -y update $(cat rpms-list)'),
+        call('yum -y install $(cat rpms-list)'),
         call("sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q")
     ]
 

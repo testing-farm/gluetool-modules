@@ -127,29 +127,38 @@ class InstallKojiBuildExecute(gluetool.Module):
             )
         )
 
-        sut_installation.add_step(
-            'Reinstall packages',
-            'yum -y reinstall $(cat rpms-list)',
-            ignore_exception=True,
-        )
+        try:
+            guest.execute('command -v dnf')
+            has_dnf = True
+        except gluetool.glue.GlueCommandError:
+            has_dnf = False
 
-        sut_installation.add_step(
-            'Downgrade packages',
-            'yum -y downgrade $(cat rpms-list)',
-            ignore_exception=True,
-        )
+        if has_dnf:
+            # HACK: this is *really* awkward wrt. error handling: https://bugzilla.redhat.com/show_bug.cgi?id=1831022
+            sut_installation.add_step('Reinstall packages',
+                                      'dnf -y reinstall $(cat rpms-list) || true')
 
-        sut_installation.add_step(
-            'Update packages',
-            'yum -y update $(cat rpms-list)',
-            ignore_exception=True,
-        )
+            sut_installation.add_step('Install packages',
+                                      'dnf -y install $(cat rpms-list)')
+        else:
+            sut_installation.add_step(
+                'Reinstall packages',
+                'yum -y reinstall $(cat rpms-list)',
+                ignore_exception=True,
+            )
 
-        sut_installation.add_step(
-            'Install packages',
-            'yum -y install $(cat rpms-list)',
-            ignore_exception=True,
-        )
+            # yum install refuses downgrades, do it explicitly
+            sut_installation.add_step(
+                'Downgrade packages',
+                'yum -y downgrade $(cat rpms-list)',
+                ignore_exception=True,
+            )
+
+            sut_installation.add_step(
+                'Install packages',
+                'yum -y install $(cat rpms-list)',
+                ignore_exception=True,
+            )
 
         # Use printf to correctly quote the package name, we encountered '^' in the NVR, which is actually a valid
         # character in NVR - https://docs.fedoraproject.org/en-US/packaging-guidelines/Versioning/#_snapshots

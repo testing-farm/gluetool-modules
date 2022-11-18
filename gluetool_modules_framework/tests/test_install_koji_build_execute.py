@@ -126,9 +126,7 @@ def test_guest_setup(module, local_guest):
         call('koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch src 123123123'),  # noqa
         call('brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch src 123123124'),  # noqa
         call('ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | awk "{print \\$2}" | tee rpms-list'),  # noqa
-        call('dnf --allowerasing -y reinstall $(cat rpms-list)'),
-        call('dnf --allowerasing -y downgrade $(cat rpms-list)'),
-        call('dnf --allowerasing -y update $(cat rpms-list)'),
+        call('dnf --allowerasing -y reinstall $(cat rpms-list) || true'),
         call('dnf --allowerasing -y install $(cat rpms-list)'),
         call("sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q")
     ]
@@ -159,7 +157,6 @@ def test_guest_setup_yum(module, local_guest):
         call('ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | awk "{print \\$2}" | tee rpms-list'),  # noqa
         call('yum -y reinstall $(cat rpms-list)'),
         call('yum -y downgrade $(cat rpms-list)'),
-        call('yum -y update $(cat rpms-list)'),
         call('yum -y install $(cat rpms-list)'),
         call("sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q")
     ]

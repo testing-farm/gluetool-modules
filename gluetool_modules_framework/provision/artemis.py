@@ -11,6 +11,7 @@ import gluetool
 import gluetool.utils
 import gluetool_modules_framework.libs
 import requests
+from simplejson import JSONDecodeError
 
 from gluetool import GlueError, SoftGlueError
 from gluetool.log import log_dict, LoggerMixin
@@ -55,6 +56,12 @@ class ArtemisResourceError(GlueError):
         super(ArtemisResourceError, self).__init__("Artemis resource ended in 'error' state")
 
 
+class PipelineCancelled(GlueError):
+    def __init__(self):
+        # type: () -> None
+        super(PipelineCancelled, self).__init__('Pipeline was cancelled, aborting')
+
+
 class ArtemisAPIError(SoftGlueError):
     def __init__(self, response, error=None):
         # type: (Any, Optional[str]) -> None
@@ -72,7 +79,7 @@ class ArtemisAPIError(SoftGlueError):
         if headers.get('content-type') and 'application/json' in headers['content-type']:
             try:
                 self.json = response.json()
-            except Exception as exc:
+            except JSONDecodeError as exc:
                 self.json['errors'] = str(exc)
 
         super(ArtemisAPIError, self).__init__(
@@ -109,14 +116,17 @@ class ArtemisAPI(object):
         self.check_if_artemis()
 
     def api_call(self, endpoint, method='GET', expected_status_code=200, data=None):
-        # type: (str, str, int, Optional[Dict[str, Any]]) -> Any
+        # type: (str, str, int, Optional[Dict[str, Any]]) -> requests.Response
 
         def _api_call():
-            # type: () -> Result[Any, str]
+            # type: () -> Result[Optional[requests.Response], str]
 
             _request = getattr(requests, method.lower(), None)
             if _request is None:
                 return Result.Error('Unknown HTTP method {}'.format(method))
+
+            if self.module.pipeline_cancelled:
+                return Result.Ok(None)
 
             try:
                 response = _request('{}{}'.format(self.url, endpoint), json=data)
@@ -140,6 +150,9 @@ class ArtemisAPI(object):
 
         except GlueError as exc:
             raise GlueError('Artemis API call failed: {}'.format(exc))
+
+        if response is None:
+            raise PipelineCancelled()
 
         return response
 
@@ -449,7 +462,10 @@ class ArtemisSnapshot(LoggerMixin):
         except ArtemisResourceError:
             six.reraise(*sys.exc_info())
 
-        except Exception as e:
+        except PipelineCancelled:
+            six.reraise(*sys.exc_info())
+
+        except GlueError as e:
             self.warn('Exception raised: {}'.format(e))
 
         return Result.Error("Couldn't get snapshot {}".format(self.name))
@@ -525,7 +541,10 @@ class ArtemisGuest(NetworkedGuest):
         except ArtemisResourceError:
             six.reraise(*sys.exc_info())
 
-        except Exception as e:
+        except PipelineCancelled:
+            six.reraise(*sys.exc_info())
+
+        except GlueError as e:
             self.warn('Exception raised: {}'.format(e))
 
         return Result.Error("Couldn't get address for guest {}".format(self.artemis_id))
@@ -993,7 +1012,7 @@ class ArtemisProvisioner(gluetool.Module):
 
             self.api.dump_events(guest)
 
-        except (Exception, KeyboardInterrupt) as exc:
+        except (GlueError, KeyboardInterrupt) as exc:
             message = 'KeyboardInterrupt' if isinstance(exc, KeyboardInterrupt) else str(exc)
             self.warn("Exception while provisioning guest: {}".format(message))
             if not self.option('keep'):

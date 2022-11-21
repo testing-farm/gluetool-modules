@@ -40,6 +40,8 @@ SUTStep = collections.namedtuple(
 # Pattern for dnf commands which will be extended with --allowerasing
 ALLOW_ERASING_PATTERN = re.compile(r'\b(install|update|reinstall|downgrade)\b')
 
+INSTALL_COMMANDS_FILE = 'sut_install_commands.sh'
+
 
 class SUTInstallationFailedError(ArtifactFingerprintsMixin, SoftGlueError):
     def __init__(
@@ -94,7 +96,7 @@ class SUTInstallation(object):
         self.steps.append(SUTStep(label, command, items, ignore_exception, callback))
 
     def run(self, guest):
-        # type: (gluetool_modules_framework.libs.guest.NetworkedGuest) -> Result[List[str], SUTInstallationFailedError]
+        # type: (gluetool_modules_framework.libs.guest.NetworkedGuest) -> Result[None, SUTInstallationFailedError]
 
         commands = []
 
@@ -195,7 +197,12 @@ class SUTInstallation(object):
                     )
                 )
 
-        return Ok(commands)
+        # record the install commands
+        with open(os.path.join(self.log_dirpath, INSTALL_COMMANDS_FILE), 'a') as f:
+            for command in commands:
+                f.write(command + '\n')
+
+        return Ok(None)
 
 
 def check_ansible_sut_installation(ansible_output,  # type: Dict[str, Any]

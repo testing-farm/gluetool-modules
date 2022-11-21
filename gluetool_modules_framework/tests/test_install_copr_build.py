@@ -12,7 +12,7 @@ from mock import MagicMock
 from mock import call
 import gluetool_modules_framework.libs.sut_installation
 from gluetool_modules_framework.helpers.install_copr_build import InstallCoprBuild
-from gluetool_modules_framework.libs.sut_installation import SUTInstallationFailedError
+from gluetool_modules_framework.libs.sut_installation import SUTInstallationFailedError, INSTALL_COMMANDS_FILE
 from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
 from . import create_module, patch_shared, check_loadable
 
@@ -99,8 +99,8 @@ def test_setup_guest(module_shared_patched, tmpdir):
     assert execute_mock.call_count == len(calls)
     assert_log_files(guest, str(tmpdir))
 
-    module.require_shared('sut_install_commands')
-    assert module.shared('sut_install_commands') == commands
+    with open(os.path.join(str(tmpdir), 'artifact-installation-guest0', INSTALL_COMMANDS_FILE)) as f:
+        assert f.read() == '\n'.join(commands) + '\n'
 
 
 def test_no_dnf(module_shared_patched, tmpdir):

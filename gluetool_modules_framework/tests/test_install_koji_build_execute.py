@@ -1,6 +1,8 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+
 import pytest
 
 from mock import MagicMock, call
@@ -8,8 +10,10 @@ from mock import MagicMock, call
 import gluetool
 import gluetool_modules_framework.libs.guest as guest_module
 import gluetool_modules_framework.libs.guest_setup
+from gluetool_modules_framework.libs.sut_installation import INSTALL_COMMANDS_FILE
 import gluetool_modules_framework.libs.testing_environment
 import gluetool_modules_framework.helpers.install_koji_build_execute
+from gluetool_modules_framework.helpers.install_copr_build import InstallCoprBuild
 import gluetool_modules_framework.helpers.rules_engine
 
 from . import create_module, patch_shared
@@ -111,7 +115,7 @@ def test_execute(module, local_guest, monkeypatch):
     ]
 
 
-def test_guest_setup(module, local_guest):
+def test_guest_setup(module, local_guest, tmpdir):
     module.execute()
 
     stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
@@ -119,19 +123,76 @@ def test_guest_setup(module, local_guest):
     execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
     guest = mock_guest(execute_mock)
 
-    module.setup_guest(guest, stage=stage)
+    module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir))
 
-    calls = [
-        call('command -v dnf'),
-        call('koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch src 123123123'),  # noqa
-        call('brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch src 123123124'),  # noqa
-        call('ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | awk "{print \\$2}" | tee rpms-list'),  # noqa
-        call('dnf --allowerasing -y reinstall $(cat rpms-list) || true'),
-        call('dnf --allowerasing -y install $(cat rpms-list)'),
-        call("sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q")
+    commands = [
+        'koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch src 123123123',  # noqa
+        'brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch src 123123124',  # noqa
+        'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | awk "{print \\$2}" | tee rpms-list',  # noqa
+        'dnf --allowerasing -y reinstall $(cat rpms-list) || true',
+        'dnf --allowerasing -y install $(cat rpms-list)',
+        "sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q"
     ]
 
-    execute_mock.assert_has_calls(calls)
+    calls = [call('command -v dnf')] * 2 + [call(c) for c in commands]
+    execute_mock.assert_has_calls(calls, any_order=False)
+    assert execute_mock.call_count == len(calls)
+
+    with open(os.path.join(str(tmpdir), 'log-dir-example-guest0', INSTALL_COMMANDS_FILE)) as f:
+        assert f.read() == '\n'.join(commands) + '\n'
+
+
+def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
+    # both this and the copr module record install commands; make sure that they both work together,
+    # and don't overwrite each other
+    copr_module = create_module(InstallCoprBuild)[1]
+    copr_module._config['log-dir-name'] = 'log-dir-example'
+
+    primary_task_mock = MagicMock()
+    primary_task_mock.repo_url = 'dummy_repo_url'
+    primary_task_mock.rpm_urls = ['dummy_rpm_url1', 'dummy_rpm_url2']
+    primary_task_mock.rpm_names = ['dummy_rpm_names1', 'dummy_rpm_names2']
+
+    patch_shared(monkeypatch, copr_module, {
+        'primary_task': primary_task_mock,
+        'setup_guest': None
+    })
+
+    module.execute()
+
+    stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
+
+    execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
+    guest = mock_guest(execute_mock)
+
+    module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir))
+    copr_module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir))
+
+    koji_commands = [
+        'koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch src 123123123',  # noqa
+        'brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch src 123123124',  # noqa
+        'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | awk "{print \\$2}" | tee rpms-list',  # noqa
+        'dnf --allowerasing -y reinstall $(cat rpms-list) || true',
+        'dnf --allowerasing -y install $(cat rpms-list)',
+        "sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q"
+    ]
+
+    copr_commands = [
+        'curl -v dummy_repo_url --output /etc/yum.repos.d/copr_build.repo',
+        'dnf --allowerasing -y reinstall dummy_rpm_url1 || true',
+        'dnf --allowerasing -y reinstall dummy_rpm_url2 || true',
+        'dnf --allowerasing -y install dummy_rpm_url1 dummy_rpm_url2',
+        'rpm -q dummy_rpm_names1',
+        'rpm -q dummy_rpm_names2',
+    ]
+
+    calls = [call('command -v dnf')] * 2 + [call(c) for c in koji_commands]
+    calls += [call('command -v dnf')] * 2 + [call(c) for c in copr_commands]
+    execute_mock.assert_has_calls(calls, any_order=False)
+    assert execute_mock.call_count == len(calls)
+
+    with open(os.path.join(str(tmpdir), 'log-dir-example-guest0', INSTALL_COMMANDS_FILE)) as f:
+        assert f.read() == '\n'.join(koji_commands + copr_commands) + '\n'
 
 
 def test_guest_setup_yum(module, local_guest):

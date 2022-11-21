@@ -30,12 +30,7 @@ class InstallCoprBuild(gluetool.Module):
         }
     }
 
-    shared_functions = ['setup_guest', 'sut_install_commands']
-
-    def __init__(self, *args, **kwargs):
-        # type: (Any, Any) -> None
-        super(InstallCoprBuild, self).__init__(*args, **kwargs)
-        self._sut_install_commands = []  # type: List[str]
+    shared_functions = ['setup_guest']
 
     def setup_guest(self, guest, stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION, log_dirpath=None, **kwargs):
         # type: (NetworkedGuest, GuestSetupStage, Optional[str], **Any) -> SetupGuestReturnType
@@ -120,10 +115,4 @@ class InstallCoprBuild(gluetool.Module):
                 sut_result.error
             ))
 
-        self._sut_install_commands = sut_result.unwrap()
-
         return Ok(guest_setup_output)
-
-    def sut_install_commands(self):
-        # type: () -> List[str]
-        return self._sut_install_commands

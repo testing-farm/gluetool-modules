@@ -3,25 +3,29 @@ name = "gluetool-modules-framework"
 version = "0.9.0"
 description = "Collection of gluetool modules used by Testing Farm Team."
 homepage = "https://gluetool-modules.readthedocs.io"
-repository = "https://gitlab.com/gluetool/modules"
+repository = "https://gitlab.com/testing-farm/gluetool-modules"
 authors = [
-    "Evgeny Fedin <<efedin@redhat.com>>",
-    "Anna Khaitovich <<akhaitov@redhat.com>>",
-    "Martin Kluson <<mkluson@redhat.com>>",
-    "Ondrej Ptak <<optak@redhat.com>>",
-    "Milos Prchlik <<mprchlik@redhat.com>>",
-    "Miroslav Vadkerti <<mvadkert@redhat.com>>"
+    "Evgeny Fedin <efedin@redhat.com>",
+    "Jan Havlin <jhavlin@redhat.com>",
+    "Guy Inger <ginger@redhat.com>",
+    "Martin Kluson <mkluson@redhat.com>",
+    "Martin Pitt <mpitt@redhat.com>",
+    "Ondrej Ptak <optak@redhat.com>",
+    "Milos Prchlik <mprchlik@redhat.com>",
+    "Miroslav Vadkerti <mvadkert@redhat.com>",
+    "Simon Walter <siwalter@redhat.com>"
 ]
 license = "Apache-2.0"
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: System Administrators",
-    "License :: OSI Approved :: ISC License (ISCL)",
+    "License :: OSI Approved :: Apache-2.0",
     "Operating System :: POSIX",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 2.7",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.9",
     "Topic :: Software Development",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Software Development :: Quality Assurance",
@@ -34,6 +38,7 @@ classifiers = [
     "Topic :: Terminals"
 ]
 include = ["gluetool_modules_framework/py.typed"]
+readme = "README.rst"
 
 [tool.poetry.scripts]
 citool = "gluetool_modules_framework.tools.citool:run"

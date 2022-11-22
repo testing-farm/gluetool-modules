@@ -158,8 +158,7 @@ class TestSchedulerSTI(gluetool.Module):
                     repository.branch, repository.clone_url))
 
             if self.has_shared('testing_farm_request') and self.shared('testing_farm_request').playbooks:
-                # TODO: strings from API are unicode, this will need change to be Python3 compatible
-                for tests in [playbook.encode('utf-8') for playbook in self.shared('testing_farm_request').playbooks]:
+                for tests in [playbook for playbook in self.shared('testing_farm_request').playbooks]:
                     playbooks.extend(self._playbooks_from_dist_git(repodir, tests))
 
             else:

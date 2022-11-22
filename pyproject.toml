@@ -108,7 +108,7 @@ upload-results = "gluetool_modules_framework.helpers.upload_results:UploadResult
 url-shortener = "gluetool_modules_framework.helpers.url_shortener:URLShortener"
 
 [tool.poetry.dependencies]
-python = "~3.7 || ~3.9"
+python = "~3.7.2 || ~3.9"
 
 ansible = "2.8.5"
 # NOTE: without this dependency the installation will fail with
@@ -125,7 +125,7 @@ fmf = "0.6.1"
 future = "0.18.2"
 gitdb2 = "2.0.6"
 GitPython = "2.1.15"
-gluetool = "^1.29"
+gluetool = "^2.0"
 inotify = "0.2.10"
 jaeger-client = "4.0.0"
 jenkinsapi = "0.3.8"

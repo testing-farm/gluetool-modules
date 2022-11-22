@@ -133,11 +133,11 @@ wcwidth = {version = "*", markers = "sys_platform != \"win32\""}
 
 [[package]]
 name = "colorama"
-version = "0.3.9"
+version = "0.4.6"
 description = "Cross-platform colored terminal text."
 category = "main"
 optional = false
-python-versions = "*"
+python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
 
 [[package]]
 name = "commonmark"
@@ -325,20 +325,20 @@ gitdb2 = ">=2,<3"
 
 [[package]]
 name = "gluetool"
-version = "1.29"
+version = "2.0"
 description = "Python framework for constructing command-line pipelines."
 category = "main"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*"
+python-versions = ">=3.7.2,<4.0.0"
 
 [package.dependencies]
 beautifulsoup4 = ">=4.6.3,<5.0.0"
-colorama = ">=0.3.9,<0.4.0"
+colorama = ">=0.4.6,<0.5.0"
 configparser = ">=4.0.2,<5.0.0"
 docutils = ">=0.14,<0.15"
 Jinja2 = ">=2.10,<3.0"
 lxml = ">=4.2.4,<5.0.0"
-markupsafe = "1.1.1"
+MarkupSafe = "1.1.1"
 mock = ">=3.0.5,<4.0.0"
 mypy-extensions = ">=0.4.3,<0.5.0"
 packaging = ">=20.9,<21.0"
@@ -349,9 +349,9 @@ requests-toolbelt = ">=0.8.0,<0.9.0"
 six = ">=1.12.0,<2.0.0"
 Sphinx = ">=1.5.2,<1.6.0"
 tabulate = ">=0.8.2,<0.9.0"
-typing-extensions = {version = ">=3.7.4,<4.0.0", markers = "python_version >= \"2.7\" and python_version < \"2.8\" or python_version >= \"3.7\" and python_version < \"4.0\""}
+typing-extensions = ">=3.7.4,<4.0.0"
 urlnormalizer = ">=1.2.0,<2.0.0"
-zipp = {version = ">=3.5.0,<4.0.0", markers = "python_version >= \"3.6\" and python_version < \"4.0\""}
+zipp = ">=3.5.0,<4.0.0"
 
 [[package]]
 name = "gssapi"
@@ -1352,8 +1352,8 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 
 [metadata]
 lock-version = "1.1"
-python-versions = "~3.7 || ~3.9"
-content-hash = "1755a3240ca5bdadf701262d7d66f6347a7a24a384a6763ff1dbc1fad589abdf"
+python-versions = "~3.7.2 || ~3.9"
+content-hash = "0101fc24c270ea6cdebb11196418b604c3b3fd9a98d9dadfbbadc3d524fb609d"
 
 [metadata.files]
 alabaster = [
@@ -1465,8 +1465,8 @@ cmd2 = [
     {file = "cmd2-0.8.6.tar.gz", hash = "sha256:ef4a4166882066314d6e8e8362b515e5b9839f401d1f32d6aa6ac871af24980b"},
 ]
 colorama = [
-    {file = "colorama-0.3.9-py2.py3-none-any.whl", hash = "sha256:463f8483208e921368c9f306094eb6f725c6ca42b0f97e313cb5d5512459feda"},
-    {file = "colorama-0.3.9.tar.gz", hash = "sha256:48eb22f4f8461b1df5734a074b57042430fb06e1d61bd1e11b078c0fe6d7a1f1"},
+    {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
+    {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
 ]
 commonmark = [
     {file = "commonmark-0.8.0-py2.py3-none-any.whl", hash = "sha256:5ef7643594cf9e30de151e82bca2e5b6aeef76644fa4e45ca5609932a3d33774"},
@@ -1605,8 +1605,8 @@ gitpython = [
     {file = "GitPython-2.1.15.tar.gz", hash = "sha256:838c38d882a97b2fd146dbd4eb9baaf857cb65ebaa64e4c06fca48aaa491e1c6"},
 ]
 gluetool = [
-    {file = "gluetool-1.29-py2.py3-none-any.whl", hash = "sha256:e4c4217efb46a6bab7e3845cc88ee774c6a3f3210988e6ad51cc049ade36483b"},
-    {file = "gluetool-1.29.tar.gz", hash = "sha256:7f793d56ee77b2730b657fdceada65a821793a2a29d1b3159d5f1a09e93ee784"},
+    {file = "gluetool-2.0-py3-none-any.whl", hash = "sha256:4a1eeecbc34dc2910d8e9eebd20f9b8fcff229b9697acd37d920af57adc99ff6"},
+    {file = "gluetool-2.0.tar.gz", hash = "sha256:10814391a5da132465075460006cb4667a4d2e69dc0c9c64fa64fff6ec0af639"},
 ]
 gssapi = [
     {file = "gssapi-1.8.2-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:7c14cf97d61073d8211abfded77066af791356868022acda10224a8212639cf5"},

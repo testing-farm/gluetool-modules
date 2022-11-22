@@ -146,9 +146,13 @@ class TestSchedulerSTI(gluetool.Module):
                 raise GlueError('Could not locate dist-git repository: {}'.format(exc))
 
             try:
+                prefix = 'dist-git-{}-{}-'.format(repository.package, repository.branch)
+                # If prefix has / it leads to "No such directory" error
+                prefix = prefix.replace('/', '-')
+
                 repodir = repository.clone(
                     logger=self.logger,
-                    prefix='dist-git-{}-{}-'.format(repository.package, repository.branch)
+                    prefix=prefix
                 )
 
             except GlueError:

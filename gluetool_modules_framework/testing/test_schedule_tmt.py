@@ -1,6 +1,7 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+import re
 import os
 import stat
 import sys
@@ -14,7 +15,7 @@ from gluetool import GlueError, GlueCommandError, Module
 from gluetool.action import Action
 from gluetool.log import Logging, format_blob, log_blob, log_dict
 from gluetool.log import ContextAdapter, LoggingFunctionType  # Ignore PyUnusedCodeBear
-from gluetool.utils import Command, load_yaml, new_xml_element, dict_update
+from gluetool.utils import Command, load_yaml, new_xml_element, dict_update, from_yaml
 
 from gluetool_modules_framework.libs import create_inspect_callback, sort_children
 from gluetool_modules_framework.libs.artifacts import artifacts_location
@@ -405,6 +406,42 @@ class TestScheduleTMT(Module):
 
         return plans
 
+    def hardware_from_tmt(self, repodir, plan, context_files):
+        # type: (str, str, List[str]) -> Dict[str, Any]
+
+        command = [self.option('command')] + [
+            '--context=@{}'.format(filepath)
+            for filepath in context_files
+        ] + ['plan', 'export', '^{}$'.format(re.escape(plan))]
+
+        # TODO: tmt is python3 only, parse the excludes from output until our modules run in python3
+        try:
+            tmt_output = Command(command).run(cwd=repodir)
+
+        except GlueCommandError as exc:
+            # workaround until tmt prints errors properly to stderr
+            log_dict(self.error, "Failed to get list of plans", {
+                'command': ' '.join(command),
+                'exception': exc.output.stderr
+            })
+            six.reraise(*sys.exc_info())
+
+        output = tmt_output.stdout
+        assert output
+
+        try:
+            exported_plans = from_yaml(output)
+            log_dict(self.debug, "loaded exported plan yaml", exported_plans)
+
+        except GlueError as error:
+            raise GlueError('Could not load exported plan yaml: {}'.format(error))
+
+        if not exported_plans or len(exported_plans) != 1:
+            self.warn('exported plan is not a single item, cowardly skipping extracting hardware')
+            return {}
+
+        return cast(Dict[str, Any], exported_plans[0].get('provision', {}).get('hardware', {}))
+
     def create_test_schedule(self, testing_environment_constraints=None):
         # type: (Optional[List[TestingEnvironment]]) -> TestSchedule
         """
@@ -468,7 +505,9 @@ class TestScheduleTMT(Module):
                 schedule_entry.testing_environment = TestingEnvironment(
                     compose=tec.compose,
                     arch=tec.arch,
-                    snapshots=tec.snapshots
+                    snapshots=tec.snapshots,
+                    pool=tec.pool,
+                    hardware=self.hardware_from_tmt(repodir, plan, context_files)
                 )
 
                 schedule_entry.context_files = context_files

@@ -238,8 +238,10 @@ class ArtemisAPI(object):
             if pool:
                 data['environment']['pool'] = pool
 
-            if cast(ArtemisProvisioner, self.module).hw_constraints:
-                data['environment']['hw']['constraints'] = cast(ArtemisProvisioner, self.module).hw_constraints
+            hardware = cast(ArtemisProvisioner, self.module).hw_constraints or environment.hardware
+
+            if hardware:
+                data['environment']['hw']['constraints'] = hardware
 
         elif self.version in ('v0.0.16', 'v0.0.17', 'v0.0.18'):
             data = {

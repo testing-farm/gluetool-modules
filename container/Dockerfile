@@ -34,7 +34,7 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       libpq-devel libtool libxml2-devel make openssl-devel popt-devel \
                       postgresql-devel python39 python39-devel python39-pip python3-libselinux \
                       redhat-rpm-config standard-test-roles koji python3-virtualenv \
-                      rsync beakerlib-libraries rpm-devel \
+                      rsync beakerlib-libraries rpm-build rpm-devel \
                       tmt-provision-container tmt-provision-virtual tmt-report-polarion \
     # install tmt from updates-testing, an agreement with tmt folks to be able to test tmt releases sooner.
     && dnf -y update --enablerepo=epel-testing tmt-provision-container tmt-provision-virtual \

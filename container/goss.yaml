@@ -15,6 +15,12 @@ packages:
   python3.9:
     installed: true
 
+  # TFT-1734
+  # The rpm-build command is required for standard-test-source role
+  # https://pagure.io/standard-test-roles/blob/master/f/roles/standard-test-source
+  rpm-build:
+    installed: true
+
   standard-test-roles:
     installed: true
 

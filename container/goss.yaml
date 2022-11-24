@@ -63,6 +63,8 @@ file:
       - StrictHostKeyChecking no
       - UserKnownHostsFile /dev/null
       - SendEnv -LC_* -LANG_*
+      - ServerAliveInterval 60
+      - ServerAliveCountMax 5
 
   /usr/lib/python3.9/site-packages/pylero:
     exists: true

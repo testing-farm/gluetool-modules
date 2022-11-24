@@ -46,7 +46,9 @@ RUN    ln -s /CONFIG /etc/citool.d \
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  UserKnownHostsFile /dev/null' >> /etc/ssh/ssh_config" \
-    && bash -c "echo '  SendEnv -LC_* -LANG_*' >> /etc/ssh/ssh_config"
+    && bash -c "echo '  SendEnv -LC_* -LANG_*' >> /etc/ssh/ssh_config" \
+    && bash -c "echo '  ServerAliveInterval 60' >> /etc/ssh/ssh_config" \
+    && bash -c "echo '  ServerAliveCountMax 5' >> /etc/ssh/ssh_config"
 
 # copy the built package
 COPY dist/gluetool_modules_framework*.whl .

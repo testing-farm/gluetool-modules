@@ -33,6 +33,9 @@ packages:
   tmt-provision-virtual:
     installed: true
 
+  tmt-report-html:
+    installed: true
+
   tmt-report-polarion:
     installed: true
 

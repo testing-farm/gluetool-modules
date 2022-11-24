@@ -35,9 +35,10 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       postgresql-devel python39 python39-devel python39-pip python3-libselinux \
                       redhat-rpm-config standard-test-roles koji python3-virtualenv \
                       rsync beakerlib-libraries rpm-build rpm-devel \
-                      tmt-provision-container tmt-provision-virtual tmt-report-polarion \
+                      tmt-provision-container tmt-provision-virtual tmt-report-polarion tmt-report-html \
     # install tmt from updates-testing, an agreement with tmt folks to be able to test tmt releases sooner.
-    && dnf -y update --enablerepo=epel-testing tmt-provision-container tmt-provision-virtual \
+    && dnf -y update --enablerepo=epel-testing tmt-provision-container tmt-provision-virtual tmt \
+                                               tmt-report-polarion tmt-report-html \
     && dnf clean all \
     # TFT-1503 - install pylero from PyPI, not yet available as a package
     && pip3.9 install -t /usr/lib/python3.9/site-packages pylero \

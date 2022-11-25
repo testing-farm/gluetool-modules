@@ -1,0 +1,7 @@
+---
+
+name: test-scheduler-baseosci
+description: test-scheduler for BaseOS-CI
+dependencies:
+  pip:
+    - beautifulsoup4==4.6.3

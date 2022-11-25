@@ -1,0 +1,8 @@
+---
+- rule: >
+    TEC.arch not in ['aarch64', 'x86_64']
+  drop: true
+
+- rule: >
+    TEC.arch == 'patched-arch'
+  patch-arch: x86_64

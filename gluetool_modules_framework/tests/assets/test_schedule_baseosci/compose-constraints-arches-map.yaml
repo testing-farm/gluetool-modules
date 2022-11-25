@@ -1,0 +1,5 @@
+---
+- Fedora:
+  - x86_64
+- RHEL:
+  - aarch64

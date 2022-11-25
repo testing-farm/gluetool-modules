@@ -70,7 +70,7 @@ class NoTestableArtifactsError(gluetool_modules_framework.libs.sentry.ArtifactFi
         return False
 
 
-class TestScheduler(gluetool.Module):
+class TestSchedulerBaseOSCI(gluetool.Module):
     """
     Prepares "test schedule" for other modules to perform. A schedule is a list of "test schedule entries"
     (see :py:class:`libs.test_schdule.TestScheduleEntry`). To create the schedule,
@@ -109,8 +109,8 @@ class TestScheduler(gluetool.Module):
          # drop: yes
     """
 
-    name = 'test-scheduler'
-    description = 'Prepares "test schedule" for other modules to perform.'
+    name = 'test-scheduler-baseosci'
+    description = 'Prepares "test schedule" in BaseOS CI for other modules to perform.'
 
     options = {
         'arch-compatibility-map': {
@@ -152,7 +152,7 @@ class TestScheduler(gluetool.Module):
 
     shared_functions = ['test_schedule']
 
-    _schedule = None  # type: TestSchedule
+    _schedule: 'TestSchedule'
 
     @utils.cached_property
     def arch_compatibility_map(self):
@@ -208,7 +208,7 @@ class TestScheduler(gluetool.Module):
         Returns schedule for runners. It tells runner which recipe sets
         it should run on which guest.
 
-        :returns: [(guest, <recipeSet/>), ...]
+        :returns: TestSchedule
         """
 
         return self._schedule
@@ -333,7 +333,9 @@ class TestScheduler(gluetool.Module):
         log_dict(self.debug, 'constraint arches', constraint_arches)
 
         if not valid_arches:
-            raise NoTestableArtifactsError(self.shared('primary_task'), supported_arches)
+            if self.shared('primary_task'):
+                raise NoTestableArtifactsError(self.shared('primary_task'), supported_arches)
+            raise GlueError('No valid arches found for given constraints, cannot continue')
 
         # `noarch` is supported naturally on all other arches, so, when we encounter an artifact with just
         # the `noarch`, we "reset" the list of constraints to let scheduler plugin know we'd like to get all
@@ -475,7 +477,7 @@ class TestScheduler(gluetool.Module):
             str(tec): tec for tec in patched_constraints
         }
 
-        final_constraints = duplicate_constraints.values()
+        final_constraints = list(duplicate_constraints.values())
 
         log_dict(self.debug, 'final testing environment constraints', final_constraints)
 

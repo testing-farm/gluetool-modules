@@ -1,0 +1,4 @@
+---
+- rule: >
+    TEC.arch == 'patched-arch'
+  patch-arch: x86_64

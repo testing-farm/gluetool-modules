@@ -1,0 +1,19 @@
+---
+i686:
+  - x86_64
+  - i686
+
+ppc:
+  - ppc64
+  - ppc
+
+s390:
+  - s390x
+  - s390
+
+noarch:
+  - x86_64
+  - ppc64
+  - s390x
+  - ppc64le
+  - aarch64

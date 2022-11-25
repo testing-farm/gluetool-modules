@@ -21,6 +21,7 @@ REQUESTS = {
     'fakekey': {
         '1': _load_assets('request1'),
         '2': _load_assets('request2'),
+        '3': _load_assets('request3'),
     }
 }
 
@@ -301,60 +302,45 @@ def test_testing_farm_request_empty(module):
     assert request is None
 
 
-def test_user_variables(module, request1):
-    user_variables = module.user_variables()
-    assert user_variables == {'something': 'variables', 'some': 'secrets'}
-
-
-def test_user_variables_hide_secrets(module, request1):
-    user_variables = module.user_variables(hide_secrets=True)
-    assert user_variables == {'something': 'variables', 'some': '*******'}
-
-
-def test_user_variables_empty(module, request2):
-    user_variables = module.user_variables()
-    assert user_variables == {}
-
-
-def test_user_secrets(module, request1):
-    user_secrets = module.user_secrets()
-    assert user_secrets == {'some': 'secrets'}
-
-
-def test_user_secrets_empty(module, request2):
-    user_secrets = module.user_secrets()
-    assert user_secrets == {}
-
-
-def test_tmt_context(module, request1):
-    tmt_context = module.tmt_context()
-    assert tmt_context == {'some': 'context'}
-
-
-def test_tmt_context_empty(module, request2):
-    tmt_context = module.tmt_context()
-    assert tmt_context == {}
-
-
 def test_execute_request1(module):
-    module._config.update({'request-id': '1', 'arch': 'architecture'})
+    module._config.update({'request-id': '1'})
     module.execute()
+    request = module.testing_farm_request()
 
-    assert module._tf_request.type == 'fmf'
-    assert module._tf_request.url == 'testurl'
-    assert module._tf_request.ref == 'testref'
-    assert module._tf_request.webhook_url == 'webhookurl'
-    assert module._tf_request.webhook_token == None
-    assert module._tf_request.environments_requested[0]['arch'] == 'architecture'
+    assert request.type == 'fmf'
+    assert request.tmt.url == 'testurl'
+    assert request.tmt.ref == 'testref'
+    assert request.webhook_url == 'webhookurl'
+    assert request.webhook_token == None
+    assert len(request.environments_requested) == 2
+    assert request.environments_requested[0].arch == 'x86_64'
+    assert request.environments_requested[1].arch == 's390'
+    assert request.environments_requested[1].compose == 'Fedora-37'
+    assert request.environments_requested[1].secrets == {'secret_key': 'secret-value'}
+    assert len(request.environments_requested[1].artifacts) == 2
 
 
 def test_execute_request2(module):
     module._config.update({'request-id': '2'})
     module.execute()
+    request = module.testing_farm_request()
 
-    assert module._tf_request.type == 'faketype'
-    assert module._tf_request.url == 'faketesturl'
-    assert module._tf_request.ref == 'faketestref'
-    assert module._tf_request.webhook_url == None
-    assert module._tf_request.webhook_token == None
-    assert module._tf_request.environments_requested == []
+    assert request.type == 'fmf'
+    assert request.tmt.url == 'faketesturl'
+    assert request.tmt.ref == 'faketestref'
+    assert request.webhook_url == None
+    assert request.webhook_token == None
+    assert request.environments_requested == []
+
+
+def test_execute_request3(module):
+    module._config.update({'request-id': '3', 'arch': 'forced-arch'})
+    module.execute()
+    request = module.testing_farm_request()
+
+    assert request.type == 'sti'
+    assert request.sti.url == 'testurl'
+    assert request.sti.playbooks == ['playbook1', 'playbook2']
+    assert request.webhook_token == None
+    assert len(request.environments_requested) == 1
+    assert request.environments_requested[0].arch == 'forced-arch'

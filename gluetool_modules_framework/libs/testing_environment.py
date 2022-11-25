@@ -6,6 +6,10 @@ from gluetool.utils import normalize_multistring_option
 
 import gluetool_modules_framework.libs
 
+import ast
+
+from dataclasses import dataclass
+
 # Type annotations
 from typing import Any, Dict, List, Optional, Union  # noqa
 
@@ -15,6 +19,7 @@ ArchType = Union[str, gluetool_modules_framework.libs._UniqObject]
 SnapshotsType = bool
 
 
+@dataclass
 class TestingEnvironment(object):
     """
     To specify what environment should provisioner provide when asked for guest(s), one needs to
@@ -38,27 +43,31 @@ class TestingEnvironment(object):
         such request.
     :param str arch: Architecture that should be used for testing.
     :param bool snapshots: Choose a pool with snapshots support
+    :param str pool: Name of the infrastructure pool to use.
+    :param dict variables: Environment variables provided by the user.
+    :param dict secrets: Environment variables provided by the user which should be hidden in outputs.
+    :param list artifacts: Additional artifacts to install in the test environment.
+    :param dict hardware: Test environment hardware specification.
+    :param dict settings: Various environment settings or tweaks.
+    :param dict tmt: Special environment settings for tmt tool.
     """
+
+    arch: Optional[ArchType] = None
+    compose: Optional[ComposeType] = None
+    snapshots: SnapshotsType = False
+    pool: Optional[str] = None
+    variables: Optional[Dict[str, str]] = None
+    secrets: Optional[Dict[str, str]] = None
+    artifacts: Optional[List[Dict[str, Any]]] = None
+    hardware: Optional[Dict[str, Any]] = None
+    settings: Optional[Dict[str, Any]] = None
+    tmt: Optional[Dict[str, Any]] = None
 
     # Make special values available to templates, they are now reachable as class variables
     # of each instance.
     ANY = gluetool_modules_framework.libs.ANY
 
-    _fields = ('arch', 'compose', 'snapshots', 'pool', 'hardware')
-
-    def __init__(
-        self,
-        arch=None,          # type: Optional[ArchType]
-        compose=None,       # type: Optional[ComposeType]
-        snapshots=False,    # type: SnapshotsType
-        pool=None,          # type: Optional[str]
-        hardware=None       # type: Optional[Dict[str, Any]]
-    ):
-        self.arch = arch
-        self.compose = compose
-        self.snapshots = snapshots
-        self.pool = pool
-        self.hardware = hardware
+    _fields = ('arch', 'compose', 'snapshots', 'variables', 'secrets', 'artifacts', 'hardware', 'settings', 'tmt')
 
     def __str__(self):
         # type: () -> str
@@ -83,30 +92,35 @@ class TestingEnvironment(object):
 
         return hash(tuple([getattr(self, field) for field in self._fields]))
 
-    def serialize_to_string(self):
-        # type: () -> str
+    def serialize_to_string(self, hide_secrets=True):
+        # type: (bool) -> str
         """
         Serialize testing environment to comma-separated list of keys and their values, representing
         the environment.
 
+        :param bool hide_secrets: do not show secret values in the resulting output
         :rtype: str
         :returns: testing environemnt properties in ``key1=value1,...`` form.
         """
 
         return ','.join([
-            '{}={}'.format(field, getattr(self, field)) for field in sorted(self._fields)
+            '{}={}'.format(
+                field, '******' if field == 'secrets' and hide_secrets else getattr(self, field)
+            ) for field in sorted(self._fields)
         ])
 
-    def serialize_to_json(self):
-        # type: () -> Dict[str, Any]
+    def serialize_to_json(self, hide_secrets=True):
+        # type: (bool) -> Dict[str, Any]
         """
         Serialize testing environment to a JSON dictionary.
 
+        :param bool hide_secrets: do not show secret values in the resulting output
         :rtype: dict(str, object)
         """
 
         return {
-            field: getattr(self, field) for field in sorted(self._fields)
+            field: '******' if field == 'secrets' and hide_secrets else
+            getattr(self, field) for field in sorted(self._fields)
         }
 
     @classmethod
@@ -142,6 +156,10 @@ class TestingEnvironment(object):
         if 'snapshots' in env_properties:
             env_properties['snapshots'] = gluetool.utils.normalize_bool_option(env_properties['snapshots'])
 
+        for property in ['variables', 'secrets', 'artifacts', 'hardware', 'settings', 'tmt']:
+            if property in env_properties:
+                env_properties[property] = ast.literal_eval(env_properties[property])
+
         return TestingEnvironment(**env_properties)
 
     @classmethod
@@ -168,7 +186,7 @@ class TestingEnvironment(object):
             environment.
         """
 
-        model = self.serialize_to_json()
+        model = self.serialize_to_json(hide_secrets=False)
 
         model.update(kwargs)
 

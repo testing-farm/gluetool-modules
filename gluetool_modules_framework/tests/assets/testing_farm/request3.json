@@ -1,0 +1,17 @@
+{
+    "test": {
+        "sti": {
+            "url": "testurl",
+            "ref": "testref",
+            "merge_sha": "sha",
+            "playbooks": ["playbook1", "playbook2"],
+            "extra_variables": {"key1": "val1", "key2": "val2"}
+        }
+    },
+    "environments_requested": [{
+        "arch": "x86_64",
+        "tmt": {"context": {"some": "context"}},
+        "secrets": {"some": "secrets"},
+        "variables": {"something": "variables"}
+    }]
+}

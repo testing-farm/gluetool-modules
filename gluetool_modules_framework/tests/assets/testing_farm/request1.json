@@ -7,11 +7,23 @@
         }
     },
     "environments_requested": [{
-        "tmt": {
-            "context": {"some": "context"}
-        },
+        "arch": "x86_64",
+        "tmt": {"context": {"some": "context"}},
         "secrets": {"some": "secrets"},
         "variables": {"something": "variables"}
+    }, {
+        "arch": "s390",
+        "os": {"compose": "Fedora-37"},
+        "pool": "some-pool",
+        "variables": {"foo": "bar"},
+        "secrets": {"secret_key": "secret-value"},
+        "artifacts": [
+            {"id": "111", "type": "fedora-copr-build", "packages": "pacakge1"},
+            {"id": "111", "type": "fedora-copr-build", "packages": "pacakge2"}
+        ],
+        "hardware": {"cpu": {"model_name": "AMD"}},
+        "settings": {"pipeline": {"skip_guest_setup": true}, "provisioning": {"post_install_skip": "foo"}},
+        "tmt": {"context": {"some": "context"}}
     }],
     "notification": {
         "webhook": {

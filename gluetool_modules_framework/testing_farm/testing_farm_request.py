@@ -1,90 +1,66 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
-import six
-
 from functools import partial
 from posixpath import join as urljoin
+from dataclasses import dataclass
 
 import gluetool
 from gluetool.log import LoggerMixin
 from gluetool.result import Result
 from gluetool.utils import log_dict, requests
+from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 
 from requests.exceptions import ConnectionError, HTTPError, Timeout
 
 # Type annotations
 # pylint: disable=unused-import,wrong-import-order
 from typing import Any, Dict, List, Optional, Union, cast  # noqa
-from typing_extensions import TypedDict
+from typing_extensions import TypedDict, NotRequired, Literal
 
-RequestTestFMFType = TypedDict(
-    'RequestTestFMFType',
-    {
-        'url': str,
-        'ref': str,
-        'name': str,
-    }
-)
 
-RequestTestSTIType = TypedDict(
-    'RequestTestSTIType',
-    {
-        'url': str,
-        'ref': str,
-        'playbooks': Any,
-    }
-)
+# Following classes reflect the structure of what comes out of GET `/request/{request_id}` endpoint in the TF API.
+class RequestTestType(TypedDict):
+    fmf: NotRequired[Dict[str, Any]]
+    sti: NotRequired[Dict[str, Any]]
 
-RequestTestType = TypedDict(
-    'RequestTestType',
-    {
-        'fmf': RequestTestFMFType,
-        'sti': RequestTestSTIType,
-    }
-)
 
-RequestEnvironmentTMTType = TypedDict(
-    'RequestEnvironmentTMTType',
-    {
-        'context': Dict[str, str],
-    }
-)
+class RequestEnvironmentArtifactType(TypedDict):
+    id: str
+    type: str
+    packages: NotRequired[List[str]]
 
-RequestEnvironmentType = TypedDict(
-    'RequestEnvironmentType',
-    {
-        'arch': Dict[str, str],
-        'variables': Dict[str, str],
-        'secrets': Dict[str, str],
-        'tmt': RequestEnvironmentTMTType,
-    },
-    total=False
-)
 
-RequestWebhookType = TypedDict(
-    'RequestWebhookType',
-    {
-        'url': str,
-        'token': str,
-    }
-)
+class RequestEnvironmentTMTType(TypedDict):
+    context: NotRequired[Dict[str, str]]
 
-RequestNotificationType = TypedDict(
-    'RequestNotificationType',
-    {
-        'webhook': RequestWebhookType,
-    }
-)
 
-RequestType = TypedDict(
-    'RequestType',
-    {
-        'test': RequestTestType,
-        'environments_requested': List[RequestEnvironmentType],
-        'notification': RequestNotificationType,
-    }
-)
+class RequestEnvironmentType(TypedDict):
+    arch: str
+    os: NotRequired[Dict[str, str]]
+    pool: NotRequired[str]
+    variables: NotRequired[Dict[str, str]]
+    secrets: NotRequired[Dict[str, str]]
+    artifacts: NotRequired[List[RequestEnvironmentArtifactType]]
+    hardware: NotRequired[Dict[str, Any]]
+    settings: NotRequired[Dict[str, Any]]
+    tmt: NotRequired[RequestEnvironmentTMTType]
+
+
+class RequestWebhookType(TypedDict):
+    url: str
+    token: NotRequired[str]
+
+
+class RequestNotificationType(TypedDict):
+    webhook: NotRequired[RequestWebhookType]
+
+
+class RequestType(TypedDict):
+    test: RequestTestType
+    environments_requested: NotRequired[List[RequestEnvironmentType]]
+    notification: NotRequired[RequestNotificationType]
+    settings: NotRequired[Dict[str, Any]]
 
 
 class TestingFarmAPI(LoggerMixin, object):
@@ -177,6 +153,32 @@ class TestingFarmAPI(LoggerMixin, object):
         return request.json()
 
 
+@dataclass
+class TestingFarmRequestTMT():
+    url: str
+    ref: str
+    merge_sha: Optional[str] = None
+    path: Optional[str] = None
+    name: Optional[str] = None
+    settings: Optional[Dict[str, Any]] = None
+
+    @property
+    def plan(self):
+        # type: () -> Optional[str]
+        # In the TF API v0.1, the field `name` represents which TMT plans shall be run. This field will be renamed to
+        # `plan` in API v0.2. This provides a property to allow working with the future name.
+        return self.name
+
+
+@dataclass
+class TestingFarmRequestSTI():
+    url: str
+    ref: str
+    merge_sha: Optional[str] = None
+    playbooks: Optional[List[str]] = None
+    extra_variables: Optional[Dict[str, str]] = None
+
+
 class TestingFarmRequest(LoggerMixin, object):
     ARTIFACT_NAMESPACE = 'testing-farm-request'
 
@@ -195,20 +197,40 @@ class TestingFarmRequest(LoggerMixin, object):
         request = self._api.get_request(self.id, self._api_key)
 
         # Select correct test, trust Testing Farm validation that only one test
-        # is specified, as defined in the API standard
-        test = request['test']
-        type = self.type = [key for key in test.keys() if test[key]][0]  # type: ignore
+        # is specified, as defined in the API standard.
+        type = self.type = cast(Literal['fmf', 'sti'], list(request['test'].keys())[0])
+        if type not in ['fmf', 'sti']:
+            raise gluetool.GlueError('Received malformed request from the Testing Farm API. Its type is `{}`, '
+                                     'it should be either `fmf` or `sti`.'.format(type))
+        request_test = request['test'][type]
 
-        test_type = cast(Union[RequestTestFMFType, RequestTestSTIType], test[type])  # type: ignore
+        # In the TF API v0.1, one of the types is called `test.fmf`, the name is expected to change to `test.tmt`
+        # in v0.2, therefore this class and variable are named as `TMT`.
+        self.tmt = TestingFarmRequestTMT(**request_test) if type == 'fmf' else None
+        self.sti = TestingFarmRequestSTI(**request_test) if type == 'sti' else None
 
-        self.url = test_type['url']
-        self.ref = test_type['ref']
+        # Create a shortcut for the common TMT/STI properties
+        test = (self.tmt or self.sti)
+        assert test
+        self.url = test.url
+        self.ref = test.ref
 
-        self.playbooks = cast(RequestTestSTIType, test_type)['playbooks'] if type == 'sti' else None
+        environments_requested = []  # type: List[TestingEnvironment]
+        for environment_raw in request['environments_requested']:
+            environments_requested.append(TestingEnvironment(
+                arch=environment_raw['arch'],
+                compose=environment_raw['os']['compose'] if 'os' in environment_raw else None,
+                pool=environment_raw['pool'] if 'pool' in environment_raw else None,
+                variables=environment_raw['variables'] if 'variables' in environment_raw else None,
+                secrets=environment_raw['secrets'] if 'secrets' in environment_raw else None,
+                artifacts=cast(List[Dict[str, Any]], environment_raw['artifacts'])
+                if 'artifacts' in environment_raw else None,
+                hardware=environment_raw['hardware'] if 'hardware' in environment_raw else None,
+                settings=environment_raw['settings'] if 'settings' in environment_raw else None,
+                tmt=cast(Dict[str, Any], environment_raw['tmt']) if 'tmt' in environment_raw else None
+            ))
 
-        self.plans = cast(RequestTestFMFType, test_type)['name'] if type == 'fmf' else None
-
-        self.environments_requested = request['environments_requested']
+        self.environments_requested = environments_requested
 
         self.webhook_url = None
         self.webhook_token = None
@@ -349,7 +371,7 @@ class TestingFarmRequestModule(gluetool.Module):
     ]
 
     required_options = ('api-url', 'api-key', 'request-id')
-    shared_functions = ['testing_farm_request', 'user_variables', 'user_secrets', 'tmt_context']
+    shared_functions = ['testing_farm_request']
 
     def __init__(self, *args, **kwargs):
         # type: (*Any, **Any) -> None
@@ -373,57 +395,6 @@ class TestingFarmRequestModule(gluetool.Module):
         # type: () -> Optional[TestingFarmRequest]
         return self._tf_request
 
-    def user_variables(self, hide_secrets=False, **kwargs):
-        # type: (bool, **Any) -> Dict[str, str]
-        request = self.testing_farm_request()
-        variables = {}
-
-        if request and request.environments_requested \
-                and 'variables' in request.environments_requested[0] \
-                and request.environments_requested[0]['variables']:
-
-            variables.update({
-                key: value or ''
-                for key, value in six.iteritems(request.environments_requested[0]['variables'])
-            })
-
-        if request and request.environments_requested \
-                and 'secrets' in request.environments_requested[0] \
-                and request.environments_requested[0]['secrets']:
-
-            variables.update({
-                key: '*'*len(value) if hide_secrets else value or ''
-                for key, value in six.iteritems(request.environments_requested[0]['secrets'])
-            })
-
-        return variables
-
-    def user_secrets(self):
-        # type: () -> Dict[str, str]
-        request = self.testing_farm_request()
-        secrets = {}  # type: Dict[str, str]
-
-        if request and request.environments_requested \
-                and 'secrets' in request.environments_requested[0] \
-                and request.environments_requested[0]['secrets']:
-
-            return request.environments_requested[0]['secrets']
-
-        return secrets
-
-    def tmt_context(self):
-        # type: () -> Dict[str, str]
-        request = self.testing_farm_request()
-
-        if request and request.environments_requested \
-                and 'tmt' in request.environments_requested[0] \
-                and request.environments_requested[0]['tmt'] \
-                and 'context' in request.environments_requested[0]['tmt']:
-
-            return request.environments_requested[0]['tmt']['context']
-
-        return {}
-
     def execute(self):
         # type: () -> None
         self._tf_api = TestingFarmAPI(self, self.option('api-url'))
@@ -438,27 +409,13 @@ class TestingFarmRequestModule(gluetool.Module):
 
         if self.option('arch'):
             for environment in request.environments_requested:
-                environment['arch'] = self.option('arch')
-
-        if request.type == 'fmf':
-            plans = request.plans if request.plans else 'all'
-        else:
-            plans = '<not applicable>'
-
-        def _hide_secrets(environments):
-            # type: (List[RequestEnvironmentType]) -> List[RequestEnvironmentType]
-            environments = [environment.copy() if environment else environment for environment in environments]
-            for environment in environments:
-                if 'secrets' in environment:
-                    environment.pop('secrets', None)
-            return environments
+                environment.arch = self.option('arch')
 
         log_dict(self.info, "Initialized with {}".format(request.id), {
             'type': request.type,
-            'plans': plans,
+            'plan': request.tmt.plan if request.tmt and request.tmt.plan else '<not applicable>',
             'url': request.url,
             'ref': request.ref,
-            'variables': self.user_variables(hide_secrets=True) or '<no variables specified>',
-            'environments_requested': _hide_secrets(request.environments_requested),
-            'webhook_url': request.webhook_url or '<no webhook specified>'
+            'environments_requested': request.environments_requested,
+            'webhook_url': request.webhook_url or '<no webhook specified>',
         })

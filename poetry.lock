@@ -20,7 +20,7 @@ jinja2 = "*"
 PyYAML = "*"
 
 [package.extras]
-azure = ["azure-cli-core (==2.0.35)", "azure-cli-nspkg (==3.0.2)", "azure-common (==1.1.11)", "azure-graphrbac (==0.40.0)", "azure-keyvault (==1.0.0a1)", "azure-mgmt-authorization (==0.51.1)", "azure-mgmt-batch (==5.0.1)", "azure-mgmt-cdn (==3.0.0)", "azure-mgmt-compute (==4.4.0)", "azure-mgmt-containerinstance (==1.4.0)", "azure-mgmt-containerregistry (==2.0.0)", "azure-mgmt-containerservice (==4.4.0)", "azure-mgmt-cosmosdb (==0.5.2)", "azure-mgmt-devtestlabs (==3.0.0)", "azure-mgmt-dns (==2.1.0)", "azure-mgmt-hdinsight (==0.1.0)", "azure-mgmt-keyvault (==1.1.0)", "azure-mgmt-loganalytics (==0.2.0)", "azure-mgmt-marketplaceordering (==0.1.0)", "azure-mgmt-monitor (==0.5.2)", "azure-mgmt-network (==2.3.0)", "azure-mgmt-nspkg (==2.0.0)", "azure-mgmt-rdbms (==1.4.1)", "azure-mgmt-redis (==5.0.0)", "azure-mgmt-resource (==2.1.0)", "azure-mgmt-servicebus (==0.5.3)", "azure-mgmt-sql (==0.10.0)", "azure-mgmt-storage (==3.1.0)", "azure-mgmt-trafficmanager (==0.50.0)", "azure-mgmt-web (==0.41.0)", "azure-nspkg (==2.0.0)", "azure-storage (==0.35.1)", "msrest (==0.6.1)", "msrestazure (==0.5.0)", "packaging", "requests"]
+azure = ["azure-cli-core (==2.0.35)", "azure-cli-nspkg (==3.0.2)", "azure-common (==1.1.11)", "azure-graphrbac (==0.40.0)", "azure-keyvault (==1.0.0a1)", "azure-mgmt-authorization (==0.51.1)", "azure-mgmt-batch (==5.0.1)", "azure-mgmt-cdn (==3.0.0)", "azure-mgmt-compute (==4.4.0)", "azure-mgmt-containerinstance (==1.4.0)", "azure-mgmt-containerregistry (==2.0.0)", "azure-mgmt-containerservice (==4.4.0)", "azure-mgmt-cosmosdb (==0.5.2)", "azure-mgmt-devtestlabs (==3.0.0)", "azure-mgmt-dns (==2.1.0)", "azure-mgmt-hdinsight (==0.1.0)", "azure-mgmt-keyvault (==1.1.0)", "azure-mgmt-loganalytics (==0.2.0)", "azure-mgmt-marketplaceordering (==0.1.0)", "azure-mgmt-monitor (==0.5.2)", "azure-mgmt-network (==2.3.0)", "azure-mgmt-nspkg (==2.0.0)", "azure-mgmt-rdbms (==1.4.1)", "azure-mgmt-redis (==5.0.0)", "azure-mgmt-resource (==2.1.0)", "azure-mgmt-servicebus (==0.5.3)", "azure-mgmt-sql (==0.10.0)", "azure-mgmt-storage (==3.1.0)", "azure-mgmt-trafficmanager (==0.50.0)", "azure-mgmt-web (==0.41.0)", "azure-nspkg (==2.0.0)", "azure-storage (==0.35.1)", "msrest (==0.6.1)", "msrestazure (==0.5.0)", "packaging", "requests[security]"]
 
 [[package]]
 name = "atomicwrites"
@@ -506,7 +506,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, != 3.4.*"
 [package.extras]
 cssselect = ["cssselect (>=0.7)"]
 html5 = ["html5lib"]
-htmlsoup = ["beautifulsoup4"]
+htmlsoup = ["BeautifulSoup4"]
 source = ["Cython (>=0.29.7)"]
 
 [[package]]
@@ -624,7 +624,7 @@ optional = false
 python-versions = "*"
 
 [package.extras]
-tests = ["doubles", "flake8", "flake8-quotes", "gevent", "mock", "pytest", "pytest-cov", "pytest-mock", "six (>=1.10.0,<2.0)", "sphinx", "sphinx-rtd-theme", "tornado"]
+tests = ["Sphinx", "doubles", "flake8", "flake8-quotes", "gevent", "mock", "pytest", "pytest-cov", "pytest-mock", "six (>=1.10.0,<2.0)", "sphinx_rtd_theme", "tornado"]
 
 [[package]]
 name = "packaging"
@@ -847,18 +847,6 @@ checkqa-mypy = ["mypy (==v0.761)"]
 testing = ["argcomplete", "hypothesis (>=3.56)", "mock", "nose", "requests", "xmlschema"]
 
 [[package]]
-name = "pytest-catchlog"
-version = "1.2.2"
-description = "py.test plugin to catch log messages. This is a fork of pytest-capturelog."
-category = "dev"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-py = ">=1.1.1"
-pytest = ">=2.6"
-
-[[package]]
 name = "pytest-cov"
 version = "2.7.1"
 description = "Pytest plugin for measuring coverage."
@@ -977,7 +965,7 @@ python-versions = "*"
 
 [package.extras]
 flask = ["Flask (>=0.8)", "blinker (>=1.1)"]
-tests = ["Flask (>=0.8)", "Flask-Login (>=0.2.0)", "aiohttp", "anyjson", "blinker (>=1.1)", "blinker (>=1.1)", "bottle", "celery (>=2.5)", "coverage (<4)", "exam (>=0.5.2)", "flake8 (==3.5.0)", "logbook", "mock", "nose", "pytest (>=3.2.0,<3.3.0)", "pytest-cov (==2.5.1)", "pytest-flake8 (==1.0.0)", "pytest-pythonpath (==0.7.2)", "pytest-timeout (==1.2.1)", "pytest-xdist (==1.18.2)", "pytz", "requests", "sanic (>=0.7.0)", "tornado (>=4.1,<5.0)", "tox", "webob", "webtest", "wheel", "zconfig"]
+tests = ["Flask (>=0.8)", "Flask-Login (>=0.2.0)", "ZConfig", "aiohttp", "anyjson", "blinker (>=1.1)", "blinker (>=1.1)", "bottle", "celery (>=2.5)", "coverage (<4)", "exam (>=0.5.2)", "flake8 (==3.5.0)", "logbook", "mock", "nose", "pytest (>=3.2.0,<3.3.0)", "pytest-cov (==2.5.1)", "pytest-flake8 (==1.0.0)", "pytest-pythonpath (==0.7.2)", "pytest-timeout (==1.2.1)", "pytest-xdist (==1.18.2)", "pytz", "requests", "sanic (>=0.7.0)", "tornado (>=4.1,<5.0)", "tox", "webob", "webtest", "wheel"]
 
 [[package]]
 name = "requests"
@@ -1076,6 +1064,19 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "setuptools"
+version = "65.6.3"
+description = "Easily download, build, install, upgrade, and uninstall Python packages"
+category = "dev"
+optional = false
+python-versions = ">=3.7"
+
+[package.extras]
+docs = ["furo", "jaraco.packaging (>=9)", "jaraco.tidelift (>=1.4)", "pygments-github-lexers (==0.0.5)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-favicon", "sphinx-hoverxref (<2)", "sphinx-inline-tabs", "sphinx-notfound-page (==0.8.3)", "sphinx-reredirects", "sphinxcontrib-towncrier"]
+testing = ["build[virtualenv]", "filelock (>=3.4.0)", "flake8 (<5)", "flake8-2020", "ini2toml[lite] (>=0.9)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "pip (>=19.1)", "pip-run (>=8.8)", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-flake8", "pytest-mypy (>=0.9.1)", "pytest-perf", "pytest-timeout", "pytest-xdist", "tomli-w (>=1.0.0)", "virtualenv (>=13.0.0)", "wheel"]
+testing-integration = ["build[virtualenv]", "filelock (>=3.4.0)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "pytest", "pytest-enabler", "pytest-xdist", "tomli", "virtualenv (>=13.0.0)", "wheel"]
+
+[[package]]
 name = "simplejson"
 version = "3.18.0"
 description = "Simple, fast, extensible JSON encoder/decoder for Python"
@@ -1163,7 +1164,7 @@ CommonMark = ">=0.5.6"
 sphinx = "*"
 
 [package.extras]
-dev = ["pytest", "sphinx-rtd-theme"]
+dev = ["pytest", "sphinx_rtd_theme"]
 
 [[package]]
 name = "sphinx-rtd-theme"
@@ -1265,6 +1266,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 filelock = ">=3.0.0,<4"
 pluggy = ">=0.3.0,<1"
 py = ">=1.4.17,<2"
+setuptools = ">=30.0.0"
 six = ">=1.0.0,<2"
 toml = ">=0.9.4"
 virtualenv = ">=1.11.2"
@@ -1431,7 +1433,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.7.2 || ~3.9"
-content-hash = "3c40d830b3c0aaac5f6e67b8af16ca1a6b3044d73a93b62948c23170036cbdf5"
+content-hash = "32c70a41498888d6b0f254bb49860fbd868c3a3bf5320d2ffa05e52b0c9748d8"
 
 [metadata.files]
 alabaster = [
@@ -2163,10 +2165,6 @@ pytest = [
     {file = "pytest-5.4.3-py3-none-any.whl", hash = "sha256:5c0db86b698e8f170ba4582a492248919255fcd4c79b1ee64ace34301fb589a1"},
     {file = "pytest-5.4.3.tar.gz", hash = "sha256:7979331bfcba207414f5e1263b5a0f8f521d0f457318836a7355531ed1a4c7d8"},
 ]
-pytest-catchlog = [
-    {file = "pytest-catchlog-1.2.2.zip", hash = "sha256:4be15dc5ac1750f83960897f591453040dff044b5966fe24a91c2f7d04ecfcf0"},
-    {file = "pytest_catchlog-1.2.2-py2.py3-none-any.whl", hash = "sha256:a692966da726b918197cabd20dc0ad4da5503fbdc99baaa192e62579c8a45773"},
-]
 pytest-cov = [
     {file = "pytest-cov-2.7.1.tar.gz", hash = "sha256:e00ea4fdde970725482f1f35630d12f074e121a23801aabf2ae154ec6bdd343a"},
     {file = "pytest_cov-2.7.1-py2.py3-none-any.whl", hash = "sha256:2b097cde81a302e1047331b48cadacf23577e431b61e9c6f49a1170bbe3d3da6"},
@@ -2317,6 +2315,10 @@ rpm-py-installer = [
     {file = "ruamel.yaml.clib-0.2.2-cp39-cp39-win32.whl", hash = "sha256:46d6d20815064e8bb023ea8628cfb7402c0f0e83de2c2227a88097e239a7dffd"},
     {file = "ruamel.yaml.clib-0.2.2-cp39-cp39-win_amd64.whl", hash = "sha256:6c0a5dc52fc74eb87c67374a4e554d4761fd42a4d01390b7e868b30d21f4b8bb"},
     {file = "ruamel.yaml.clib-0.2.2.tar.gz", hash = "sha256:2d24bd98af676f4990c4d715bcdc2a60b19c56a3fb3a763164d2d8ca0e806ba7"},
+]
+setuptools = [
+    {file = "setuptools-65.6.3-py3-none-any.whl", hash = "sha256:57f6f22bde4e042978bcd50176fdb381d7c21a9efa4041202288d3737a0c6a54"},
+    {file = "setuptools-65.6.3.tar.gz", hash = "sha256:a7620757bf984b58deaf32fc8a4577a9bbc0850cf92c20e1ce41c38c19e5fb75"},
 ]
 simplejson = [
     {file = "simplejson-3.18.0-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:17dbc7f71fa5b7e4a2acef38cf0be30461ae6659456a978ce7eeebeb5bdf9e1a"},

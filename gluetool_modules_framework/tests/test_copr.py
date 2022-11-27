@@ -284,13 +284,24 @@ def test_not_found(module, monkeypatch, build_info, error, raise_match):
 def test_unreachable_copr(module, monkeypatch):
     module._config['task-id'] = '999999:fedora-28-x86_64'
 
+    def api_mock(url):
+        raise Exception
+
+    monkeypatch.setattr(gluetool_modules_framework.infrastructure.copr.CoprApi, '_api_request', api_mock)
+
+    with pytest.raises(gluetool.GlueError, match=r"Unable to get: api_3/build/999999"):
+        module.execute()
+
+
+def test_invalid_copr(module, monkeypatch):
     def mocked_get(url):
         raise Exception
 
     monkeypatch.setattr(gluetool_modules_framework.infrastructure.copr.requests, 'get', mocked_get)
 
-    with pytest.raises(gluetool.GlueError, match=r"^Unable to get:"):
-        module.execute()
+    with pytest.raises(gluetool.GlueError,
+                       match=r"^Invalid copr build with id '8020fedora-28-x86_64', must be 'build_id:chroot_name'"):
+        module.tasks(task_ids=['8020fedora-28-x86_64'])
 
 
 def test_tasks(module, monkeypatch):

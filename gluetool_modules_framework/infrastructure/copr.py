@@ -420,7 +420,8 @@ class Copr(gluetool.Module):
         self.task = CoprTask(build_task_id, self)
 
         if self.task.error:
-            raise gluetool.GlueError('Error resolving copr build {}:{}: {}'.format(
-                build_id, chroot_name, self.task.error))
+            raise gluetool.GlueError(
+                'Error resolving copr build {}:{}: {}'.format(build_id, chroot_name, self.task.error)
+            )
 
         self._tasks = [self.task]

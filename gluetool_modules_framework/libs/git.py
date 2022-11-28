@@ -60,6 +60,13 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         if self.path:
             self.initialize_from_path(self.path)
 
+    def __repr__(self):
+        # type: () -> str
+        clone_url = self.clone_url
+        branch = self.branch or 'not specified'
+        ref = self.ref or 'not specified'
+        return '<RemoteGitRepository(clone_url={}, branch={}, ref={})>'.format(clone_url, branch, ref)
+
     @property
     def is_cloned(self):
         # type: () -> bool
@@ -68,6 +75,11 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         and instance of :py:class:`git.Git` was initialized from it.
         """
         return bool(self._instance)
+
+    @property
+    def workdir_prefix(self):
+        # type: () -> str
+        return 'workdir-{}'.format(self.branch or self.ref)
 
     def _get_clone_options(
         self,

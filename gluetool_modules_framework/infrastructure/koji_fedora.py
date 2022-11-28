@@ -1648,7 +1648,7 @@ class BrewTask(KojiTask):
         """
         :returns: major version of RHEL
         """
-        return cast(str, re.sub(".*rhel-(\\d+).*", "\\1", self.target))
+        return re.sub(".*rhel-(\\d+).*", "\\1", self.target)
 
     @cached_property
     def task_arches(self):

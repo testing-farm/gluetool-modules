@@ -323,7 +323,7 @@ class Bugzilla(gluetool.Module):
         # go through found bugs,
         for bug in bugs:
             for attr in attributes:
-                bz_attrs[bug.id][attr] = getattr(bug, attr, None)
+                bz_attrs[bug.id][attr] = cast(str, getattr(bug, attr, None))
 
         log_dict(log_function, 'Bugzilla attributes', bz_attrs)
 

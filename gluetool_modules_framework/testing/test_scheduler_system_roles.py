@@ -146,7 +146,7 @@ class TestSchedulerSystemRoles(gluetool.Module):
 
                         prefix = os.path.commonprefix([abs_directory, abs_target])
 
-                        result = cast(bool, prefix == abs_directory)
+                        result = prefix == abs_directory
                         return result
 
                     def safe_extract(tar, path=".", members=None):

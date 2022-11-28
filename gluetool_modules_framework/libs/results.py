@@ -191,13 +191,12 @@ class TestResult(object):
         :raises gluetool.glue.GlueError: when result class does not support the input format.
         """
 
-        unserializer = cast(Callable[[gluetool.Glue, Any], TestResult],
+        unserializer = cast(Optional[Callable[[gluetool.Glue, Any], TestResult]],
                             getattr(cls, '_unserialize_from_{}'.format(input_format), None))
 
         if not unserializer:
             raise gluetool.GlueError("Cannot unserialize from input format '{}'".format(input_format))
 
-        # pylint: disable=not-callable
         return unserializer(glue, input_data)
 
 

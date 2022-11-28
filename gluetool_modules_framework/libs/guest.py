@@ -73,6 +73,7 @@ class Guest(LoggerMixin, object):
         # Cannot use simple `self.name` - such property may not have been set yet. ``getattr`` adds the extra
         # "does it even exist?" check we need.
         name = name or getattr(self, 'name', '<unknown guest>')
+        assert isinstance(name, str)
 
         self.attach_logger(GuestLoggingAdapter(logger, name))
 

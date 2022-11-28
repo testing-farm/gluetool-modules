@@ -331,6 +331,7 @@ class BeakerGuest(NetworkedGuest):
     #
     # "Public" API
     #
+    @property
     def supports_snapshots(self):
         # type: () -> bool
         return False

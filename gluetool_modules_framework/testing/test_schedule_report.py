@@ -208,6 +208,19 @@ class TestScheduleReport(gluetool.Module):
     def _serialize_results(self, schedule):
         # type: (TestSchedule) -> None
 
+        # Duplicated from test-schedule-tmt: it adds the environment info per test, but since all
+        # tests in the single schedule entry share the environment, the info can easily be exposed
+        # per test suite.
+        # TODO: No idea whether there's any user of the per test elements, need to find out before
+        # dropping them.
+        def _add_testing_environment(testsuite, name, arch, compose, snapshots):
+            # type: (bs4.element.Tag, str, Any, Any, bool) -> None
+
+            environment = new_xml_element('testing-environment', _parent=testsuite, name=name)
+            new_xml_element('property', _parent=environment, name='arch', value=arch)
+            new_xml_element('property', _parent=environment, name='compose', value=compose)
+            new_xml_element('property', _parent=environment, name='snapshots', value=str(snapshots))
+
         test_suites = gluetool.utils.new_xml_element('testsuites')
         test_suites['overall-result'] = self._overall_result(schedule).name.lower()
 
@@ -261,6 +274,22 @@ class TestScheduleReport(gluetool.Module):
 
             testsuite_logs = gluetool.utils.new_xml_element('logs', _parent=test_suite)
             testsuite_properties = gluetool.utils.new_xml_element('properties', _parent=test_suite)
+
+            if schedule_entry.testing_environment is not None:
+                _add_testing_environment(
+                    test_suite, 'requested',
+                    schedule_entry.testing_environment.arch,
+                    schedule_entry.testing_environment.compose,
+                    schedule_entry.testing_environment.snapshots
+                )
+
+            if schedule_entry.guest is not None and schedule_entry.guest.environment is not None:
+                _add_testing_environment(
+                    test_suite, 'provisioned',
+                    schedule_entry.guest.environment.arch,
+                    schedule_entry.guest.environment.compose,
+                    schedule_entry.guest.environment.snapshots
+                )
 
             for stage in gluetool_modules_framework.libs.guest_setup.STAGES_ORDERED:
                 outputs = schedule_entry.guest_setup_outputs.get(stage, [])

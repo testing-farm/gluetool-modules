@@ -719,6 +719,7 @@ class TestScheduleTMT(Module):
             _add_property(properties, 'status', schedule_entry.stage.value.capitalize())
             _add_property(properties, 'testcase.source.url', self.shared('dist_git_repository').web_url)
             _add_property(properties, 'variant', '')
+            _add_property(properties, 'plan', schedule_entry.plan)
 
             # artifacts
             for artifact in task.artifacts:

@@ -64,4 +64,3 @@ repos:
         language_version: python3.9
         entry: poetry lock --no-update
         pass_filenames: false
-        stages: [manual]

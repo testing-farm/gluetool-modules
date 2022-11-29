@@ -107,7 +107,7 @@ pre-commit:
   script:
     - dnf -y install pre-commit
     - poetry --version
-    - pre-commit run --show-diff-on-failure --hook-stage manual --all-files
+    - pre-commit run --show-diff-on-failure --all-files
 
 # Installation Fedora
 py37-install-fedora-36:

@@ -6,8 +6,10 @@ import logging
 
 import pytest
 import requests
+from urllib3.exceptions import NewConnectionError
 from mock import MagicMock
 
+from gluetool import GlueError
 from gluetool_modules_framework.provision.artemis import ArtemisProvisioner, PipelineCancelled
 
 from . import create_module, check_loadable
@@ -59,3 +61,15 @@ def test_pipeline_cancelled(module):
 
     with pytest.raises(PipelineCancelled):
         module.execute()
+
+
+def test_new_connection_error(module, monkeypatch, log):
+    monkeypatch.setattr(requests, 'get', MagicMock(side_effect=NewConnectionError('', '')))
+
+    with pytest.raises(
+        GlueError,
+        match="Artemis API call failed: Condition 'api_call' failed to pass within given time"
+    ):
+        module.execute()
+
+    assert log.match(levelno=logging.DEBUG, message="Retrying due to NewConnectionError")

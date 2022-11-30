@@ -12,6 +12,7 @@ import gluetool.utils
 import gluetool_modules_framework.libs
 import requests
 from simplejson import JSONDecodeError
+from urllib3.exceptions import NewConnectionError
 
 from gluetool import GlueError, SoftGlueError
 from gluetool.log import log_dict, LoggerMixin
@@ -133,6 +134,13 @@ class ArtemisAPI(object):
 
             try:
                 response = _request('{}{}'.format(self.url, endpoint), json=data)
+
+            except NewConnectionError as error:
+                # TFT-1755 - added to workaround DNS problems with podman
+                # send this to Sentry to understand the scope
+                self.module.debug('Retrying due to NewConnectionError', sentry=True)
+                return Result.Error('NewConnectionError: {}'.format(str(error)))
+
             except requests.exceptions.ConnectionError as error:
                 error_string = str(error)
                 # Artemis API can go down in the middle of the request sending, and that
@@ -140,7 +148,7 @@ class ArtemisAPI(object):
                 # raises ConnectionError with 'Connection aborted' string in the message.
                 # https://urllib3.readthedocs.io/en/latest/reference/#urllib3.exceptions.ProtocolError
                 if 'Connection aborted' in error_string:
-                    return Result.Error('Connecton aborted: {}'.format(error_string))
+                    return Result.Error('Connection aborted: {}'.format(error_string))
                 six.reraise(*sys.exc_info())
 
             if response.status_code == expected_status_code:

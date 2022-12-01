@@ -3,7 +3,9 @@
 
 import gluetool_modules_framework.libs
 
-from typing import cast, TYPE_CHECKING
+from typing import cast
+from typing import TYPE_CHECKING
+from typing import Optional
 
 import gluetool
 from gluetool import GlueError
@@ -28,10 +30,10 @@ class TestSchedulerTestingFarm(gluetool.Module):
 
     shared_functions = ['test_schedule']
 
-    _schedule: 'TestSchedule'
+    _schedule = None  # type: Optional[TestSchedule]
 
     def test_schedule(self):
-        # type: () -> TestSchedule
+        # type: () -> Optional[TestSchedule]
         """
         Returns schedule for runners. It tells runner which schedules
         it should run on which guest.

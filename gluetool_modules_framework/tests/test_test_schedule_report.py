@@ -59,6 +59,7 @@ def create_test_schedule(entry_properties):
             TestingEnvironment(arch='x86_64', compose='Fedora37'),
             'plan',
             'repodir',
+            ['exclude1']
         )
         entry.stage = stage
         entry.state = state

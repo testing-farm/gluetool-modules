@@ -57,6 +57,7 @@ def create_test_schedule(entry_properties):
             tec,
             'plan',
             'repodir',
+            ['excludes']
         )
         entry.stage = stage
         entry.state = state

@@ -205,8 +205,7 @@ def test_clone_invalid_ref(remote_git_repository, monkeypatch):
                 'refs/remotes/origin/merge-requests/1/head:refs/remotes/origin/merge-requests/1/head'
             ],
             [
-                'git', '-C', 'some-path', 'checkout',
-                'refs/remotes/origin/merge-requests/1/head'
+                'git', '-C', 'some-path', 'checkout', 'refs/remotes/origin/merge-requests/1/head'
             ],
         ]
     )

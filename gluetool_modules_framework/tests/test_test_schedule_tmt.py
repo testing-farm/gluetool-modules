@@ -51,6 +51,16 @@ def fixture_module(monkeypatch):
     return module
 
 
+@pytest.fixture(name='module_dist_git')
+def fixture_module_dist_git():
+    module_dist_git = create_module(DistGit)[1]
+    module_dist_git._repository = DistGitRepository(
+        module_dist_git, 'some-package',
+        clone_url='http://example.com/git/myproject', ref='myfix'
+    )
+    return module_dist_git
+
+
 @pytest.fixture(name='guest')
 def fixture_guest():
     guest = MagicMock()
@@ -110,13 +120,8 @@ def test_gather_results(module, asset, monkeypatch):
     _assert_results(results, expected_results['results'])
 
 
-def test_serialize_test_schedule_entry_results(module, guest, monkeypatch):
+def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, monkeypatch):
     # this doesn't appear anywhere in results.xml, but _run_plan() needs it
-    module_dist_git = create_module(DistGit)[1]
-    module_dist_git._repository = DistGitRepository(
-        module_dist_git, 'some-package',
-        clone_url='http://example.com/git/myproject', ref='myfix'
-    )
     module.glue.add_shared('dist_git_repository', module_dist_git)
 
     test_env = TestingEnvironment('x86_64', 'rhel-9')
@@ -202,13 +207,8 @@ dummytmt run --all --verbose provision --how virtual --image dummy-compose plan 
     shutil.rmtree(schedule_entry.work_dirpath)
 
 
-def test_tmt_output_distgit(module, guest, monkeypatch):
+def test_tmt_output_distgit(module, module_dist_git, guest, monkeypatch):
     # this doesn't appear anywhere in results.xml, but _run_plan() needs it
-    module_dist_git = create_module(DistGit)[1]
-    module_dist_git._repository = DistGitRepository(
-        module_dist_git, 'some-package',
-        clone_url='http://example.com/git/myproject', ref='myfix'
-    )
     module.glue.add_shared('dist_git_repository', module_dist_git)
 
     with monkeypatch.context() as m:
@@ -241,7 +241,7 @@ dummytmt run --all --verbose provision --how virtual --image dummy-compose plan 
     shutil.rmtree(schedule_entry.work_dirpath)
 
 
-def test_tmt_output_copr(module, guest, monkeypatch, tmpdir):
+def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir):
     # install-copr-build module
     module_copr = create_module(InstallCoprBuild)[1]
     module_copr._config['log-dir-name'] = 'artifact-installation'
@@ -255,13 +255,6 @@ def test_tmt_output_copr(module, guest, monkeypatch, tmpdir):
         'primary_task': primary_task_mock,
         'tasks': [primary_task_mock],
     })
-
-    # dist-git module
-    module_dist_git = create_module(DistGit)[1]
-    module_dist_git._repository = DistGitRepository(
-        module_dist_git, 'some-package',
-        clone_url='http://example.com/git/myproject', ref='myfix'
-    )
 
     # main test-schedule-tmt module
     module.glue.add_shared('dist_git_repository', module_dist_git)

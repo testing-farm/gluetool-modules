@@ -196,8 +196,6 @@ def test_tmt_output_dir(module, guest, monkeypatch):
     patch_shared(monkeypatch, module, {
         'user_variables': {'TEST_LEVEL': 'awesome'},
         })
-    # currently wants to write the tmt-environment.yaml file into the repo dir
-    os.makedirs(str(schedule_entry.repodir))
 
     with monkeypatch.context() as m:
         # tmt run
@@ -209,14 +207,14 @@ def test_tmt_output_dir(module, guest, monkeypatch):
 
     with open(os.path.join(schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
         assert f.read() == '''# tmt reproducer
-curl -LO some-repo-dir/tmt-environment-lan1.yaml
-dummytmt run --all --verbose -e @tmt-environment-lan1.yaml provision --how virtual --image dummy-compose plan --name ^plan1$'''
+curl -LO {}/tmt-environment-lan1.yaml
+dummytmt run --all --verbose -e @tmt-environment-lan1.yaml provision --how virtual --image dummy-compose plan --name ^plan1$'''.format(
+            schedule_entry.work_dirpath)
 
-    with open(os.path.join(schedule_entry.repodir, 'tmt-environment-lan1.yaml')) as f:
+    with open(os.path.join(schedule_entry.work_dirpath, 'tmt-environment-lan1.yaml')) as f:
         assert f.read().strip() == 'TEST_LEVEL: awesome'
 
     shutil.rmtree(schedule_entry.work_dirpath)
-    shutil.rmtree(schedule_entry.repodir)
 
 
 def test_tmt_output_distgit(module, module_dist_git, guest, monkeypatch):

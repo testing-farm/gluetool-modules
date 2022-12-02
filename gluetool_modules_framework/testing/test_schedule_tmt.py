@@ -764,7 +764,10 @@ class TestScheduleTMT(Module):
             # we MUST use a dedicated env file for each plan, to mitigate race conditions
             # plans are handled in threads ...
             tmt_env_file = TMT_ENV_FILE.format(schedule_entry.plan[1:].replace('/', '-'))
-            gluetool.utils.dump_yaml(variables, os.path.join(schedule_entry.repodir, tmt_env_file))
+            # this lives next to tmt-reproducer.sh, so that they get archived together
+            assert schedule_entry.tmt_reproducer_filepath
+            tmt_env_path = os.path.join(os.path.dirname(schedule_entry.tmt_reproducer_filepath), tmt_env_file)
+            gluetool.utils.dump_yaml(variables, tmt_env_path)
             env_options = [
                 '-e', '@{}'.format(tmt_env_file)
             ]
@@ -774,7 +777,7 @@ class TestScheduleTMT(Module):
             # reproducer command to download the environment file
             schedule_entry.tmt_reproducer.append(
                 'curl -LO {}'.format(
-                    artifacts_location(self, os.path.join(schedule_entry.repodir, tmt_env_file), logger=self.logger)
+                    artifacts_location(self, tmt_env_path, logger=self.logger)
                 )
             )
 

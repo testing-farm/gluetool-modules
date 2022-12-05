@@ -163,12 +163,12 @@ class InstallRepository(gluetool.Module):
         self.request = self.shared('testing_farm_request')
 
         assert self.request is not None
-        if not self.request.environments_requested[0]['artifacts']:
+        if not self.request.environments_requested[0].artifacts:
             self.info("No repository artifacts found, skipping")
             return
 
         # TODO: environment should be coming from test scheduler later
         self.request_artifacts = [
-            artifact for artifact in self.request.environments_requested[0]['artifacts']
+            artifact for artifact in self.request.environments_requested[0].artifacts
             if artifact['type'] in TESTING_FARM_ARTIFACT_TYPES
         ]

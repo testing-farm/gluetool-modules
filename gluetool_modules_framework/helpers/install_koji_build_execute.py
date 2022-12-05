@@ -96,8 +96,10 @@ class InstallKojiBuildExecute(gluetool.Module):
 
         # TODO: hack, for multi-arch suppport, actually the arch should come from guest I guess ...
         try:
-            arch = self.shared('testing_farm_request').environments_requested[0]['arch']
+            arch = self.shared('testing_farm_request').environments_requested[0].arch
         except (AttributeError, KeyError, IndexError):
+            arch = None
+        if not arch:
             arch = 'x86_64'
 
         for artifact in self.request_artifacts:
@@ -214,12 +216,12 @@ class InstallKojiBuildExecute(gluetool.Module):
 
         assert self.request is not None
 
-        if not self.request.environments_requested[0]['artifacts']:
+        if not self.request.environments_requested[0].artifacts:
             return
 
         # TODO: currently we support only installation of koji builds, ignore other artifacts
         # TODO: environment should be coming from test scheduler later
         self.request_artifacts = [
-            artifact for artifact in self.request.environments_requested[0]['artifacts']
+            artifact for artifact in self.request.environments_requested[0].artifacts
             if artifact['type'] in TESTING_FARM_ARTIFACT_TYPES
         ]

@@ -7,7 +7,7 @@ from mock import MagicMock, call
 
 import gluetool_modules_framework.libs.guest as guest_module
 import gluetool_modules_framework.libs.guest_setup
-import gluetool_modules_framework.libs.testing_environment
+from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 import gluetool_modules_framework.helpers.install_repository
 import gluetool_modules_framework.helpers.rules_engine
 
@@ -31,34 +31,30 @@ def fixture_module(monkeypatch):
 
     def dummy_testing_farm_request():
         environments_requested = [
-            {
-                'artifacts': [
-                    {
-                        'id': 'https://example.com/repo1',
-                        'packages': None,
-                        'type': 'repository'
-                    },
-                    {
-                        'id': 'https://example.com/repo2',
-                        'packages': None,
-                        'type': 'repository'
-                    },
-                    {
-                        'id': 'wrongid',
-                        'packages': None,
-                        'type': 'wongtype'
-                    }
-                ]
-            },
-            {
-                'artifacts': [
-                    {
-                        'id': 'wrongid',
-                        'packages': None,
-                        'type': 'wongtype'
-                    }
-                ]
-            }
+            TestingEnvironment(artifacts=[
+                {
+                    'id': 'https://example.com/repo1',
+                    'packages': None,
+                    'type': 'repository'
+                },
+                {
+                    'id': 'https://example.com/repo2',
+                    'packages': None,
+                    'type': 'repository'
+                },
+                {
+                    'id': 'wrongid',
+                    'packages': None,
+                    'type': 'wongtype'
+                }
+            ]),
+            TestingEnvironment(artifacts=[
+                {
+                    'id': 'wrongid',
+                    'packages': None,
+                    'type': 'wongtype'
+                }
+            ]),
         ]
         return MagicMock(environments_requested=environments_requested)
 
@@ -75,7 +71,7 @@ def fixture_module(monkeypatch):
 def fixture_local_guest(module):
     guest = guest_module.NetworkedGuest(module, '127.0.0.1', key=MagicMock())
     guest.execute = MagicMock(return_value=MagicMock(stdout='', stderr=''))
-    guest.environment = gluetool_modules_framework.libs.testing_environment.TestingEnvironment(
+    guest.environment = TestingEnvironment(
         arch='x86_64',
         compose='dummy-compose'
     )

@@ -1,0 +1,6 @@
+---
+results:
+  - test: foo
+    result: bar
+    logs:
+      - log1

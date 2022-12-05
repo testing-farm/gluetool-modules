@@ -10,7 +10,7 @@ import gluetool
 from gluetool.utils import normalize_path, load_yaml
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from gluetool_modules_framework.libs.test_schedule import TestSchedule
-from gluetool_modules_framework.testing.test_schedule_runner_sti import TestScheduleEntry
+from gluetool_modules_framework.testing.test_scheduler_sti import TestScheduleEntry
 
 # Type annotations
 from typing import Optional, List, Any, Tuple, Set, cast  # noqa

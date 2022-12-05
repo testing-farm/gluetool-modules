@@ -10,6 +10,7 @@ from gluetool import GlueError, utils
 import gluetool_modules_framework
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleEntry as BaseTestScheduleEntry
+from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
 
 # Type annotations
 from typing import Any, cast, Dict, List, Optional  # noqa
@@ -97,15 +98,16 @@ class TestSchedulerSTI(gluetool.Module):
 
     shared_functions = ['create_test_schedule']
 
-    def _playbooks_from_dist_git(self, repodir):
-        # type: (str) -> List[str]
+    def _playbooks_from_dist_git(self, repodir, tests=None):
+        # type: (str, Optional[str]) -> List[str]
         """
         Return STI playbooks (tests) from dist-git.
 
         :param str repodir: clone of a dist-git repository.
+        :param str tests: tests to override the module option 'sti-tests'.
         """
 
-        playbooks = glob.glob('{}/{}'.format(repodir, self.option('sti-tests')))
+        playbooks = glob.glob('{}/{}'.format(repodir, tests or self.option('sti-tests')))
 
         if not playbooks:
             raise gluetool_modules_framework.libs.test_schedule.EmptyTestScheduleError(
@@ -127,6 +129,8 @@ class TestSchedulerSTI(gluetool.Module):
                 At this moment, only ``arch`` property is obeyed.
         :returns: a test schedule consisting of :py:class:`TestScheduleEntry` instances.
         """
+
+        playbooks = []
 
         if not testing_environment_constraints:
             self.warn('STI scheduler does not support open constraints', sentry=True)
@@ -159,7 +163,13 @@ class TestSchedulerSTI(gluetool.Module):
                 raise GlueError('Could not clone {} branch of {} repository'.format(
                     repository.branch, repository.clone_url))
 
-            playbooks = self._playbooks_from_dist_git(repodir)
+            request = self.shared('testing_farm_request')  # type: Optional[TestingFarmRequest]
+            if request and request.sti and request.sti.playbooks:
+                for tests in request.sti.playbooks:
+                    playbooks.extend(self._playbooks_from_dist_git(repodir, tests))
+
+            else:
+                playbooks = self._playbooks_from_dist_git(repodir)
 
         gluetool.log.log_dict(self.info, 'creating schedule for {} playbooks'.format(len(playbooks)), playbooks)
 

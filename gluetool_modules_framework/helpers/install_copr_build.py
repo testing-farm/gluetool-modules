@@ -153,11 +153,11 @@ class InstallCoprBuild(gluetool.Module):
         # extract ids from the request
         self.request = self.shared('testing_farm_request')
 
-        if not self.request.environments_requested[0]['artifacts']:
+        if not self.request.environments_requested[0].artifacts:
             return
 
         artifact_ids = [
-            artifact['id'] for artifact in self.request.environments_requested[0]['artifacts']
+            artifact['id'] for artifact in self.request.environments_requested[0].artifacts
             if artifact['type'] in TESTING_FARM_ARTIFACT_TYPES
         ]
 

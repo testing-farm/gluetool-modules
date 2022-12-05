@@ -268,7 +268,7 @@ class TestScheduler(gluetool.Module):
         elif testing_farm_request:
             try:
                 artifact_arches = [
-                    environment['arch']
+                    environment.arch
                     for environment in testing_farm_request.environments_requested
                 ]
             except KeyError:
@@ -276,8 +276,9 @@ class TestScheduler(gluetool.Module):
                 artifact_arches = []
 
             # TODO: this is wrong of course, but sufficient hack for now ...
-            if testing_farm_request.environments_requested and 'pool' in testing_farm_request.environments_requested[0]:
-                pool = testing_farm_request.environments_requested[0]['pool']
+            if testing_farm_request.environments_requested and \
+                    hasattr(testing_farm_request.environments_requested[0], 'pool'):
+                pool = testing_farm_request.environments_requested[0].pool
 
         else:
             artifact_arches = []

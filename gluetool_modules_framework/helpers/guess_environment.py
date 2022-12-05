@@ -624,7 +624,7 @@ class GuessEnvironment(gluetool.Module):
 
         if source['type'] == 'compose':
             source['result'] = [
-                environment['os']['compose']
+                environment.compose
                 for environment in request.environments_requested
             ]
         else:

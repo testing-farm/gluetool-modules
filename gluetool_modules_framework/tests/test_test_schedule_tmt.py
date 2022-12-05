@@ -320,9 +320,9 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir):
     module_koji._config['log-dir-name'] = 'artifact-installation'
 
     def dummy_testing_farm_request():
-        environments_requested = [{
-            'artifacts': [{'id': '123', 'packages': None, 'type': 'fedora-koji-build'}]
-        }]
+        environments_requested = [TestingEnvironment(artifacts=[
+            {'id': '123', 'packages': None, 'type': 'fedora-koji-build'}
+        ])]
         return MagicMock(environments_requested=environments_requested)
 
     def evaluate_instructions_mock(workarounds, callbacks):

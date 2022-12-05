@@ -11,7 +11,7 @@ import gluetool
 import gluetool_modules_framework.libs.guest as guest_module
 import gluetool_modules_framework.libs.guest_setup
 from gluetool_modules_framework.libs.sut_installation import INSTALL_COMMANDS_FILE
-import gluetool_modules_framework.libs.testing_environment
+from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 import gluetool_modules_framework.helpers.install_koji_build_execute
 from gluetool_modules_framework.helpers.install_copr_build import InstallCoprBuild
 import gluetool_modules_framework.helpers.rules_engine
@@ -35,34 +35,30 @@ def fixture_module(monkeypatch):
 
     def dummy_testing_farm_request():
         environments_requested = [
-            {
-                'artifacts': [
-                    {
-                        'id': '123123123',
-                        'packages': None,
-                        'type': 'fedora-koji-build'
-                    },
-                    {
-                        'id': '123123124',
-                        'packages': None,
-                        'type': 'redhat-brew-build'
-                    },
-                    {
-                        'id': 'wrongid',
-                        'packages': None,
-                        'type': 'wongtype'
-                    }
-                ]
-            },
-            {
-                'artifacts': [
-                    {
-                        'id': 'wrongid',
-                        'packages': None,
-                        'type': 'wongtype'
-                    }
-                ]
-            }
+            TestingEnvironment(artifacts=[
+                {
+                    'id': '123123123',
+                    'packages': None,
+                    'type': 'fedora-koji-build'
+                },
+                {
+                    'id': '123123124',
+                    'packages': None,
+                    'type': 'redhat-brew-build'
+                },
+                {
+                    'id': 'wrongid',
+                    'packages': None,
+                    'type': 'wongtype'
+                }
+            ]),
+            TestingEnvironment(artifacts=[
+                {
+                    'id': 'wrongid',
+                    'packages': None,
+                    'type': 'wongtype'
+                }
+            ]),
         ]
         return MagicMock(environments_requested=environments_requested)
 
@@ -82,7 +78,7 @@ def fixture_module(monkeypatch):
 def fixture_local_guest(module):
     guest = guest_module.NetworkedGuest(module, '127.0.0.1', key=MagicMock())
     guest.execute = MagicMock(return_value=MagicMock(stdout='', stderr=''))
-    guest.environment = gluetool_modules_framework.libs.testing_environment.TestingEnvironment(
+    guest.environment = TestingEnvironment(
         arch='x86_64',
         compose='dummy-compose'
     )

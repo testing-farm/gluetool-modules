@@ -455,7 +455,7 @@ class TestScheduleTMT(Module):
         else:
             command.extend(['--filter', 'enabled:true'])
 
-        plans_regex = self.shared('testing_farm_request').plans
+        plans_regex = self.shared('testing_farm_request').tmt.plan
 
         if plans_regex:
             command.extend([plans_regex])
@@ -580,7 +580,7 @@ class TestScheduleTMT(Module):
         if not request:
             return {}
 
-        return request.environments_requested[0].get('hardware') or {}
+        return getattr(request.environments_requested[0], 'hardware', {})
 
     def create_test_schedule(self, testing_environment_constraints=None):
         # type: (Optional[List[TestingEnvironment]]) -> TestSchedule

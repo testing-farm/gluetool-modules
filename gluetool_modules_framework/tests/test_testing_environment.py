@@ -18,13 +18,13 @@ def test_serialize():
     env = TestingEnvironment(arch='foo', compose='bar', secrets={'hello': 'world'})
 
     # Calling str(TestingEnvironment(...)) directly results in a call to TestingEnvironment.__str__()
-    assert str(env) == 'arch=foo,artifacts=None,compose=bar,hardware=None,secrets=******,settings=None,snapshots=False,tmt=None,variables=None'  # noqa
+    assert str(env) == 'arch=foo,compose=bar,secrets=******,snapshots=False'  # noqa
 
     # Nesting the object into a list and calling str() results in a call to TestingEnvironment.__repr__()
-    assert str([env]) == '[<TestingEnvironment(arch=foo,artifacts=None,compose=bar,hardware=None,secrets=******,settings=None,snapshots=False,tmt=None,variables=None)>]'  # noqa
+    assert str([env]) == '[<TestingEnvironment(arch=foo,compose=bar,secrets=******,snapshots=False)>]'  # noqa
 
-    assert env.serialize_to_string(hide_secrets=False) == "arch=foo,artifacts=None,compose=bar,hardware=None,secrets={'hello': 'world'},settings=None,snapshots=False,tmt=None,variables=None"  # noqa
-    assert env.serialize_to_json(hide_secrets=False) == {'arch': 'foo', 'artifacts': None, 'compose': 'bar', 'hardware': None, 'secrets': {'hello': 'world'}, 'settings': None, 'snapshots': False, 'tmt': None, 'variables': None}  # noqa
+    assert env.serialize_to_string(hide_secrets=False, show_none_fields=True) == "arch=foo,artifacts=None,compose=bar,hardware=None,secrets={'hello': 'world'},settings=None,snapshots=False,tmt=None,variables=None"  # noqa
+    assert env.serialize_to_json(hide_secrets=False, show_none_fields=True) == {'arch': 'foo', 'artifacts': None, 'compose': 'bar', 'hardware': None, 'secrets': {'hello': 'world'}, 'settings': None, 'snapshots': False, 'tmt': None, 'variables': None}  # noqa
 
 
 def test_unserialize():

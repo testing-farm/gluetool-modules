@@ -11,7 +11,7 @@ import ast
 from dataclasses import dataclass
 
 # Type annotations
-from typing import Any, Dict, List, Optional, Union  # noqa
+from typing import Any, Dict, List, Optional, Union, Tuple  # noqa
 
 
 ComposeType = Union[str, gluetool_modules_framework.libs._UniqObject]
@@ -72,7 +72,7 @@ class TestingEnvironment(object):
     def __str__(self):
         # type: () -> str
 
-        return self.serialize_to_string()
+        return self.serialize_to_string(hide_secrets=True, show_none_fields=False)
 
     def __repr__(self):
         # type: () -> str
@@ -92,36 +92,47 @@ class TestingEnvironment(object):
 
         return hash(tuple([getattr(self, field) for field in self._fields]))
 
-    def serialize_to_string(self, hide_secrets=True):
-        # type: (bool) -> str
+    def _serialize_get_fields(self, hide_secrets, show_none_fields):
+        # type: (bool, bool) -> List[Tuple[str, Any]]
+        fields = []
+        for field_name in sorted(self._fields):
+            field_value = getattr(self, field_name)
+            if not show_none_fields and field_value is None:
+                continue
+
+            if hide_secrets and field_name == 'secrets':
+                field_value = '******'
+            fields.append((field_name, field_value))
+
+        return fields
+
+    def serialize_to_string(self, hide_secrets=True, show_none_fields=True):
+        # type: (bool, bool) -> str
         """
         Serialize testing environment to comma-separated list of keys and their values, representing
         the environment.
 
-        :param bool hide_secrets: do not show secret values in the resulting output
+        :param bool hide_secrets: show secret values in the resulting output as '******'
+        :param bool show_none_fields: do not show values which are None
         :rtype: str
         :returns: testing environemnt properties in ``key1=value1,...`` form.
         """
 
         return ','.join([
-            '{}={}'.format(
-                field, '******' if field == 'secrets' and hide_secrets else getattr(self, field)
-            ) for field in sorted(self._fields)
+            '{}={}'.format(name, value) for name, value in self._serialize_get_fields(hide_secrets, show_none_fields)
         ])
 
-    def serialize_to_json(self, hide_secrets=True):
-        # type: (bool) -> Dict[str, Any]
+    def serialize_to_json(self, hide_secrets=True, show_none_fields=True):
+        # type: (bool, bool) -> Dict[str, Any]
         """
         Serialize testing environment to a JSON dictionary.
 
-        :param bool hide_secrets: do not show secret values in the resulting output
+        :param bool hide_secrets: show secret values in the resulting output as '******'
+        :param bool show_none_fields: do not show values which are None
         :rtype: dict(str, object)
         """
 
-        return {
-            field: '******' if field == 'secrets' and hide_secrets else
-            getattr(self, field) for field in sorted(self._fields)
-        }
+        return {name: value for name, value in self._serialize_get_fields(hide_secrets, show_none_fields)}
 
     @classmethod
     def _assert_env_properties(cls, env_properties):

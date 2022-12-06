@@ -3,6 +3,7 @@
 
 import os
 import stat
+import sys
 import tempfile
 
 import enum
@@ -14,8 +15,7 @@ from gluetool import GlueError, GlueCommandError, Module
 from gluetool.action import Action
 from gluetool.log import Logging, format_blob, log_blob, log_dict
 from gluetool.log import ContextAdapter, LoggingFunctionType  # Ignore PyUnusedCodeBear
-from gluetool.utils import Command, cached_property, from_yaml, load_yaml, new_xml_element, dict_update, \
-    normalize_shell_option
+from gluetool.utils import Command, cached_property, from_yaml, load_yaml, new_xml_element, dict_update
 
 from gluetool_modules_framework.libs import create_inspect_callback, sort_children
 from gluetool_modules_framework.libs.artifacts import artifacts_location
@@ -490,62 +490,44 @@ class TestScheduleTMT(Module):
 
         return plans
 
-    def excludes_from_tmt(self, repodir, plan):
-        # type: (str, str) -> List[str]
-        command = [self.option('command'), 'plan', 'show', '-v', '^{}$'.format(re.escape(plan))]
+    def hardware_from_tmt(self, exported_plan):
+        # type: (Dict[str, Any]) -> Dict[str, Any]
+        return cast(Dict[str, Any], exported_plan.get('provision', {}).get('hardware', {}))
 
-        # TODO: tmt is python3 only, parse the excludes from output until our modules run in python3
-        try:
-            tmt_output = Command(command).run(cwd=repodir)
-
-        except GlueCommandError as exc:
-            # workaround until tmt prints errors properly to stderr
-            log_blob(
-                self.error,
-                "Failed to list plan '{}' details".format(plan),
-                exc.output.stderr or exc.output.stdout or '<no output>'
-            )
-            raise GlueError('Failed to get plan details, TMT metadata are absent or corrupted.')
-
-        output = tmt_output.stdout
-        assert output
-
-        # exclude packages are between 'exclude' and 'missing' keywords in the output
-        start = output.find('exclude')
-        end = output.rfind('missing')
-
-        # exclude or missing not found in `tmt` output
-        if start == -1 or end == -1:
-            self.debug('No excludes found in tmt output')
+    def excludes_from_tmt(self, exported_plan):
+        # type: (Dict[str, Any]) -> List[str]
+        if 'prepare' not in exported_plan:
             return []
 
-        # do not include start tag
-        start += len('exclude')
+        prepare = exported_plan['prepare']
+        prepare_steps = prepare if isinstance(exported_plan['prepare'], list) else [prepare]
 
-        # remove formatting of tmt, examples
-        # exclude
-        # exclude glibc-devel, glibc-devel, glibc-devel and glibc-deve
-        # exclude glibc-devel
-        #         glibc-devel
-        #         glibc-devel
-        #         glibc-devel
-        #         glibc-devel
-        excludes = output[start:end].replace(',', '').replace('and', '')
+        for step in prepare_steps:
+            # we are interesed only on `how: install` step
+            if step.get('how') != 'install':
+                continue
 
-        return normalize_shell_option(excludes)
+            # no exclude in the step
+            if 'exclude' not in step:
+                return []
 
-    def hardware_from_request(self):
-        # type: () -> Dict[str, Any]
-        request = self.shared('testing_farm_request')
+            gluetool.utils.log_dict(
+                self.info,
+                "Excluded packages from installation for '{}' plan".format(exported_plan['name']),
+                step['exclude']
+            )
 
-        if not request:
-            return {}
+            return cast(List[str], step['exclude'])
 
-        return request.environments_requested[0].get('hardware') or {}
+        return []
 
-    def hardware_from_tmt(self, repodir, plan):
-        # type: (str, str) -> Dict[str, Any]
-        command = [self.option('command'), 'plan', 'export', '^{}$'.format(re.escape(plan))]
+    def export_plan(self, repodir, plan, context_files):
+        # type: (str, str, List[str]) -> Dict[str, Any]
+
+        command = [self.option('command')] + [
+            '--context=@{}'.format(filepath)
+            for filepath in context_files
+        ] + ['plan', 'export', '^{}$'.format(re.escape(plan))]
 
         # TODO: tmt is python3 only, parse the excludes from output until our modules run in python3
         try:
@@ -553,12 +535,11 @@ class TestScheduleTMT(Module):
 
         except GlueCommandError as exc:
             # workaround until tmt prints errors properly to stderr
-            log_blob(
-                self.error,
-                "Failed to export plan '{}'".format(plan),
-                exc.output.stderr or exc.output.stdout or '<no output>'
-            )
-            raise GlueError('Failed to export plan, TMT metadata are absent or corrupted.')
+            log_dict(self.error, "Failed to get list of plans", {
+                'command': ' '.join(command),
+                'exception': exc.output.stderr
+            })
+            six.reraise(*sys.exc_info())
 
         output = tmt_output.stdout
         assert output
@@ -574,8 +555,16 @@ class TestScheduleTMT(Module):
             self.warn('exported plan is not a single item, cowardly skipping extracting hardware')
             return {}
 
-        provision = exported_plans[0].get('provision') or {}
-        return provision.get('hardware') or {}
+        return cast(Dict[str, Any], exported_plans[0])
+
+    def hardware_from_request(self):
+        # type: () -> Dict[str, Any]
+        request = self.shared('testing_farm_request')
+
+        if not request:
+            return {}
+
+        return request.environments_requested[0].get('hardware') or {}
 
     def create_test_schedule(self, testing_environment_constraints=None):
         # type: (Optional[List[TestingEnvironment]]) -> TestSchedule
@@ -635,12 +624,14 @@ class TestScheduleTMT(Module):
                 continue
 
             for plan in plans:
+                exported_plan = self.export_plan(repodir, plan, context_files)
+
                 schedule_entry = TestScheduleEntry(
                     root_logger,
                     tec,
                     plan,
                     repodir,
-                    self.excludes_from_tmt(repodir, plan)
+                    self.excludes_from_tmt(exported_plan)
                 )
 
                 schedule_entry.testing_environment = TestingEnvironment(
@@ -648,7 +639,7 @@ class TestScheduleTMT(Module):
                     arch=tec.arch,
                     snapshots=tec.snapshots,
                     pool=tec.pool,
-                    hardware=self.hardware_from_request() or self.hardware_from_tmt(repodir, plan)
+                    hardware=self.hardware_from_request() or self.hardware_from_tmt(exported_plan)
                 )
 
                 schedule_entry.tmt_reproducer.extend(repository.commands)

@@ -217,7 +217,6 @@ def test_tmt_output_distgit(module, guest, monkeypatch):
                          'myfix',  # git show-ref
                          '',       # git checkout
                          'plan1',  # tmt plan ls
-                         '...',    # tmt plan show
                          '{}')     # tmt plan export
         schedule_entry = module.create_test_schedule([guest.environment])[0]
 
@@ -275,7 +274,6 @@ def test_tmt_output_copr(module, guest, monkeypatch, tmpdir):
                          'myfix',  # git show-ref
                          '',       # git checkout
                          'plan1',  # tmt plan ls
-                         '...',    # tmt plan show
                          '{}')     # tmt plan export
         schedule_entry = module.create_test_schedule([guest.environment])[0]
 

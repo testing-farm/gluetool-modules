@@ -72,6 +72,9 @@ class OpenStackJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkinsJ
         'test-scheduler-sti-options': {
             'help': 'Additional options for test-scheduler-sti module.'
         },
+        'test-schedule-tmt-options': {
+            'help': 'Additional options for test-schedule-tmt module.'
+        },
         'test-scheduler-upgrades-options': {
             'help': 'Additional options for test-scheduler-upgrades module.'
         },
@@ -182,6 +185,7 @@ class OpenStackJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkinsJ
             'brew_build_task_params_options': brew_build_task_params_options,
             'test_scheduler_options': test_scheduler_options,
             'test_scheduler_sti_options': self.option('test-scheduler-sti-options'),
+            'test_schedule_tmt_options': self.option('test-schedule-tmt-options'),
             'test_scheduler_upgrades_options': self.option('test-scheduler-upgrades-options'),
             'test_schedule_runner_options': self.option('test-schedule-runner-options'),
             'test_schedule_runner_restraint_options': self.option('test-schedule-runner-restraint-options'),

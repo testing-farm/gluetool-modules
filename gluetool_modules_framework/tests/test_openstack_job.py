@@ -30,6 +30,7 @@ def create_openstack_build_params(mod, **kwargs):
         'artemis_options': 'some artemis options',
         'test_scheduler_options': 'some scheduler options',
         'test_scheduler_sti_options': 'some sti scheduler options',
+        'test_schedule_tmt_options': 'some tmt scheduler options',
         'test_scheduler_upgrades_options': 'some upgrades scheduler options',
         'test_schedule_runner_options': 'some test-schedule-runner options',
         'test_schedule_runner_restraint_options': 'some test-schedule-runner-restraint options',

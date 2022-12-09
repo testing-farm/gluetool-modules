@@ -180,7 +180,7 @@ Then pick a particular request, e.g one with a COPR installation, and run a pipe
        guess-environment-testing-farm-request:guess-environment \
        dist-git-testing-farm:dist-git \
        test-schedule-tmt-connect:test-schedule-tmt \
-       test-scheduler-noconfig:test-scheduler \
+       test-scheduler-noconfig:test-scheduler-baseosci \
        test-schedule-runner \
        test-schedule-report
 

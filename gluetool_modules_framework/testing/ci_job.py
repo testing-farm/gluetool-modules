@@ -28,7 +28,7 @@ PROXIED_MODULE_NAMES = (
     'install-mbs-build-options',
     'openstack',
     'pipeline-install-ancestors',
-    'test-scheduler',
+    'test-scheduler-baseosci',
     'test-scheduler-sti',
     'test-scheduler-upgrades',
     'test-schedule-report',

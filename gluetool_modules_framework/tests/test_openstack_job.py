@@ -28,7 +28,7 @@ def create_openstack_build_params(mod, **kwargs):
         ],
         'openstack_options': 'some openstack options',
         'artemis_options': 'some artemis options',
-        'test_scheduler_options': 'some scheduler options',
+        'test_scheduler_baseosci_options': 'some scheduler options',
         'test_scheduler_sti_options': 'some sti scheduler options',
         'test_schedule_tmt_options': 'some tmt scheduler options',
         'test_scheduler_upgrades_options': 'some upgrades scheduler options',
@@ -48,10 +48,14 @@ def create_openstack_build_params(mod, **kwargs):
     params = create_build_params(mod, **params)
 
     for arch in mod._config.get('with-arch'):
-        params['test_scheduler_options'] = '{} --with-arch={}'.format(params['test_scheduler_options'], arch)
+        params['test_scheduler_baseosci_options'] = '{} --with-arch={}'.format(
+            params['test_scheduler_baseosci_options'], arch
+        )
 
     for arch in mod._config.get('without-arch'):
-        params['test_scheduler_options'] = '{} --without-arch={}'.format(params['test_scheduler_options'], arch)
+        params['test_scheduler_baseosci_options'] = '{} --without-arch={}'.format(
+            params['test_scheduler_baseosci_options'], arch
+        )
 
     if mod._config.get('install-rpms-blacklist', None):
         params['brew_build_task_params_options'] = '{} --install-rpms-blacklist={}'.format(

@@ -56,7 +56,7 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
                 'help': 'Additional options for github module.',
                 'default': ''
             },
-            'test-scheduler-options': {
+            'test-scheduler-baseosci-options': {
                 'help': 'Additional options for test-scheduler module.',
                 'default': ''
             },
@@ -201,7 +201,7 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
             'artemis_options': self.option('artemis-options'),
             'github_options': self.option('github-options'),
             'pipeline_state_reporter_options': self.option('pipeline-state-reporter-options'),
-            'test_scheduler_options': self.option('test-scheduler-options'),
+            'test_scheduler_baseosci_options': self.option('test-scheduler-baseosci-options'),
             'test_scheduler_system_roles_options': self.option('test-scheduler-system-roles-options'),
             'test_scheduler_sti_options': self.option('test-scheduler-sti-options'),
             'test_schedule_runner_options': self.option('test-schedule-runner-options'),

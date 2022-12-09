@@ -147,7 +147,7 @@ class TestingThread(gluetool.Module):
 
         if results:
             if isinstance(results, bs4.element.Tag):
-                # Already serialized in test-scheduler workflow.
+                # Already serialized in test-scheduler-baseosci workflow.
                 pass
 
             else:

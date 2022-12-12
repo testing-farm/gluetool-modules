@@ -52,15 +52,6 @@ container:
 # Run unit tests
 #
 # Note: this step also generates coverage report (HTML).
-py37-unit:
-  extends: .tests
-  stage: test
-  script:
-    - tox -v -e py37-unit-tests -- --cov=gluetool_modules_framework --cov-report=html:coverage-report
-  artifacts:
-    paths:
-      - coverage-report
-
 py39-unit:
   extends: .tests
   stage: test
@@ -71,12 +62,6 @@ py39-unit:
       - coverage-report
 
 # Static analysis - pylint, flake8
-py37-static:
-  extends: .tests
-  stage: test
-  script:
-    - tox -v -e py37-static-analysis
-
 py39-static:
   extends: .tests
   stage: test
@@ -110,15 +95,6 @@ pre-commit:
     - pre-commit run --show-diff-on-failure --all-files
 
 # Installation Fedora
-py37-install-fedora-36:
-  extends: .merge-request
-  stage: test
-  image: registry.fedoraproject.org/fedora:36
-  script:
-    - dnf -y install tmt
-    - dnf -y install tmt-provision-container
-    - tmt run -adddvvv provision -h local plan --name /plans/fedora/py37
-
 py39-install-fedora-36:
   extends: .merge-request
   stage: test
@@ -150,11 +126,11 @@ py39-install-fedora-36:
 # to generate the documentation - serves as a sort of a "test" on its own. citool
 # uses docstrings to generate command-line help, it is useful to check whether these
 # docstrings are readable and sane.
-py37-generate-docs:
+py39-generate-docs:
   extends: .tests
   stage: test
   script:
-    - tox -v -e py37-doctest -- ./docs
+    - tox -v -e py39-doctest -- ./docs
   artifacts:
     paths:
-      - .tox/py37-doctest/tmp/docs/build/html
+      - .tox/py39-doctest/tmp/docs/build/html

@@ -115,16 +115,14 @@ upload-results = "gluetool_modules_framework.helpers.upload_results:UploadResult
 url-shortener = "gluetool_modules_framework.helpers.url_shortener:URLShortener"
 
 [tool.poetry.dependencies]
-python = "~3.7.2 || ~3.9"
+python = "~3.9"
 
 ansible = "2.8.5"
 # NOTE: without this dependency the installation will fail with
 #  "The 'backports-abc>=0.4' distribution was not found and is required by tornado"
 backports-abc = "^0.5"
 cmd2 = "0.8.6"
-# NOTE: current sphinxarg.ext requires this version, 0.8.1 and later introduced breaking change
-#  https://github.com/readthedocs/commonmark.py/issues/137
-commonmark = "0.8.0"
+commonmark = "0.9.1"
 docker = "3.5.1"
 docker-pycreds = "0.3.0"
 docutils = "0.14"
@@ -132,7 +130,7 @@ fmf = "0.6.1"
 future = "0.18.2"
 gitdb2 = "2.0.6"
 GitPython = "2.1.15"
-gluetool = "^2.1"
+gluetool = {git = "https://gitlab.com/testing-farm/gluetool.git", rev = "main"}
 inotify = "0.2.10"
 ipdb = { version = "^0.13.9", optional = true }
 jaeger-client = "4.0.0"
@@ -159,11 +157,11 @@ rpm-py-installer = "0.7.1"
 # last version of ruamel.yaml with python 2.7 support
 "ruamel.yaml.clib" = "0.2.2"
 simplejson = "^3.17.2"
-sphinx = "1.5.2"
-sphinx-argparse = "0.2.0"
-sphinxcontrib-programoutput = "0.11"
+Sphinx = "^5.1"
+sphinx-argparse = "*"
+sphinxcontrib-programoutput = "*"
+sphinx-rtd-theme = "*"
 typing-extensions = "^4.4.0"
-sphinx-rtd-theme = "0.5.2"
 
 [tool.poetry.dev-dependencies]
 # attrs 21.4 is the last one supporting Python 2.

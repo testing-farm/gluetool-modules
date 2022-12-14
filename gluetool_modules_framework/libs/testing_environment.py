@@ -100,13 +100,13 @@ class TestingEnvironment(object):
             if not show_none_fields and field_value is None:
                 continue
 
-            if hide_secrets and field_name == 'secrets':
+            if hide_secrets and field_name == 'secrets' and field_value is not None:
                 field_value = '******'
             fields.append((field_name, field_value))
 
         return fields
 
-    def serialize_to_string(self, hide_secrets=True, show_none_fields=True):
+    def serialize_to_string(self, hide_secrets=True, show_none_fields=False):
         # type: (bool, bool) -> str
         """
         Serialize testing environment to comma-separated list of keys and their values, representing
@@ -122,7 +122,7 @@ class TestingEnvironment(object):
             '{}={}'.format(name, value) for name, value in self._serialize_get_fields(hide_secrets, show_none_fields)
         ])
 
-    def serialize_to_json(self, hide_secrets=True, show_none_fields=True):
+    def serialize_to_json(self, hide_secrets=True, show_none_fields=False):
         # type: (bool, bool) -> Dict[str, Any]
         """
         Serialize testing environment to a JSON dictionary.

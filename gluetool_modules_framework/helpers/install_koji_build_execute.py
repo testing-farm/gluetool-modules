@@ -97,7 +97,7 @@ class InstallKojiBuildExecute(gluetool.Module):
         # TODO: hack, for multi-arch suppport, actually the arch should come from guest I guess ...
         try:
             arch = self.shared('testing_farm_request').environments_requested[0].arch
-        except (AttributeError, KeyError, IndexError):
+        except (AttributeError, IndexError):
             arch = None
         if not arch:
             arch = 'x86_64'

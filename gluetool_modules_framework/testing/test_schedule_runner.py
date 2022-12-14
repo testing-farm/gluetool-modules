@@ -317,7 +317,7 @@ class TestScheduleRunner(gluetool.Module):
                 tags={
                     'entry-id': schedule_entry.id,
                     'runner-capability': schedule_entry.runner_capability,
-                    'testing-environment': schedule_entry.testing_environment.serialize_to_json()
+                    'testing-environment': schedule_entry.testing_environment.serialize_to_json(show_none_fields=False)
                 }
             )
 

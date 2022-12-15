@@ -11,7 +11,7 @@ from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestSche
     TestScheduleEntryState
 
 # Type annotations
-from typing import cast, TYPE_CHECKING, Any, Dict, List  # noqa
+from typing import cast, TYPE_CHECKING, Any, Dict, List, Optional  # noqa
 
 if TYPE_CHECKING:
     import bs4  # noqa
@@ -120,11 +120,13 @@ class TestScheduleReport(gluetool.Module):
         """
         Find out overall result of the schedule.
 
-        1. if any entry is still incomplete, result is ``UNDEFINED``
-        2. if any entry finished didn't finish with ``OK`` state, result is ``ERROR``
-        3. if all entries finished with ``PASSED`` result, result is ``PASSED``
-        4. result of the first entry with non-``PASSED`` result is returned
+        1. if any entry is still incomplete, schedule result is ``UNDEFINED``
+        2. if any entry finished didn't finish with ``OK`` state, schedule result is ``ERROR``
+        3. if all entries finished with ``PASSED`` result, schedule result is ``PASSED``
+        4. schedule result is the result of the first entry with non-``PASSED`` result
         """
+
+        assert schedule
 
         if not all((schedule_entry.stage == TestScheduleEntryStage.COMPLETE for schedule_entry in schedule)):
             schedule.result = TestScheduleResult.UNDEFINED
@@ -139,13 +141,9 @@ class TestScheduleReport(gluetool.Module):
             return
 
         for schedule_entry in schedule:
-            if schedule_entry.result == TestScheduleResult.PASSED:
-                continue
-
-            schedule.result = schedule_entry.result
-            return
-
-        schedule.result = TestScheduleResult.UNDEFINED
+            if not schedule_entry.result == TestScheduleResult.PASSED:
+                schedule.result = schedule_entry.result
+                return
 
     def _overall_result_custom(self, schedule):
         # type: (TestSchedule) -> None
@@ -166,9 +164,9 @@ class TestScheduleReport(gluetool.Module):
         )
 
         def _set_result(instruction, command, argument, context):
-            # type: (Dict[str, Any], str, Any, Dict[str, Any]) -> None
+            # type: (Dict[str, Any], str, str, Dict[str, Any]) -> None
 
-            result_name = argument.toupper()
+            result_name = argument.upper()
             result_value = TestScheduleResult.__members__.get(result_name, None)
 
             if result_value is None:
@@ -255,7 +253,12 @@ class TestScheduleReport(gluetool.Module):
         sort_children(testsuites_properties, lambda child: child.attrs['name'])
 
         for schedule_entry in schedule:
-            test_suite = gluetool.utils.new_xml_element('testsuite', _parent=test_suites, tests='0')
+            test_suite = gluetool.utils.new_xml_element(
+                'testsuite',
+                _parent=test_suites,
+                name=schedule_entry.id,
+                tests='0'
+            )
             test_suite['result'] = schedule_entry.result.name.lower()
             test_suite['name'] = schedule_entry.id
 
@@ -282,7 +285,8 @@ class TestScheduleReport(gluetool.Module):
                 name='baseosci.result', value=schedule_entry.result.name.lower()
             )
 
-            self.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
+            if hasattr(schedule_entry, 'results'):
+                self.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
 
             sort_children(testsuite_properties, lambda child: child.attrs['name'])
 
@@ -303,6 +307,16 @@ class TestScheduleReport(gluetool.Module):
     def execute(self):
         # type: () -> None
         self.require_shared('test_schedule')
+        self._schedule.log(self.info, label='finished schedule')
+
+    def destroy(self, failure=None):
+        # type: (Optional[Any]) -> None
+
+        if not self._schedule:
+            return
+
+        if failure:
+            self._schedule.log(self.info, label='aborted schedule')
 
         self._serialize_results(self._schedule)
 

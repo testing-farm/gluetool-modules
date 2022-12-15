@@ -1,0 +1,3 @@
+---
+- rule: 'True'
+  set-result: passed

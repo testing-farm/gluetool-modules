@@ -64,16 +64,12 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
                 'help': 'Additional options for test-scheduler-system-roles module.',
                 'default': ''
             },
-            'test-scheduler-sti-options': {
-                'help': 'Additional options for test-scheduler-sti module.',
+            'test-schedule-sti-options': {
+                'help': 'Additional options for test-schedule-sti module.',
                 'default': ''
             },
             'test-schedule-runner-options': {
                 'help': 'Additional options for test-schedule-runner module.',
-                'default': ''
-            },
-            'test-schedule-runner-sti-options': {
-                'help': 'Additional options for test-schedule-runner-sti module.',
                 'default': ''
             },
             'composes-ansibles-matrix': {
@@ -203,9 +199,8 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
             'pipeline_state_reporter_options': self.option('pipeline-state-reporter-options'),
             'test_scheduler_baseosci_options': self.option('test-scheduler-baseosci-options'),
             'test_scheduler_system_roles_options': self.option('test-scheduler-system-roles-options'),
-            'test_scheduler_sti_options': self.option('test-scheduler-sti-options'),
+            'test_schedule_sti_options': self.option('test-schedule-sti-options'),
             'test_schedule_runner_options': self.option('test-schedule-runner-options'),
-            'test_schedule_runner_sti_options': self.option('test-schedule-runner-sti-options'),
         }
 
         # Do nothing if branch or comment author is not a collaborator or [citest skip]

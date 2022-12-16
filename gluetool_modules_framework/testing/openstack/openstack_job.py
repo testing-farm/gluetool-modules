@@ -69,8 +69,8 @@ class OpenStackJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkinsJ
             'help': 'Additional options for test-scheduler-baseosci module.',
             'default': ''
         },
-        'test-scheduler-sti-options': {
-            'help': 'Additional options for test-scheduler-sti module.'
+        'test-schedule-sti-options': {
+            'help': 'Additional options for test-schedule-sti module.'
         },
         'test-schedule-tmt-options': {
             'help': 'Additional options for test-schedule-tmt module.'
@@ -184,7 +184,7 @@ class OpenStackJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkinsJ
             'install_brew_build_options': self.option('install-brew-build-options'),
             'brew_build_task_params_options': brew_build_task_params_options,
             'test_scheduler_baseosci_options': test_scheduler_baseosci_options,
-            'test_scheduler_sti_options': self.option('test-scheduler-sti-options'),
+            'test_schedule_sti_options': self.option('test-schedule-sti-options'),
             'test_schedule_tmt_options': self.option('test-schedule-tmt-options'),
             'test_scheduler_upgrades_options': self.option('test-scheduler-upgrades-options'),
             'test_schedule_runner_options': self.option('test-schedule-runner-options'),

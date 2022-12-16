@@ -29,7 +29,7 @@ PROXIED_MODULE_NAMES = (
     'openstack',
     'pipeline-install-ancestors',
     'test-scheduler-baseosci',
-    'test-scheduler-sti',
+    'test-schedule-sti',
     'test-scheduler-upgrades',
     'test-schedule-report',
     'test-schedule-runner',

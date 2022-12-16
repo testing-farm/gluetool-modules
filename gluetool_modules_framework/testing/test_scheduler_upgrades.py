@@ -9,7 +9,7 @@ from gluetool.log import log_dict
 from gluetool_modules_framework.libs.artifacts import splitFilename
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from gluetool_modules_framework.libs.test_schedule import TestSchedule
-from gluetool_modules_framework.testing.test_scheduler_sti import TestScheduleEntry
+from gluetool_modules_framework.testing.test_schedule_sti import TestScheduleEntry
 
 # Type annotations
 from typing import List, Optional, cast  # noqa

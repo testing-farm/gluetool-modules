@@ -671,7 +671,7 @@ class TestScheduleTMT(Module):
             self.overloaded_shared('run_test_schedule_entry', schedule_entry)
             return
 
-        self.shared('trigger_event', 'test-schedule-runner-sti.schedule-entry.started',
+        self.shared('trigger_event', 'test-schedule-sti.schedule-entry.started',
                     schedule_entry=schedule_entry)
 
         work_dirpath = self._prepare_environment(schedule_entry)
@@ -690,7 +690,7 @@ class TestScheduleTMT(Module):
 
         log_dict(schedule_entry.debug, 'results', test_results)
 
-        self.shared('trigger_event', 'test-schedule-runner-sti.schedule-entry.finished',
+        self.shared('trigger_event', 'test-schedule-sti.schedule-entry.finished',
                     schedule_entry=schedule_entry)
 
     def serialize_test_schedule_entry_results(self, schedule_entry, test_suite):

@@ -11,11 +11,9 @@ import pytest
 
 import gluetool
 
-import gluetool_modules_framework.testing.test_scheduler_sti
-import gluetool_modules_framework.testing.test_schedule_runner_sti
+import gluetool_modules_framework.testing.test_schedule_sti
 
-from gluetool_modules_framework.testing.test_scheduler_sti import TestScheduleEntry
-from gluetool_modules_framework.testing.test_schedule_runner_sti import TaskRun
+from gluetool_modules_framework.testing.test_schedule_sti import TestScheduleEntry, TaskRun
 from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleResult, TestScheduleEntryOutput, TestScheduleEntryStage
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from gluetool_modules_framework.libs.guest import NetworkedGuest
@@ -32,37 +30,29 @@ def read_asset_file(asset_filename: str):
         return f.read()
 
 
-# TODO: This unit tests file tests two modules: test-scheduler-sti and test-schedule-runner-sti. The reason is that the
-# plan for the future is to join these two modules into one, test-schedule-sti.
-@pytest.fixture(name='module_scheduler')
+@pytest.fixture(name='module')
 def fixture_module_scheduler():
-    return create_module(gluetool_modules_framework.testing.test_scheduler_sti.TestSchedulerSTI)[1]
-
-
-@pytest.fixture(name='module_runner')
-def fixture_module_runner():
-    return create_module(gluetool_modules_framework.testing.test_schedule_runner_sti.STIRunner)[1]
+    return create_module(gluetool_modules_framework.testing.test_schedule_sti.TestScheduleSTI)[1]
 
 
 def clone_mock(logger=None, prefix=None):
     return os.path.abspath(ASSETS_DIR)
 
 
-# Testing module test-scheduler-sti
-def test_create_test_schedule_empty(module_scheduler):
-    assert [] == module_scheduler.shared('create_test_schedule', [])
+def test_create_test_schedule_empty(module):
+    assert [] == module.shared('create_test_schedule', [])
 
 
-def test_create_test_schedule_playbook(module_scheduler, monkeypatch):
+def test_create_test_schedule_playbook(module, monkeypatch):
     # Prepare the module
     option_playbook = ['path/to/playbook1', 'another/playbook2']
     option_playbook_variables = ['key1=value1#key 2=value 2']
     testing_environment_constraints = [TestingEnvironment(arch='x86_64', compose='Fedora37')]
-    module_scheduler._config.update({
+    module._config.update({
         'playbook': option_playbook,
         'playbook-variables': option_playbook_variables
     })
-    patch_shared(monkeypatch, module_scheduler, {}, callables={
+    patch_shared(monkeypatch, module, {}, callables={
         'eval_context': lambda: {}
     })
 
@@ -79,7 +69,7 @@ def test_create_test_schedule_playbook(module_scheduler, monkeypatch):
             expected_test_schedule.append(entry)
 
     # Run the module
-    test_schedule = module_scheduler.shared('create_test_schedule', testing_environment_constraints)
+    test_schedule = module.shared('create_test_schedule', testing_environment_constraints)
 
     # Check the results
     assert len(test_schedule) == 2
@@ -89,8 +79,8 @@ def test_create_test_schedule_playbook(module_scheduler, monkeypatch):
     assert test_schedule[1].variables == expected_test_schedule[1].variables
 
 
-def test_create_test_schedule_repo_request(module_scheduler, monkeypatch):
-    patch_shared(monkeypatch, module_scheduler, {}, callables={
+def test_create_test_schedule_repo_request(module, monkeypatch):
+    patch_shared(monkeypatch, module, {}, callables={
         'dist_git_repository': lambda: MagicMock(package='somepackage', branch='somebranch', clone=clone_mock),
         'testing_farm_request': lambda: MagicMock(
             package='somepackage',
@@ -101,38 +91,37 @@ def test_create_test_schedule_repo_request(module_scheduler, monkeypatch):
     })
     testing_environment_constraints = [TestingEnvironment(arch='x86_64', compose='Fedora37')]
 
-    test_schedule = module_scheduler.shared('create_test_schedule', testing_environment_constraints)
+    test_schedule = module.shared('create_test_schedule', testing_environment_constraints)
     assert len(test_schedule) == 1
     assert test_schedule[0].testing_environment == testing_environment_constraints[0]
 
 
-def test_create_test_schedule_repo_no_request(module_scheduler, monkeypatch):
-    module_scheduler._config.update({
+def test_create_test_schedule_repo_no_request(module, monkeypatch):
+    module._config.update({
         'sti-tests': 'testing_farm/request1.json'
     })
-    patch_shared(monkeypatch, module_scheduler, {}, callables={
+    patch_shared(monkeypatch, module, {}, callables={
         'dist_git_repository': lambda: MagicMock(package='somepackage', branch='somebranch', clone=clone_mock)})
     testing_environment_constraints = [TestingEnvironment(arch='x86_64', compose='Fedora37')]
 
-    test_schedule = module_scheduler.shared('create_test_schedule', testing_environment_constraints)
+    test_schedule = module.shared('create_test_schedule', testing_environment_constraints)
     assert len(test_schedule) == 1
     assert test_schedule[0].testing_environment == testing_environment_constraints[0]
 
 
-# Testing module test-schedule-runner-sti
 @pytest.mark.parametrize('results_filename, results_content, expected_results', [
     ('test.log', read_asset_file('test.log'), ('result', 'pass', TestScheduleResult.PASSED)),
     ('results.yml', read_asset_file('results.yaml'), ('foo', 'bar', TestScheduleResult.FAILED)),
 ])
-def test_run_test_schedule_entry(module_runner, monkeypatch, results_filename, results_content, expected_results):
-    with tempfile.TemporaryDirectory(prefix='test-schedule-runner-sti') as tmpdir:
+def test_run_test_schedule_entry(module, monkeypatch, results_filename, results_content, expected_results):
+    with tempfile.TemporaryDirectory(prefix='test-schedule-sti') as tmpdir:
         # Prepare the module
         def run_playbook_mock(playbook_filepath, guest, inventory, cwd=None, json_output=False, log_filepath=None,
                               variables=None, ansible_playbook_filepath=None, extra_options=None):
             with open(os.path.join(cwd, results_filename), 'w') as file:
                 file.write(results_content)
 
-        module_runner._config.update({
+        module._config.update({
             'watch-timeout': 1
         })
         schedule_entry = TestScheduleEntry(
@@ -140,9 +129,9 @@ def test_run_test_schedule_entry(module_runner, monkeypatch, results_filename, r
             gluetool.utils.normalize_path(os.path.join(tmpdir, 'playbook1.yaml')),
             {}
         )
-        schedule_entry.guest = NetworkedGuest(module_runner, 'hostname', 'name')
+        schedule_entry.guest = NetworkedGuest(module, 'hostname', 'name')
 
-        patch_shared(monkeypatch, module_runner, {}, callables={
+        patch_shared(monkeypatch, module, {}, callables={
             'run_playbook': run_playbook_mock,
             'detect_ansible_interpreter': lambda _: None,
         })
@@ -157,7 +146,7 @@ def test_run_test_schedule_entry(module_runner, monkeypatch, results_filename, r
         original_cwd = os.getcwd()
         os.chdir(tmpdir)
         try:
-            module_runner.shared('run_test_schedule_entry', schedule_entry)
+            module.shared('run_test_schedule_entry', schedule_entry)
         finally:
             os.chdir(original_cwd)
 
@@ -215,7 +204,7 @@ def test_run_test_schedule_entry(module_runner, monkeypatch, results_filename, r
         bs4.BeautifulSoup(read_asset_file('results2.xml'), 'xml')
     )
 ])
-def test_serialize_test_schedule_entry_results(module_runner, schedule_entry_results,
+def test_serialize_test_schedule_entry_results(module, schedule_entry_results,
                                                expected_schedule_entry_outputs, expected_xml):
     schedule_entry = TestScheduleEntry(
         gluetool.log.Logging().get_logger(),
@@ -224,14 +213,14 @@ def test_serialize_test_schedule_entry_results(module_runner, schedule_entry_res
     )
     schedule_entry.artifact_dirpath = 'some/artifact-dirpath'
     schedule_entry.work_dirpath = 'some/work-dirpath'
-    schedule_entry.guest = NetworkedGuest(module_runner, 'hostname', 'name')
+    schedule_entry.guest = NetworkedGuest(module, 'hostname', 'name')
     schedule_entry.testing_environment = schedule_entry.guest.environment = TestingEnvironment(arch='x86_64', compose='rhel-9')  # noqa
     schedule_entry.results = schedule_entry_results
     schedule_entry.runner_capability = 'sti'
     test_suite = gluetool.utils.new_xml_element('testsuite')
 
     assert str(test_suite) == '<testsuite/>'
-    module_runner.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
+    module.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
 
     assert schedule_entry.outputs == expected_schedule_entry_outputs
 

@@ -1,0 +1,65 @@
+---
+#
+# A successful provisioning of a guest.
+#
+
+environment:
+  arch: x86_64
+  compose: RHEL
+  snapshots: false
+
+requests:
+  get:
+    - url: guests/$
+      status_code: 200
+      response: []
+
+    - url: guests/e1c0642d-e5c3-4db9-a845-e740e201e734$
+      status_code: 200
+      generator:
+        - guestname: e1c0642d-e5c3-4db9-a845-e740e201e734
+          address: null
+          state: promised
+        - guestname: e1c0642d-e5c3-4db9-a845-e740e201e734
+          address: 1.1.1.1
+          state: ready
+        # TODO: it would be great to understand why this request is needed
+        - guestname: e1c0642d-e5c3-4db9-a845-e740e201e734
+          address: 1.1.1.1
+          state: ready
+
+    - url: guests/e1c0642d-e5c3-4db9-a845-e740e201e734/events
+      status_code: 200
+      response:
+        - details:
+            task route-guest-request
+          eventname: entered-task
+          guestname: successful-provision
+          updated: 2022-12-22 15:18:44.283570
+
+  delete:
+    - url: guests/e1c0642d-e5c3-4db9-a845-e740e201e734$
+      status_code: 204
+      response: None
+
+  post:
+    - url: guests/$
+      status_code: 201
+      response:
+        guestname: e1c0642d-e5c3-4db9-a845-e740e201e734
+        address: null
+        state: created
+        ssh:
+          keyname: some-key
+          username: some-user
+          port: 22
+
+asserts:
+  guest:
+    name: e1c0642d-e5c3-4db9-a845-e740e201e734
+    artemis_id: e1c0642d-e5c3-4db9-a845-e740e201e734
+    username: some-user
+    port: 22
+    hostname: 1.1.1.1
+    options: []
+    supports_snapshots: false

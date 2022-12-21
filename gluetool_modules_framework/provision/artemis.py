@@ -145,7 +145,7 @@ class ArtemisAPI(object):
                 # raises ConnectionError with 'Connection aborted' string in the message.
                 # https://urllib3.readthedocs.io/en/latest/reference/#urllib3.exceptions.ProtocolError
                 if 'Connection aborted' in error_string:
-                    return Result.Error('Connection aborted: {}'.format(error_string))
+                    return Result.Error(error_string)
                 six.reraise(*sys.exc_info())
 
             if response.status_code == expected_status_code:

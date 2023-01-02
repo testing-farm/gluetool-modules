@@ -8,6 +8,7 @@ import pytest
 import gluetool
 import os
 import shutil
+import copy
 from mock import MagicMock
 from mock import call
 import gluetool_modules_framework.libs.sut_installation
@@ -19,10 +20,12 @@ from . import create_module, patch_shared, check_loadable
 LOG_DIR_NAME = 'artifact-installation'
 
 
-def mock_guest(execute_mock):
+def mock_guest(execute_mock, artifacts=None):
     guest_mock = MagicMock()
     guest_mock.name = 'guest0'
     guest_mock.execute = execute_mock
+    if artifacts:
+        guest_mock.environment.artifacts = artifacts
 
     return guest_mock
 
@@ -60,14 +63,45 @@ def fixture_module():
 
 @pytest.fixture(name='module_shared_patched')
 def fixture_module_shared_patched(module, monkeypatch):
+    """
+    Modification of the `InstallCoprBuild` module such as mocking shared functions.
+    """
     primary_task_mock = MagicMock()
     primary_task_mock.repo_url = 'dummy_repo_url'
     primary_task_mock.rpm_urls = ['dummy_rpm_url1', 'dummy_rpm_url2']
     primary_task_mock.rpm_names = ['dummy_rpm_names1', 'dummy_rpm_names2']
+    primary_task_mock.project = 'copr/project'
+
+    def tasks_mock(task_ids=None):
+        """
+        Mock of shared function `tasks`. Returns a list of `CoprTask` mocks.
+
+        The parameter `task_ids` represents artifacts to be installed. If not specified, a single task will be returned.
+        Otherwise, the single `primary_task_mock` will be copied over for each entry in `task_ids` and their properties
+        will be modified so each `CoprTask` mocks is distinguishable from each other by the `task_id`.
+        """
+        if task_ids:
+            tasks = []
+            for task_id in task_ids:
+                def append_task_id(s):
+                    return '{}_{}'.format(s, task_id)
+
+                tasks.append(copy.deepcopy(primary_task_mock))
+                tasks[-1].repo_url = append_task_id(tasks[-1].repo_url)
+                tasks[-1].rpm_urls[0] = append_task_id(tasks[-1].rpm_urls[0])
+                tasks[-1].rpm_urls[1] = append_task_id(tasks[-1].rpm_urls[1])
+                tasks[-1].rpm_names[0] = append_task_id(tasks[-1].rpm_names[0])
+                tasks[-1].rpm_names[1] = append_task_id(tasks[-1].rpm_names[1])
+                tasks[-1].project = append_task_id(tasks[-1].project)
+        else:
+            tasks = [primary_task_mock]
+
+        return tasks
 
     patch_shared(monkeypatch, module, {
-        'primary_task': primary_task_mock,
         'setup_guest': None
+    }, callables={
+        'tasks': tasks_mock
     })
 
     return module, primary_task_mock
@@ -77,30 +111,76 @@ def test_loadable(module):
     check_loadable(module.glue, 'gluetool_modules_framework/helpers/install_copr_build.py', 'InstallCoprBuild')
 
 
-def test_setup_guest(module_shared_patched, tmpdir):
+@pytest.mark.parametrize('guest_artifacts, expected_commands, expected_filenames', [
+    (
+        # Test case no. 1
+        None,  # No input artifacts
+        [  # Expected install commands
+            'curl -v dummy_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project-1.repo',
+            'dnf --allowerasing -y reinstall dummy_rpm_url1 || true',
+            'dnf --allowerasing -y reinstall dummy_rpm_url2 || true',
+            'dnf --allowerasing -y install dummy_rpm_url1 dummy_rpm_url2',
+            'rpm -q dummy_rpm_names1',
+            'rpm -q dummy_rpm_names2',
+        ],
+        None  # No expected generated files - use the default ones in `assert_log_files()`
+    ),
+    (
+        # Test case no. 2
+        [  # Input artifacts
+            {'type': 'fedora-copr-build', 'id': 'artifact1'},
+            {'type': 'ignore-this-type', 'id': 'artifact-other'},
+            {'type': 'fedora-copr-build', 'id': 'artifact2'},
+            {'type': 'ignore-this-type-too', 'id': 'artifact-other2'},
+            {'type': 'fedora-copr-build', 'id': 'artifact3'}
+        ],
+        [  # Expected install commands
+            'curl -v dummy_repo_url_artifact1 --retry 5 --output /etc/yum.repos.d/copr_build-copr_project_artifact1-1.repo',
+            'dnf --allowerasing -y reinstall dummy_rpm_url1_artifact1 || true',
+            'dnf --allowerasing -y reinstall dummy_rpm_url2_artifact1 || true',
+            'curl -v dummy_repo_url_artifact2 --retry 5 --output /etc/yum.repos.d/copr_build-copr_project_artifact2-2.repo',
+            'dnf --allowerasing -y reinstall dummy_rpm_url1_artifact2 || true',
+            'dnf --allowerasing -y reinstall dummy_rpm_url2_artifact2 || true',
+            'curl -v dummy_repo_url_artifact3 --retry 5 --output /etc/yum.repos.d/copr_build-copr_project_artifact3-3.repo',
+            'dnf --allowerasing -y reinstall dummy_rpm_url1_artifact3 || true',
+            'dnf --allowerasing -y reinstall dummy_rpm_url2_artifact3 || true',
+            'dnf --allowerasing -y install dummy_rpm_url1_artifact1 dummy_rpm_url2_artifact1 dummy_rpm_url1_artifact2 dummy_rpm_url2_artifact2 dummy_rpm_url1_artifact3 dummy_rpm_url2_artifact3',
+            'rpm -q dummy_rpm_names1_artifact1',
+            'rpm -q dummy_rpm_names2_artifact1',
+            'rpm -q dummy_rpm_names1_artifact2',
+            'rpm -q dummy_rpm_names2_artifact2',
+            'rpm -q dummy_rpm_names1_artifact3',
+            'rpm -q dummy_rpm_names2_artifact3',
+        ],
+        [  # Expected generated files
+            '0-Download-copr-repository.txt',
+            '1-Reinstall-packages.txt',
+            '2-Download-copr-repository.txt',
+            '3-Reinstall-packages.txt',
+            '4-Download-copr-repository.txt',
+            '5-Reinstall-packages.txt',
+            '6-Install-packages.txt',
+            '7-Verify-packages-installed.txt',
+            '8-Verify-packages-installed.txt',
+            '9-Verify-packages-installed.txt',
+        ]
+    )
+])
+def test_setup_guest(module_shared_patched, tmpdir, guest_artifacts, expected_commands, expected_filenames):
     module, primary_task_mock = module_shared_patched
 
     execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
-    guest = mock_guest(execute_mock)
+    guest = mock_guest(execute_mock, artifacts=guest_artifacts)
 
     module.setup_guest(guest, stage=GuestSetupStage.ARTIFACT_INSTALLATION, log_dirpath=str(tmpdir))
 
-    commands = [
-        'curl -v dummy_repo_url --output /etc/yum.repos.d/copr_build.repo',
-        'dnf --allowerasing -y reinstall dummy_rpm_url1 || true',
-        'dnf --allowerasing -y reinstall dummy_rpm_url2 || true',
-        'dnf --allowerasing -y install dummy_rpm_url1 dummy_rpm_url2',
-        'rpm -q dummy_rpm_names1',
-        'rpm -q dummy_rpm_names2',
-    ]
-
-    calls = [call('command -v dnf')] * 2 + [call(c) for c in commands]
+    calls = [call('command -v dnf')] * 2 + [call(c) for c in expected_commands]
     execute_mock.assert_has_calls(calls, any_order=False)
     assert execute_mock.call_count == len(calls)
-    assert_log_files(guest, str(tmpdir))
+    assert_log_files(guest, str(tmpdir), file_names=expected_filenames)
 
     with open(os.path.join(str(tmpdir), 'artifact-installation-guest0', INSTALL_COMMANDS_FILE)) as f:
-        assert f.read() == '\n'.join(commands) + '\n'
+        assert f.read() == '\n'.join(expected_commands) + '\n'
 
 
 def test_no_dnf(module_shared_patched, tmpdir):
@@ -118,14 +198,18 @@ def test_no_dnf(module_shared_patched, tmpdir):
     module.setup_guest(guest, stage=GuestSetupStage.ARTIFACT_INSTALLATION, log_dirpath=str(tmpdir))
 
     calls = [
-        call('curl -v dummy_repo_url --output /etc/yum.repos.d/copr_build.repo'),
+        call('command -v dnf'),
+        call('curl -v dummy_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project-1.repo'),
         call('yum -y reinstall dummy_rpm_url1'),
         call('yum -y reinstall dummy_rpm_url2'),
         call('yum -y downgrade dummy_rpm_url1 dummy_rpm_url2'),
-        call('yum -y install dummy_rpm_url1 dummy_rpm_url2')
+        call('yum -y install dummy_rpm_url1 dummy_rpm_url2'),
+        call('rpm -q dummy_rpm_names1'),
+        call('rpm -q dummy_rpm_names2')
     ]
 
-    execute_mock.assert_has_calls(calls, any_order=True)
+    execute_mock.assert_has_calls(calls, any_order=False)
+    assert execute_mock.call_count == 9
     assert_log_files(guest, str(tmpdir), file_names=[
         '0-Download-copr-repository.txt',
         '1-Reinstall-packages.txt',
@@ -153,7 +237,7 @@ def test_nvr_check_fails(module_shared_patched, tmpdir):
 
     assert len(outputs) == 1
     assert outputs[0].stage == GuestSetupStage.ARTIFACT_INSTALLATION
-    assert outputs[0].label == 'Copr build installation'
+    assert outputs[0].label == 'Copr build(s) installation'
     assert outputs[0].log_path == '{}/artifact-installation-guest0'.format(str(tmpdir))
     assert isinstance(outputs[0].additional_data, gluetool_modules_framework.libs.sut_installation.SUTInstallation)
 
@@ -181,7 +265,7 @@ def test_repo_download_fails(module_shared_patched, tmpdir):
 
     assert len(outputs) == 1
     assert outputs[0].stage == GuestSetupStage.ARTIFACT_INSTALLATION
-    assert outputs[0].label == 'Copr build installation'
+    assert outputs[0].label == 'Copr build(s) installation'
     assert outputs[0].log_path == '{}/artifact-installation-guest0'.format(str(tmpdir))
     assert isinstance(outputs[0].additional_data, gluetool_modules_framework.libs.sut_installation.SUTInstallation)
 

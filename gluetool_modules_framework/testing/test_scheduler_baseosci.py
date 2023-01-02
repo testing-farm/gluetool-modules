@@ -17,7 +17,7 @@ from gluetool_modules_framework.libs import ANY, GlueEnum
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 
 # Type annotations
-from typing import TYPE_CHECKING, cast, Any, Dict, List, NamedTuple, Union  # noqa
+from typing import TYPE_CHECKING, cast, Any, Dict, List, NamedTuple, Union, Optional  # noqa
 
 if TYPE_CHECKING:
     from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleEntry  # noqa
@@ -152,7 +152,7 @@ class TestSchedulerBaseOSCI(gluetool.Module):
 
     shared_functions = ['test_schedule']
 
-    _schedule: 'TestSchedule'
+    _schedule = None  # type: Optional[TestSchedule]
 
     @utils.cached_property
     def arch_compatibility_map(self):
@@ -203,7 +203,7 @@ class TestSchedulerBaseOSCI(gluetool.Module):
             return []
 
     def test_schedule(self):
-        # type: () -> TestSchedule
+        # type: () -> Optional[TestSchedule]
         """
         Returns schedule for runners. It tells runner which recipe sets
         it should run on which guest.

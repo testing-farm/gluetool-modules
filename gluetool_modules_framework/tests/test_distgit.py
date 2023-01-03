@@ -118,7 +118,8 @@ def test_artifact(monkeypatch, module):
     assert repository.package == 'some-component'
     assert repository.clone_url == 'a-value'
     assert repository.web_url == 'a-value'
-    assert repository.branch == 'a-value'
+    assert repository.ref == 'a-value'
+    assert repository.branch is None
 
 
 def test_artifact_override(monkeypatch, module):

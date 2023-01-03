@@ -329,7 +329,14 @@ class DistGit(gluetool.Module):
         if self.option('ref'):
             return None
 
-        return self.option('branch') or cast(str, self.branch_map.match(task.target))
+        elif self.option('branch'):
+            return cast(str, self.option('branch'))
+
+        elif self.option('branch-map'):
+            assert self.option('branch-map') is not None
+            return cast(str, self.branch_map.match(task.target))
+
+        return None
 
     def _artifact_ref(self, task):
         # type: (KojiTask) -> Optional[str]
@@ -374,7 +381,6 @@ class DistGit(gluetool.Module):
     def sanity(self):
         # type: () -> None
         required_options = [
-            ('branch-map', 'branch'),
             ('clone-url-map', 'clone-url'),
             ('web-url-map', 'web-url')
         ]

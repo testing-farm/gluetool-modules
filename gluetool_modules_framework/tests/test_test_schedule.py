@@ -17,6 +17,7 @@ from gluetool_modules_framework.libs.test_schedule import (
     TestScheduleEntryState as TSEntryState, TestScheduleEntry, InvalidTmtReferenceError,
     EmptyTestScheduleError, _env_to_str, _guest_to_str
 )
+from gluetool_modules_framework.libs.guest import NetworkedGuest
 from gluetool_modules_framework.helpers.rules_engine import RulesEngine
 from . import create_module, patch_shared
 
@@ -35,7 +36,15 @@ def fixture_guest():
         environment=TestingEnvironment(arch='x86_64', compose='Fedora37', snapshots=True),
         name='bar',
         username='toor',
-        port='2222'
+        port=2222,
+        setup=MagicMock(return_value=Ok([
+            GuestSetupOutput(
+                stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
+                label='guest setup',
+                log_path='log',
+                additional_data='data'
+            )
+        ]))
     )
     # For some reason, MagicMock doesn't set 'name'.
     guest.name = 'bar'
@@ -228,6 +237,20 @@ def test_log(module, monkeypatch, log, guest):
     """
     test_schedule = create_test_schedule([(TSEntryStage.CREATED, TSEntryState.OK, TSResult.UNDEFINED)])
     run_test_schedule_entry_mock = MagicMock()
+
+    guest = NetworkedGuest(module, name='bar', hostname='foo', port=2222, username='toor',
+                           environment=TestingEnvironment(arch='x86_64', compose='Fedora37', snapshots=True))
+    guest.destroy = MagicMock()
+    guest.setup = MagicMock(return_value=Ok([
+        GuestSetupOutput(
+            stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
+            label='guest setup',
+            log_path='log',
+            additional_data='data'
+        )
+    ]))
+
+    print(guest.environment.arch)
     patch_shared(monkeypatch, module, {}, callables={
         'test_schedule': lambda: test_schedule,
         'evaluate_filter': evaluate_filter_mock,
@@ -266,8 +289,8 @@ def test_log(module, monkeypatch, log, guest):
                              connection_info_docs_link="http://dummy.lan/docs") is None
     assert str(log.records).find('http://dummy.lan/docs') != -1
 
-    # Next test... The behaviour changes when there is no username.
-    del guest.username
+    # Next test... The behaviour changes when there is no hostname. See
+    del guest.hostname
     log.clear()
     assert test_schedule.log(logger.info, include_connection_info=True) is None
     log_headers, log_cols, guest_name = _cut_up_log(log.records, 2)

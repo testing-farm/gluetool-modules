@@ -6,6 +6,7 @@ import gluetool.log
 from gluetool.log import LoggerMixin, log_table
 import gluetool_modules_framework.libs.guest_setup
 import gluetool_modules_framework.libs.sentry
+from gluetool_modules_framework.libs.guest import NetworkedGuest
 from gluetool_modules_framework.libs.artifacts import artifacts_location
 from gluetool_modules_framework.libs import GlueEnum
 
@@ -394,8 +395,7 @@ class TestSchedule(List[TestScheduleEntry]):
             ]
 
             for se in self:
-                # TODO: would be nice to recognize non-ssh guest better as checking for attributes
-                if se.guest is None or not hasattr(se.guest, 'username'):
+                if se.guest is None or not hasattr(se.guest, 'hostname') or not isinstance(se.guest, NetworkedGuest):
                     ssh_command = 'not available'
 
                 else:

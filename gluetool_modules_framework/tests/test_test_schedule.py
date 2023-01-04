@@ -8,6 +8,7 @@ import gluetool
 import gluetool_modules_framework.testing.test_schedule_runner
 from gluetool.result import Ok
 from gluetool.tests import NonLoadingGlue
+from gluetool.log import LoggerMixin
 from gluetool_modules_framework.libs.guest import Guest
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from gluetool_modules_framework.libs.guest_setup import GuestSetupOutput, GuestSetupStage
@@ -34,15 +35,11 @@ def fixture_guest():
         environment=TestingEnvironment(arch='x86_64', compose='Fedora37', snapshots=True),
         name='bar',
         username='toor',
-        setup=MagicMock(return_value=Ok([
-            GuestSetupOutput(
-                stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
-                label='guest setup',
-                log_path='log',
-                additional_data='data'
-            )
-        ]))
+        port='2222'
     )
+    # For some reason, MagicMock doesn't set 'name'.
+    guest.name = 'bar'
+
     return guest
 
 
@@ -192,7 +189,43 @@ def test_execute_schedule_entry_attribute_map(module, monkeypatch, guest):
     assert test_schedule[0].result == TSResult.UNDEFINED
 
 
-def test_log(module, monkeypatch, guest):
+def _cut_up_log(log_records: str, index: int) -> tuple[list[str], list[str], list[str]]:
+    print('log table cut up debug:')
+    print(f'log count: {len(log_records)}')
+    print(f'records:\n{log_records}')
+    print(f'target record:\n{log_records[index]}')
+    log_lines = str(log_records[index]).split('\n')
+    print(f'log_lines:\n{log_lines}')
+    log_headers = [line.strip() for line in log_lines[2].split('|') if line != '']
+    print(f'log_headers:\n{log_headers}')
+    log_cols = [line.strip() for line in log_lines[4].split('|') if line != '']
+    if len(log_lines) > 5:
+        # The guest name should be in the 6th col. See _guest_to_str(). A newline is inserted.
+        guest_name = [line.strip() for line in log_lines[5].split('|') if line != '']
+        if len(guest_name) > 6:
+            guest_name = guest_name[5]
+        else:
+            guest_name = ''
+    else:
+        guest_name = ''
+    print(f'log_cols:\n{log_cols}')
+    print(f'guest_name:\n{guest_name}')
+    return log_headers, log_cols, guest_name
+
+
+def test_log(module, monkeypatch, log, guest):
+    """
+    The log table record looks like this and is not possible to use simple matching.
+    <LogRecord: gluetool, 20, /home/siwalter/repo/testing-farm/gluetool-modules/port-libs-test_schedule/.tox/py39-unit-tests/lib/python3.9/site-packages/gluetool/log.py, 611, "test schedule:
+    +----------+----------+---------+-----------+--------------------+--------------------+------------------+
+    | SE       | Stage    | State   | Result    | Environment        | Guest              | Runner           |
+    |----------+----------+---------+-----------+--------------------+--------------------+------------------|
+    | dummy_ID | COMPLETE | OK      | UNDEFINED | x86_64 Fedora37 S- | x86_64 Fedora37 S+ | dummy_capability |
+    |          |          |         |           |                    | bar                |                  |
+    +----------+----------+---------+-----------+--------------------+--------------------+------------------+">
+
+    Regex is fine, but rather let's cut it up and test for each part.
+    """
     test_schedule = create_test_schedule([(TSEntryStage.CREATED, TSEntryState.OK, TSResult.UNDEFINED)])
     run_test_schedule_entry_mock = MagicMock()
     patch_shared(monkeypatch, module, {}, callables={
@@ -201,17 +234,45 @@ def test_log(module, monkeypatch, guest):
         'provision': lambda _: [guest],
         'run_test_schedule_entry': run_test_schedule_entry_mock
     })
+    assert guest.name == 'bar'
     module.execute()
     run_test_schedule_entry_mock.assert_called_once()
+
+    # There should only be one entry.
     assert len(test_schedule) == 1
-    assert test_schedule.log(MagicMock, include_logs=True) is None
-    assert test_schedule.log(MagicMock, include_connection_info=True) is None
-    assert test_schedule.log(MagicMock, include_connection_info=True,
+    # Prepare the logger.
+    logger = gluetool.log.Logging.get_logger()
+    # Clear Caplog of previous logs
+    log.clear()
+    # Log something
+    assert test_schedule.log(logger.info, include_logs=True) is None
+    log_headers, log_cols, guest_name = _cut_up_log(log.records, 1)
+    assert log_headers == ['SE', 'Stage', 'State', 'Result', 'Environment', 'Guest', 'Runner']
+    assert log_cols == ['dummy_ID', 'COMPLETE', 'OK', 'UNDEFINED', 'x86_64 Fedora37 S-', 'x86_64 Fedora37 S+',
+                        'dummy_capability']
+    assert guest_name == 'bar'
+    assert str(log.records).find('http://dummy.lan/docs') == -1
+
+    # Next test...
+    log.clear()
+    assert test_schedule.log(logger.info, include_connection_info=True) is None
+    log_headers, log_cols, guest_name = _cut_up_log(log.records, 2)
+    assert log_headers == ['SE', 'State', 'Result', 'Environment', 'SSH Command']
+    assert log_cols == ['dummy_ID', 'OK', 'UNDEFINED', 'x86_64 Fedora37 S-', "ssh -l toor -p 2222 foo"]
+
+    # Next test...
+    log.clear()
+    assert test_schedule.log(logger.info, include_connection_info=True,
                              connection_info_docs_link="http://dummy.lan/docs") is None
-    # The behaviour changes when there is no username.
-    # TODO unit tests for logging
+    assert str(log.records).find('http://dummy.lan/docs') != -1
+
+    # Next test... The behaviour changes when there is no username.
     del guest.username
-    assert test_schedule.log(MagicMock, include_connection_info=True) is None
+    log.clear()
+    assert test_schedule.log(logger.info, include_connection_info=True) is None
+    log_headers, log_cols, guest_name = _cut_up_log(log.records, 2)
+    assert log_headers == ['SE', 'State', 'Result', 'Environment', 'SSH Command']
+    assert log_cols == ['dummy_ID', 'OK', 'UNDEFINED', 'x86_64 Fedora37 S-', "not available"]
 
 
 def test_env_to_str():

@@ -395,7 +395,7 @@ class TestSchedule(List[TestScheduleEntry]):
             ]
 
             for se in self:
-                if se.guest is None or not isinstance(se.guest, NetworkedGuest) or not hasattr(se.guest, 'hostname'):
+                if not (isinstance(se.guest, NetworkedGuest) and hasattr(se.guest, 'hostname')):
                     ssh_command = 'not available'
 
                 else:

@@ -263,6 +263,7 @@ def test_log(module, monkeypatch, log, guest):
 
     # There should only be one entry.
     assert len(test_schedule) == 1
+    assert test_schedule[0]
     # Prepare the logger.
     logger = gluetool.log.Logging.get_logger()
     # Clear Caplog of previous logs
@@ -289,8 +290,17 @@ def test_log(module, monkeypatch, log, guest):
                              connection_info_docs_link="http://dummy.lan/docs") is None
     assert str(log.records).find('http://dummy.lan/docs') != -1
 
-    # Next test... The behaviour changes when there is no hostname. See
+    # Next test... The behaviour changes when there is no hostname.
     del guest.hostname
+    log.clear()
+    assert test_schedule.log(logger.info, include_connection_info=True) is None
+    log_headers, log_cols, guest_name = _cut_up_log(log.records, 2)
+    assert log_headers == ['SE', 'State', 'Result', 'Environment', 'SSH Command']
+    assert log_cols == ['dummy_ID', 'OK', 'UNDEFINED', 'x86_64 Fedora37 S-', "not available"]
+
+    # Next test... The behaviour changes when there is no guest.
+    assert test_schedule[0].guest
+    test_schedule[0].guest = None
     log.clear()
     assert test_schedule.log(logger.info, include_connection_info=True) is None
     log_headers, log_cols, guest_name = _cut_up_log(log.records, 2)

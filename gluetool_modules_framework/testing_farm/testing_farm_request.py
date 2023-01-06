@@ -219,15 +219,14 @@ class TestingFarmRequest(LoggerMixin, object):
         for environment_raw in request['environments_requested']:
             environments_requested.append(TestingEnvironment(
                 arch=environment_raw['arch'],
-                compose=environment_raw['os']['compose'] if 'os' in environment_raw else None,
-                pool=environment_raw['pool'] if 'pool' in environment_raw else None,
-                variables=environment_raw['variables'] if 'variables' in environment_raw else None,
-                secrets=environment_raw['secrets'] if 'secrets' in environment_raw else None,
-                artifacts=cast(List[Dict[str, Any]], environment_raw['artifacts'])
-                if 'artifacts' in environment_raw else None,
-                hardware=environment_raw['hardware'] if 'hardware' in environment_raw else None,
-                settings=environment_raw['settings'] if 'settings' in environment_raw else None,
-                tmt=cast(Dict[str, Any], environment_raw['tmt']) if 'tmt' in environment_raw else None
+                compose=environment_raw.get('os', {}).get('compose'),
+                pool=environment_raw.get('pool'),
+                variables=environment_raw.get('variables'),
+                secrets=environment_raw.get('secrets'),
+                artifacts=cast(Optional[List[Dict[str, Any]]], environment_raw.get('artifacts')),
+                hardware=environment_raw.get('hardware'),
+                settings=environment_raw.get('settings'),
+                tmt=cast(Dict[str, Any], environment_raw.get('tmt'))
             ))
 
         self.environments_requested = environments_requested

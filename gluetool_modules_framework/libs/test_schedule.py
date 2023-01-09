@@ -6,6 +6,7 @@ import gluetool.log
 from gluetool.log import LoggerMixin, log_table
 import gluetool_modules_framework.libs.guest_setup
 import gluetool_modules_framework.libs.sentry
+from gluetool_modules_framework.libs.guest import NetworkedGuest
 from gluetool_modules_framework.libs.artifacts import artifacts_location
 from gluetool_modules_framework.libs import GlueEnum
 
@@ -394,7 +395,7 @@ class TestSchedule(List[TestScheduleEntry]):
             ]
 
             for se in self:
-                if se.guest is None:
+                if not (isinstance(se.guest, NetworkedGuest) and hasattr(se.guest, 'hostname')):
                     ssh_command = 'not available'
 
                 else:

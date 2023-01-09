@@ -87,8 +87,6 @@
     - name: "Detect libcurl dependecies library"
       # not that on RHEL8/Centos8 package installed is libcurl-minimal
       command: rpm -qaR libcurl*
-      args:
-        warn: false
       register: libcurl_deps
 
     - name: "Set pycurl_ssl_library to openssl if libcurl compiled against libssl.so"

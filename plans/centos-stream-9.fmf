@@ -1,0 +1,12 @@
+description: |
+  Test gluetool-modules installation on CentOS Stream 9.
+
+provision+:
+  image: quay.io/centos/centos:stream9
+
+prepare:
+  how: shell
+  script:
+    - yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+    - yum install -y ansible autoconf automake gcc git krb5-devel libcurl-devel libtool
+    - yum install -y libxml2-devel make openssl-devel popt-devel postgresql-devel python3-devel

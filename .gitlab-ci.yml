@@ -94,31 +94,13 @@ pre-commit:
     - poetry --version
     - pre-commit run --show-diff-on-failure --all-files
 
-# Installation Fedora
-py39-install-fedora-36:
+# Run all tmt plans via Testing Farm
+testing-farm:
   extends: .merge-request
   stage: test
-  image: registry.fedoraproject.org/fedora:36
+  image: quay.io/testing-farm/cli:latest
   script:
-    - dnf -y install tmt
-    - dnf -y install tmt-provision-container
-    - tmt run -adddvvv provision -h local plan --name /plans/fedora/py39
-
-# Installation RHEL8
-# DISABLED temporarily due to ubi8 breakage
-# fweimer> Root cause is the pre-8.6 GA UBI repos were pointing at the 8.5 composes
-# Re-enable if this works: podman run registry.access.redhat.com/ubi8/ubi dnf -y install redhat-rpm-config
-# installation-rhel8:
-#   extends: .merge-request
-#   stage: test
-#   # using universal base images for RHEL8
-#   # https://access.redhat.com/articles/4238681
-#   image: registry.access.redhat.com/ubi8/ubi
-#   script:
-#     # tmt requires rsync
-#     - dnf -y install python3-pip git rsync
-#     - pip3 install git+https://github.com/psss/tmt.git
-#     - tmt run -adddvvv provision -h local plan --name /plans/rhel8
+    - testing-farm request --git-ref $CI_MERGE_REQUEST_REF_PATH
 
 # Generate documentation from the sources
 #

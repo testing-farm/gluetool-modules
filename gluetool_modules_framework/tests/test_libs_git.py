@@ -54,12 +54,13 @@ def test_invalid_clone_options(remote_git_repository):
         remote_git_repository.clone()
 
 
-@pytest.mark.parametrize('path, prefix, expected_path, ref', [
-    ('some_path', '', 'some_path', ''),
-    ('some_other_path', 'prefix_foo', 'some_other_path', 'ref_foo'),
-    ('', 'foo', 'workdir', '')
+@pytest.mark.parametrize('path, prefix, expected_path, ref, branch', [
+    ('some_path', '', 'some_path', '', 'branch_bar'),
+    ('some_other_path', 'prefix_foo', 'some_other_path', 'ref_foo', ''),
+    ('', 'foo', 'workdir', '', 'branch_bar'),
+    ('', '', 'workdir', '', 'branch_bar')
 ])
-def test_clone(remote_git_repository, path, prefix, ref, monkeypatch, log, expected_path):
+def test_clone(remote_git_repository, path, prefix, ref, monkeypatch, log, expected_path, branch):
     remote_git_repository.clone_url = 'clone-url'
     remote_git_repository.path = path
 
@@ -67,14 +68,15 @@ def test_clone(remote_git_repository, path, prefix, ref, monkeypatch, log, expec
 
     mock_command_run = MagicMock()
     monkeypatch.setattr(gluetool.utils.Command, 'run', mock_command_run)
-    monkeypatch.setattr(tempfile, 'mkdtemp', MagicMock(return_value='workdir'))
+    mock_mkdtemp = MagicMock(return_value='workdir')
+    monkeypatch.setattr(tempfile, 'mkdtemp', mock_mkdtemp)
 
-    remote_git_repository.clone(path=path, prefix=prefix, ref=ref, clone_timeout=2, clone_tick=1)
+    remote_git_repository.clone(path=path, prefix=prefix, ref=ref, branch=branch, clone_timeout=2, clone_tick=1)
 
     if ref:
         assert log.match(
             levelno=logging.INFO,
-            message="cloning repo clone-url (branch master, ref {})".format(ref)
+            message="cloning repo clone-url (branch not specified, ref {})".format(ref)
         )
         assert log.match(
             levelno=logging.DEBUG,
@@ -83,13 +85,16 @@ def test_clone(remote_git_repository, path, prefix, ref, monkeypatch, log, expec
     else:
         assert log.match(
             levelno=logging.INFO,
-            message="cloning repo clone-url (branch master, ref not specified)"
+            message="cloning repo clone-url (branch {}, ref not specified)".format(branch)
         )
 
         assert log.match(
             levelno=logging.DEBUG,
-            message="['git', 'clone', '--depth', '1', '-b', 'master', 'clone-url', '{}']".format(expected_path)
+            message="['git', 'clone', '--depth', '1', '-b', '{}', 'clone-url', '{}']".format(branch, expected_path)
         )
+
+    if not (path or prefix):
+        mock_mkdtemp.assert_called_with(dir=os.getcwd())
 
 
 def test_log(remote_git_repository, log):
@@ -98,8 +103,17 @@ def test_log(remote_git_repository, log):
     assert log.records[-1].message == 'logs found:\n---v---v---v---v---v---\nsome-log\n---^---^---^---^---^---'
 
 
-def test_clone_without_required_option(remote_git_repository):
-    with pytest.raises(gluetool.GlueError, match='No clone url specified, cannot continue'):
+@pytest.mark.parametrize('options, expected_error_msg', [
+    ({'branch': 'b'}, 'No clone url specified, cannot continue'),
+    ({'ref': 'r'}, 'No clone url specified, cannot continue'),
+    ({'branch': 'b', 'ref': 'r', 'clone_url': 'c'}, 'Both ref and branch specified, misunderstood arguments?'),
+    ({'clone_url': 'c'}, 'Neither ref nor branch specified, cannot continue')
+])
+def test_clone_sanity(remote_git_repository, options, expected_error_msg):
+    for option_name, option_value in options.items():
+        setattr(remote_git_repository, option_name, option_value)
+
+    with pytest.raises(gluetool.GlueError, match=expected_error_msg):
         remote_git_repository.clone()
 
 
@@ -146,7 +160,7 @@ def test_clone_shallow_failed(remote_git_repository, monkeypatch, log):
 
     monkeypatch.setattr(gluetool.utils, 'Command', MockCommand)
 
-    with pytest.raises(gluetool.GlueError, match="Condition 'cloning with timeout 2, tick 1' failed to pass within given time"):
+    with pytest.raises(gluetool.GlueError, match="Condition 'cloning with timeout 2s, tick 1s' failed to pass within given time"):
         remote_git_repository.clone(clone_timeout=2, clone_tick=1)
 
     assert log.match(levelno=logging.INFO, message="['--depth', '1', '-b', 'some-branch', 'clone-url', 'some-path']")
@@ -170,13 +184,45 @@ def test_clone_invalid_ref(remote_git_repository, monkeypatch):
         remote_git_repository.clone(clone_timeout=1, clone_tick=1)
 
 
-def test_checkout_ref(remote_git_repository, monkeypatch):
+@pytest.mark.parametrize('path, ref, calls', [
+    (
+        'some-path', 'some-ref',
+        [
+            ['git', '-C', 'some-path', 'checkout', 'some-ref']
+        ]
+    ),
+    (
+        'some-path', 'refs/remotes/origin/merge-requests/1/head',
+        [
+            [
+                'git', '-C', 'some-path', 'config', 'remote.origin.fetch',
+                '"+refs/merge-requests/*:refs/remotes/origin/merge-requests/*"'
+            ],
+            [
+                'git', '-C', 'some-path', 'fetch', 'some-url',
+                'refs/remotes/origin/merge-requests/1/head:refs/remotes/origin/merge-requests/1/head'
+            ],
+            [
+                'git', '-C', 'some-path', 'checkout',
+                'refs/remotes/origin/merge-requests/1/head'
+            ],
+        ]
+    )
+])
+def test_checkout_ref(remote_git_repository, monkeypatch, path, ref, calls):
     mock_command_instance = MagicMock()
     mock_command_class = MagicMock(return_value=mock_command_instance)
+
     monkeypatch.setattr(gluetool.utils, 'Command', mock_command_class)
-    remote_git_repository._checkout_ref('some-path', 'some-ref')
-    mock_command_class.assert_called_once_with(['git', '-C', 'some-path', 'checkout', 'some-ref'])
-    mock_command_instance.run.assert_called_once_with()
+
+    remote_git_repository.clone_url = 'some-url'
+    remote_git_repository._checkout_ref(path, ref)
+
+    for call in calls:
+        mock_command_class.assert_any_call(call)
+
+    assert len(mock_command_class.mock_calls) == len(calls)
+    assert len(mock_command_instance.mock_calls) == len(calls)
 
 
 @pytest.mark.parametrize('self_ref, ref, expected', [
@@ -194,3 +240,24 @@ def test_clone_obeys_ref(self_ref, ref, expected, remote_git_repository, monkeyp
     remote_git_repository.clone(ref=ref)
 
     remote_git_repository._checkout_ref.assert_called_with('some-path', expected)
+
+
+@pytest.mark.parametrize('clone_url, branch, ref, repr, prefix', [
+    (
+        'some-url', 'some-branch', None,
+        '<RemoteGitRepository(clone_url=some-url, branch=some-branch, ref=not specified)>',
+        'workdir-some-branch'
+    ),
+    (
+        'some-url', None, 'some-ref',
+        '<RemoteGitRepository(clone_url=some-url, branch=not specified, ref=some-ref)>',
+        'workdir-some-ref'
+    )
+])
+def test_repr_workdir_prefix(clone_url, branch, ref, repr, prefix, remote_git_repository):
+    remote_git_repository.clone_url = clone_url
+    remote_git_repository.branch = branch
+    remote_git_repository.ref = ref
+
+    assert str(remote_git_repository) == repr
+    assert remote_git_repository.workdir_prefix == prefix

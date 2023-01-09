@@ -19,6 +19,29 @@ from gluetool.utils import Result
 # Type annotations
 from typing import cast, Any, Optional, List  # cast, Callable, Dict, List, NamedTuple, Optional, Tuple  # noqa
 
+# Clone directory for reproducer commands
+TESTCODE_DIR = 'testcode'
+
+
+class RemoteGitRepositoryError(gluetool.GlueError):
+    pass
+
+
+class FailedToClone(RemoteGitRepositoryError):
+    pass
+
+
+class FailedToConfigure(RemoteGitRepositoryError):
+    pass
+
+
+class FailedToFetchRef(RemoteGitRepositoryError):
+    pass
+
+
+class FailedToCheckoutRef(RemoteGitRepositoryError):
+    pass
+
 
 class RemoteGitRepository(gluetool.log.LoggerMixin):
     """
@@ -56,6 +79,9 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         # holds git.Git instance, GitPython has no typing support
         self._instance = None  # type: Any
 
+        # list of commands use to clone the repository
+        self.commands = []  # type: List[str]
+
         # initialize from given path if given
         if self.path:
             self.initialize_from_path(self.path)
@@ -83,7 +109,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
     def _get_clone_options(
         self,
-        branch,  # type: str
+        branch,  # type: Optional[str]
         clone_url,  # type: str
         path,  # type: str
         shallow_clone=True,  # type: bool
@@ -95,6 +121,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         options = []
         options += clone_args or self.clone_args
         if not ref:
+            assert branch
             if shallow_clone:
                 options += ['--depth', '1']
             options += ['-b', branch]
@@ -123,7 +150,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         :param str ref: checkout specified git ref. If not set, the one specified during ``RemoteGitRepository``
             initialization is used. If none of these was specified, top of the branch is checked out.
         :param str branch: checkout specified branch. If not set, the one specified during ``RemoteGitRepository``
-            initialization is used. If none of these was specified, ``master`` is used by default.
+            initialization is used.
         :param str path: if specified, clone into this path. Otherwise, a temporary directory is created.
         :param str prefix: if specified and `path` wasn't set, it is used as a prefix of directory created
             to hold the clone.
@@ -144,12 +171,15 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
         logger = logger or self.logger
 
-        if (branch or self.branch) and (ref or self.ref):
-            raise gluetool.GlueError('Both ref and branch specified, misunderstood arguments?')
-
-        branch = branch or self.branch or 'master'
+        branch = branch or self.branch
         clone_url = clone_url or self.clone_url
         ref = ref or self.ref
+
+        if branch and ref:
+            raise gluetool.GlueError('Both ref and branch specified, misunderstood arguments?')
+
+        if not branch and not ref:
+            raise gluetool.GlueError('Neither ref nor branch specified, cannot continue')
 
         if not clone_url:
             raise gluetool.GlueError('No clone url specified, cannot continue')
@@ -174,6 +204,8 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         if ref:
             self._checkout_ref(actual_path, ref)
 
+        self.commands.append('cd {}'.format(TESTCODE_DIR))
+
         # Since we used `dir` when creating repo directory, the path we have is absolute. That is not perfect,
         # we have an agreement with the rest of the world that we're living in current directory, which we consider
         # a workdir (yes, it would be better to have an option to specify it explicitly), we should get the relative
@@ -188,7 +220,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         self,
         logger,  # type: gluetool.log.ContextAdapter
         clone_url,  # type: str
-        branch,  # type: str
+        branch,  # type: Optional[str]
         actual_path,  # type: str
         clone_timeout,  # type: int
         clone_tick,  # type: int
@@ -197,10 +229,12 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
     ):
         # type: (...) -> None
 
+        # TODO: it would be nice to be able to use the `self.__repr__` method but it is actually not correct using it
+        # here, values such `branch` and `ref` can be different than the ones printed in `self.__repr__`
         logger.info('cloning repo {} (branch {}, ref {})'.format(
             clone_url,
-            branch,
-            ref if ref else 'not specified'
+            branch or 'not specified',
+            ref or 'not specified'
         ))
 
         cmd = gluetool.utils.Command(['git', 'clone'], logger=logger)
@@ -241,7 +275,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
             return Result.Ok(None)
 
         gluetool.utils.wait(
-            "cloning with timeout {}, tick {}".format(clone_timeout, clone_tick),
+            "cloning with timeout {}s, tick {}s".format(clone_timeout, clone_tick),
             _clone,
             timeout=clone_timeout,
             tick=clone_tick
@@ -269,15 +303,60 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
     def _checkout_ref(self, actual_path, ref):
         # type: (str, str) -> None
+
+        # Using git refs for checking out merge/pull requests requires special handling
+        # GitLab: https://www.jvt.me/posts/2019/01/19/git-ref-gitlab-merge-requests/
+        # GitHub: https://www.jvt.me/posts/2019/01/19/git-ref-github-pull-requests/
+        # Pagure: https://docs.pagure.org/pagure/usage/pull_requests.html#working-with-pull-requests
+        if ref.startswith('refs/'):
+            # Enable merge request refs for GitLab
+            try:
+                command = [
+                    'git',
+                    '-C', actual_path,
+                    'config',
+                    'remote.origin.fetch',
+                    '"+refs/merge-requests/*:refs/remotes/origin/merge-requests/*"'
+                ]
+
+                self.commands.append(' '.join(command).replace(actual_path, TESTCODE_DIR))
+                gluetool.utils.Command(command).run()
+
+            except gluetool.GlueCommandError as exc:
+                raise FailedToConfigure(
+                    'Failed to configure git remote fetching on {}: {}'.format(ref, exc.output.stderr)
+                )
+
+            assert self.clone_url
+
+            # Fetch the pull/merge request
+            try:
+                command = [
+                    'git',
+                    '-C', actual_path,
+                    'fetch',
+                    self.clone_url,
+                    '{}:{}'.format(ref, ref)
+                ]
+
+                self.commands.append(' '.join(command).replace(actual_path, TESTCODE_DIR))
+                gluetool.utils.Command(command).run()
+
+            except gluetool.GlueCommandError as exc:
+                raise FailedToFetchRef('Failed to fetch ref {}: {}'.format(ref, exc.output.stderr))
+
         try:
-            gluetool.utils.Command([
+            command = [
                 'git',
                 '-C', actual_path,
                 'checkout', ref
-            ]).run()
+            ]
+
+            self.commands.append(' '.join(command).replace(actual_path, TESTCODE_DIR))
+            gluetool.utils.Command(command).run()
 
         except gluetool.GlueCommandError as exc:
-            raise gluetool.GlueError('Failed to checkout ref {}: {}'.format(ref, exc.output.stderr))
+            raise FailedToCheckoutRef('Failed to checkout ref {}: {}'.format(ref, exc.output.stderr))
 
     def initialize_from_path(self, path):
         # type: (str) -> Any

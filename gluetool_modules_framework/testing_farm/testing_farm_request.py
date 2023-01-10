@@ -219,7 +219,7 @@ class TestingFarmRequest(LoggerMixin, object):
         for environment_raw in request['environments_requested']:
             environments_requested.append(TestingEnvironment(
                 arch=environment_raw['arch'],
-                compose=environment_raw.get('os', {}).get('compose'),
+                compose=(environment_raw.get('os') or {}).get('compose'),
                 pool=environment_raw.get('pool'),
                 variables=environment_raw.get('variables'),
                 secrets=environment_raw.get('secrets'),

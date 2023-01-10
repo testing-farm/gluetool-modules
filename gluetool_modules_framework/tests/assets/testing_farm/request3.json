@@ -12,6 +12,11 @@
         "arch": "x86_64",
         "tmt": {"context": {"some": "context"}},
         "secrets": {"some": "secrets"},
-        "variables": {"something": "variables"}
+        "variables": {"something": "variables"},
+        "os": null,
+        "artifacts": null,
+        "hardware": null,
+        "pool": null,
+        "settings": null
     }]
 }

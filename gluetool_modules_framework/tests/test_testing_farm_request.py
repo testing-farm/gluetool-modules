@@ -7,6 +7,8 @@ import os
 import gluetool
 import contextlib
 
+from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
+
 from . import create_module
 from requests.exceptions import HTTPError
 
@@ -343,4 +345,14 @@ def test_execute_request3(module):
     assert request.sti.playbooks == ['playbook1', 'playbook2']
     assert request.webhook_token == None
     assert len(request.environments_requested) == 1
-    assert request.environments_requested[0].arch == 'forced-arch'
+    assert request.environments_requested[0] == TestingEnvironment(
+        arch='forced-arch',
+        tmt={'context': {'some': 'context'}},
+        secrets={'some': 'secrets'},
+        variables={'something': 'variables'},
+        compose=None,
+        artifacts=None,
+        hardware=None,
+        pool=None,
+        settings=None
+    )

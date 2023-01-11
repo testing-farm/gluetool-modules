@@ -144,9 +144,6 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
         logger = logger or self.logger
 
-        if (branch or self.branch) and (ref or self.ref):
-            raise gluetool.GlueError('Both ref and branch specified, misunderstood arguments?')
-
         branch = branch or self.branch or 'master'
         clone_url = clone_url or self.clone_url
         ref = ref or self.ref

@@ -1,5 +1,5 @@
 ---
 - Fedora:
-  - x86_64
+    - x86_64
 - RHEL:
-  - aarch64
+    - aarch64

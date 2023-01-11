@@ -64,6 +64,7 @@ docker-provisioner = "gluetool_modules_framework.provision.docker:DockerProvisio
 envinject = "gluetool_modules_framework.helpers.envinject:EnvInject"
 events = "gluetool_modules_framework.helpers.events:Events"
 execute-command = "gluetool_modules_framework.helpers.execute_command:ExecuteCommand"
+git = "gluetool_modules_framework.infrastructure.git:Git"
 github = "gluetool_modules_framework.infrastructure.github:GitHub"
 github-copr-build-job = "gluetool_modules_framework.testing.pull_request_builder.github_copr_build_job:CoprBuildJob"
 guess-environment = "gluetool_modules_framework.helpers.guess_environment:GuessEnvironment"

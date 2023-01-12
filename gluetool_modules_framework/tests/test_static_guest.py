@@ -144,9 +144,7 @@ def test_execute_remote(monkeypatch, module):
     assert module._guests[0].key == 'very-real-ssh-key'
     assert module._guests[0].environment.arch == 'x86_64'
     assert module._guests[0]._is_allowed_degraded('service') == True
-
-    with pytest.raises(NotImplementedError):
-        module._guests[0].destroy()
+    assert module._guests[0].destroy() == None
 
 
 def test_execute_local_no_arch(monkeypatch, module):
@@ -180,9 +178,7 @@ def test_execute_local(monkeypatch, module):
     assert module._guests[0].hostname == 'localhost'
     assert module._guests[0].environment.arch == 'x86_64'
     assert module._guests[0]._is_allowed_degraded('service') == True
-
-    with pytest.raises(NotImplementedError):
-        module._guests[0].destroy()
+    assert module._guests[0].destroy() == None
 
 
 def test_execute_local_no_setup_guest(monkeypatch, module):

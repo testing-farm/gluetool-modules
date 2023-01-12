@@ -77,7 +77,6 @@ class StaticGuest(NetworkedGuest):
         """
         Destroy guest. For a remote guest this is no-op.
         """
-        raise NotImplementedError()
 
 
 class StaticLocalhostGuest(Guest):
@@ -135,7 +134,6 @@ class StaticLocalhostGuest(Guest):
         """
         Destroy guest. For localhost this is no-op.
         """
-        raise NotImplementedError()
 
 
 class CIStaticGuest(gluetool.Module):

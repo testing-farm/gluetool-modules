@@ -39,7 +39,7 @@ Following steps are necessary to install requirements for different distribution
 
 .. warning::
 
-    We support only CentoOS Stream 9 and Fedora.
+    We support only CentOS Stream 9 and Fedora.
 
 **CentOS Stream 9**
 

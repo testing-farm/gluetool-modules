@@ -8,7 +8,7 @@ Before moving on to the actual setup, there are few important notes:
 
 - **The only supported and (sort of tested) way of using and developing these modules is using Poetry!**
 
--  The tested distributions (as in "we're using these") are the recent releases of Fedora, CentOS Stream 8 and RHEL 8.
+-  The tested distributions (as in "we're using these") are the recent releases of Fedora and CentOS Stream 9.
    You could try other distributions but we didn't - please, let us know, and it'd be awesome if your first merge request
    could update this file :)
 
@@ -37,25 +37,17 @@ Installation
 
 Following steps are necessary to install requirements for different distributions:
 
-**CentOS 8**
+.. warning::
 
-Run all commands listed in the TMT test plan's ``prepare`` section. Test plan is located in the file `plans/centos8.fmf`.
+    We support only CentOS Stream 9 and Fedora.
+
+**CentOS Stream 9**
+
+Run all commands listed in the TMT test plan's ``prepare`` section. Test plan is located in the file `plans/centos9.fmf`.
 
 **Fedora**
 
 Run all commands listed in the TMT test plan's ``prepare`` section. Test plan is located in the file `plans/fedora.fmf`.
-
-.. warning::
-
-    Due to the fact we still run with Python2, you will need to install ``virtualenv`` module manually to python2.
-
-.. warning::
-
-    `rpm-py-installer` installation will fail on Fedora 33 and there is no workaround for it. Use Fedora 32 please.
-
-**RHEL 8**
-
-Run all commands listed in the TMT test plan's ``prepare`` section. Test plan is located in the file `plans/rhel8.fmf`.
 
 
 1. Install ``poetry``

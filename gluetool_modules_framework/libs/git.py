@@ -189,7 +189,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         self.path = actual_path = self._generate_path(path=path, prefix=prefix)
 
         # NOTE: when we need to checkout a specific ref, we cannot do it directly with clone,
-        # it requires another step: _checkout_ref().
+        # it requires another step - _checkout_ref()
         self._do_clone(
             logger=logger,
             clone_url=clone_url, branch=branch, actual_path=actual_path,
@@ -201,6 +201,9 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         # setting clone directory permissions to ug=rwx,o=rx.
         self._set_clone_directory_permissions(actual_path=actual_path)
 
+        # Handle checkout of a specific ref.
+        # Refs starting with `refs/` are used for checking out merge requests and need special handling.
+        # Otherwise fallback to checkout a general git ref.
         if ref:
             self._checkout_ref(actual_path, ref)
 
@@ -301,50 +304,61 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
         return tempfile.mkdtemp(dir=os.getcwd())
 
-    def _checkout_ref(self, actual_path, ref):
+    def _checkout_merge_request_ref(self, actual_path, ref):
         # type: (str, str) -> None
+        """
+        Checkout git reference for merge/pull requests.
+        These require special handling for some of the git forges.
 
-        # Using git refs for checking out merge/pull requests requires special handling
-        # GitLab: https://www.jvt.me/posts/2019/01/19/git-ref-gitlab-merge-requests/
-        # GitHub: https://www.jvt.me/posts/2019/01/19/git-ref-github-pull-requests/
-        # Pagure: https://docs.pagure.org/pagure/usage/pull_requests.html#working-with-pull-requests
-        if ref.startswith('refs/'):
-            # Enable merge request refs for GitLab
-            try:
-                command = [
-                    'git',
-                    '-C', actual_path,
-                    'config',
-                    'remote.origin.fetch',
-                    '"+refs/merge-requests/*:refs/remotes/origin/merge-requests/*"'
-                ]
+        GitLab: https://www.jvt.me/posts/2019/01/19/git-ref-gitlab-merge-requests/
 
-                self.commands.append(' '.join(command).replace(actual_path, TESTCODE_DIR))
-                gluetool.utils.Command(command).run()
+        GitHub: https://www.jvt.me/posts/2019/01/19/git-ref-github-pull-requests/
 
-            except gluetool.GlueCommandError as exc:
-                raise FailedToConfigure(
-                    'Failed to configure git remote fetching on {}: {}'.format(ref, exc.output.stderr)
-                )
+        Pagure: https://docs.pagure.org/pagure/usage/pull_requests.html#working-with-pull-requests
 
-            assert self.clone_url
+        Currently, this way are handled all refs which start with the `refs/` string.
 
-            # Fetch the pull/merge request
-            try:
-                command = [
-                    'git',
-                    '-C', actual_path,
-                    'fetch',
-                    self.clone_url,
-                    '{}:{}'.format(ref, ref)
-                ]
+        :param str actual_path: path to git repository which should be used for checkout
+        :param str ref: git reference to checkout
+        """
 
-                self.commands.append(' '.join(command).replace(actual_path, TESTCODE_DIR))
-                gluetool.utils.Command(command).run()
+        # Enable merge request refs for GitLab
+        try:
+            command = [
+                'git',
+                '-C', actual_path,
+                'config',
+                'remote.origin.fetch',
+                '+refs/merge-requests/*:refs/remotes/origin/merge-requests/*'
+            ]
 
-            except gluetool.GlueCommandError as exc:
-                raise FailedToFetchRef('Failed to fetch ref {}: {}'.format(ref, exc.output.stderr))
+            self.commands.append(' '.join(command).replace(actual_path, TESTCODE_DIR))
+            gluetool.utils.Command(command).run()
 
+        except gluetool.GlueCommandError as exc:
+            raise FailedToConfigure(
+                'Failed to configure git remote fetching on {}: {}'.format(ref, exc.output.stderr)
+            )
+
+        assert self.clone_url
+
+        # Fetch the pull/merge request
+        try:
+            command = [
+                'git',
+                '-C', actual_path,
+                'fetch',
+                self.clone_url,
+                '{}:{}'.format(ref, ref)
+            ]
+
+            self.commands.append(' '.join(command).replace(actual_path, TESTCODE_DIR))
+            gluetool.utils.Command(command).run()
+
+        except gluetool.GlueCommandError as exc:
+            raise FailedToFetchRef('Failed to fetch ref {}: {}'.format(ref, exc.output.stderr))
+
+        # Checkout the ref of the merge request
         try:
             command = [
                 'git',
@@ -353,6 +367,68 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
             ]
 
             self.commands.append(' '.join(command).replace(actual_path, TESTCODE_DIR))
+            gluetool.utils.Command(command).run()
+
+        except gluetool.GlueCommandError as exc:
+            raise FailedToCheckoutRef('Failed to checkout branch {}: {}'.format(ref, exc.output.stderr))
+
+    def _checkout_ref(self, actual_path, ref):
+        # type: (str, str) -> None
+
+        if ref.startswith('refs/'):
+            self._checkout_merge_request_ref(actual_path, ref)
+        else:
+            self._checkout_general_ref(actual_path, ref)
+
+    def _checkout_general_ref(self, actual_path, ref):
+        # type: (str, str) -> None
+        """
+        Checkout git reference.
+        The reference can be a branch, tag or git SHA.
+        The function first tries to resolve the reference to a git SHA.
+        And then uses the git SHA to checkout to a branch called `testbranch`.
+
+        :param str actual_path: path to git repository which should be used for checkout
+        :param str ref: the git reference to checkout
+        """
+
+        # Default branch name of a checkout via hash, we always checkout a "named" branch
+        branch_name = ref[:8]
+
+        # Find out if the given ref is a reference and find its hash
+        try:
+            command = [
+                'git',
+                '-C', actual_path,
+                'show-ref', '-s', ref
+            ]
+
+            show_ref_output = gluetool.utils.Command(command).run()
+
+            # As the branch name us the reference name
+            branch_name = '{}-testing-farm-checkout'.format(ref)
+
+            assert show_ref_output.stdout
+            ref = show_ref_output.stdout.split()[0].rstrip()
+
+        except gluetool.GlueCommandError:
+            pass
+
+        try:
+            command = [
+                'git',
+                '-C', actual_path,
+                'checkout', '-b', branch_name, ref
+            ]
+
+            reproducer_command = [
+                'git',
+                '-C', actual_path,
+                'checkout', '-b', 'testbranch', ref
+            ]
+
+            self.commands.append(' '.join(reproducer_command).replace(actual_path, TESTCODE_DIR))
+
             gluetool.utils.Command(command).run()
 
         except gluetool.GlueCommandError as exc:

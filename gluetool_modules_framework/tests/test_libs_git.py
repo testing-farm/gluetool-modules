@@ -66,7 +66,8 @@ def test_clone(remote_git_repository, path, prefix, ref, monkeypatch, log, expec
 
     monkeypatch.setattr(os, 'chmod', MagicMock())
 
-    mock_command_run = MagicMock()
+    def mock_command_run(_):
+        return MagicMock(stdout=ref)
     monkeypatch.setattr(gluetool.utils.Command, 'run', mock_command_run)
     mock_mkdtemp = MagicMock(return_value='workdir')
     monkeypatch.setattr(tempfile, 'mkdtemp', mock_mkdtemp)
@@ -188,7 +189,8 @@ def test_clone_invalid_ref(remote_git_repository, monkeypatch):
     (
         'some-path', 'some-ref',
         [
-            ['git', '-C', 'some-path', 'checkout', 'some-ref']
+            ['git', '-C', 'some-path', 'show-ref', '-s', 'some-ref'],
+            ['git', '-C', 'some-path', 'checkout', '-b', 'some-ref-testing-farm-checkout', 'some-ref']
         ]
     ),
     (
@@ -196,7 +198,7 @@ def test_clone_invalid_ref(remote_git_repository, monkeypatch):
         [
             [
                 'git', '-C', 'some-path', 'config', 'remote.origin.fetch',
-                '"+refs/merge-requests/*:refs/remotes/origin/merge-requests/*"'
+                '+refs/merge-requests/*:refs/remotes/origin/merge-requests/*'
             ],
             [
                 'git', '-C', 'some-path', 'fetch', 'some-url',
@@ -211,6 +213,7 @@ def test_clone_invalid_ref(remote_git_repository, monkeypatch):
 ])
 def test_checkout_ref(remote_git_repository, monkeypatch, path, ref, calls):
     mock_command_instance = MagicMock()
+    mock_command_instance.run = lambda: MagicMock(stdout=ref)
     mock_command_class = MagicMock(return_value=mock_command_instance)
 
     monkeypatch.setattr(gluetool.utils, 'Command', mock_command_class)
@@ -222,7 +225,6 @@ def test_checkout_ref(remote_git_repository, monkeypatch, path, ref, calls):
         mock_command_class.assert_any_call(call)
 
     assert len(mock_command_class.mock_calls) == len(calls)
-    assert len(mock_command_instance.mock_calls) == len(calls)
 
 
 @pytest.mark.parametrize('self_ref, ref, expected', [

@@ -257,8 +257,17 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
                 ansible_path
             )
 
-            if ansible_version != '2.9':
+            if ansible_version == '2.9':
+                self.build_params['ansible_options'] += (
+                    ' --ansible-playbook-environment-variables ANSIBLE_CALLBACK_WHITELIST=profile_tasks'
+                )
+
+            else:
                 self.build_params['test_scheduler_system_roles_options'] += ' --collection'
+                # callback_whitelist is deprecated in ansible >2.9
+                self.build_params['ansible_options'] += (
+                    ' --ansible-playbook-environment-variables ANSIBLE_CALLBACKS_ENABLED=profile_tasks'
+                )
 
             self.build_params['pipeline_state_reporter_options'] += ' --pr-label={}'.format(pr_label)
 

@@ -13,7 +13,7 @@ from six.moves.urllib.parse import urlencode
 
 import gluetool
 from gluetool.log import log_dict
-from gluetool.utils import cached_property
+from gluetool.utils import cached_property, wait, Result
 
 
 #: Information about task architectures.
@@ -24,6 +24,8 @@ from gluetool.utils import cached_property
 TaskArches = collections.namedtuple('TaskArches', ['complete', 'arches'])
 VALID_STATUSES = ('error', 'failure', 'pending', 'success')
 MAX_PER_PAGE = 100
+DEFAULT_RETRY_TIMEOUT = 30
+DEFAULT_RETRY_TICK = 10
 
 
 def is_json_response(response):
@@ -50,16 +52,18 @@ class GitHubAPI(object):
         return '{}/{}?{}'.format(self.api_url, urlquote(path), urlencode(params))
 
     def _check_status(self, response, allow_statuses=None):
-        # type: (requests.models.Response, Optional[List[int]]) -> None
-
+        # type: (requests.models.Response, Optional[List[int]]) -> Result[requests.models.Response, bool]
         if response.status_code < 200 or response.status_code > 299:
-            allow_statuses = allow_statuses or []
             if not allow_statuses or response.status_code not in allow_statuses:
                 if is_json_response(response):
-                    msg = 'Git API returned an error: {}\nURL: {}'.format(response.json()['message'], response.url)
+                    self.module.warn('Retrying due to git API returned an error: {}\nURL: {}'.format(
+                        response.json()['message'], response.url))
                 else:
-                    msg = 'Git API returned an error: {}\nURL: {}'.format(response.status_code, response.url)
-                raise gluetool.GlueError(msg)
+                    self.module.warn('Retrying due to git API returned an error: {}\nURL: {}'.format(
+                        response.status_code, response.url))
+
+                return Result.Error(False)
+        return Result.Ok(response)
 
     def _get(self, url, allow_statuses=None, params=None):
         # type: (str, Optional[List[int]], Optional[Dict[str, Any]]) -> requests.models.Response
@@ -67,16 +71,31 @@ class GitHubAPI(object):
         # to allow.  This method will raise a GlueError if the http status
         # code is not in the 2xx range and not in the allow_statuses list
 
-        self.module.debug('[GitHub API] GET: {}'.format(url))
+        def _api_request():
+            # type: () -> Result[requests.models.Response, bool]
+            self.module.debug('[GitHub API] GET: {}'.format(url))
+            try:
+                if self.username and self.token:
+                    response = requests.get(url, auth=(self.username, self.token), params=params)
+                else:
+                    response = requests.get(url, params=params)
+
+            except Exception as exc:
+                self.module.warn('Retrying due to failure to establish a connection with GitHub API: {}'.format(exc))
+                return Result.Error(False)
+
+            return self._check_status(response, allow_statuses)
 
         try:
-            if self.username and self.token:
-                response = requests.get(url, auth=(self.username, self.token), params=params)
-            else:
-                response = requests.get(url, params=params)
+            response = wait(
+                '[GitHub API] GET: {}'.format(url),
+                _api_request,
+                timeout=self.module.option('retry-timeout'),
+                tick=self.module.option('retry-tick')
+            )
+
         except Exception:
             raise gluetool.GlueError('Unable to GET: {}'.format(url))
-        self._check_status(response, allow_statuses)
 
         if is_json_response(response):
             log_dict(self.module.debug, '[GitHub API] output', response.json())
@@ -110,8 +129,8 @@ class GitHubAPI(object):
         log_dict(self.module.debug, '[GitHub API] all paginated output with {} pages'.format(page_count), data)
         return data
 
-    def _post(self, url, data):
-        # type: (str, Dict[str, str]) -> requests.models.Response
+    def _post(self, url, data, allow_statuses=None):
+        # type: (str, Dict[str, str], Optional[List[int]]) -> requests.models.Response
 
         log_dict(self.module.debug, '[GitHub API] POST: {}'.format(url), data)
 
@@ -120,14 +139,29 @@ class GitHubAPI(object):
             empty_response._content = b'{}'  # type: ignore
             return empty_response
 
+        def _api_request():
+            # type: () -> Result[requests.models.Response, bool]
+            try:
+                if self.username and self.token:
+                    response = requests.post(url, auth=(self.username, self.token), json=data)
+                else:
+                    response = requests.post(url, json=data)
+
+            except Exception as exc:
+                self.module.warn('Retrying due to failure to establish a connection with GitHub API: {}'.format(exc))
+                return Result.Error(False)
+
+            return self._check_status(response, allow_statuses)
+
         try:
-            if self.username and self.token:
-                response = requests.post(url, auth=(self.username, self.token), json=data)
-            else:
-                response = requests.post(url, json=data)
+            response = wait(
+                '[GitHub API] POST: {}'.format(url),
+                _api_request,
+                timeout=self.module.option('retry-timeout'),
+                tick=self.module.option('retry-tick')
+            )
         except Exception:
             raise gluetool.GlueError('Unable to POST: {}'.format(url))
-        self._check_status(response)
 
         log_dict(self.module.debug, '[GitHub API] output', response.json())
 
@@ -523,6 +557,16 @@ class GitHub(gluetool.Module):
             'upload-full-url': {
                 'help': 'Upload full url instead of shortened one',
                 'action': 'store_true'
+            },
+            'retry-tick': {
+                'help': 'Number of retries for failed API operations. (default: %(default)s)',
+                'type': int,
+                'default': DEFAULT_RETRY_TICK,
+            },
+            'retry-timeout': {
+                'help': 'Timeout between API retries in seconds. (default: %(default)s)',
+                'type': int,
+                'default': DEFAULT_RETRY_TIMEOUT,
             }
         }),
         ('Pull request initialization options', {

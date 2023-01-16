@@ -34,6 +34,8 @@ def _load_assets(name):
 def module():
     github_module = create_module(gluetool_modules_framework.infrastructure.github.GitHub)[1]
     github_module._config['pull-request'] = 'oamg:leapp-repository:620:7fb300d703abbd07e8834d121bd2ac3088535c8b'
+    github_module._config['retry-tick'] = 10
+    github_module._config['retry-timeout'] = 30
     return github_module
 
 

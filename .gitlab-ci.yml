@@ -2,6 +2,7 @@
 
 stages:
   - test
+  - deploy
 
 # Use our custom image. See https://gitlab.com/testing-farm/images/-/tree/master/python-ci-image
 image: "quay.io/testing-farm/python-ci-image:latest"
@@ -116,3 +117,17 @@ py39-generate-docs:
   artifacts:
     paths:
       - .tox/py39-doctest/tmp/docs/build/html
+
+#
+# DEPLOY steps
+#
+publish/container:
+  stage: deploy
+  image: quay.io/buildah/stable:latest
+  script:
+    - dnf -y install make poetry python3.9
+    - buildah login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
+    - IMAGE_TAG=latest make build
+    - IMAGE_TAG=latest make push
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"

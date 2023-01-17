@@ -36,6 +36,8 @@ class Git(gluetool.Module):
         })
     ]
 
+    required_options = ('clone-url',)
+
     shared_functions = ['git_repository', 'dist_git_repository']
 
     _repository = None  # type: Optional[RemoteGitRepository]
@@ -44,8 +46,7 @@ class Git(gluetool.Module):
     def clone_url(self):
         # type: () -> Optional[str]
         option = self.option('clone-url')
-        if option is None:
-            return option
+
         return render_template(option, **self.shared('eval_context'))
 
     @property

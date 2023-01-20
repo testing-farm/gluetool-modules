@@ -123,10 +123,10 @@ class SUTInstallation(object):
             if dnf_present and command.startswith('yum'):
                 command = '{}{}'.format('dnf', command[3:])
 
-            # always use `--allowerasing` with `dnf install`, except `dnf module install`
+            # always use `--allowerasing` with `dnf install`
             if command.startswith('dnf'):
                 dnf_command = 'dnf'
-                if re.search(ALLOW_ERASING_PATTERN, command) and ' module ' not in command:
+                if re.search(ALLOW_ERASING_PATTERN, command):
                     dnf_command = 'dnf --allowerasing'
                 command = '{}{}'.format(dnf_command, command[3:])
 

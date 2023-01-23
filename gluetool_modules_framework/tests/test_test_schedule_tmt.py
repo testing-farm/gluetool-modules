@@ -295,11 +295,11 @@ def test_tmt_output_distgit(module, guest, monkeypatch, additional_options, addi
     try:
         with monkeypatch.context() as m:
             _set_run_outputs(m,
-                            '',       # git clone
-                            'myfix',  # git show-ref
-                            #'',       # git checkout  # TODO: somehow one of the `git` calls is skipped
-                            'plan1',  # tmt plan ls
-                            '[{"name": "plan_name", "prepare": [{"how": "foo"}, {"how": "install", "exclude": ["exclude1", "exclude2"]}]}]')     # tmt plan export  # noqa
+                             '',       # git clone
+                             'myfix',  # git show-ref
+                             # '',       # git checkout  # TODO: somehow one of the `git` calls is skipped
+                             'plan1',  # tmt plan ls
+                             '[{"name": "plan_name", "prepare": [{"how": "foo"}, {"how": "install", "exclude": ["exclude1", "exclude2"]}]}]')     # tmt plan export  # noqa
             schedule_entry = module.create_test_schedule([guest.environment])[0]
 
         schedule_entry.guest = guest

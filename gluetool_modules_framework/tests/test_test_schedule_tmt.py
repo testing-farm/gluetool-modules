@@ -264,6 +264,7 @@ def test_tmt_output_dir(
             {},
             {},
             r'''\# tmt reproducer
+git clone --depth 1 -b myfix http://example.com/git/myproject testcode
 cd testcode
 dummytmt run --all --verbose provision --how virtual --image guest-compose plan --name \^myfix\$'''  # noqa
         ),
@@ -271,6 +272,7 @@ dummytmt run --all --verbose provision --how virtual --image guest-compose plan 
             {'context-template-file': [os.path.abspath(os.path.join(ASSETS_DIR, 'context-template.yaml'))]},
             {},
             r'''\# tmt reproducer
+git clone --depth 1 -b myfix http://example.com/git/myproject testcode
 cd testcode
 dummytmt --context=@[a-zA-Z0-9\/\._-]+ run --all --verbose provision --how virtual --image guest-compose plan --name \^myfix\$'''  # noqa
         ),

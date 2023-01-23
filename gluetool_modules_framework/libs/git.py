@@ -246,6 +246,9 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
             branch=branch, clone_url=clone_url, path=actual_path, ref=ref, clone_args=clone_args
         )
 
+        reproducer_command = ['git', 'clone'] + cmd.options
+        self.commands.append(' '.join(reproducer_command).replace(actual_path, TESTCODE_DIR))
+
         def _clone():
             # type: () -> Result[None, str]
 

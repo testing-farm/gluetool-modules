@@ -15,6 +15,7 @@ import gluetool_modules_framework.testing.test_schedule_tmt
 from gluetool_modules_framework.infrastructure.distgit import DistGit, DistGitRepository
 from gluetool_modules_framework.infrastructure.static_guest import StaticLocalhostGuest
 from gluetool_modules_framework.helpers.install_copr_build import InstallCoprBuild
+from gluetool_modules_framework.helpers.install_koji_build_execute import InstallKojiBuildExecute
 from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
 from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 from gluetool_modules_framework.testing.test_schedule_tmt import gather_plan_results, TestScheduleEntry
@@ -195,16 +196,6 @@ dummytmt run --all --verbose provision --how virtual --image guest-compose plan 
             '''# tmt reproducer
 dummytmt run --all --verbose provision plan --name ^plan1$ plan --name ^plan1$'''
         ),
-        (  # with SUT install commands
-            {},
-            {'sut_install_commands': ['install_command1', 'install_command2']},
-            TestingEnvironment('x86_64', 'rhel-9'),
-            """# tmt reproducer
-dummytmt run --all --verbose provision --how virtual --image guest-compose prepare --how shell --script '
-install_command1
-install_command2
-' plan --name ^plan1$"""
-        ),
         (  # with environment variables
             {},
             {},
@@ -224,7 +215,7 @@ dummytmt run --all --verbose -e @tmt-environment-lan1.yaml provision --how virtu
 dummytmt run --all --verbose -c distro=rhel -c trigger=push provision --how virtual --image guest-compose plan --name ^plan1$"""  # noqa
         ),
     ],
-    ids=['virtual', 'local', 'sut_install_commands', 'variables', 'tmt_context']
+    ids=['virtual', 'local', 'variables', 'tmt_context']
 )
 def test_tmt_output_dir(
     module, guest, monkeypatch, tmpdir,
@@ -487,3 +478,133 @@ def test_plans_from_git(module, monkeypatch, log, tmt_plan_ls, expected_logs, ex
 )
 def test_excludes_from_tmt(module, plan, expected):
     assert module.excludes_from_tmt(plan) == expected
+
+
+def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir):
+    # install-copr-build module
+    module_copr = create_module(InstallCoprBuild)[1]
+    module_copr._config['log-dir-name'] = 'artifact-installation'
+    primary_task_mock = MagicMock()
+    primary_task_mock.repo_url = 'http://copr/project.repo'
+    primary_task_mock.rpm_urls = ['http://copr/project/one.rpm', 'http://copr/project/two.rpm']
+    primary_task_mock.rpm_names = ['one', 'two']
+    primary_task_mock.project = 'owner/project'
+
+    patch_shared(monkeypatch, module_copr, {
+        'primary_task': primary_task_mock,
+        'tasks': [primary_task_mock],
+    })
+
+    # main test-schedule-tmt module
+    module.glue.add_shared('dist_git_repository', module_dist_git)
+
+    with monkeypatch.context() as m:
+        _set_run_outputs(m,
+                         '',       # git clone
+                         'myfix',  # git show-ref
+                         '',       # git checkout
+                         'plan1',  # tmt plan ls
+                         'pl1',    # tmt plan show
+                         '{}')     # tmt plan export
+        schedule_entry = module.create_test_schedule([guest.environment])[0]
+
+    # these are normally done by TestScheduleRunner, but running that is too involved for a unit test
+    guest_setup_output = module_copr.setup_guest(
+            guest, stage=GuestSetupStage.ARTIFACT_INSTALLATION, log_dirpath=str(tmpdir))
+
+    schedule_entry.guest = guest
+    schedule_entry.guest_setup_outputs = {GuestSetupStage.ARTIFACT_INSTALLATION: guest_setup_output.unwrap()}
+
+    with monkeypatch.context() as m:
+        # tmt run
+        _set_run_outputs(m, 'dummy test done')
+        module.run_test_schedule_entry(schedule_entry)
+
+    with open(os.path.join(schedule_entry.work_dirpath, 'tmt-run.log')) as f:
+        assert 'dummy test done\n' in f.read()
+
+    # COPR installation actually happened
+    guest.execute.assert_any_call(
+        'dnf --allowerasing -y install http://copr/project/one.rpm http://copr/project/two.rpm')
+
+    # ... and is shown in the reproducer
+    with open(os.path.join(schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
+        assert f.read() == '''# tmt reproducer
+git clone http://example.com/git/myproject testcode
+git -C testcode checkout -b testbranch myfix
+cd testcode
+dummytmt run --all --verbose provision --how virtual --image guest-compose prepare --how shell --script '
+curl -v http://copr/project.repo --retry 5 --output /etc/yum.repos.d/copr_build-owner_project-1.repo
+dnf --allowerasing -y reinstall http://copr/project/one.rpm || true
+dnf --allowerasing -y reinstall http://copr/project/two.rpm || true
+dnf --allowerasing -y install http://copr/project/one.rpm http://copr/project/two.rpm
+rpm -q one
+rpm -q two
+' plan --name ^plan1$'''
+
+
+def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir):
+    # install-koji-build-execute module
+    module_koji = create_module(InstallKojiBuildExecute)[1]
+    module_koji._config['log-dir-name'] = 'artifact-installation'
+
+    def dummy_testing_farm_request():
+        environments_requested = [TestingEnvironment(artifacts=[
+            {'id': '123', 'packages': None, 'type': 'fedora-koji-build'}
+        ])]
+        return MagicMock(environments_requested=environments_requested)
+
+    def evaluate_instructions_mock(workarounds, callbacks):
+        callbacks['steps']('instructions', 'commands', workarounds, 'context')
+
+    patch_shared(monkeypatch, module_koji, {}, callables={
+        'testing_farm_request': dummy_testing_farm_request,
+        'evaluate_instructions': evaluate_instructions_mock,
+    })
+
+    module_koji.execute()
+
+    # main test-schedule-tmt module
+    module.glue.add_shared('dist_git_repository', module_dist_git)
+
+    with monkeypatch.context() as m:
+        _set_run_outputs(m,
+                         '',       # git clone
+                         'myfix',  # git show-ref
+                         '',       # git checkout
+                         'plan1',  # tmt plan ls
+                         'pl1',    # tmt plan show
+                         '{}')     # tmt plan export
+        schedule_entry = module.create_test_schedule([guest.environment])[0]
+
+    # these are normally done by TestScheduleRunner, but running that is too involved for a unit test
+    guest_setup_output = module_koji.setup_guest(
+            guest, stage=GuestSetupStage.ARTIFACT_INSTALLATION, log_dirpath=str(tmpdir))
+
+    schedule_entry.guest = guest
+    schedule_entry.guest_setup_outputs = {GuestSetupStage.ARTIFACT_INSTALLATION: guest_setup_output.unwrap()}
+
+    with monkeypatch.context() as m:
+        # tmt run
+        _set_run_outputs(m, 'dummy test done')
+        module.run_test_schedule_entry(schedule_entry)
+
+    with open(os.path.join(schedule_entry.work_dirpath, 'tmt-run.log')) as f:
+        assert 'dummy test done\n' in f.read()
+
+    # koji installation actually happened
+    guest.execute.assert_any_call('dnf --allowerasing -y install $(cat rpms-list)')
+
+    # ... and is shown in the reproducer
+    with open(os.path.join(schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
+        assert f.read() == r'''# tmt reproducer
+git clone http://example.com/git/myproject testcode
+git -C testcode checkout -b testbranch myfix
+cd testcode
+dummytmt run --all --verbose provision --how virtual --image guest-compose prepare --how shell --script '
+koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123 || koji download-task --arch noarch --arch x86_64 --arch src 123
+ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\1 \0/" | awk "{print \$2}" | tee rpms-list
+dnf --allowerasing -y reinstall $(cat rpms-list) || true
+dnf --allowerasing -y install $(cat rpms-list)
+sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\n' | xargs -d'\n' rpm -q
+' plan --name ^plan1$'''

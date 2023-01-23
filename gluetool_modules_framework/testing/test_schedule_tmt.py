@@ -20,6 +20,8 @@ from gluetool.utils import Command, dict_update, from_yaml, load_yaml, new_xml_e
 from gluetool_modules_framework.infrastructure.static_guest import StaticLocalhostGuest
 from gluetool_modules_framework.libs import create_inspect_callback, sort_children
 from gluetool_modules_framework.libs.artifacts import artifacts_location
+from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
+from gluetool_modules_framework.libs.sut_installation import INSTALL_COMMANDS_FILE
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleResult, TestScheduleEntryOutput, \
     TestScheduleEntryStage, TestScheduleEntryAdapter
@@ -779,14 +781,23 @@ class TestScheduleTMT(Module):
                 '--port', str(schedule_entry.guest.port),
             ])
 
-        if self.has_shared('sut_install_commands'):
-            commands = '\n'.join(self.shared('sut_install_commands'))
-            self.debug('sut_install_commands: {}'.format(commands))
+        # collect artifact installation commands
+        install_commands = ''
+        for output in schedule_entry.guest_setup_outputs.get(GuestSetupStage.ARTIFACT_INSTALLATION, []):
+            try:
+                with open(os.path.join(output.log_path, INSTALL_COMMANDS_FILE)) as f:
+                    install_commands += f.read()
+            except FileNotFoundError:
+                self.debug(
+                    'ARTIFACT_INSTALLATION output {} did not create a {}'.format(output, INSTALL_COMMANDS_FILE))
+
+        if install_commands:
+            self.debug('sut_install_commands: {}'.format(install_commands))
             reproducer.extend([
                 # `prepare` step
                 'prepare',
                 '--how', 'shell',
-                '--script', "'\n" + commands + "\n'"
+                '--script', "'\n" + install_commands + "'"
             ])
         else:
             self.debug('no sut_install_commands available')

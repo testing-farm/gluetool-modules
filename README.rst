@@ -17,11 +17,11 @@ Install the test dependencies::
 
 Run a particular `test scenario <./tox.ini>`_ with::
 
-    tox -e py37-unit-tests
+    tox -e py39-unit-tests
 
 To run a concrete test, you can call tox this way::
 
-    tox -e py27-unit-tests -- gluetool_modules_framework/tests/test_execute_command.py::test_sanity
+    tox -e py39-unit-tests -- gluetool_modules_framework/tests/test_execute_command.py::test_sanity
 
 
 Container Image

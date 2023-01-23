@@ -9,14 +9,13 @@ import tempfile
 
 import enum
 import six
-import re
 
 import gluetool
 from gluetool import GlueError, GlueCommandError, Module
 from gluetool.action import Action
 from gluetool.log import Logging, format_blob, log_blob, log_dict
 from gluetool.log import ContextAdapter, LoggingFunctionType  # Ignore PyUnusedCodeBear
-from gluetool.utils import Command, cached_property, dict_update, from_yaml, load_yaml, new_xml_element
+from gluetool.utils import Command, dict_update, from_yaml, load_yaml, new_xml_element
 
 from gluetool_modules_framework.infrastructure.static_guest import StaticLocalhostGuest
 from gluetool_modules_framework.libs import create_inspect_callback, sort_children
@@ -683,7 +682,7 @@ class TestScheduleTMT(Module):
 
         Action.set_thread_root(current_action)
 
-        context = dict_update(
+        dict_update(
             self.shared('eval_context'),
             {
                 'GUEST': schedule_entry.guest

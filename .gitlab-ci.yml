@@ -101,7 +101,7 @@ testing-farm:
   stage: test
   image: quay.io/testing-farm/cli:latest
   script:
-    - testing-farm request --git-ref $CI_MERGE_REQUEST_REF_PATH
+    - testing-farm request --git-url $CI_MERGE_REQUEST_PROJECT_URL --git-ref $CI_MERGE_REQUEST_REF_PATH
 
 # Generate documentation from the sources
 #

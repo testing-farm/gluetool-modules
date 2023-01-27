@@ -693,6 +693,20 @@ class TestScheduleTMT(Module):
 
         self.info('running in {}'.format(schedule_entry.repodir))
 
+        # download all guest setup commands in the reproducer
+        guest_setups = []
+        for i, output in enumerate(schedule_entry.guest_setup_outputs.get(GuestSetupStage.ARTIFACT_INSTALLATION, [])):
+            commands = os.path.join(output.log_path, INSTALL_COMMANDS_FILE)
+            if os.path.exists(commands):
+                local_file = 'guest-setup-{}.sh'.format(i)
+                schedule_entry.tmt_reproducer.append(
+                    'curl -o {} -L {}'.format(local_file, artifacts_location(self, commands, logger=self.logger))
+                )
+                guest_setups.append(local_file)
+            else:
+                self.debug(
+                    'ARTIFACT_INSTALLATION output {} did not create a {}'.format(output, INSTALL_COMMANDS_FILE))
+
         # work_dirpath is relative to the current directory, but tmt expects it to be a absolute path
         # so it recognizes it as a path instead of run directory name
         command = [
@@ -705,12 +719,12 @@ class TestScheduleTMT(Module):
         ]
 
         # reproducer is the command which we present to user for reproducing the execution
-        # on his localhost
+        # on their localhost
         reproducer = command.copy()
 
         reproducer.extend([
             'run',
-            '--all',
+            '--until provision' if guest_setups else '--all',
             '--verbose'
         ])
 
@@ -781,27 +795,6 @@ class TestScheduleTMT(Module):
                 '--port', str(schedule_entry.guest.port),
             ])
 
-        # collect artifact installation commands
-        install_commands = ''
-        for output in schedule_entry.guest_setup_outputs.get(GuestSetupStage.ARTIFACT_INSTALLATION, []):
-            try:
-                with open(os.path.join(output.log_path, INSTALL_COMMANDS_FILE)) as f:
-                    install_commands += f.read()
-            except FileNotFoundError:
-                self.debug(
-                    'ARTIFACT_INSTALLATION output {} did not create a {}'.format(output, INSTALL_COMMANDS_FILE))
-
-        if install_commands:
-            self.debug('sut_install_commands: {}'.format(install_commands))
-            reproducer.extend([
-                # `prepare` step
-                'prepare',
-                '--how', 'shell',
-                '--script', "'\n" + install_commands + "'"
-            ])
-        else:
-            self.debug('no sut_install_commands available')
-
         # `plan` step
         command.extend([
             'plan',
@@ -812,8 +805,16 @@ class TestScheduleTMT(Module):
             '--name', r'^{}$'.format(re.escape(schedule_entry.plan))
         ])
 
-        # add tmt reproducer suitable for local execution
+        # add tmt reproducer suitable for local execution: run until provisioning
         schedule_entry.tmt_reproducer.append(' '.join(reproducer))
+
+        # now run all guest setups in the local reproducer; if we don't have any, then we already did `run --all` above
+        if guest_setups:
+            for guest_setup in guest_setups:
+                schedule_entry.tmt_reproducer.append('{} run --last login < {}'.format(
+                    self.option('command'), guest_setup))
+                # and finally run the test plan
+                schedule_entry.tmt_reproducer.append('{} run --last --since prepare'.format(self.option('command')))
 
         def _save_output(output):
             # type: (gluetool.utils.ProcessOutput) -> None

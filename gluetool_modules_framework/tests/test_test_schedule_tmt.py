@@ -17,6 +17,7 @@ from gluetool_modules_framework.infrastructure.static_guest import StaticLocalho
 from gluetool_modules_framework.helpers.install_copr_build import InstallCoprBuild
 from gluetool_modules_framework.helpers.install_koji_build_execute import InstallKojiBuildExecute
 from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
+from gluetool_modules_framework.libs.sut_installation import INSTALL_COMMANDS_FILE
 from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 from gluetool_modules_framework.testing.test_schedule_tmt import gather_plan_results, TestScheduleEntry
 
@@ -527,20 +528,27 @@ def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir):
     guest.execute.assert_any_call(
         'dnf --allowerasing -y install http://copr/project/one.rpm http://copr/project/two.rpm')
 
-    # ... and is shown in the reproducer
-    with open(os.path.join(schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
-        assert f.read() == '''# tmt reproducer
-git clone http://example.com/git/myproject testcode
-git -C testcode checkout -b testbranch myfix
-cd testcode
-dummytmt run --all --verbose provision --how virtual --image guest-compose prepare --how shell --script '
+    # ... and is shown in sut_install_commands.sh
+    with open(os.path.join(tmpdir, 'artifact-installation-guest0', INSTALL_COMMANDS_FILE)) as f:
+        assert f.read() == '''\
 curl -v http://copr/project.repo --retry 5 --output /etc/yum.repos.d/copr_build-owner_project-1.repo
 dnf --allowerasing -y reinstall http://copr/project/one.rpm || true
 dnf --allowerasing -y reinstall http://copr/project/two.rpm || true
 dnf --allowerasing -y install http://copr/project/one.rpm http://copr/project/two.rpm
 rpm -q one
 rpm -q two
-' plan --name ^plan1$'''
+'''
+
+    # ... and is pulled into the reproducer
+    with open(os.path.join(schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
+        assert f.read() == f'''# tmt reproducer
+git clone http://example.com/git/myproject testcode
+git -C testcode checkout -b testbranch myfix
+cd testcode
+curl -o guest-setup-0.sh -L {tmpdir}/artifact-installation-guest0/{INSTALL_COMMANDS_FILE}
+dummytmt run --until provision --verbose provision --how virtual --image guest-compose plan --name ^plan1$
+dummytmt run --last login < guest-setup-0.sh
+dummytmt run --last --since prepare'''
 
 
 def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir):
@@ -595,16 +603,22 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir):
     # koji installation actually happened
     guest.execute.assert_any_call('dnf --allowerasing -y install $(cat rpms-list)')
 
-    # ... and is shown in the reproducer
-    with open(os.path.join(schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
-        assert f.read() == r'''# tmt reproducer
-git clone http://example.com/git/myproject testcode
-git -C testcode checkout -b testbranch myfix
-cd testcode
-dummytmt run --all --verbose provision --how virtual --image guest-compose prepare --how shell --script '
-koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123 || koji download-task --arch noarch --arch x86_64 --arch src 123
+    # ... and is shown in sut_install_commands.sh
+    with open(os.path.join(tmpdir, 'artifact-installation-guest0', INSTALL_COMMANDS_FILE)) as f:
+        assert f.read() == r'''koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123 || koji download-task --arch noarch --arch x86_64 --arch src 123
 ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\1 \0/" | awk "{print \$2}" | tee rpms-list
 dnf --allowerasing -y reinstall $(cat rpms-list) || true
 dnf --allowerasing -y install $(cat rpms-list)
 sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\n' | xargs -d'\n' rpm -q
-' plan --name ^plan1$'''
+'''
+
+    # ... and is pulled into the reproducer
+    with open(os.path.join(schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
+        assert f.read() == f'''# tmt reproducer
+git clone http://example.com/git/myproject testcode
+git -C testcode checkout -b testbranch myfix
+cd testcode
+curl -o guest-setup-0.sh -L {tmpdir}/artifact-installation-guest0/{INSTALL_COMMANDS_FILE}
+dummytmt run --until provision --verbose provision --how virtual --image guest-compose plan --name ^plan1$
+dummytmt run --last login < guest-setup-0.sh
+dummytmt run --last --since prepare'''

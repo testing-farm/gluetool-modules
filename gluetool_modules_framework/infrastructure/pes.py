@@ -89,20 +89,20 @@ class PESApi(LoggerMixin, object):
                                    timeout=self.module.option('retry-timeout'),
                                    tick=self.module.option('retry-tick'))
 
-    def get_ancestors(self, package, release):
+    def get_ancestor_components(self, component, release):
         # type: (str, str) -> List[str]
         """
-        Get ancestors of the given package from given release by querying Package Evolution Service.
-        This can be used for testing upgrades from the ancestor package(s) to the given package.
+        Get ancestor components of the given component from given major release by querying Package Evolution Service.
+        This can be used for testing upgrades from the ancestor package(s) to the given component.
 
-        :returns: List of ancestors of the package.
+        :returns: List of ancestor components of the component.
         """
 
         # Note: srpm-events endpoint MUST end with /
-        response = self._request_with_payload('post', 'srpm-events/', {'name': package, 'release': release})
+        response = self._request_with_payload('post', 'srpm-events/', {'name': component, 'release': release})
 
         # When no entries are found empty list is returned.
-        # We can assume package has not changed between releases, but rather no guessing in this step.
+        # We can assume component has not changed between releases, but rather no guessing in this step.
         # Consumers of this function can guess the ancestor, or try to find them some other way.
         if response.status_code == 404:
             return []
@@ -119,22 +119,42 @@ class PESApi(LoggerMixin, object):
         ancestors = jq(query).transform(response.json(), multiple_output=True)
 
         # remove duplicate ancestors and sort them, so their list is predictable
-        return sorted(list(set(ancestors)))
+        return sorted(set(ancestors))
 
-    def get_successors(self, package, initial_release, release):
+    def get_component_rpms(self, component, release, architectures):
+        # type: (str, str, List[str]) -> List[str]
+        """
+        Get binary rpms built from component by querying Package Evolution Service.
+
+        :param str component: Component to find rpms for.
+        :param str release: Version of targeted system in a RHEL X.Y format.
+        :param List[str] architectures: Architectures of the rpms.
+        """
+
+        response = self._request_with_payload('post', 'rpmmap/', {'name': component,
+                                                                  'release': release,
+                                                                  'architecture': architectures})
+
+        # Return empty list when no rpms are found.
+        if response.status_code == 404:
+            return list()
+
+        return sorted(rpm['name'] for rpm in response.json()['rpms'])
+
+    def get_successor_components(self, component, initial_release, release):
         # type: (str, str, str) -> List[str]
         """
-        Get successors of the given package by querying Package Evolution Service. This can be used
-        for testing upgrades from given package to the the successor package(s).
+        Get successor components of the given component by querying Package Evolution Service. This can be used
+        for testing upgrades from given component to the the successor component(s).
 
-        :returns: List of ancestors of the package.
+        :returns: List of successor components of the component.
         """
 
-        payload = {'srpm': package, 'initial_release': initial_release, 'release': release}
+        payload = {'srpm': component, 'initial_release': initial_release, 'release': release}
         response = self._request_with_payload('get', 'successors/', payload)
 
         # When no entries are found empty list is returned.
-        # We can assume package has not changed between releases, but rather no guessing in this step.
+        # We can assume component has not changed between releases, but rather no guessing in this step.
         # Consumers of this function can guess the ancestor, or try to find them some other way.
         if response.status_code == 404:
             return []
@@ -142,13 +162,13 @@ class PESApi(LoggerMixin, object):
         successors = response.json().keys()
 
         # remove duplicate ancestors and sort them, so their list is predictable
-        return sorted(list(set(successors)))
+        return sorted(set(successors))
 
 
 class PES(gluetool.Module):
     """
     Provides API to Package Evolution Service via `pes_api` shared function.
-    Provides function to find ancestors for a given package from previous major releases. Used for upgrades testing.
+    Provides functions to find ancestors and successors of a given component. Used for upgrades testing.
     """
     name = 'pes'
     description = 'Provides API to Package Evolution Service (PES)'
@@ -176,7 +196,7 @@ class PES(gluetool.Module):
 
     required_options = ('api-url',)
 
-    shared_functions = ['ancestors', 'successors', 'pes_api']
+    shared_functions = ['ancestor_components', 'successor_components', 'pes_api', 'component_rpms']
 
     def __init__(self, *args, **kwargs):
         # type: (Any, Any) -> None
@@ -197,33 +217,59 @@ class PES(gluetool.Module):
         """
         return cast(PESApi, self._pes_api)
 
-    def ancestors(self, package, release):
+    def ancestor_components(self, component, target_release):
         # type: (str, str) -> List[str]
         """
-        Return list of package ancestors of a specified package from specified major release.
+        Return list of ancestor components of a specified component from specified major target release.
 
-        :param str package: Package to find ancestors for.
-        :param str release: Version of targeted system in a RHEL X format.
+        :param str component: Component to find ancestors for.
+        :param str target_release: Target release in a 'RHEL X' format. Anything after that substring is ignored.
         """
-        ancestors = cast(List[str], self._pes_api.get_ancestors(package, release))
+        ancestors = cast(List[str], self._pes_api.get_ancestor_components(component, target_release))
+        ancestors.sort()
 
-        self.info("Ancestors of '{}' from release '{}': {}".format(package, release, ', '.join(ancestors)))
+        log_dict(self.info,
+                 "Ancestors of component '{}' from target release '{}'".format(component, target_release),
+                 ancestors)
 
         return ancestors
 
-    def successors(self, package, initial_release, release):
+    def component_rpms(self, component, release, architectures):
+        # type: (str, str, List[str]) -> List[str]
+        """
+        Return list of binary rpms built from component in specified release and architectures.
+
+        :param str component: Component to find rpms for.
+        :param str release: Release in a 'RHEL X[.Y]' format (Y is assumend to be 0 if missing) where to look form rpms.
+        :param List[str] architectures: Allowed architectures of the rpms.
+        """
+
+        rpms = cast(List[str], self._pes_api.get_component_rpms(component, release, architectures))
+        rpms.sort()
+
+        log_dict(self.info,
+                 "Binary rpms of component '{}' built in release '{}' for architectures '{}'".format(
+                     component, release, ', '.join(architectures)),
+                 rpms)
+
+        return rpms
+
+    def successor_components(self, component, initial_release, release):
         # type: (str, str, str) -> List[str]
         """
-        Returns list of package successors from a next major release.
+        Returns list of successor components from a next major release.
 
         Note that this currently expects PES only holds successors for a next major release.
 
-        :param str package: Package to find successors for.
+        :param str component: Component to find successors for.
         :param str initial_release: Version of source system in a RHEL-X.Y format.
         :param str release: Version of targeted system in a RHEL-X.Y format.
         """
-        successors = cast(List[str], self._pes_api.get_successors(package, initial_release, release))
+        successors = cast(List[str], self._pes_api.get_successor_components(component, initial_release, release))
+        successors.sort()
 
-        self.info("Successors ({}) of '{}' ({}): {}".format(initial_release, package, release, ', '.join(successors)))
+        log_dict(self.info,
+                 "Successors of component '{}' ('{}') in release '{}'".format(component, initial_release, release),
+                 successors)
 
         return successors

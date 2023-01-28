@@ -92,7 +92,7 @@ class PipelineInstallAncestors(gluetool.Module):
             self.info('Ancestors set by option')
             ancestors = normalize_multistring_option(self.option('ancestors'))
 
-        elif self.has_shared('ancestors'):
+        elif self.has_shared('ancestor_components'):
             self.info('Ancestors set by shared function')
 
             major_version_pattern = self.option('major-version-pattern')
@@ -110,7 +110,7 @@ class PipelineInstallAncestors(gluetool.Module):
                 }
             )
 
-            ancestors = self.shared('ancestors', component, release)
+            ancestors = self.shared('ancestor_components', component, release)
 
         if ancestors:
             log_dict(self.info, "Ancestors of '{}'".format(component), ancestors)

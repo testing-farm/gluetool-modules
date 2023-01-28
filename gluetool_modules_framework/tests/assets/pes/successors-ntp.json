@@ -1,0 +1,21 @@
+{
+    "ntpstat": [
+        {
+            "name": "ntpstat",
+            "repository": "AppStream",
+            "events": [
+                23
+            ]
+        }
+    ],
+    "chrony": [
+        {
+            "name": "chrony",
+            "repository": "BaseOS",
+            "events": [
+                999,
+                23
+            ]
+        }
+    ]
+}

@@ -1,0 +1,7 @@
+---
+component: bash
+initial_release: RHEL 7.7
+release: RHEL 8.0
+status_code: 200
+response: successors-bash.json
+successors: []

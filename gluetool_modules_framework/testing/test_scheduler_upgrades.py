@@ -88,10 +88,10 @@ class TestSchedulerUpgrades(gluetool.Module):
         binary_rpms_set = {
             six.ensure_str(package) for package in binary_rpms_set if not package.endswith('.src')
         }
-        log_dict(self.debug, 'binary rpm nevrs', sorted(binary_rpms_set))
+        log_dict(self.debug, 'binary rpm nevrs found in compose', sorted(binary_rpms_set))
 
         binary_rpms_list = sorted({splitFilename(package)[0] for package in binary_rpms_set})
-        log_dict(self.info, 'binary rpm names', binary_rpms_list)
+        log_dict(self.info, 'binary rpm names found in compose', binary_rpms_list)
 
         if not binary_rpms_list:
             log_dict(self.warn, 'No x86_64 binary rpm names found for packages', components)
@@ -117,19 +117,20 @@ class TestSchedulerUpgrades(gluetool.Module):
         if variant == 'from':
             destination = self.option('destination')
 
-            self.require_shared('successors')
-            successors = self.shared(
-                'successors',
+            self.require_shared('successor_components')
+            successor_components = self.shared(
+                'successor_components',
                 component,
                 format_for_pes(product),
                 format_for_pes(destination)
             )
 
-            if successors:
-                log_dict(self.info, "Successors of '{}'".format(component), successors)
-                components = successors
+            if successor_components:
+                log_dict(self.info, "Successor components of '{}'".format(component), successor_components)
+                components = successor_components
             else:
-                self.info("No successors of '{}' found, assume successor's name is the same.".format(component))
+                self.info("No successors of components '{}' found, assume successor's name is the same.".format(
+                    component))
                 components = [component]
 
         elif variant == 'to':

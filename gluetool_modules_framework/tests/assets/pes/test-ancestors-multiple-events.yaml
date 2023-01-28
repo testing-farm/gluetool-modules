@@ -2,7 +2,7 @@
 package: python3
 release: RHEL 8
 status_code: 200
-response: python3.json
+response: ancestors-python3.json
 ancestors:
   - python
   - python-enum34

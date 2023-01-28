@@ -1,0 +1,4 @@
+---
+
+name: install-ancestors
+description: Installs ancestors of the component defined by ``primary_task`` on given guest.

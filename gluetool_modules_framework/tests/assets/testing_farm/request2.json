@@ -3,7 +3,8 @@
         "fmf": {
             "url": "faketesturl",
             "ref": "faketestref"
-        }
+        },
+        "sti": null
     },
     "environments_requested": []
 }

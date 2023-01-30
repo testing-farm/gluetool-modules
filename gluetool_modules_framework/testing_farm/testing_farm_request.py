@@ -21,8 +21,8 @@ from typing_extensions import TypedDict, NotRequired, Literal
 
 # Following classes reflect the structure of what comes out of GET `/request/{request_id}` endpoint in the TF API.
 class RequestTestType(TypedDict):
-    fmf: NotRequired[Dict[str, Any]]
-    sti: NotRequired[Dict[str, Any]]
+    fmf: Optional[Dict[str, Any]]
+    sti: Optional[Dict[str, Any]]
 
 
 class RequestEnvironmentArtifactType(TypedDict):
@@ -198,11 +198,19 @@ class TestingFarmRequest(LoggerMixin, object):
 
         # Select correct test, trust Testing Farm validation that only one test
         # is specified, as defined in the API standard.
-        type = self.type = cast(Literal['fmf', 'sti'], list(request['test'].keys())[0])
+        for type in cast(List[Literal['fmf', 'sti']], list(request['test'].keys())):
+            if request['test'][type]:
+                self.type = type
+                break
+        else:
+            raise gluetool.GlueError('Received malformed request from the Testing Farm API. It does not contain any '
+                                     'test type under `test` key.')
+
         if type not in ['fmf', 'sti']:
             raise gluetool.GlueError('Received malformed request from the Testing Farm API. Its type is `{}`, '
                                      'it should be either `fmf` or `sti`.'.format(type))
         request_test = request['test'][type]
+        assert request_test is not None
 
         # In the TF API v0.1, one of the types is called `test.fmf`, the name is expected to change to `test.tmt`
         # in v0.2, therefore this class and variable are named as `TMT`.

@@ -1,5 +1,6 @@
 {
     "test": {
+        "fmf": null,
         "sti": {
             "url": "testurl",
             "ref": "testref",

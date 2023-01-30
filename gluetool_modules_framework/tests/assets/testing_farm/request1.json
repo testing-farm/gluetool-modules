@@ -4,7 +4,8 @@
             "url": "testurl",
             "ref": "testref",
             "name": "testname"
-        }
+        },
+        "sti": null
     },
     "environments_requested": [{
         "arch": "x86_64",

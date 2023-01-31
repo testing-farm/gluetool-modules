@@ -63,6 +63,17 @@ def test_ref_eval_context(module, monkeypatch):
     assert ref == 'foo'
 
 
+@pytest.mark.parametrize('clone_args,expected_clone_args', [
+    ('', []),
+    ([], []),
+    ('--foo bar some-option', ['--foo', 'bar', 'some-option'])
+])
+def test_clone_args(module, clone_args, expected_clone_args):
+    module._config['clone-args'] = clone_args
+    clone_args = module.clone_args
+    assert clone_args == expected_clone_args
+
+
 def test_eval_context_recursion(module, monkeypatch):
     monkeypatch.setattr(gluetool_modules_framework.libs, 'is_recursion', MagicMock(return_value=True))
     assert module.eval_context == {}
@@ -87,6 +98,8 @@ def test_repository_path(module, dummy_repository_path):
 def test_execute(module):
     module._config['clone-url'] = 'some-clone-url'
     module._config['ref'] = 'some-ref'
+    module._config['clone-args'] = '--foo bar some-option'
     module.execute()
     assert module._repository.clone_url == "some-clone-url"
     assert module._repository.ref == "some-ref"
+    assert module._repository.clone_args == ['--foo', 'bar', 'some-option']

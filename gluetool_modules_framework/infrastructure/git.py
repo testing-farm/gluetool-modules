@@ -4,7 +4,7 @@
 import gluetool
 import gluetool_modules_framework.libs
 from gluetool_modules_framework.libs.git import RemoteGitRepository
-from gluetool.utils import render_template
+from gluetool.utils import render_template, normalize_shell_option
 
 from typing import Any, Dict, Optional, Union, List, TYPE_CHECKING, cast  # noqa
 
@@ -32,7 +32,12 @@ class Git(gluetool.Module):
                         Force git repository clone URL. Accepts also Jinja templates which will be rendered
                         using `eval_context` shared method.
                         """
-            }
+            },
+            'clone-args': {
+                'help': 'Additional arguments to pass to clone command (default: none)',
+                'action': 'append',
+                'default': []
+            },
         })
     ]
 
@@ -56,6 +61,11 @@ class Git(gluetool.Module):
         if option is None:
             return option
         return render_template(option, **self.shared('eval_context'))
+
+    @property
+    def clone_args(self):
+        # type: () -> List[str]
+        return normalize_shell_option(self.option('clone-args'))
 
     @property
     def eval_context(self):
@@ -94,6 +104,7 @@ class Git(gluetool.Module):
 
     def execute(self):
         # type: () -> None
-        self._repository = RemoteGitRepository(self.logger, clone_url=self.clone_url, ref=self.ref)
+        self._repository = RemoteGitRepository(self.logger, clone_url=self.clone_url, ref=self.ref,
+                                               clone_args=self.clone_args)
 
         self.info(str(self._repository))

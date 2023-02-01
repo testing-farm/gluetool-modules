@@ -133,7 +133,7 @@ fmf = "0.6.1"
 future = "0.18.2"
 gitdb2 = "2.0.6"
 GitPython = "2.1.15"
-gluetool = {git = "https://gitlab.com/testing-farm/gluetool.git", rev = "main"}
+gluetool = "^2.2"
 inotify = "0.2.10"
 ipdb = { version = "^0.13.9", optional = true }
 jaeger-client = "4.0.0"

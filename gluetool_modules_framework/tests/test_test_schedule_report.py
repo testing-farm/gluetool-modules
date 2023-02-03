@@ -131,13 +131,33 @@ def test_overall_result_custom(module, monkeypatch, schedule: TestSchedule, expe
 
 def test_execute(module, monkeypatch):
     with tempfile.TemporaryDirectory(prefix='test-schedule-report') as tmpdir:
+        schedule = create_test_schedule([
+            (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.PASSED),
+            (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.PASSED),
+            (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.PASSED)
+        ])
+        for i, entry in enumerate(schedule):
+            entry.guest_setup_outputs = {
+                stage: [
+                    GuestSetupOutput(stage, 'schedule entry #{}: {}'.format(i, stage), 'logpath', 'some data')
+                ] for stage in STAGES_ORDERED
+            }
+
         patch_shared(monkeypatch, module, {}, callables={
-            'test_schedule': lambda: create_test_schedule([(TSEntryStage.CREATED, TSEntryState.OK, TSResult.UNDEFINED)])
+            'test_schedule': lambda: schedule,
+            'primary_task': lambda: PrimaryTaskMock(id=123456, ARTIFACT_NAMESPACE='SOME NAMESPACE'),
+            'thread_id': lambda: 'some thread id'
         })
         module._config.update({
-            'xunit-file': os.path.join(tmpdir, 'results.xml')
+            'xunit-file': os.path.join(tmpdir, 'results.xml'),
+            'enable-polarion': 1,
+            'polarion-lookup-method': 'polarion lookup method',
+            'polarion-lookup-method-field-id': 'polarion lookup method field id',
+            'polarion-project-id': 'polarion project id',
         })
         module.execute()
+        assert module.results().prettify() == read_xml_asset_file('results_execute.xml')
+        assert module.test_schedule_results().prettify() == read_xml_asset_file('results_execute.xml')
 
 
 def test_destroy(module, monkeypatch):
@@ -167,9 +187,9 @@ def test_destroy(module, monkeypatch):
             'polarion-project-id': 'polarion project id',
         })
 
-        module.destroy()
-        assert module.results().prettify() == read_xml_asset_file('results.xml')
-        assert module.test_schedule_results().prettify() == read_xml_asset_file('results.xml')
+        module.destroy(failure=True)
+        assert module.results().prettify() == read_xml_asset_file('results_destroy.xml')
+        assert module.test_schedule_results().prettify() == read_xml_asset_file('results_destroy.xml')
 
 
 @pytest.mark.parametrize('enable_polarion, polarion_project_id, polarion_lookup_method, polarion_lookup_method_field_id, expected_output', [  # noqa

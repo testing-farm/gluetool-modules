@@ -304,10 +304,26 @@ class TestScheduleReport(gluetool.Module):
 
         return self._result
 
+    def _generate_results(self):
+        # type: () -> None
+
+        self._serialize_results(self._schedule)
+
+        self._report_final_result(self._schedule)
+
+        if self.option('xunit-file'):
+            with open(gluetool.utils.normalize_path(self.option('xunit-file')), 'w') as f:
+                f.write(gluetool.log.format_xml(self._result))
+                f.flush()
+
+            self.info('results saved into {}'.format(self.option('xunit-file')))
+
     def execute(self):
         # type: () -> None
         self.require_shared('test_schedule')
         self._schedule.log(self.info, label='finished schedule')
+
+        self._generate_results()
 
     def destroy(self, failure=None):
         # type: (Optional[Any]) -> None
@@ -318,23 +334,14 @@ class TestScheduleReport(gluetool.Module):
         if failure:
             self._schedule.log(self.info, label='aborted schedule')
 
-        self._serialize_results(self._schedule)
+            self._schedule.log(
+                self.info,
+                label='finished schedule',
+                include_errors=True,
+                include_logs=True,
+                include_connection_info=True,
+                connection_info_docs_link=self.option('docs-link-reservation'),
+                module=self
+            )
 
-        self._schedule.log(
-            self.info,
-            label='finished schedule',
-            include_errors=True,
-            include_logs=True,
-            include_connection_info=True,
-            connection_info_docs_link=self.option('docs-link-reservation'),
-            module=self
-        )
-
-        self._report_final_result(self._schedule)
-
-        if self.option('xunit-file'):
-            with open(gluetool.utils.normalize_path(self.option('xunit-file')), 'w') as f:
-                f.write(gluetool.log.format_xml(self._result))
-                f.flush()
-
-            self.info('results saved into {}'.format(self.option('xunit-file')))
+            self._generate_results()

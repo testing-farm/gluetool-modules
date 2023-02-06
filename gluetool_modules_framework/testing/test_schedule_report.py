@@ -285,7 +285,7 @@ class TestScheduleReport(gluetool.Module):
                 name='baseosci.result', value=schedule_entry.result.name.lower()
             )
 
-            if hasattr(schedule_entry, 'results'):
+            if hasattr(schedule_entry, 'result'):
                 self.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
 
             sort_children(testsuite_properties, lambda child: child.attrs['name'])

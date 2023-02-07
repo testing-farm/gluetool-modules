@@ -1,5 +1,6 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
+import re
 
 import gluetool
 import gluetool_modules_framework.libs.dispatch_job
@@ -146,6 +147,18 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
 
         return cast(Optional[PlatformType], meta_file['galaxy_info'].get('platforms', None))
 
+    def get_short_rhel_compose(self, compose):
+        # type: (str) -> str
+        """
+        Transform compose name to the short version RHEL-X.Y[.Z]
+        """
+        match = re.match(r'RHEL-\d+(?:\.\d+)*', compose)
+        if match:
+            return match.group(0)
+
+        # If failed, return original string
+        return compose
+
     @cached_property
     def get_transformed_platforms(self):
         # type: () -> Optional[PlatformType]
@@ -220,8 +233,8 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
             ansible_version = compose_ansible_dict['ansible-version']
             ansible_path = compose_ansible_dict['ansible-path']
 
-            pr_label = '{}/ansible-{}/(citool)'.format(
-                compose, ansible_version
+            pr_label = '{}/ansible-{}'.format(
+                self.get_short_rhel_compose(compose), ansible_version
             )
 
             if not self.is_compose_supported(compose):

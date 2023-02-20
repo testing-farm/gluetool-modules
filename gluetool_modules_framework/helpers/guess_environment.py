@@ -37,17 +37,17 @@ class GuessEnvironment(gluetool.Module):
     """
     "Guess" arch/compose/distro/image/product/wow relevancy distro.
 
-    Goal of this module is to at least partialy answer question about the testing environment
+    Goal of this module is to at least partially answer question about the testing environment
     for a given artifact - deduce what composes, architectures and other properties are
     necessary to begin with. Following modules may change or extend these.
 
     User can choose from different possible methods of "guessing":
 
     * ``autodetect``: module will use artifact to deduce as many properties possible
-      using mapping files (``--{distro,compose, image,product,wow-relevancy-distro}-pattern-map``)
+      using mapping files (``--{distro,compose,image,product,wow-relevancy-distro,sst}-pattern-map``)
 
     * ``force``: instead of autodetection, use specified properties. Use ``--compose``, ``--distro``,
-      ``--image``, ``--product`` and ``--wow-relevancy-distro`` options to set actual values.
+      ``--image``, ``--product``, ``--wow-relevancy-distro`` and ``--sst`` options to set actual values.
 
     * ``recent``: (Only for images) use ``--image`` option as a hint - a regular
       expression, with one matching group, that tells module what image names should be
@@ -100,6 +100,11 @@ class GuessEnvironment(gluetool.Module):
                 'help': 'What method to use for wow relevancy distro "guessing" (default: %(default)s).',
                 'choices': ('autodetect', 'target-autodetection', 'force'),
                 'default': 'autodetect'
+            },
+            'sst-method': {
+                'help': 'What method to use for sst "guessing" (default: %(default)s).',
+                'choices': ('autodetect', 'force'),
+                'default': 'autodetect'
             }
         }),
         ('Specifications', {
@@ -121,6 +126,9 @@ class GuessEnvironment(gluetool.Module):
             },
             'wow-relevancy-distro': {
                 'help': 'Wow relevancy distro identification, to help your method with guessing.'
+            },
+            'sst': {
+                'help': 'SST identification, to help your method with guessing.'
             }
         }),
         ('Distro-listings', {
@@ -189,6 +197,11 @@ class GuessEnvironment(gluetool.Module):
                 'metavar': '(destination_tag|build_target):PATH',
                 'action': 'append',
                 'default': []
+            },
+            'sst-component-map': {
+                'help': 'Mapping between a component name to sst.',
+                'metavar': 'FILE',
+                'default': None
             }
         }),
         ('Testing', {
@@ -199,7 +212,7 @@ class GuessEnvironment(gluetool.Module):
         })
     ]
 
-    shared_functions = ['compose', 'actual_compose', 'distro', 'image', 'product', 'wow_relevancy_distro']
+    shared_functions = ['compose', 'actual_compose', 'distro', 'image', 'product', 'wow_relevancy_distro', 'sst']
 
     supported_dryrun_level = gluetool.glue.DryRunLevels.DRY
 
@@ -222,6 +235,7 @@ class GuessEnvironment(gluetool.Module):
         self._image = _init_source()
         self._product = _init_source()
         self._wow_relevancy_distro = _init_source()
+        self._sst = _init_source()
 
     def compose(self):
         # type: () -> Union[str, List[str]]
@@ -331,6 +345,32 @@ class GuessEnvironment(gluetool.Module):
 
         assert self._wow_relevancy_distro['result'] is not None
         return self._wow_relevancy_distro['result']
+
+    def sst(self):
+        # type: () -> str
+        """
+        Return RHEL Subsystem Team (called SST) mapped from component name (or forced).
+        Knowing SST helps us tag the cloud resource(s) created for a test environemnt.
+
+        :rtype: str
+        """
+        if self._sst['result'] is None:
+            self.execute_method(self._sst)
+
+        assert self._sst['result'] is not None
+        return cast(str, self._sst['result'])
+
+    @gluetool.utils.cached_property
+    def _sst_component_map(self):
+        # type: () -> Dict[str, str]
+
+        if not self.option('sst-component-map'):
+            return {}
+
+        return cast(
+            Dict[str, str],
+            gluetool.utils.load_yaml(self.option('sst-component-map'), logger=self.logger)
+        )
 
     @gluetool.utils.cached_property
     def _arch_compatibility_map(self):
@@ -598,6 +638,12 @@ class GuessEnvironment(gluetool.Module):
 
         result = None
 
+        # sst autodetection is a special case since there's no need for destination_tag, and we can just pull
+        # it from the 'sst-component-map.yaml' mapping file. If a component is not found, it returns 'unknown'.
+        if source['type'] == 'sst':
+            source['result'] = self._sst_component_map.get(self.shared('primary_task').component, 'unknown')
+            return
+
         # by default we match with destination_tag
         if primary_task.destination_tag:
             result = self._guess_autodetect(source, 'destination_tag', primary_task.destination_tag, *args)
@@ -682,6 +728,13 @@ class GuessEnvironment(gluetool.Module):
             'pattern-map': _parse_pattern_map('wow-relevancy-distro-pattern-map'),
             'result': None
         }
+        self._sst = {
+            'type': 'sst',
+            'specification': self.option('sst'),
+            'method': self.option('sst-method'),
+            'pattern-map': self._sst_component_map,
+            'result': None
+        }
 
     def sanity(self):
         # type: () -> None
@@ -692,7 +745,7 @@ class GuessEnvironment(gluetool.Module):
         specification_required = ('force', 'recent', 'nightly', 'buc')
         specification_ignored = ('autodetect', 'target-autodetection',)
 
-        for source in [self._compose, self._distro, self._image, self._product, self._wow_relevancy_distro]:
+        for source in [self._compose, self._distro, self._image, self._product, self._wow_relevancy_distro, self._sst]:
 
             if source['method'] == 'target-autodetection' and not source['pattern-map']:
                 raise GlueError(
@@ -726,5 +779,6 @@ class GuessEnvironment(gluetool.Module):
                 'compose': self.compose(),
                 'distro': self.distro(),
                 'image': self.image(),
-                'product': self.product()
+                'product': self.product(),
+                'sst': self.sst()
             })

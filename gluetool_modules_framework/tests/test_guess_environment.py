@@ -53,6 +53,13 @@ def fixture_module():
         'pattern-map': {},
         'result': None
     }
+    module._sst = {
+        'type': 'sst',
+        'specification': 'foo',
+        'method': 'foo',
+        'pattern-map': {},
+        'result': None
+    }
     return module
 
 
@@ -295,6 +302,31 @@ def test_product_force(module):
     assert module._product['result'] == product
 
 
+def test_sst_force(module):
+    sst = 'dummy-sst'
+    module._sst['method'] = 'force'
+
+    # pylint: disable=protected-access
+    module._sst['specification'] = sst
+
+    module._guess_force(module._sst)
+
+    assert module._sst['result'] == sst
+
+
+def test_sst_unknown(module, monkeypatch):
+    component = 'non-exist-component'
+    module._sst['method'] = 'autodetect'
+
+    patch_shared(monkeypatch, module, {}, callables={
+        'primary_task': MagicMock(return_value=MagicMock(component=component))
+        })
+
+    module._guess_target_autodetect(module._sst)
+
+    assert module._sst['result'] == 'unknown'
+
+
 def test_wow_relevancy_distro_force(module):
     wow_relevancy_distro = 'dummy-wow_relevancy_distro'
 
@@ -469,13 +501,16 @@ def test_execute(module, log):
     module.distro()
     module.image()
     module.product()
+    module.sst()
 
     assert module._distro['result'] == 'dummy'
-    assert log.records[-3].message == "Using distro:\n\"dummy\""
+    assert log.records[-4].message == "Using distro:\n\"dummy\""
     assert module._image['result'] == 'dummy'
-    assert log.records[-2].message == "Using image:\n\"dummy\""
+    assert log.records[-3].message == "Using image:\n\"dummy\""
     assert module._product['result'] == 'dummy'
-    assert log.records[-1].message == "Using product:\n\"dummy\""
+    assert log.records[-2].message == "Using product:\n\"dummy\""
+    assert module._sst['result'] == 'dummy'
+    assert log.records[-1].message == "Using sst:\n\"dummy\""
 
 
 def test_test_guessing(module, log):
@@ -489,12 +524,13 @@ def test_test_guessing(module, log):
 
     module.execute()
 
-    assert log.records[4].message.split('\n') == [
+    assert log.records[5].message.split('\n') == [
         'Guessed environment:', '{',
         '    "compose": "dummy",',
         '    "distro": "dummy",',
         '    "image": "dummy",',
-        '    "product": "dummy"',
+        '    "product": "dummy",',
+        '    "sst": "dummy"',
         '}'
     ]
 

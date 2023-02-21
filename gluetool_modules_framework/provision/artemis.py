@@ -743,11 +743,10 @@ class ArtemisProvisioner(gluetool.Module):
                 'type': str,
                 'default': DEFAULT_PRIORIY_GROUP
             },
-            'user-data-vars': {
-                'help': 'Save some context vars as user-data field (default: none)',
-                'action': 'append',
-                'default': []
-
+            'user-data-vars-template-file': {
+                'help': 'YAML containing mapping templates to be stored in the user-data field (default: none)',
+                'type': str,
+                'default': None
             }
         }),
         ('Common options', {
@@ -937,12 +936,35 @@ class ArtemisProvisioner(gluetool.Module):
 
         return constraints
 
+    @gluetool.utils.cached_property
+    def user_data(self):
+        # type: () -> Dict[str, str]
+
+        context = self.shared('eval_context')
+        user_data = {}
+
+        # Parse and template user-data-vars from YAML
+        user_data_tpl_filepath = self.option('user-data-vars-template-file')
+
+        if user_data_tpl_filepath is not None:
+            user_data.update({
+                key: gluetool.utils.render_template(str(value), logger=self.logger, **context)
+                for key, value in gluetool.utils.load_yaml(user_data_tpl_filepath, logger=self.logger).items()
+            })
+
+        log_dict(self.logger.debug, 'user-data', user_data)
+
+        return user_data
+
     def sanity(self):
         # type: () -> None
 
         # test whether parsing of HW requirements yields anything valid - the value is just ignored, we just want
         # to be sure it doesn't raise any exception
         self.hw_constraints
+
+        # Validate we are able to parse user_data_vars
+        self.user_data
 
         if not self.option('provision'):
             return
@@ -1004,14 +1026,11 @@ class ArtemisProvisioner(gluetool.Module):
         :returns: ArtemisGuest instance or ``None`` if it wasn't possible to grab the guest.
         '''
 
-        context = self.shared('eval_context')
-        user_data = {var: context.get(var) for var in normalize_multistring_option(self.option('user-data-vars'))}
-
         response = self.api.create_guest(environment,
                                          pool=pool,
                                          keyname=key,
                                          priority=priority,
-                                         user_data=user_data,
+                                         user_data=self.user_data,
                                          post_install_script=post_install_script)
 
         guestname = response.get('guestname')

@@ -260,6 +260,45 @@ def test_hw_constraints(module, constraint, expected):
         module.hw_constraints
 
 
+@pytest.mark.parametrize('filename, context, expected', [
+    (
+        'user_data.yaml',
+        {'__TEST_VAR__': 'test string'},
+        {
+            'TEST_VARIABLE': 'test string',
+            'another-user-data-field': 'a string value'
+        }
+    ),
+    (
+        None,
+        {},
+        {}
+    ),
+    (
+        'invalid_filename',
+        {},
+        (
+            GlueError,
+            'File \'gluetool_modules_framework/tests/assets/artemis/invalid_filename\' does not exist'
+        )
+    )
+])
+def test_user_data(module, monkeypatch, filename, context, expected):
+    module._config = {
+        'user-data-vars-template-file': testing_asset('artemis', filename) if filename else None
+    }
+
+    patch_shared(monkeypatch, module, {'eval_context': context})
+
+    if not isinstance(expected, tuple):
+        assert module.user_data == expected
+        return
+
+    exc, msg = expected
+    with pytest.raises(exc, match=msg):
+        module.user_data
+
+
 def test_sanity(module):
     assert module.sanity() is None
 

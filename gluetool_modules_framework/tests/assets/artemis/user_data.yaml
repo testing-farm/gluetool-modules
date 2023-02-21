@@ -1,0 +1,3 @@
+---
+TEST_VARIABLE: "{{ __TEST_VAR__ }}"
+another-user-data-field: a string value

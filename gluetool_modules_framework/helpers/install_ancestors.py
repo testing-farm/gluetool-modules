@@ -1,6 +1,7 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+import functools
 import os
 import re
 
@@ -13,8 +14,11 @@ from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath,
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
 
 # Type annotations
-from typing import cast, Any, List, Optional  # noqa
+from typing import cast, Any, Callable, List, Optional, Set  # noqa
 from gluetool_modules_framework.libs.guest import NetworkedGuest
+
+
+FuncType = Callable[..., List[str]]
 
 
 class InstallAncestors(gluetool.Module):
@@ -25,13 +29,12 @@ class InstallAncestors(gluetool.Module):
     is used to get ancestor components and then ``component_rpms`` shared function is used to get rpms built for each
     ancestor component.
 
-    It's possible to override the ancestor components or rpms by providing corresponding option.
+    It's possible to override or exclude the ancestor components or rpms by providing corresponding options.
     """
 
     name = 'install-ancestors'
     description = 'Install ancestors of the component defined by primary_task on given guest.'
 
-    # TODO: add options to exclude components and rpms
     options = {
         'ancestor-components': {
             'help': """
@@ -45,6 +48,22 @@ class InstallAncestors(gluetool.Module):
             'help': """
                 Ancestor rpms to be installed on the guest (default: none).
                 Overrides the ancestor resolved from primary_task. Mutually exclusive with ancestor-components option.
+                """,
+            'default': [],
+            'action': 'append'
+        },
+        'exclude-components': {
+            'help': """
+                Name of components to be excluded from installation on the guest (default: none).
+                The component to be excluded can by specified either by plain string or regular expression.
+                """,
+            'default': [],
+            'action': 'append'
+        },
+        'exclude-rpms': {
+            'help': """
+                Name of rpms to be excluded from installation on the guest (default: none).
+                The rpm to be excluded can by specified either by plain string or regular expression.
                 """,
             'default': [],
             'action': 'append'
@@ -89,6 +108,55 @@ class InstallAncestors(gluetool.Module):
 
         return sorted(opt for opt in normalize_multistring_option(option_value) if opt)
 
+    def filter_list(self, lst, option_name):
+        # type: (List[str], str) -> List[str]
+        """
+        Filter out list items using provided option.
+
+        :param List[str] lst: List to be filtered.
+        :param str option_name: Option name from which filters are retrieved.
+        """
+
+        # do not filter anything when the option is not set
+        if not self.option(option_name):
+            return lst
+
+        excluded_items = set()  # type: Set[str]
+        for exclude in normalize_multistring_option(self.option(option_name)):
+            regex = re.compile(exclude)
+            excluded_items.update(filter(regex.match, lst))
+
+        if excluded_items:
+            log_dict(self.info, "Following items were filtered out by '{}' filter".format(option_name),
+                     sorted(excluded_items))
+        else:
+            self.info("No items were filtered out by '{}' filter".format(option_name))
+
+        return sorted(list(set(lst) - excluded_items))
+
+    def filter_list_decorator(option_name):  # type: ignore[misc]  # noqa: F821
+        # This decorator needs to be a class memeber as it only makes sense to use it for decorating instance methods.
+        # mypy then complains about missing self argument, which needs to be ignored because of
+        # https://github.com/python/mypy/issues/7778
+        # type: (str) -> Callable[[FuncType], FuncType]
+        """
+        Decorator for filtering results (list) of instance methods.
+
+        :param str option_name: Option name from which filters are retrieved.
+        """
+
+        def decorator(func):
+            # type: (FuncType) -> FuncType
+            @functools.wraps(func)
+            def wrapper(self):
+                # type: (InstallAncestors) -> List[str]
+                lst = func(self)
+                lst = self.filter_list(lst, option_name)
+                return lst
+            return wrapper
+        return decorator
+
+    @filter_list_decorator(option_name='exclude-components')
     def get_ancestor_components(self):
         # type: () -> List[str]
         """
@@ -126,6 +194,7 @@ class InstallAncestors(gluetool.Module):
                  ancestor_components)
         return cast(List[str], ancestor_components)
 
+    @filter_list_decorator(option_name='exclude-rpms')
     def get_ancestor_rpms(self):
         # type: () -> List[str]
         """

@@ -135,6 +135,10 @@ class PipelineStateReporter(gluetool.Module):
             'contact-irc': {
                 'help': 'Team or CI system IRC channel.'
             },
+            'contact-slack': {
+                'help': 'Team or CI system Slack channel.',
+                'default': None
+            },
             'contact-docs': {
                 'help': 'URL of documentation of the CI system.'
             }
@@ -451,6 +455,7 @@ class PipelineStateReporter(gluetool.Module):
         umb_message.contact_email = self.option('contact-email')
         umb_message.contact_irc = self.option('contact-irc')
         umb_message.contact_name = self.option('contact-name')
+        umb_message.contact_slack = self.option('contact-slack')
         umb_message.contact_team = self.option('contact-team')
         umb_message.contact_url = self.option('contact-url')
 
@@ -760,6 +765,7 @@ class UMBMessage():
         self.contact_email: Optional[str] = None
         self.contact_irc: Optional[str] = None
         self.contact_name: Optional[str] = None
+        self.contact_slack: Optional[str] = None
         self.contact_team: Optional[str] = None
         self.contact_url: Optional[str] = None
         self.error_reason: Optional[str] = None
@@ -823,6 +829,7 @@ class UMBMessage():
                     'email': self.contact_email,
                     'irc': self.contact_irc,
                     'name': self.contact_name,
+                    'slack': self.contact_slack,
                     'team': self.contact_team,
                     'url': self.contact_url,
                 }) or None,
@@ -854,16 +861,17 @@ class UMBMessage():
 
         # Version 0.x.y
         else:
-            body = {
+            body = self._dict_filter_no_value({
                 'artifact': self._artifact,
                 'category': self.test_category,
-                'ci': {
+                'ci': self._dict_filter_no_value({
                     'email': self.contact_email,
                     'irc': self.contact_irc,
                     'name': self.contact_name,
+                    'slack': self.contact_slack,
                     'team': self.contact_team,
                     'url': self.contact_url,
-                },
+                }) or None,
                 'docs': self.test_docs,
                 'generated_at': self.generated_at,
                 'issue_url': self.error_issue_url,
@@ -873,7 +881,7 @@ class UMBMessage():
                 'run': self.run,
                 'type': self.test_type,
                 'version': self.version,
-            }
+            })
             body.update(
                 self._dict_filter_no_value({
                     'note': self.note,

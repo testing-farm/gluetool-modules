@@ -19,7 +19,8 @@ VERSION_0_CI = {
     'team': 'Fake Team',
     'url': 'Fake URL',
     'email': 'Fake Email',
-    'irc': 'Fake IRC'
+    'irc': 'Fake IRC',
+    'slack': 'Fake Slack'
 }
 
 VERSION_1_CONTACT = {
@@ -28,6 +29,7 @@ VERSION_1_CONTACT = {
     'url': 'Fake URL',
     'email': 'Fake Email',
     'irc': 'Fake IRC',
+    'slack': 'Fake Slack',
     'docs': 'Fake docs URL'
 }
 
@@ -165,6 +167,7 @@ def fixture_ci_info(module):
         'contact-url': 'Fake URL',
         'contact-email': 'Fake Email',
         'contact-irc': 'Fake IRC',
+        'contact-slack': 'Fake Slack',
         'contact-docs': 'Fake docs URL',
         'pipeline-name': 'BaseOS CI'
     })
@@ -389,7 +392,6 @@ def test_execute_old_message(ci_info, evaluate, monkeypatch, module, mock_namesp
         'ci': VERSION_0_CI,
         'run': RUN,
         'reason': 'some-reason',
-        'issue_url': None,
         'category': 'some-category',
         'label': 'some-label',
         'namespace': 'namespace',
@@ -473,7 +475,6 @@ def test_execute_reason_in_note_old_message(
         'ci': VERSION_0_CI,
         'run': RUN,
         'reason': 'some-reason',
-        'issue_url': None,
         'category': 'some-category',
         'label': 'some-label',
         'namespace': 'namespace',

@@ -61,6 +61,12 @@ class RequestType(TypedDict):
     environments_requested: NotRequired[List[RequestEnvironmentType]]
     notification: NotRequired[RequestNotificationType]
     settings: NotRequired[Dict[str, Any]]
+    user_id: str
+
+
+class UserType(TypedDict):
+    id: str
+    name: str
 
 
 class TestingFarmAPI(LoggerMixin, object):
@@ -143,6 +149,15 @@ class TestingFarmAPI(LoggerMixin, object):
             raise gluetool.GlueError("Request '{}' was not found".format(request_id))
 
         return cast(RequestType, request.json())
+
+    def get_user(self, user_id, api_key):
+        # type: (str, str) -> UserType
+        request = self._get_request('v0.1/users/{}?api_key={}'.format(user_id, api_key))
+
+        if not request:
+            raise gluetool.GlueError("Request '{}' was not found".format(user_id))
+
+        return cast(UserType, request.json())
 
     def put_request(self, request_id, payload):
         # type: (str, Optional[Dict[str, Any]]) -> Any
@@ -251,6 +266,9 @@ class TestingFarmRequest(LoggerMixin, object):
             self.webhook_token = request['notification']['webhook']['token'] or None
         except (KeyError, TypeError):
             pass
+
+        user = self._api.get_user(request['user_id'], self._api_key)
+        self.request_username = user['name']
 
     def webhook(self):
         # type: () -> Any
@@ -396,6 +414,7 @@ class TestingFarmRequestModule(gluetool.Module):
             'TESTING_FARM_REQUEST_TEST_TYPE': self._tf_request.type,
             'TESTING_FARM_REQUEST_TEST_URL': self._tf_request.url,
             'TESTING_FARM_REQUEST_TEST_REF': self._tf_request.ref,
+            'TESTING_FARM_REQUEST_USERNAME': self._tf_request.request_username,
         }
 
     def testing_farm_request(self):

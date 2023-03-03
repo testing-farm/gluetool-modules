@@ -29,6 +29,12 @@ REQUESTS = {
 
 PUT_REQUESTS = {}
 
+REQUESTS_USER = {
+    'fakekey': {
+        'user': _load_assets('user'),
+    }
+}
+
 
 class ResponseMock():
     status_code = 200
@@ -87,6 +93,7 @@ def requests_mock():
 def fixture_module():
     api = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmAPI
     api.get_request = lambda _, id, key: REQUESTS[key][id]
+    api.get_user = lambda _, id, key: REQUESTS_USER[key][id]
     api.put_request = lambda _, id, payload: PUT_REQUESTS.update({id: payload})
     module = create_module(gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmRequestModule)[1]
     module._config.update({
@@ -281,6 +288,7 @@ def test_eval_context(module, request1):
         'TESTING_FARM_REQUEST_TEST_TYPE': 'fmf',
         'TESTING_FARM_REQUEST_TEST_URL': 'testurl',
         'TESTING_FARM_REQUEST_TEST_REF': 'testref',
+        'TESTING_FARM_REQUEST_USERNAME': 'testuser',
     }
 
 

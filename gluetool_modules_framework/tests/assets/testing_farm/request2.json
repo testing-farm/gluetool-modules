@@ -6,5 +6,6 @@
         },
         "sti": null
     },
-    "environments_requested": []
+    "environments_requested": [],
+    "user_id": "user"
 }

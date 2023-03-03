@@ -30,5 +30,6 @@
         "webhook": {
             "url": "webhookurl"
         }
-    }
+    },
+    "user_id": "user"
 }

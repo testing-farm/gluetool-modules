@@ -4,7 +4,7 @@
 import pytest
 import os
 
-from mock import MagicMock
+from mock import call, MagicMock
 
 from dataclasses import dataclass
 
@@ -31,7 +31,7 @@ ASSETS_DIR = os.path.join('gluetool_modules_framework', 'tests', 'assets')
 
 class GuestMock(MagicMock):
     def __init__(self, **kwargs):
-        super().__init__(kwargs)
+        super(GuestMock, self).__init__(**kwargs)
         self.setup = MagicMock(return_value=Ok([
                 GuestSetupOutput(
                     stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
@@ -98,6 +98,47 @@ def test_execute(module, monkeypatch):
     assert test_schedule[0].stage == TSEntryStage.COMPLETE
     assert test_schedule[0].state == TSEntryState.OK
     assert test_schedule[0].result == TSResult.UNDEFINED
+
+
+def test_execute_reuse_guests(module, monkeypatch):
+    module._config['reuse-guests'] = True
+    module._config['max-parallel'] = 1
+    guest_mock = GuestMock(
+        hostname='foo',
+        environment=TestingEnvironment(arch='x86_64', compose='Fedora37'),
+        name='bar'
+    )
+    test_schedule = create_test_schedule([
+        (TSEntryStage.CREATED, TSEntryState.OK, TSResult.UNDEFINED),
+        (TSEntryStage.CREATED, TSEntryState.OK, TSResult.UNDEFINED),
+        (TSEntryStage.CREATED, TSEntryState.OK, TSResult.UNDEFINED)
+    ])
+    run_test_schedule_entry_mock = MagicMock()
+    provision_mock = MagicMock(return_value=[guest_mock])
+    patch_shared(monkeypatch, module, {}, callables={
+        'test_schedule': lambda: test_schedule,
+        'evaluate_filter': evaluate_filter_mock,
+        'provision': provision_mock,
+        'run_test_schedule_entry': run_test_schedule_entry_mock
+    })
+    module.execute()
+
+    provision_mock.assert_called_once_with(TestingEnvironment(arch='x86_64', compose='Fedora37'))
+    # The guest setup should be called only for the first schedule entry
+    guest_mock.setup.assert_has_calls([
+        call(stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION, schedule_entry=test_schedule[0]),
+        call(stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION_WORKAROUNDS, schedule_entry=test_schedule[0]),
+        call(stage=GuestSetupStage.ARTIFACT_INSTALLATION, schedule_entry=test_schedule[0]),
+        call(stage=GuestSetupStage.POST_ARTIFACT_INSTALLATION_WORKAROUNDS, schedule_entry=test_schedule[0]),
+        call(stage=GuestSetupStage.POST_ARTIFACT_INSTALLATION, schedule_entry=test_schedule[0]),
+    ])
+    guest_mock.destroy.assert_called_once_with()
+    assert len(test_schedule) == 3
+
+    for i in range(3):
+        assert test_schedule[i].stage == TSEntryStage.COMPLETE
+        assert test_schedule[i].state == TSEntryState.OK
+        assert test_schedule[i].result == TSResult.UNDEFINED
 
 
 def test_execute_provision_error(module, monkeypatch):

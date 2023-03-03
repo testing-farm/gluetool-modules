@@ -1,6 +1,8 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+import threading
+
 import gluetool_modules_framework.libs.guest
 import gluetool
 from gluetool.action import Action
@@ -89,7 +91,11 @@ class TestScheduleRunner(gluetool.Module):
             'choices': GUEST_SETUP_STAGES,
             'action': 'append',
             'metavar': 'STAGE'
-        }
+        },
+        'reuse-guests': {
+            'help': "Reuse guests for running multiple tests",
+            'action': 'store_true'
+        },
     }
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -97,6 +103,9 @@ class TestScheduleRunner(gluetool.Module):
         super(TestScheduleRunner, self).__init__(*args, **kwargs)
 
         self._test_schedule: TestSchedule = TestSchedule()
+
+        self._guests_cache: List[gluetool_modules_framework.libs.guest.NetworkedGuest] = []
+        self._guest_cache_lock = threading.Lock()
 
     @property
     def eval_context(self) -> Any:
@@ -257,6 +266,11 @@ class TestScheduleRunner(gluetool.Module):
 
     def _cleanup(self, schedule_entry: TestScheduleEntry) -> None:
 
+        if self.option('reuse-guests'):
+            assert schedule_entry.guest is not None
+            self._guests_cache.append(schedule_entry.guest)
+            return
+
         self._destroy_guest(schedule_entry)
 
     def _run_tests(self, schedule_entry: TestScheduleEntry) -> None:
@@ -265,6 +279,23 @@ class TestScheduleRunner(gluetool.Module):
 
         with Action('test execution', parent=schedule_entry.action, logger=schedule_entry.logger):
             self.shared('run_test_schedule_entry', schedule_entry)
+
+    def _find_cached_guest(
+        self,
+        schedule_entry: TestScheduleEntry
+    ) -> Optional[gluetool_modules_framework.libs.guest.NetworkedGuest]:
+
+        with self._guest_cache_lock:
+            for guest in self._guests_cache:
+                if schedule_entry.testing_environment == guest.environment:
+                    self._guests_cache.remove(guest)
+                    return guest
+        return None
+
+    def _destroy_cached_guests(self) -> None:
+        for guest in self._guests_cache:
+            with Action('destroying cached guest', parent=Action.current_action(), logger=self.logger):
+                guest.destroy()
 
     def _run_schedule(self, schedule: TestSchedule) -> None:
 
@@ -383,9 +414,19 @@ class TestScheduleRunner(gluetool.Module):
             if schedule_entry.stage == TestScheduleEntryStage.CREATED:
                 schedule_entry.info('Entry is ready')
 
-                _shift(schedule_entry, TestScheduleEntryStage.READY)
+                # Try to find a suitable guest for reuse, preparation and run tests straight away
+                if self.option('reuse-guests'):
+                    guest = self._find_cached_guest(schedule_entry)
+                    if guest:
+                        schedule_entry.guest = guest
+                        schedule_entry.info('cached guest suitable to entry is found')
+                        _shift(schedule_entry, TestScheduleEntryStage.PREPARED)
+                        engine.enqueue_jobs(_job(schedule_entry, 'running tests', self._run_tests))
 
-                engine.enqueue_jobs(_job(schedule_entry, 'provisioning', self._provision_guest))
+                # Otherwise provision a guest
+                if schedule_entry.guest is None:
+                    _shift(schedule_entry, TestScheduleEntryStage.READY)
+                    engine.enqueue_jobs(_job(schedule_entry, 'provisioning', self._provision_guest))
 
             elif schedule_entry.stage == TestScheduleEntryStage.GUEST_PROVISIONING:
                 schedule_entry.info('guest provisioning finished')
@@ -543,6 +584,9 @@ class TestScheduleRunner(gluetool.Module):
 
             handle_job_errors(engine.errors, 'At least one entry crashed')
 
+        if self.option('reuse-guests'):
+            self._destroy_cached_guests()
+
         self.shared('trigger_event', 'test-schedule.finished',
                     schedule=schedule)
 
@@ -554,6 +598,9 @@ class TestScheduleRunner(gluetool.Module):
         )
 
         self._test_schedule = schedule
+
+        if self.option('reuse-guests'):
+            self.info('Will reuse guests for schedule entries')
 
         with Action('executing test schedule', parent=Action.current_action(), logger=self.logger) as schedule.action:
             self._run_schedule(schedule)

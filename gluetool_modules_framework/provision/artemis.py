@@ -963,9 +963,6 @@ class ArtemisProvisioner(gluetool.Module):
         # to be sure it doesn't raise any exception
         self.hw_constraints
 
-        # Validate we are able to parse user_data_vars
-        self.user_data
-
         if not self.option('provision'):
             return
 

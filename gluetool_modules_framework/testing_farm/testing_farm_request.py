@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import gluetool
 from gluetool.log import LoggerMixin
 from gluetool.result import Result
-from gluetool.utils import log_dict, requests
+from gluetool.utils import log_dict, requests, render_template
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 
 from requests.exceptions import ConnectionError, HTTPError, Timeout
@@ -204,7 +204,7 @@ class TestingFarmRequest(LoggerMixin, object):
         assert module._tf_api is not None
 
         self._module = module
-        self._api_key = module.option('api-key')
+        self._api_key = module.api_key
         self._api = module._tf_api
 
         self.id = cast(str, self._module.option('request-id'))
@@ -307,8 +307,8 @@ class TestingFarmRequest(LoggerMixin, object):
                                    tick=self._module.option('retry-tick'))
 
     def update(self, state=None, overall_result=None, xunit=None, summary=None, artifacts_url=None):
-        # type: (Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]) -> Any
-        payload = {}
+        # type: (Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]) -> None
+        payload = {}  # type: Dict[str, Any]
         result = {}
         run = {}
 
@@ -369,10 +369,16 @@ class TestingFarmRequestModule(gluetool.Module):
     options = [
         ('API options', {
             'api-key': {
-                'help': 'API key required for authentication',
+                'help': '''
+                        API key required for authentication. Accepts also Jinja templates which will be rendered using
+                        `eval_context` shared method.
+                        ''',
             },
             'api-url': {
-                'help': 'Root of Nucleus internal API endpoint',
+                'help': '''
+                        Root of Nucleus internal API endpoint. Accepts also Jinja templates which will be rendered using
+                        `eval_context` shared method.
+                        ''',
             },
             'retry-timeout': {
                 'help': 'Wait timeout in seconds. (default: %(default)s)',
@@ -405,6 +411,20 @@ class TestingFarmRequestModule(gluetool.Module):
         self._tf_api = None  # type: Optional[TestingFarmAPI]
 
     @property
+    def api_url(self):
+        # type: () -> str
+        option = self.option('api-url')
+
+        return render_template(option, **self.shared('eval_context'))
+
+    @property
+    def api_key(self):
+        # type: () -> str
+        option = self.option('api-key')
+
+        return render_template(option, **self.shared('eval_context'))
+
+    @property
     def eval_context(self):
         # type: () -> Dict[str, str]
         assert self._tf_request is not None
@@ -423,11 +443,11 @@ class TestingFarmRequestModule(gluetool.Module):
 
     def execute(self):
         # type: () -> None
-        self._tf_api = TestingFarmAPI(self, self.option('api-url'))
+        self._tf_api = TestingFarmAPI(self, self.api_url)
 
         self.info(
             "Connected to Testing Farm Service '{}'".format(
-                self.option('api-url'),
+                self.api_url,
             )
         )
 

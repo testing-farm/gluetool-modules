@@ -9,7 +9,7 @@ import contextlib
 
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 
-from . import create_module
+from . import create_module, patch_shared
 from requests.exceptions import HTTPError
 
 ASSETS_DIR = os.path.join('gluetool_modules_framework', 'tests', 'assets', 'testing_farm')
@@ -364,3 +364,15 @@ def test_execute_request3(module):
         pool=None,
         settings=None
     )
+
+
+def test_api_url_option(module, monkeypatch):
+    module._config['api-url'] = '{{ some_api_url_template }}'
+    patch_shared(monkeypatch, module, {'eval_context': {'some_api_url_template': 'foo'}})
+    assert module.api_url == 'foo'
+
+
+def test_api_key_option(module, monkeypatch):
+    module._config['api-key'] = '{{ some_api_key_template }}'
+    patch_shared(monkeypatch, module, {'eval_context': {'some_api_key_template': 'foo'}})
+    assert module.api_key == 'foo'

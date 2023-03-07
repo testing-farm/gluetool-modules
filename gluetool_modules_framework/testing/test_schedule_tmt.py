@@ -621,7 +621,8 @@ class TestScheduleTMT(Module):
                     snapshots=tec.snapshots,
                     pool=tec.pool,
                     hardware=tec.hardware or self.hardware_from_tmt(exported_plan),
-                    variables=tec.variables
+                    variables=tec.variables,
+                    settings=tec.settings
                 )
 
                 schedule_entry.tmt_reproducer.extend(repository.commands)

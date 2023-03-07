@@ -999,6 +999,7 @@ class ArtemisProvisioner(gluetool.Module):
                         ssh_key=None,  # type: Optional[str]
                         options=None,  # type: Optional[List[str]]
                         post_install_script=None,  # type: Optional[str]
+                        user_data=None,  # type: Optional[Dict[str, str]]
                        ):  # noqa
         # type: (...) -> ArtemisGuest
         '''
@@ -1027,7 +1028,7 @@ class ArtemisProvisioner(gluetool.Module):
                                          pool=pool,
                                          keyname=key,
                                          priority=priority,
-                                         user_data=self.user_data,
+                                         user_data=user_data,
                                          post_install_script=post_install_script)
 
         guestname = response.get('guestname')
@@ -1093,13 +1094,21 @@ class ArtemisProvisioner(gluetool.Module):
         if self.option('snapshots'):
             environment.snapshots = True
 
+        user_data = self.user_data
+
+        # Add tags from environment settings if exists
+        tags = ((environment.settings or {}).get('provisioning') or {}).get('tags', {})
+        if tags:
+            user_data.update(tags)
+
         guest = self.provision_guest(environment,
                                      pool=pool,
                                      key=key,
                                      priority=priority,
                                      ssh_key=ssh_key,
                                      options=options,
-                                     post_install_script=post_install_script)
+                                     post_install_script=post_install_script,
+                                     user_data=user_data)
 
         guest.info('Guest provisioned')
         self.guests.append(guest)

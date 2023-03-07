@@ -1097,7 +1097,7 @@ class ArtemisProvisioner(gluetool.Module):
         user_data = self.user_data
 
         # Add tags from environment settings if exists
-        tags = (environment.settings or {}).get('provisioning', {}).get('tags', {})
+        tags = ((environment.settings or {}).get('provisioning') or {}).get('tags', {})
         if tags:
             user_data.update(tags)
 

@@ -427,7 +427,8 @@ class TestingFarmRequestModule(gluetool.Module):
     @property
     def eval_context(self):
         # type: () -> Dict[str, str]
-        assert self._tf_request is not None
+        if not self._tf_request:
+            return {}
         return {
             # common for all artifact providers
             'TESTING_FARM_REQUEST_ID': self._tf_request.id,

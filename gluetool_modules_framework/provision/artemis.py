@@ -18,7 +18,7 @@ from gluetool import GlueError, SoftGlueError
 from gluetool.log import log_dict, LoggerMixin
 from gluetool.result import Result
 from gluetool.utils import (
-    dump_yaml, treat_url, normalize_multistring_option, wait, normalize_bool_option, normalize_path
+    dump_yaml, treat_url, normalize_multistring_option, wait, normalize_bool_option, normalize_path, render_template
 )
 from gluetool_modules_framework.libs.guest import NetworkedGuest
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
@@ -718,7 +718,10 @@ class ArtemisProvisioner(gluetool.Module):
     options = [
         ('API options', {
             'api-url': {
-                'help': 'Artemis API url',
+                'help': '''
+                        Artemis API url. Accepts also Jinja templates which will be rendered using
+                        `eval_context` shared method.
+                        ''',
                 'metavar': 'URL',
                 'type': str
             },
@@ -899,6 +902,13 @@ class ArtemisProvisioner(gluetool.Module):
     required_options = ('api-url', 'api-version', 'key', 'priority-group', 'ssh-key')
 
     shared_functions = ['provision', 'provisioner_capabilities']
+
+    @property
+    def api_url(self):
+        # type: () -> str
+        option = self.option('api-url')
+
+        return render_template(option, **self.shared('eval_context'))
 
     @gluetool.utils.cached_property
     def hw_constraints(self):
@@ -1119,7 +1129,7 @@ class ArtemisProvisioner(gluetool.Module):
         # type: () -> None
 
         self.api = ArtemisAPI(self,
-                              self.option('api-url'),
+                              self.api_url,
                               self.option('api-version'),
                               self.option('api-call-timeout'),
                               self.option('api-call-tick'))

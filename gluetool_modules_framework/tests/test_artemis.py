@@ -379,3 +379,10 @@ def test_provision(module, scenario):
         module.guests[0].restore_snapshot(module.guests[0]._snapshots[0])
 
     module.destroy()
+
+
+def test_api_url_option(module, monkeypatch):
+    module._config['api-url'] = '{{ some_api_url_template }}'
+    patch_shared(monkeypatch, module, {'eval_context': {'some_api_url_template': 'foo'}})
+    assert module.api_url == 'foo'
+    assert module.option('api-url') == '{{ some_api_url_template }}'

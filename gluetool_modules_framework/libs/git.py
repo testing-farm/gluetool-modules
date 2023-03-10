@@ -103,9 +103,9 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         return bool(self._instance)
 
     @property
-    def workdir_prefix(self):
+    def clonedir_prefix(self):
         # type: () -> str
-        return 'workdir-{}'.format(self.branch or self.ref)
+        return 'git-{}'.format(self.branch or self.ref)
 
     def _get_clone_options(
         self,

@@ -247,18 +247,18 @@ def test_clone_obeys_ref(self_ref, ref, expected, remote_git_repository, monkeyp
     (
         'some-url', 'some-branch', None,
         '<RemoteGitRepository(clone_url=some-url, branch=some-branch, ref=not specified)>',
-        'workdir-some-branch'
+        'git-some-branch'
     ),
     (
         'some-url', None, 'some-ref',
         '<RemoteGitRepository(clone_url=some-url, branch=not specified, ref=some-ref)>',
-        'workdir-some-ref'
+        'git-some-ref'
     )
 ])
-def test_repr_workdir_prefix(clone_url, branch, ref, repr, prefix, remote_git_repository):
+def test_repr_clonedir_prefix(clone_url, branch, ref, repr, prefix, remote_git_repository):
     remote_git_repository.clone_url = clone_url
     remote_git_repository.branch = branch
     remote_git_repository.ref = ref
 
     assert str(remote_git_repository) == repr
-    assert remote_git_repository.workdir_prefix == prefix
+    assert remote_git_repository.clonedir_prefix == prefix

@@ -573,7 +573,7 @@ class TestScheduleTMT(Module):
 
         repodir = repository.clone(
             logger=self.logger,
-            prefix=repository.workdir_prefix
+            prefix=repository.clonedir_prefix
         )
 
         root_logger = Logging.get_logger()  # type: ContextAdapter

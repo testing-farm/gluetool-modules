@@ -182,46 +182,59 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     shutil.rmtree(schedule_entry.work_dirpath)
 
 
-@pytest.mark.parametrize('additional_options, additional_shared, testing_environment, expected_reproducer', [
+@pytest.mark.parametrize(
+        'additional_options, additional_shared, testing_environment, expected_reproducer, expected_environment', [
         (  # virtual provision
             {},
             {},
             TestingEnvironment('x86_64', 'rhel-9'),
             '''# tmt reproducer
-dummytmt run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$'''
+dummytmt run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$''',
+            None
         ),
         (  # local - provision done by tmt
             {'how': 'local'},  # NOTE: option does not exist, used only to signal usage of StaticLocalhostGuest
             {},
             TestingEnvironment('x86_64', 'rhel-9'),
             '''# tmt reproducer
-dummytmt run --all --verbose provision plan --name ^plan1$ plan --name ^plan1$'''
+dummytmt run --all --verbose provision plan --name ^plan1$ plan --name ^plan1$''',
+            None
         ),
         (  # with environment variables
             {},
-            {},
+            {
+                'user_variables': {
+                    'user_variable3': 'user_value3',
+                }
+            },
             TestingEnvironment(
                 'x86_64', 'rhel-9',
                 variables={'user_variable1': 'user_value1', 'user_variable2': 'user_value2'}
             ),
             """# tmt reproducer
 curl -LO {tmpdir}/tmt-environment-lan1.yaml
-dummytmt run --all --verbose -e @tmt-environment-lan1.yaml provision --how virtual --image guest-compose plan --name ^plan1$"""  # noqa
+dummytmt run --all --verbose -e @tmt-environment-lan1.yaml provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+            """user_variable1: user_value1
+user_variable2: user_value2
+user_variable3: user_value3
+"""
         ),
         (  # with tmt context
             {},
             {},
             TestingEnvironment('x86_64', 'rhel-9', tmt={'context': {'distro': 'rhel', 'trigger': 'push'}}),
             """# tmt reproducer
-dummytmt run --all --verbose -c distro=rhel -c trigger=push provision --how virtual --image guest-compose plan --name ^plan1$"""  # noqa
+dummytmt run --all --verbose -c distro=rhel -c trigger=push provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+            None
         ),
     ],
     ids=['virtual', 'local', 'variables', 'tmt_context']
 )
 def test_tmt_output_dir(
     module, guest, monkeypatch, tmpdir,
-    additional_options, additional_shared, expected_reproducer,
-    testing_environment
+    additional_options, additional_shared,
+    testing_environment,
+    expected_reproducer, expected_environment
 ):
     module._config = {**module._config, **additional_options}
     patch_shared(monkeypatch, module, additional_shared)
@@ -252,6 +265,22 @@ def test_tmt_output_dir(
         print(c)
         print(expected_reproducer.format(tmpdir=tmpdir))
         assert c == expected_reproducer.format(tmpdir=tmpdir)
+
+    with open(os.path.join(schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
+        c = f.read()
+        print(c)
+        print(expected_reproducer.format(tmpdir=tmpdir))
+        assert c == expected_reproducer.format(tmpdir=tmpdir)
+
+    tmt_environment_file = os.path.join(schedule_entry.repodir, 'tmt-environment-lan1.yaml')
+    if expected_environment:
+        with open(tmt_environment_file) as f:
+            c = f.read()
+            print(c)
+            print(expected_environment)
+            assert c == expected_environment
+    else:
+        assert not os.path.exists(tmt_environment_file)
 
     shutil.rmtree(schedule_entry.work_dirpath)
 

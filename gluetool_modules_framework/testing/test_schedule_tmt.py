@@ -743,7 +743,19 @@ class TestScheduleTMT(Module):
             command.extend(tmt_context)
             reproducer.extend(tmt_context)
 
-        variables = schedule_entry.testing_environment.variables
+        # variables from testing-farm environment
+        variables = schedule_entry.testing_environment.variables or {}
+
+        # update eval context with guest name
+        eval_context = dict_update(
+            self.shared('eval_context'),
+            {
+                'GUEST': schedule_entry.guest
+            }
+        )
+
+        # variables from rules-engine's user variables, rendered with the evaluation context
+        variables.update(self.shared('user_variables', logger=schedule_entry.logger, context=eval_context) or {})
 
         if variables:
             # we MUST use a dedicated env file for each plan, to mitigate race conditions

@@ -60,7 +60,7 @@ if TYPE_CHECKING:
     from gluetool_modules_framework.helpers.rules_engine import EntryType
 
 
-DEFAULT_SSH_OPTIONS = ['UserKnownHostsFile=/dev/null', 'StrictHostKeyChecking=no']
+DEFAULT_SSH_OPTIONS = ['UserKnownHostsFile=/dev/null', 'StrictHostKeyChecking=no', 'PreferredAuthentications=publickey']
 
 #: A port on which **legacy** ``restraintd`` listens for connections to run tests. Since we're using ``restraint``
 #: to run the pseudo-tests that provision the machine - and this ``restraintd`` instance keeps running

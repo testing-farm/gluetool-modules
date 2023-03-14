@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gluetool-modules-framework"
-version = "0.9.0"
+version = "0.10.0"
 description = "Collection of gluetool modules used by Testing Farm Team."
 homepage = "https://gluetool-modules.readthedocs.io"
 repository = "https://gitlab.com/testing-farm/gluetool-modules"

@@ -333,3 +333,30 @@ def test_tasks(module, monkeypatch):
     tasks = module.tasks(task_ids=task_ids)
 
     assert len(tasks) == len(task_ids)
+
+
+def test_expired(module, monkeypatch):
+    module._config['task-id'] = '802020:fedora-28-x86_64'
+
+    class dummy_request(object):
+
+        def __init__(self, source):
+            self.source = source
+            self.content = str(self.source)
+            self.status_code = 200
+
+        def json(self):
+            return self.source
+
+    def mocked_get(url):
+        if 'api_3/build' in url:
+            source = BUILD_INFO
+        elif 'builder-live.log' in url:
+            source = None
+
+        return dummy_request(source)
+
+    monkeypatch.setattr(gluetool_modules_framework.infrastructure.copr.requests, 'get', mocked_get)
+
+    with pytest.raises(gluetool.GlueError, match=r"Error looking up rpm urls for 802020:fedora-28-x86_64, expired build?"):
+        module.execute()

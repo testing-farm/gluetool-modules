@@ -424,4 +424,9 @@ class Copr(gluetool.Module):
                 'Error resolving copr build {}:{}: {}'.format(build_id, chroot_name, self.task.error)
             )
 
+        if not self.task.rpm_urls:
+            raise gluetool.GlueError(
+                'Error looking up rpm urls for {}:{}, expired build?'.format(build_id, chroot_name)
+            )
+
         self._tasks = [self.task]

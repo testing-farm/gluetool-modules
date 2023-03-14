@@ -19,7 +19,7 @@ from typing_extensions import Literal
 
 # SSH connection defaults
 DEFAULT_SSH_USER = 'root'
-DEFAULT_SSH_OPTIONS = ['UserKnownHostsFile=/dev/null', 'StrictHostKeyChecking=no']
+DEFAULT_SSH_OPTIONS = ['UserKnownHostsFile=/dev/null', 'StrictHostKeyChecking=no', 'PreferredAuthentications=publickey']
 
 # wait_alive defaults
 DEFAULT_BOOT_TIMEOUT = 10

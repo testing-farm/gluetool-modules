@@ -44,7 +44,7 @@ DEFAULT_ECHO_TIMEOUT = 240
 DEFAULT_ECHO_TICK = 10
 DEFAULT_BOOT_TIMEOUT = 240
 DEFAULT_BOOT_TICK = 10
-DEFAULT_SSH_OPTIONS = ['UserKnownHostsFile=/dev/null', 'StrictHostKeyChecking=no']
+DEFAULT_SSH_OPTIONS = ['UserKnownHostsFile=/dev/null', 'StrictHostKeyChecking=no', 'PreferredAuthentications=publickey']
 DEFAULT_SNAPSHOT_READY_TIMEOUT = 600
 DEFAULT_SNAPSHOT_READY_TICK = 10
 DEFAULT_CONNECT_TIMEOUT = 10

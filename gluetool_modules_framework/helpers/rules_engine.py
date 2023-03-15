@@ -26,7 +26,7 @@ CommandCallbackType = Callable[[EntryType, str, Any, ContextType], bool]  # noqa
 
 # The module makes context available to rules via `EVAL_CONTEXT()` call. Level the playground
 # by making it available to templates as well.
-@jinja2.contextfunction  # type: ignore  # untyped decorator
+@jinja2.pass_context
 def _get_context(context):
     # type: (Dict[str, Any]) -> Dict[str, Any]
 

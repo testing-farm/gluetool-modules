@@ -353,7 +353,8 @@ class NetworkedGuest(Guest):
             ssh_options += [
                 'ConnectTimeout={:d}'.format(connection_timeout),
                 'ServerAliveInterval={:d}'.format(connection_timeout),
-                'ServerAliveCountMax=1'
+                'ServerAliveCountMax=1',
+                'PreferredAuthentications=publickey'
             ]
 
         assert self.hostname

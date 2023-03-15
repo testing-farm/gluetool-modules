@@ -415,9 +415,9 @@ class BeakerProvisioner(gluetool.Module):
                 'help': 'SSH username'
             },
             'ssh-options': {
-                'help': 'SSH options (default: none).',
+                'help': 'SSH options (default: %(default)).',
                 'action': 'append',
-                'default': []
+                'default': DEFAULT_SSH_OPTIONS
             },
             'reservation-extension': {
                 'help': 'Extend guest reservation by ``HOURS`` hours (default: %(default)s).',

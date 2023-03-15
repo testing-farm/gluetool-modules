@@ -95,7 +95,7 @@ def test_execute(guest, monkeypatch):
     assert guest.execute('/usr/bin/foo', bar='baz') == output
 
     # pylint: disable=protected-access
-    guest._execute.assert_called_once_with(['ssh', '-p', '13', '-l', 'ssh-user', '-i', '/tmp/ssh.key', '-o', 'Foo=17',
+    guest._execute.assert_called_once_with(['ssh', '-p', '13', '-l', 'ssh-user', '-i', '/tmp/ssh.key', '-o', 'Foo=17', '-o', 'PreferredAuthentications=publickey',
                                             '10.20.30.40', '/usr/bin/foo'], bar='baz')
 
 
@@ -107,7 +107,7 @@ def test_execute_ssh_options(guest, monkeypatch):
 
     # pylint: disable=protected-access
     guest._execute.assert_called_once_with(['ssh', '-p', '13', '-l', 'ssh-user', '-i', '/tmp/ssh.key', '-o', 'Foo=17',
-                                            '-o', 'Bar=23', '10.20.30.40', '/usr/bin/foo'], bar='baz')
+                                            '-o', 'Bar=23', '-o', 'PreferredAuthentications=publickey', '10.20.30.40', '/usr/bin/foo'], bar='baz')
 
 
 @pytest.mark.parametrize('exit_codes, expected', [

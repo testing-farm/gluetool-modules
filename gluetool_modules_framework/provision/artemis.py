@@ -535,7 +535,7 @@ class ArtemisGuest(NetworkedGuest):
                                            port=port,
                                            username=username,
                                            key=key,
-                                           options=options)
+                                           options=DEFAULT_SSH_OPTIONS + options)
         self.artemis_id = guestname
         self._snapshots = []  # type: List[ArtemisSnapshot]
         self.module = module  # type: ArtemisProvisioner

@@ -22,6 +22,9 @@ ENV GLUETOOL_TRACING_DISABLE=1
 # Virtual environment bin path
 ENV PATH="/opt/gluetool/bin:$PATH"
 
+# Ansible requirements
+COPY container/requirements.yml /etc/ansible/requirements.yml
+
 # install all required dependencies
 # WORKAROUNDS:
 #   * ansible-core is incompatible with standard-test-roles, so ansible-2.9.27 from centos-release-ansible-29
@@ -53,10 +56,11 @@ RUN    ln -s /CONFIG /etc/citool.d \
 # copy the built package
 COPY dist/gluetool_modules_framework*.whl .
 
-# install gluetool-modules-framework & citool
+# install gluetool-modules-framework with citool and required ansible collections
 RUN    virtualenv -p python3.9 /opt/gluetool \
     && source /opt/gluetool/bin/activate \
     && pip3.9 install gluetool_modules_framework*.whl \
+    && ansible-galaxy install --timeout 120 -r /etc/ansible/requirements.yml \
     && rm -f gluetool_modules_framework*.whl \
     && rm -rf ~/.cache
 

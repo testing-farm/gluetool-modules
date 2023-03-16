@@ -74,6 +74,13 @@ file:
     filetype: directory
 
 command:
+  ansible-galaxy collection list:
+    exit-status: 0
+    stdout:
+      - ansible.posix
+      - community.general
+    timeout: 100000
+
   citool -l:
     exit-status: 0
     timeout: 100000

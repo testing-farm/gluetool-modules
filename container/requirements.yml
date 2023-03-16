@@ -1,0 +1,7 @@
+---
+#
+# List of collections used by the guest-setup tests
+#
+collections:
+  - community.general
+  - ansible.posix

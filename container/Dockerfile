@@ -26,19 +26,18 @@ ENV PATH="/opt/gluetool/bin:$PATH"
 COPY container/requirements.yml /etc/ansible/requirements.yml
 
 # install all required dependencies
-# WORKAROUNDS:
-#   * ansible-core is incompatible with standard-test-roles, so ansible-2.9.27 from centos-release-ansible-29
 RUN    ln -s /CONFIG /etc/citool.d \
     && rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
     && dnf -y update \
-    && dnf install -y centos-release-ansible-29 \
-    && dnf install -y --allowerasing ansible-2.9.27 \
-    && dnf -y install autoconf automake crun gcc git krb5-devel libcurl-devel \
+    && dnf -y install ansible-core autoconf automake crun gcc git krb5-devel libcurl-devel \
                       libpq-devel libtool libxml2-devel make openssl-devel popt-devel \
                       postgresql-devel python39 python39-devel python39-pip python3-libselinux \
-                      redhat-rpm-config standard-test-roles koji python3-virtualenv \
+                      redhat-rpm-config koji python3-virtualenv \
                       rsync beakerlib-libraries rpm-build rpm-devel \
                       tmt-provision-container tmt-provision-virtual tmt-report-polarion tmt-report-html \
+    # workaround for https://pagure.io/standard-test-roles/pull-request/410
+    && dnf copr enable -y @osci/standard-test-roles \
+    && dnf -y install standard-test-roles \
     # install tmt from updates-testing, an agreement with tmt folks to be able to test tmt releases sooner.
     && dnf -y update --enablerepo=epel-testing tmt-provision-container tmt-provision-virtual tmt \
                                                tmt-report-polarion tmt-report-html \

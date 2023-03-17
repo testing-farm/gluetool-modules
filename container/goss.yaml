@@ -1,6 +1,6 @@
 ---
 packages:
-  ansible-2.9.27:
+  ansible-core:
     installed: true
 
   beakerlib:

@@ -9,6 +9,8 @@ from gluetool_modules_framework.libs.artifacts import artifacts_location
 import gluetool_modules_framework.libs.guest_setup
 from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleResult, TestScheduleEntryStage, \
     TestScheduleEntryState
+from lxml import objectify, etree
+from junitparser import TestCase, TestSuite, JUnitXml, Skipped, Error
 
 # Type annotations
 from typing import cast, TYPE_CHECKING, Any, Dict, List, Optional  # noqa
@@ -318,12 +320,34 @@ class TestScheduleReport(gluetool.Module):
 
             self.info('results saved into {}'.format(self.option('xunit-file')))
 
+    def load_tf_xunit(tf_xunit_path):
+        """Load TestingFarm XUnit file.
+        :param tf_xunit_path: str, path to the TF Xunit file
+        :return: str, content of the XUnit file
+        """
+        with open(tf_xunit_path) as f:
+            # remove escaping which makes the file invalid for xml parsers
+            tf_xunit = f.read().replace('\\"', '"')
+        return tf_xunit
+
+    def _generate_junit_results(self):
+        # type: () -> None
+        if self.option('xunit-file'):
+            jxml = JUnitXml()
+
+            tf_xunit = self.load_tf_xunit(gluetool.utils.normalize_path(self.option('xunit-file')))
+            input_xml = objectify.fromstring(tf_xunit)
+            for count, testsuite in enumerate(input_xml.testsuite):
+                jxml.add_testsuite(testsuite)
+                jxml.write('junit.xml')
+
     def execute(self):
         # type: () -> None
         self.require_shared('test_schedule')
         self._schedule.log(self.info, label='finished schedule')
 
         self._generate_results()
+        self._generate_junit_results()
 
     def destroy(self, failure=None):
         # type: (Optional[Any]) -> None
@@ -345,3 +369,4 @@ class TestScheduleReport(gluetool.Module):
             )
 
             self._generate_results()
+            self._generate_junit_results()

@@ -23,13 +23,26 @@ from gluetool.utils import (
 from gluetool_modules_framework.libs.guest import NetworkedGuest
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 
-from typing import Any, Dict, List, Optional, Tuple, cast  # noqa
+from typing import Any, Dict, List, Optional, Set, Tuple, cast  # noqa
 
-SUPPORTED_API_VERSIONS = (
-    'v0.0.16', 'v0.0.17', 'v0.0.18', 'v0.0.19',
-    'v0.0.20', 'v0.0.21', 'v0.0.24', 'v0.0.26', 'v0.0.27', 'v0.0.28',
-    'v0.0.38'
-)
+# As defined in artemis-cli, https://gitlab.com/testing-farm/artemis/-/blob/main/cli/src/tft/artemis_cli/artemis_cli.py
+API_FEATURE_VERSIONS: Dict[str, str] = {
+    'supported-baseline': 'v0.0.16',
+    'arch-under-hw': 'v0.0.19',
+    'hw-constraints': 'v0.0.19',
+    'skip-prepare-verify-ssh': 'v0.0.24',
+    'log-types': 'v0.0.26',
+    'hw-constraints-disk-as-list': 'v0.0.27',
+    'hw-constraints-network': 'v0.0.28',
+    'hw-constraints-boot-method': 'v0.0.32',
+    'hw-constraints-hostname': 'v0.0.38',
+    'hw-constraints-cpu-extra': 'v0.0.46',
+    'hw-constraints-cpu-processors': 'v0.0.47',
+    'hw-constraints-compatible-distro': 'v0.0.48',
+    'hw-constraints-kickstart': 'v0.0.53'
+}
+
+SUPPORTED_API_VERSIONS: Set[str] = set(API_FEATURE_VERSIONS.values())
 
 EVENT_LOG_SUFFIX = '-artemis-guest-log.yaml'
 
@@ -228,7 +241,7 @@ class ArtemisAPI(object):
 
         # TODO: yes, semver will make this much better... Or better, artemis-cli package provide an easy-to-use
         # bit of code to construct the payload.
-        if self.version in ('v0.0.19', 'v0.0.20', 'v0.0.21', 'v0.0.24', 'v0.0.26', 'v0.0.27', 'v0.0.28', 'v0.0.38'):
+        if self.version >= API_FEATURE_VERSIONS['arch-under-hw']:
             data = {
                 'keyname': keyname,
                 'environment': {
@@ -253,10 +266,10 @@ class ArtemisAPI(object):
             if hardware:
                 data['environment']['hw']['constraints'] = hardware
 
-            if self.version not in ('v0.0.19', 'v0.0.20', 'v0.0.21'):
+            if self.version >= API_FEATURE_VERSIONS['skip-prepare-verify-ssh']:
                 data['skip_prepare_verify_ssh'] = normalize_bool_option(self.module.option('skip-prepare-verify-ssh'))
 
-        elif self.version in ('v0.0.16', 'v0.0.17', 'v0.0.18'):
+        elif self.version >= API_FEATURE_VERSIONS['supported-baseline']:
             data = {
                 'keyname': keyname,
                 'environment': {
@@ -278,6 +291,9 @@ class ArtemisAPI(object):
         else:
             # Note that this should never happen, because we check the requested version in sanity()
             raise GlueError('unsupported API version {}'.format(self.version))
+
+        if self.version >= API_FEATURE_VERSIONS['hw-constraints-kickstart']:
+            data['environment']['kickstart'] = {}
 
         log_dict(self.module.debug, 'guest data', data)
 

@@ -20,6 +20,9 @@ from mock import MagicMock
 from . import create_module, check_loadable
 
 
+ASSETS_DIR = os.path.join('gluetool_modules_framework', 'tests', 'assets', 'ansible')
+
+
 @pytest.fixture(name='module')
 def fixture_module():
     module = create_module(gluetool_modules_framework.helpers.ansible.Ansible)[1]
@@ -162,8 +165,30 @@ def test_run_playbooks(module, local_guest, monkeypatch, assert_output):
     mock_command_run.assert_called_once_with(cwd=None, env=env_variables)
 
 
-def test_change_ansible_playbook_filepath_option(module, local_guest, monkeypatch, assert_output):
-    module._config['ansible-playbook-filepath'] = '/foo/bar/ansible-playbook'
+@pytest.mark.parametrize('config, expected', [
+    (  # Set ansible-playbook filepath using direct option
+        {
+            'ansible-playbook-filepath': '/foo/bar/ansible-playbook'
+        },
+        '/foo/bar/ansible-playbook'),
+    (  # Set ansible-playbook filepath using mapping file
+        {
+            'ansible-playbook-filepath': None,
+            'compose-to-ansible-playbook-map-filepath': os.path.join(ASSETS_DIR, 'compose-to-filepath.yaml')
+        },
+        '/mapped/path/ansible-playbook'
+    ),
+    (  # Use both options, `ansible-playbook-filepath` has priority
+        {
+            'ansible-playbook-filepath': '/foo/bar/ansible-playbook',
+            'compose-to-ansible-playbook-map-filepath': os.path.join(ASSETS_DIR, 'compose-to-filepath.yaml')
+        },
+        '/foo/bar/ansible-playbook'
+    ),
+])
+def test_change_ansible_playbook_filepath_option(module, local_guest, monkeypatch, assert_output, config, expected):
+    for option_name, option_value in config.items():
+        module._config[option_name] = option_value
 
     mock_output = MagicMock(exit_code=0, stdout='', stderr='')
 
@@ -179,7 +204,7 @@ def test_change_ansible_playbook_filepath_option(module, local_guest, monkeypatc
     assert output.json_output is None
 
     mock_command_init.assert_called_once_with([
-        '/foo/bar/ansible-playbook',
+        expected,
         '-i', '127.0.0.1,',
         '--private-key', local_guest.key,
         '--user', local_guest.username,

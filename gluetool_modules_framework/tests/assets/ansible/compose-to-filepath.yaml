@@ -1,0 +1,3 @@
+---
+
+- dummy-compose: '/mapped/path/ansible-playbook'

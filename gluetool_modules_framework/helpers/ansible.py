@@ -9,8 +9,9 @@ import tempfile
 import six
 
 import gluetool
+from gluetool import GlueError
 from gluetool.action import Action
-from gluetool.utils import Command, from_json
+from gluetool.utils import Command, from_json, PatternMap
 from gluetool.log import format_blob, log_blob, log_dict
 from gluetool_modules_framework.libs.sentry import ArtifactFingerprintsMixin
 
@@ -102,19 +103,60 @@ class Ansible(gluetool.Module):
         'ansible-playbook-filepath': {
             'help': """
                     Path to ansible-playbook executable file.
-                    If not specified, the default executable is used (default: %(default)s).
+                    If not specified, the default executable is used (see ``get_ansible_playbook_filepath`` method.
+                    If specified, it will override the ``compose-to-ansible-playbook-map-filepath`` option.
                     """,
             'metavar': 'PATH',
-            'default': six.ensure_str(subprocess.check_output(
-                'command -v ansible-playbook 2> /dev/null || /bin/true',
-                shell=True
-            ).strip()) or '/usr/bin/ansible-playbook'
-        }
+            'default': None
+        },
+        'compose-to-ansible-playbook-map-filepath': {
+            'help': 'Mapping between a compose name and path to ansible-playbook executable.',
+            'metavar': 'PATH',
+            'default': []
+        },
     }
 
     shared_functions = ['run_playbook', 'detect_ansible_interpreter']
 
     supported_dryrun_level = gluetool.glue.DryRunLevels.DRY
+
+    def get_ansible_playbook_filepath(self, guest):
+        # type: (gluetool_modules_framework.libs.guest.NetworkedGuest) -> str
+        # Retrieve ansible-playbook from ansible-playbook-filepath option
+        if self.option('ansible-playbook-filepath'):
+            ansible_playbook_filepath = cast(str, self.option('ansible-playbook-filepath'))
+
+        # Retrieve ansible-playbook from compose-to-ansible-playbook-map-filepath
+        elif self.option('compose-to-ansible-playbook-map-filepath'):
+            assert guest.environment is not None
+            pattern_map = PatternMap(
+                self.option('compose-to-ansible-playbook-map-filepath'),
+                allow_variables=True,
+                logger=self.logger
+            )
+            try:
+                compose = cast(str, guest.environment.compose)
+                ansible_playbook_filepath = cast(str, pattern_map.match(compose))
+                self.logger.debug("compose '{}' was mapped to '{}' ansible-playbook filepath".format(
+                    guest.environment.compose,
+                    ansible_playbook_filepath,
+                ))
+            except GlueError as e:
+                raise GlueError(
+                    "could not map compose '{}' to ansible-playbook filepath using '{}' mapping file".format(
+                        guest.environment.compose,
+                        self.option('compose-to-ansible-playbook-map-filepath')
+                    )
+                ) from e
+
+        # Use the default ansible-playbook
+        else:
+            ansible_playbook_filepath = six.ensure_str(subprocess.check_output(
+                'command -v ansible-playbook 2> /dev/null || /bin/true',
+                shell=True
+            ).strip()) or '/usr/bin/ansible-playbook'
+
+        return ansible_playbook_filepath
 
     @gluetool.utils.cached_property
     def additional_options(self):
@@ -317,7 +359,7 @@ class Ansible(gluetool.Module):
 
         log_filepath = log_filepath or os.path.join(os.getcwd(), ANSIBLE_OUTPUT)
 
-        ansible_playbook_filepath = ansible_playbook_filepath or self.option('ansible-playbook-filepath')
+        ansible_playbook_filepath = ansible_playbook_filepath or self.get_ansible_playbook_filepath(guest)
 
         extra_options = extra_options or []
 

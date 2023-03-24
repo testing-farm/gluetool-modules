@@ -253,6 +253,11 @@ def test_clone_obeys_ref(self_ref, ref, expected, remote_git_repository, monkeyp
         'some-url', None, 'some-ref',
         '<RemoteGitRepository(clone_url=some-url, branch=not specified, ref=some-ref)>',
         'git-some-ref'
+    ),
+    (
+        'some-url', None, 'refs/merge-requests/15/head',
+        '<RemoteGitRepository(clone_url=some-url, branch=not specified, ref=refs/merge-requests/15/head)>',
+        'git-refs-merge-requests-15-head'
     )
 ])
 def test_repr_clonedir_prefix(clone_url, branch, ref, repr, prefix, remote_git_repository):

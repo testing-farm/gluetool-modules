@@ -105,7 +105,8 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
     @property
     def clonedir_prefix(self):
         # type: () -> str
-        return 'git-{}'.format(self.branch or self.ref)
+        # NOTE: this can be a ref, sanitize for paths - e.g. refs/merge-requests/15/head
+        return 'git-{}'.format(self.branch or self.ref).replace('/', '-')
 
     def _get_clone_options(
         self,

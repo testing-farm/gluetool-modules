@@ -68,7 +68,7 @@ def test_hide_secrets(monkeypatch, module, testing_farm_request):
             assert f.read() == FILE_CONTENTS.format(*['*****' if len(secret_values) > 0 else 'no secret']*3)
 
 
-def test_hide_secrets_mutiple(monkeypatch, module):
+def test_hide_secrets_multiple(monkeypatch, module):
     with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
         testing_farm_request = MagicMock(environments_requested=[
             TestingEnvironment(secrets={'secret1': 'foo', 'secret2': 'bar'}),

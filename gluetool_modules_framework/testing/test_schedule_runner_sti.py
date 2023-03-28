@@ -62,7 +62,7 @@ def gather_test_results(schedule_entry, artifacts_directory):
             schedule_entry.warn('Unable to check results in {}'.format(results_yml_filename))
             return results
 
-        if parsed_results['results'] is not None:
+        if 'results' in parsed_results and parsed_results['results'] is not None:
             for result in parsed_results['results']:
                 results.append(
                     TaskRun(

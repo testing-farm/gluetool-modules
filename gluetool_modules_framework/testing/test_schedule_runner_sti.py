@@ -49,7 +49,7 @@ def gather_test_results(schedule_entry, artifacts_directory):
     Extract detailed test results from 'results.yml' or 'test.log'.
     """
 
-    results = []
+    results = []  # type: List[TaskRun]
 
     # By default, check results in the new results.yml format
     # https://docs.fedoraproject.org/en-US/ci/standard-test-interface/#_results_format
@@ -58,6 +58,11 @@ def gather_test_results(schedule_entry, artifacts_directory):
         schedule_entry.debug('Checking results in {}'.format(results_yml_filename))
         try:
             parsed_results = gluetool.utils.load_yaml(results_yml_filename, logger=schedule_entry.logger)
+        except gluetool.glue.GlueError:
+            schedule_entry.warn('Unable to check results in {}'.format(results_yml_filename))
+            return results
+
+        if parsed_results['results'] is not None:
             for result in parsed_results['results']:
                 results.append(
                     TaskRun(
@@ -65,24 +70,24 @@ def gather_test_results(schedule_entry, artifacts_directory):
                         schedule_entry=schedule_entry,
                         result=result.get('result'),
                         logs=result.get('logs', [])))
-        except gluetool.glue.GlueError:
-            schedule_entry.warn('Unable to check results in {}'.format(results_yml_filename))
+        else:
+            schedule_entry.warn("Results file {} contains nothing under 'results' key".format(results_yml_filename))
+        return results
 
     # Otherwise attempt to parse the old test.log file
-    else:
-        test_log_filename = os.path.join(artifacts_directory, 'test.log')
-        schedule_entry.debug('Checking results in {}'.format(test_log_filename))
-        try:
-            with open(test_log_filename) as test_log:
-                for line in test_log:
-                    match = re.match('([^ :]+):? (.*)', line)
-                    if not match:
-                        continue
-                    result, name = match.groups()
-                    results.append(TaskRun(
-                        name=name, schedule_entry=schedule_entry, result=result, logs=[]))
-        except IOError:
-            schedule_entry.warn('Unable to check results in {}'.format(test_log_filename))
+    test_log_filename = os.path.join(artifacts_directory, 'test.log')
+    schedule_entry.debug('Checking results in {}'.format(test_log_filename))
+    try:
+        with open(test_log_filename) as test_log:
+            for line in test_log:
+                match = re.match('([^ :]+):? (.*)', line)
+                if not match:
+                    continue
+                result, name = match.groups()
+                results.append(TaskRun(
+                    name=name, schedule_entry=schedule_entry, result=result, logs=[]))
+    except IOError:
+        schedule_entry.warn('Unable to check results in {}'.format(test_log_filename))
 
     return results
 

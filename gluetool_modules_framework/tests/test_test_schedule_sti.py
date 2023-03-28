@@ -5,6 +5,7 @@ import os
 import re
 import tempfile
 import bs4
+import logging
 from mock import MagicMock
 
 import pytest
@@ -15,7 +16,7 @@ import gluetool_modules_framework.testing.test_scheduler_sti
 import gluetool_modules_framework.testing.test_schedule_runner_sti
 
 from gluetool_modules_framework.testing.test_scheduler_sti import TestScheduleEntry
-from gluetool_modules_framework.testing.test_schedule_runner_sti import TaskRun
+from gluetool_modules_framework.testing.test_schedule_runner_sti import TaskRun, gather_test_results
 from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleResult, TestScheduleEntryOutput, TestScheduleEntryStage
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from gluetool_modules_framework.libs.guest import NetworkedGuest
@@ -239,3 +240,24 @@ def test_serialize_test_schedule_entry_results(module_runner, schedule_entry_res
         # Remove the first line from the parsed assets file. BeautifulSoup adds '<?xml version="1.0" encoding="utf-8"?>'
         # to the first line when parsing a file.
         assert test_suite.prettify() == '\n'.join(expected_xml.prettify().splitlines()[1:])
+
+
+@pytest.mark.parametrize('workdir, expected_message, expected_results', [
+    (
+        os.path.join(ASSETS_DIR, 'test_schedule_sti', 'workdir-results-empty'),
+        "Results file gluetool_modules_framework/tests/assets/test_schedule_sti/workdir-results-empty/results.yml contains nothing under 'results' key",
+        []
+    ),
+    (
+        'some/non/existent/path',
+        'Unable to check results in some/non/existent/path/test.log',
+        []
+    )
+])
+def test_gather_results_empty(log, workdir, expected_message, expected_results):
+    results = gather_test_results(
+        gluetool.log.Logging.get_logger(),
+        workdir
+    )
+    assert log.match(levelno=logging.WARN, message=expected_message)
+    assert results == expected_results

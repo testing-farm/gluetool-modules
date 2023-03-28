@@ -138,7 +138,8 @@ class SUTInstallation(object):
                     # our `command` is assigned to this `cmd`, and here we convert it
                     # to string to work with guest.execute
                     lambda cmd: guest.execute(cmd[0]),
-                    callback=step.callback
+                    callback=step.callback,
+                    label=step.label
                 )
 
                 if command_failed and not step.ignore_exception:
@@ -164,7 +165,8 @@ class SUTInstallation(object):
                     # our `final_command` is assigned to this `cmd`, and here we convert it
                     # to string to work with guest.execute
                     lambda cmd: guest.execute(cmd[0]),
-                    callback=step.callback
+                    callback=step.callback,
+                    label=step.label
                 )
 
                 if not command_failed:

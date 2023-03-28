@@ -542,7 +542,7 @@ def test_execute_command_fail(module, monkeypatch, tmpdir):
     assert isinstance(outputs[0].additional_data, gluetool_modules_framework.libs.sut_installation.SUTInstallation)
 
     assert isinstance(exc, SUTInstallationFailedError)
-    assert str(exc) == 'Test environment installation failed: reason unknown, please escalate'
+    assert str(exc) == 'Test environment installation failed: Download ODCS repo'
 
 
 @pytest.mark.parametrize('info_output_and_error', [

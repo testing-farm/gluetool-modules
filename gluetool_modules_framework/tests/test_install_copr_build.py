@@ -242,7 +242,7 @@ def test_nvr_check_fails(module_shared_patched, tmpdir):
     assert isinstance(outputs[0].additional_data, gluetool_modules_framework.libs.sut_installation.SUTInstallation)
 
     assert isinstance(exc, SUTInstallationFailedError)
-    assert str(exc) == 'Test environment installation failed: reason unknown, please escalate'
+    assert str(exc) == 'Test environment installation failed: Verify packages installed'
 
     assert_log_files(guest, str(tmpdir))
 
@@ -270,6 +270,6 @@ def test_repo_download_fails(module_shared_patched, tmpdir):
     assert isinstance(outputs[0].additional_data, gluetool_modules_framework.libs.sut_installation.SUTInstallation)
 
     assert isinstance(exc, SUTInstallationFailedError)
-    assert str(exc) == 'Test environment installation failed: reason unknown, please escalate'
+    assert str(exc) == 'Test environment installation failed: Download copr repository'
 
     assert_log_files(guest, str(tmpdir), file_names=['0-Download-copr-repository.txt'])

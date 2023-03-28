@@ -163,7 +163,8 @@ def create_inspect_callback(logger):
 def run_and_log(command,  # type: List[str]
                 log_filepath,  # type: str
                 executor,  # type: Callable[[List[str]], gluetool.utils.ProcessOutput]
-                callback=None  # type: Optional[Callable[[List[str], gluetool.utils.ProcessOutput], str]]
+                callback=None,  # type: Optional[Callable[[List[str], gluetool.utils.ProcessOutput], str]]
+                label=None  # type: Optional[str]
                 ):  # noqa
     # type: (...) -> Tuple[bool, Optional[str], gluetool.utils.ProcessOutput]
 
@@ -182,6 +183,10 @@ def run_and_log(command,  # type: List[str]
 
     if callback:
         error_message = callback(command, output)
+        execute_failed = bool(execute_failed or error_message)
+
+    elif label:
+        error_message = label
 
     with open(log_filepath, 'a') as log_file:
         def write_cover(text, **kwargs):
@@ -194,7 +199,7 @@ def run_and_log(command,  # type: List[str]
         log_blob(cast(LoggingFunctionType, write_cover), 'Stdout', output.stdout or '')
         log_blob(cast(LoggingFunctionType, write_cover), 'Stderr', output.stderr or '')
 
-    return bool(execute_failed or error_message), error_message, output
+    return execute_failed, error_message, output
 
 
 def sort_children(parent, key_getter):

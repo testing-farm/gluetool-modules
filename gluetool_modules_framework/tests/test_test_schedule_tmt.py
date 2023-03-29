@@ -224,7 +224,7 @@ user_variable3: user_value3
             {},
             TestingEnvironment('x86_64', 'rhel-9', tmt={'context': {'distro': 'rhel', 'trigger': 'push'}}),
             """# tmt reproducer
-dummytmt run --all --verbose -c distro=rhel -c trigger=push provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+dummytmt -c distro=rhel -c trigger=push run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
             None
         ),
     ],

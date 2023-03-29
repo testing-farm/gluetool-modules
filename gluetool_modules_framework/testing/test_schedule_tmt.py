@@ -722,6 +722,12 @@ class TestScheduleTMT(Module):
             for filepath in schedule_entry.context_files
         ]
 
+        assert schedule_entry.testing_environment
+
+        if schedule_entry.testing_environment.tmt and 'context' in schedule_entry.testing_environment.tmt:
+            tmt_context = self._tmt_context_to_options(schedule_entry.testing_environment.tmt['context'])
+            command.extend(tmt_context)
+
         # reproducer is the command which we present to user for reproducing the execution
         # on their localhost
         reproducer = command.copy()
@@ -738,13 +744,6 @@ class TestScheduleTMT(Module):
             '--verbose',
             '--id', os.path.abspath(work_dirpath)
         ])
-
-        assert schedule_entry.testing_environment
-
-        if schedule_entry.testing_environment.tmt and 'context' in schedule_entry.testing_environment.tmt:
-            tmt_context = self._tmt_context_to_options(schedule_entry.testing_environment.tmt['context'])
-            command.extend(tmt_context)
-            reproducer.extend(tmt_context)
 
         # variables from testing-farm environment
         variables = schedule_entry.testing_environment.variables or {}

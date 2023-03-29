@@ -616,13 +616,16 @@ class TestScheduleTMT(Module):
                 )
 
                 schedule_entry.testing_environment = TestingEnvironment(
-                    compose=tec.compose,
                     arch=tec.arch,
+                    compose=tec.compose,
                     snapshots=tec.snapshots,
                     pool=tec.pool,
-                    hardware=tec.hardware or self.hardware_from_tmt(exported_plan),
                     variables=tec.variables,
-                    settings=tec.settings
+                    secrets=tec.secrets,
+                    artifacts=tec.artifacts,
+                    hardware=tec.hardware or self.hardware_from_tmt(exported_plan),
+                    settings=tec.settings,
+                    tmt=tec.tmt
                 )
 
                 schedule_entry.tmt_reproducer.extend(repository.commands)

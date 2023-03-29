@@ -94,8 +94,7 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
         }
     )
 
-    def composes_ansibles_matrix(self):
-        # type: () -> List[Dict[str, Any]]
+    def composes_ansibles_matrix(self) -> List[Dict[str, Any]]:
         matrix = []
         for line in self.option('composes-ansibles-matrix').split(',\n'):
             splitted_line = line.split(':')
@@ -106,8 +105,7 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
             })
         return matrix
 
-    def compose_sub_to_artemis_options(self):
-        # type: () -> Dict[str, str]
+    def compose_sub_to_artemis_options(self) -> Dict[str, str]:
         mapping = {}
 
         if self.option('compose-sub-to-artemis-options'):
@@ -122,8 +120,7 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
 
         return mapping
 
-    def test_pull_request(self):
-        # type: () -> bool
+    def test_pull_request(self) -> bool:
         primary_task = self.shared('primary_task')
 
         # Check if 'citest' comment exists and author is collaborator
@@ -138,8 +135,7 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
         return False
 
     @cached_property
-    def parse_platforms_from_meta(self):
-        # type: () -> Optional[PlatformType]
+    def parse_platforms_from_meta(self) -> Optional[PlatformType]:
 
         meta_file = from_yaml(
             self.shared('primary_task').get_file_from_pull_request(self.option('metadata-path'))
@@ -147,8 +143,7 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
 
         return cast(Optional[PlatformType], meta_file['galaxy_info'].get('platforms', None))
 
-    def get_short_rhel_compose(self, compose):
-        # type: (str) -> str
+    def get_short_rhel_compose(self, compose: str) -> str:
         """
         Transform compose name to the short version RHEL-X.Y[.Z]
         """
@@ -160,8 +155,7 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
         return compose
 
     @cached_property
-    def get_transformed_platforms(self):
-        # type: () -> Optional[PlatformType]
+    def get_transformed_platforms(self) -> Optional[PlatformType]:
         """
         In Ansible the 'EL' platform means both RHEL and CentOS.
         It is needed to be transformed to simplify compose check.
@@ -182,8 +176,7 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
                 transformed_platforms.append(platform)
         return transformed_platforms
 
-    def is_compose_supported(self, compose):
-        # type: (str) -> bool
+    def is_compose_supported(self, compose: str) -> bool:
         """
         Check if compose is supported. The method tries to find
         `name-version` substring in compose name where name is a distribution name
@@ -204,8 +197,7 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
                         return True
         return False
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
 
         common_build_params = {
             'ansible_options': self.option('ansible-options'),

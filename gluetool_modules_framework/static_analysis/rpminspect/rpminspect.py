@@ -51,15 +51,13 @@ class RpminspectTestResult(TestResult):
     :param str overall_result: general result of a test
     """
 
-    def __init__(self, glue, test_type, overall_result, **kwargs):
-        # type: (gluetool.glue.Glue, str, str, **Any) -> None
+    def __init__(self, glue: gluetool.glue.Glue, test_type: str, overall_result: str, **kwargs: Any) -> None:
 
         super(RpminspectTestResult, self).__init__(glue, 'rpminspect-{}'.format(test_type), overall_result, **kwargs)
         self.rpminspect_test_type = test_type
 
     @property
-    def test_results(self):
-        # type: () -> Dict[str, str]
+    def test_results(self) -> Dict[str, str]:
         """
         Return dict with name of test as a key
         and it result as a value
@@ -76,8 +74,7 @@ class RpminspectTestResult(TestResult):
 
         return test_results
 
-    def _serialize_to_xunit_property_dict(self, parent, properties, names):
-        # type: (Any, Any, Any) -> None
+    def _serialize_to_xunit_property_dict(self, parent: Any, properties: Any, names: Any) -> None:
 
         if 'data' in self.payload[0]:
 
@@ -89,8 +86,7 @@ class RpminspectTestResult(TestResult):
 
         super(RpminspectTestResult, self)._serialize_to_xunit_property_dict(parent, properties, names)
 
-    def _serialize_to_xunit(self):
-        # type: () -> Any
+    def _serialize_to_xunit(self) -> Any:
         test_suite = super(RpminspectTestResult, self)._serialize_to_xunit()
 
         test_suite = self.glue.shared('rpminspect_xunit_serialize', test_suite, self)
@@ -103,8 +99,7 @@ class RpminspectSkippedTestResult(TestResult):
     RPMinspect test result data container for a skipped test result
     """
 
-    def __init__(self, glue, **kwargs):
-        # type: (gluetool.glue.Glue, **Any) -> None
+    def __init__(self, glue: gluetool.glue.Glue, **kwargs: Any) -> None:
         super(RpminspectSkippedTestResult, self).__init__(glue, 'rpminspect-comparison', 'INFO', **kwargs)
         self.rpminspect_test_type = 'comparison'
         self.test_results = {'ALL': 'SKIPPED'}  # notification for users, will be visible in email
@@ -166,13 +161,11 @@ class CIRpminspect(gluetool.Module):
 
     shared_functions = ['rpminspect_xunit_serialize', ]
 
-    def sanity(self):
-        # type: () -> None
+    def sanity(self) -> None:
 
         check_for_commands([self.option('command-name')])
 
-    def _rpminspect_cmd(self, tests, workdir):
-        # type: (List[str], str) -> List[str]
+    def _rpminspect_cmd(self, tests: List[str], workdir: str) -> List[str]:
 
         cmd = [
             self.option('command-name'),
@@ -189,8 +182,7 @@ class CIRpminspect(gluetool.Module):
 
         return cmd
 
-    def _run_rpminspect(self, task, tests, workdir):
-        # type: (Any, List[str], str) -> None
+    def _run_rpminspect(self, task: Any, tests: List[str], workdir: str) -> None:
         """
         Execute RPMinspect analysis or comparison based on test type.
         Store results and verbose log to a separate files.
@@ -218,8 +210,7 @@ class CIRpminspect(gluetool.Module):
                 with open(os.path.join(workdir, 'rpminspect.yaml')) as rpminspect_yaml:
                     rpminspect_yaml.write(rpminspect_yaml_content)
 
-        def _write_log(output):
-            # type: (ProcessOutput) -> None
+        def _write_log(output: ProcessOutput) -> None:
             """
             Store a verbose log to a file
             :param log: a log string
@@ -228,8 +219,7 @@ class CIRpminspect(gluetool.Module):
                 return
 
             with open(os.path.join(workdir, self.option('verbose-log-file')), 'w') as output_file:
-                def _write(label, s):
-                    # type: (str, str) -> None
+                def _write(label: str, s: str) -> None:
                     output_file.write('{}\n{}\n\n'.format(label, s))
 
                 _write('# STDOUT:', format_blob(cast(str, output.stdout)))
@@ -254,8 +244,7 @@ class CIRpminspect(gluetool.Module):
 
         # output is verbose log, store it to a file
 
-    def _publish_skipped_result(self, task):
-        # type: (Any) -> None
+    def _publish_skipped_result(self, task: Any) -> None:
         """
         Publish a skipped test result.
         """
@@ -277,8 +266,7 @@ class CIRpminspect(gluetool.Module):
 
         publish_result(self, RpminspectSkippedTestResult, payload=result)
 
-    def _parse_runinfo(self, task, json_output):
-        # type: (Any, Dict[str, List[Dict[str, str]]]) -> Any
+    def _parse_runinfo(self, task: Any, json_output: Dict[str, List[Dict[str, str]]]) -> Any:
         """
         Return parsed runinfo into known structure.
 
@@ -322,16 +310,14 @@ class CIRpminspect(gluetool.Module):
             'outcome': overall_result
         }]
 
-        def _parse_results(data):
-            # type: (Dict[str, List[Dict[str, str]]]) -> List[Dict[str, Any]]
+        def _parse_results(data: Dict[str, List[Dict[str, str]]]) -> List[Dict[str, Any]]:
             parsed_results = []
 
             # Parse results for every test.
             for test_name, test_info in six.iteritems(data):
 
                 # Return the worst result from test
-                def _outcome():
-                    # type: () -> str
+                def _outcome() -> str:
                     if not test_info:
                         return 'PASSED'
 
@@ -339,8 +325,7 @@ class CIRpminspect(gluetool.Module):
                         max([RPMINSPECT_SCORE[test_entry['result']] for test_entry in test_info])
                     ]
 
-                def _test_outputs():
-                    # type: () -> List[Dict[str, str]]
+                def _test_outputs() -> List[Dict[str, str]]:
                     test_outputs = []
                     for test_entry in test_info:
                         output = {}
@@ -385,15 +370,13 @@ class CIRpminspect(gluetool.Module):
         # Return sorted list - the key is a testcase name. This presents deterministic output one can test.
         return sorted(payload, key=lambda x: cast(str, x['testcase']['name']))
 
-    def _publish_results(self, task, json_output):
-        # type: (Any, Dict[str, List[Dict[str, str]]]) -> None
+    def _publish_results(self, task: Any, json_output: Dict[str, List[Dict[str, str]]]) -> None:
 
         payload = self._parse_runinfo(task, json_output)
         overall_result = payload[0]['outcome']
         publish_result(self, RpminspectTestResult, self.option('type'), overall_result, payload=payload)
 
-    def rpminspect_xunit_serialize(self, test_suite, result):
-        # type: (Any, Any, Any) -> Any
+    def rpminspect_xunit_serialize(self: Any, test_suite: Any, result: Any) -> Any:
 
         if not result.payload:
             return test_suite
@@ -448,8 +431,7 @@ class CIRpminspect(gluetool.Module):
 
         return test_suite
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
 
         # Module create workdir with logs and artifacts which is very large.
         # Finally block deletes artifact after execution even the error occurs.

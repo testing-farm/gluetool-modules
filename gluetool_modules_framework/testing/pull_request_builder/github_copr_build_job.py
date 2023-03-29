@@ -36,8 +36,7 @@ class CoprBuildJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkinsJ
     })
 
     @cached_property
-    def build_params(self):
-        # type: () -> Dict[str, str]
+    def build_params(self) -> Dict[str, str]:
         return dict_update(super(CoprBuildJob, self).build_params, {
             'copr_builder_options': self.option('copr-builder-options'),
             'github_options': self.option('github-options'),

@@ -78,8 +78,7 @@ class TestSchedulerSystemRoles(gluetool.Module):
 
     shared_functions = ['create_test_schedule']
 
-    def _convert_to_collection(self):
-        # type: () -> None
+    def _convert_to_collection(self) -> None:
         """
         Convert the role to collection format.
         """
@@ -121,8 +120,7 @@ class TestSchedulerSystemRoles(gluetool.Module):
 
                     exclude_files = ["ansible_collections/{}/{}/.collection".format(coll_namespace, coll_name)]
 
-                    def exclude_function(tarinfo):
-                        # type: (Any) -> Optional[Any]
+                    def exclude_function(tarinfo: Any) -> Optional[Any]:
                         filename = tarinfo.name
                         if filename in exclude_files or os.path.splitext(filename)[1] in exclude_files:
                             return None
@@ -138,8 +136,7 @@ class TestSchedulerSystemRoles(gluetool.Module):
                     # Workaround for CVE-2007-4559
                     # See https://github.com/testing-farm/gluetool-modules/pull/1
 
-                    def is_within_directory(directory, target):
-                        # type: (str, str) -> bool
+                    def is_within_directory(directory: str, target: str) -> bool:
 
                         abs_directory = os.path.abspath(directory)
                         abs_target = os.path.abspath(target)
@@ -149,8 +146,9 @@ class TestSchedulerSystemRoles(gluetool.Module):
                         result = prefix == abs_directory
                         return result
 
-                    def safe_extract(tar, path=".", members=None):
-                        # type: (tarfile.TarFile, str, Optional[List[tarfile.TarInfo]]) -> None
+                    def safe_extract(tar: tarfile.TarFile,
+                                     path: str = ".",
+                                     members: Optional[List[tarfile.TarInfo]] = None) -> None:
 
                         for member in tar.getmembers():
                             member_path = os.path.join(path, member.name)
@@ -171,8 +169,7 @@ class TestSchedulerSystemRoles(gluetool.Module):
                 shutil.rmtree(lsr_coll_tmp)
             raise gluetool.GlueError('Converting of role to collection failed with {}'.format(exc))
 
-    def _install_requirements(self):
-        # type: () -> None
+    def _install_requirements(self) -> None:
         """
         If collection-requirements.yml contains the collections, install reqs
         from meta/collection-requirements.yml at repo_path/.collection.
@@ -233,8 +230,7 @@ class TestSchedulerSystemRoles(gluetool.Module):
 
     # Returns a Set of the basenames of test playbooks that we do not want
     # to provide vault variables for
-    def get_no_vault_tests(self, repo_path):
-        # type: (str) -> Set[str]
+    def get_no_vault_tests(self, repo_path: str) -> Set[str]:
         no_vault_file = self.option('vault-no-variables-file')
         if not os.path.isabs(no_vault_file):
             no_vault_file = os.path.join(repo_path, 'tests', no_vault_file)
@@ -244,8 +240,7 @@ class TestSchedulerSystemRoles(gluetool.Module):
             no_vault_tests = set()
         return no_vault_tests
 
-    def _setup_for_vault(self):
-        # type: () -> Tuple[bool, Set[str], str]
+    def _setup_for_vault(self) -> Tuple[bool, Set[str], str]:
         repo_path = self.shared('dist_git_repository').path
         vault_pwd_file = self.option('vault-pwd-file')
         if not os.path.isabs(vault_pwd_file):
@@ -262,8 +257,7 @@ class TestSchedulerSystemRoles(gluetool.Module):
             no_vault_tests = set()  # empty
         return (uses_vault, no_vault_tests, vault_variables_file)
 
-    def _fix_playbook_for_vault(self, playbook_filepath, vault_variables_file):
-        # type: (str, str) -> None
+    def _fix_playbook_for_vault(self, playbook_filepath: str, vault_variables_file: str) -> None:
         with open(playbook_filepath) as pbf:
             playbook = pbf.read()
             playbook = playbook.replace('---\n', '')
@@ -278,16 +272,16 @@ class TestSchedulerSystemRoles(gluetool.Module):
 {}
 '''.format(vault_variables_file, playbook))
 
-    def create_test_schedule(self, testing_environment_constraints=None):
-        # type: (Optional[List[TestingEnvironment]]) -> TestSchedule
+    def create_test_schedule(self,
+                             testing_environment_constraints: Optional[List[TestingEnvironment]] = None) -> TestSchedule:
         """
         This module modifies STI test schedule provided by other module. It adds provided ansible playbook filepath
         to schedule entries.
         """
 
-        schedule = self.overloaded_shared(
+        schedule: TestSchedule = self.overloaded_shared(
             'create_test_schedule', testing_environment_constraints=testing_environment_constraints
-        )  # type: TestSchedule
+        )
 
         uses_vault, no_vault_tests, vault_variables_file = self._setup_for_vault()
         if self.option('ansible-playbook-filepath') or uses_vault:

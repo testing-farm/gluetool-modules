@@ -88,8 +88,7 @@ class BeakerJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkinsJobM
     required_options = ('wow-options',)
 
     @cached_property
-    def build_params(self):
-        # type: () -> Dict[str, Optional[str]]
+    def build_params(self) -> Dict[str, Optional[str]]:
         brew_build_task_params_options = self.option('brew-build-task-params-options')
         install_rpms_blacklist = self.option('install-rpms-blacklist')
         install_method = self.option('install-method')

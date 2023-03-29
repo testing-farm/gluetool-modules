@@ -32,8 +32,7 @@ class BrewBuildJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkinsJ
     })
 
     @cached_property
-    def build_params(self):
-        # type: () -> Dict[str, Any]
+    def build_params(self) -> Dict[str, Any]:
         return dict_update(super(BrewBuildJob, self).build_params, {
             'brew_builder_options': self.option('brew-builder-options')
         })

@@ -26,13 +26,11 @@ class Dashboard(gluetool.Module):
     required_options = ('dashboard-url-template',)
 
     @property
-    def dashboard_url(self):
-        # type: () -> str
+    def dashboard_url(self) -> str:
         return gluetool.utils.render_template(self.option('dashboard-url-template'), **self.shared('eval_context'))
 
     @property
-    def eval_context(self):
-        # type: () -> Dict[str, str]
+    def eval_context(self) -> Dict[str, str]:
         # To render dashboard URL, we need eval context. When asked to provide eval context, we want to
         # include dashboard URL. Voila, infinite recursion: eval_context => dasboard_url => eval_context => ...
 
@@ -49,8 +47,7 @@ class Dashboard(gluetool.Module):
             'DASHBOARD_URL': self.dashboard_url
         }
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         if not self.dashboard_url:
             self.warn('Dashboard URL seems to be empty')
             return

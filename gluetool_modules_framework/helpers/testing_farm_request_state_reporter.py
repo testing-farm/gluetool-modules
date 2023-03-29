@@ -33,42 +33,36 @@ class TestingFarmRequestStateReporter(gluetool.Module):
     ]
 
     @gluetool.utils.cached_property
-    def state_map(self):
-        # type: () -> Any
+    def state_map(self) -> Any:
         if not self.option('state-map'):
             return []
 
         return gluetool.utils.load_yaml(self.option('state-map'), logger=self.logger)
 
     @gluetool.utils.cached_property
-    def overall_result_map(self):
-        # type: () -> Any
+    def overall_result_map(self) -> Any:
         if not self.option('overall-result-map'):
             return []
 
         return gluetool.utils.load_yaml(self.option('overall-result-map'), logger=self.logger)
 
     @gluetool.utils.cached_property
-    def summary_map(self):
-        # type: () -> Any
+    def summary_map(self) -> Any:
         if not self.option('summary-map'):
             return []
 
         return gluetool.utils.load_yaml(self.option('summary-map'), logger=self.logger)
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(TestingFarmRequestStateReporter, self).__init__(*args, **kwargs)
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         self.require_shared('testing_farm_request')
 
         request = self.shared('testing_farm_request')
         request.update(state=STATE_RUNNING, artifacts_url=self.shared('coldstore_url'))
 
-    def destroy(self, failure=None):
-        # type: (Optional[Failure]) -> None
+    def destroy(self, failure: Optional[Failure] = None) -> None:
         if failure is not None and isinstance(failure.exc_info[1], SystemExit):
             return
 
@@ -96,8 +90,7 @@ class TestingFarmRequestStateReporter(gluetool.Module):
             artifacts_url=self.shared('coldstore_url')
         )
 
-    def _get_state(self, failure):
-        # type: (Any) -> str
+    def _get_state(self, failure: Any) -> str:
         """
         If failure, determine state from mapping file, defaulting to error.
         """
@@ -130,8 +123,7 @@ class TestingFarmRequestStateReporter(gluetool.Module):
 
         return STATE_ERROR
 
-    def _get_overall_result(self, result, failure):
-        # type: (str, Optional[gluetool.Failure]) -> str
+    def _get_overall_result(self, result: str, failure: Optional[gluetool.Failure]) -> str:
         """
         Determine result.overall from mapping file, defaulting to result content and finally error.
         """
@@ -153,8 +145,7 @@ class TestingFarmRequestStateReporter(gluetool.Module):
         overall_result = argparse.Namespace(result=None)
 
         # Callback for 'result' command
-        def _result_callback(instruction, command, argument, context):
-            # type: (str, str, str, str) -> None
+        def _result_callback(instruction: str, command: str, argument: str, context: str) -> None:
             overall_result.result = argument.strip()
 
             self.debug("overall result set to '{}'".format(overall_result.result))
@@ -168,8 +159,7 @@ class TestingFarmRequestStateReporter(gluetool.Module):
 
         return result
 
-    def _get_summary(self, failure=None):
-        # type: (Optional[gluetool.Failure]) -> Optional[str]
+    def _get_summary(self, failure: Optional[gluetool.Failure] = None) -> Optional[str]:
         """
         Map failure error message. By default return the error message.
         """

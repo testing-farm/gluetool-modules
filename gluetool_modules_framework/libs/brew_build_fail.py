@@ -14,20 +14,20 @@ if TYPE_CHECKING:
 
 
 class BrewBuildFailedError(SoftGlueError):
-    def __init__(self, message, output):
-        # type: (str, gluetool.utils.ProcessOutput) -> None
+    def __init__(self, message: str, output: gluetool.utils.ProcessOutput) -> None:
 
         super(BrewBuildFailedError, self).__init__(message)
         self.output = output
 
 
-def executor(command):
-    # type: (List[str]) -> gluetool.utils.ProcessOutput
+def executor(command: List[str]) -> gluetool.utils.ProcessOutput:
     return Command(command).run()
 
 
-def run_command(command, log_path, comment, executor=executor):
-    # type: (List[str], str, str, Callable[[List[str]], gluetool.utils.ProcessOutput]) -> gluetool.utils.ProcessOutput
+def run_command(command: List[str],
+                log_path: str,
+                comment: str,
+                executor: Callable[[List[str]], gluetool.utils.ProcessOutput] = executor) -> gluetool.utils.ProcessOutput:
     command_failed, err_msg, output = run_and_log(command=command,
                                                   log_filepath=log_path,
                                                   executor=executor

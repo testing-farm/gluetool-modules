@@ -74,15 +74,13 @@ class TestScheduleReport(gluetool.Module):
 
     shared_functions = ['test_schedule_results', 'results']
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
 
         super(TestScheduleReport, self).__init__(*args, **kwargs)
 
-        self._result = None  # type: bs4.element.Tag
+        self._result: bs4.element.Tag = None
 
-    def sanity(self):
-        # type: () -> None
+    def sanity(self) -> None:
         required_polarion_options = [
             'polarion-project-id',
             'polarion-lookup-method',
@@ -96,10 +94,9 @@ class TestScheduleReport(gluetool.Module):
             self.warn("polarion options have no effect because 'enable-polarion' was not specified.")
 
     @gluetool.utils.cached_property
-    def _overall_result_instructions(self):
-        # type: () -> List[Dict[str, Any]]
+    def _overall_result_instructions(self) -> List[Dict[str, Any]]:
 
-        instructions = []  # type: List[Dict[str, Any]]
+        instructions: List[Dict[str, Any]] = []
 
         for filepath in gluetool.utils.normalize_path_option(self.option('overall-result-map')):
             instructions += gluetool.utils.load_yaml(filepath, logger=self.logger)
@@ -107,16 +104,14 @@ class TestScheduleReport(gluetool.Module):
         return instructions
 
     @property
-    def _schedule(self):
-        # type: () -> TestSchedule
+    def _schedule(self) -> TestSchedule:
 
         return cast(
             TestSchedule,
             self.shared('test_schedule') or []
         )
 
-    def _overall_result_base(self, schedule):
-        # type: (TestSchedule) -> None
+    def _overall_result_base(self, schedule: TestSchedule) -> None:
         """
         Find out overall result of the schedule.
 
@@ -145,8 +140,7 @@ class TestScheduleReport(gluetool.Module):
                 schedule.result = schedule_entry.result
                 return
 
-    def _overall_result_custom(self, schedule):
-        # type: (TestSchedule) -> None
+    def _overall_result_custom(self, schedule: TestSchedule) -> None:
         """
         Return overall result of the schedule, influenced by instructions provided by the user.
         """
@@ -163,8 +157,7 @@ class TestScheduleReport(gluetool.Module):
             }
         )
 
-        def _set_result(instruction, command, argument, context):
-            # type: (Dict[str, Any], str, str, Dict[str, Any]) -> None
+        def _set_result(instruction: Dict[str, Any], command: str, argument: str, context: Dict[str, Any]) -> None:
 
             result_name = argument.upper()
             result_value = TestScheduleResult.__members__.get(result_name, None)
@@ -178,8 +171,7 @@ class TestScheduleReport(gluetool.Module):
             'set-result': _set_result
         }, context=context)
 
-    def _overall_result(self, schedule):
-        # type: (TestSchedule) -> TestScheduleResult
+    def _overall_result(self, schedule: TestSchedule) -> TestScheduleResult:
 
         self._overall_result_base(schedule)
         self.debug('base overall result: {}'.format(schedule.result))
@@ -189,8 +181,7 @@ class TestScheduleReport(gluetool.Module):
 
         return schedule.result
 
-    def _report_final_result(self, schedule):
-        # type: (TestSchedule) -> None
+    def _report_final_result(self, schedule: TestSchedule) -> None:
 
         result = self._overall_result(schedule)
 
@@ -203,8 +194,7 @@ class TestScheduleReport(gluetool.Module):
         else:
             self.warn('Result of testing: {}'.format(result))
 
-    def _serialize_results(self, schedule):
-        # type: (TestSchedule) -> None
+    def _serialize_results(self, schedule: TestSchedule) -> None:
 
         test_suites = gluetool.utils.new_xml_element('testsuites')
         test_suites['overall-result'] = self._overall_result(schedule).name.lower()
@@ -294,18 +284,15 @@ class TestScheduleReport(gluetool.Module):
 
         gluetool.log.log_xml(self.debug, 'serialized results', self._result)
 
-    def results(self):
-        # type: () -> bs4.element.Tag
+    def results(self) -> bs4.element.Tag:
 
         return self._result
 
-    def test_schedule_results(self):
-        # type: () -> bs4.element.Tag
+    def test_schedule_results(self) -> bs4.element.Tag:
 
         return self._result
 
-    def _generate_results(self):
-        # type: () -> None
+    def _generate_results(self) -> None:
 
         self._serialize_results(self._schedule)
 
@@ -318,15 +305,13 @@ class TestScheduleReport(gluetool.Module):
 
             self.info('results saved into {}'.format(self.option('xunit-file')))
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         self.require_shared('test_schedule')
         self._schedule.log(self.info, label='finished schedule')
 
         self._generate_results()
 
-    def destroy(self, failure=None):
-        # type: (Optional[Any]) -> None
+    def destroy(self, failure: Optional[Any] = None) -> None:
 
         if not self._schedule:
             return

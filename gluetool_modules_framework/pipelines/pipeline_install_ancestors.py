@@ -66,14 +66,12 @@ class PipelineInstallAncestors(gluetool.Module):
     required_options = ('tag', 'major-version-pattern', 'release-template')
     shared_functions = ['setup_guest']
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(PipelineInstallAncestors, self).__init__(*args, **kwargs)
 
-        self.context = {}  # type: Dict[str, Any]
+        self.context: Dict[str, Any] = {}
 
-    def _build_exists(self, name, tag):
-        # type: (str, str) -> bool
+    def _build_exists(self, name: str, tag: str) -> bool:
         self.require_shared('koji_session')
         koji_session = self.shared('koji_session')
         builds = koji_session.listTagged(tag, package=name, inherit=True, latest=True)
@@ -81,9 +79,8 @@ class PipelineInstallAncestors(gluetool.Module):
         return len(builds) > 0
 
     @gluetool.utils.cached_property
-    def _brew_options(self):
-        # type: () -> Optional[str]
-        ancestors = []  # type: List[str]
+    def _brew_options(self) -> Optional[str]:
+        ancestors: List[str] = []
 
         self.require_shared('primary_task')
         component = self.shared('primary_task').component
@@ -131,20 +128,23 @@ class PipelineInstallAncestors(gluetool.Module):
         self.info('No ancestors left, nothing will be installed on SUT.')
         return None
 
-    def setup_guest(self, guest, stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION, log_dirpath=None, **kwargs):
-        # type: (NetworkedGuest, GuestSetupStage, Optional[str], **Any) -> SetupGuestReturnType
+    def setup_guest(self,
+                    guest: NetworkedGuest,
+                    stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
+                    log_dirpath: Optional[str] = None,
+                    **kwargs: Any) -> SetupGuestReturnType:
         log_dirpath = guest_setup_log_dirpath(guest, log_dirpath)
 
         # Make sure previous setup_guest methods are called. This is out of decency only - we don't expect there
         # to be any other `setup_guest` in the pipeline. If there were, it would be operate within the context
         # of the initial primary artifact while we're trying to do our job within context of the ancestor.
-        r_overloaded_guest_setup_output = self.overloaded_shared(
+        r_overloaded_guest_setup_output: SetupGuestReturnType = self.overloaded_shared(
             'setup_guest',
             guest,
             stage=stage,
             log_dirpath=log_dirpath,
             **kwargs
-        )  # type: SetupGuestReturnType
+        )
 
         if r_overloaded_guest_setup_output is None:
             r_overloaded_guest_setup_output = Ok([])
@@ -154,12 +154,11 @@ class PipelineInstallAncestors(gluetool.Module):
 
         # Containers for guest setup outputs and result from the child pipeline.
         guest_setup_output = r_overloaded_guest_setup_output.unwrap() or []
-        guest_setup_output_result = [Ok(guest_setup_output)]  # type: List[SetupGuestReturnType]
+        guest_setup_output_result: List[SetupGuestReturnType] = [Ok(guest_setup_output)]
 
         # Callback to initiate setup guest in child pipeline - will add its outputs to our container,
         # and it should propagate any failure - or at least the first one - by updating the result.
-        def do_setup_guest(self):
-            # type: (PipelineInstallAncestors) -> None
+        def do_setup_guest(self: PipelineInstallAncestors) -> None:
             r_guest_setup = self.shared(
                 'setup_guest',
                 guest,
@@ -198,7 +197,7 @@ class PipelineInstallAncestors(gluetool.Module):
         # function ``do_guest_setup``.
         #
 
-        modules = []  # type: List[Union[gluetool.glue.PipelineStepModule, gluetool.glue.PipelineStepCallback]]
+        modules: List[Union[gluetool.glue.PipelineStepModule, gluetool.glue.PipelineStepCallback]] = []
 
         # If we have an ancestor build, by adding `brew` module at the beginning of our pipeline we're running
         # all the modules in the context of the ancestor build.
@@ -275,8 +274,7 @@ class PipelineInstallAncestors(gluetool.Module):
         return result
 
     @property
-    def eval_context(self):
-        # type: () -> Dict[str, Any]
+    def eval_context(self) -> Dict[str, Any]:
         __content__ = {  # noqa
             'BUILD_TARGET': """
                             Build target of build we were looking for in case nothing found.

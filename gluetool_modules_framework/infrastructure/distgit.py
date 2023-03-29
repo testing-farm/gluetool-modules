@@ -27,19 +27,16 @@ class DistGitRepository(gluetool_modules_framework.libs.git.RemoteGitRepository)
     Provides a dist-git repository.
     """
 
-    def __init__(self, logger, package, **kwargs):
-        # type: (ContextAdapter, str, **Any) -> None
+    def __init__(self, logger: ContextAdapter, package: str, **kwargs: Any) -> None:
         self.package = package
 
         super(DistGitRepository, self).__init__(logger, **kwargs)
 
-    def __repr__(self):
-        # type: () -> str
+    def __repr__(self) -> str:
         return '<DistGitRepository(package="{}", branch="{}")>'.format(self.package, self.branch)
 
     @cached_property
-    def ci_config_url(self):
-        # type: () -> str
+    def ci_config_url(self) -> str:
         """
         To check for CI configuration we simply check if fmf metadata are present. We want to avoid
         the need to clone the dist-git repository.
@@ -52,8 +49,7 @@ class DistGitRepository(gluetool_modules_framework.libs.git.RemoteGitRepository)
         return '{}/plain/.fmf/version?id={}'.format(self.web_url, self.ref if self.ref else self.branch)
 
     @cached_property
-    def sti_tests_url(self):
-        # type: () -> str
+    def sti_tests_url(self) -> str:
         """
         URL of STI tests.
         """
@@ -68,8 +64,7 @@ class DistGitRepository(gluetool_modules_framework.libs.git.RemoteGitRepository)
         return '{}/tree/tests?id={}'.format(self.web_url, self.ref if self.ref else self.branch)
 
     @cached_property
-    def rpminspect_yaml_url(self):
-        # type: () -> str
+    def rpminspect_yaml_url(self) -> str:
         """
         URL of rpminspect.conf file.
         """
@@ -77,16 +72,14 @@ class DistGitRepository(gluetool_modules_framework.libs.git.RemoteGitRepository)
         return '{}/tree/rpminspect.yaml?id={}'.format(self.web_url, self.ref if self.ref else self.branch)
 
     @cached_property
-    def gating_config_url(self):
-        # type: () -> str
+    def gating_config_url(self) -> str:
         # NOTE: url for Pagure instances, move to config later ideally
         # return '{}/raw/{}/f/gating.yaml'.format(self.web_url, self.ref if self.ref else self.branch)
 
         # NOTE: url for cgit instance
         return '{}/plain/gating.yaml?id={}'.format(self.web_url, self.ref if self.ref else self.branch)
 
-    def _get_url(self, url, success_message, failure_message):
-        # type: (str, str, str) -> Optional[str]
+    def _get_url(self, url: str, success_message: str, failure_message: str) -> Optional[str]:
         with gluetool.utils.requests() as request:
             response = request.get(url)
 
@@ -100,8 +93,7 @@ class DistGitRepository(gluetool_modules_framework.libs.git.RemoteGitRepository)
         return None
 
     @cached_property
-    def has_ci_config(self):
-        # type: () -> bool
+    def has_ci_config(self) -> bool:
         """
         Indicates if CI configuration present in dist-git by checking for `.fmf/version` file.
 
@@ -111,8 +103,7 @@ class DistGitRepository(gluetool_modules_framework.libs.git.RemoteGitRepository)
         return bool(self._get_url(self.ci_config_url, 'contains CI configuration', 'does not contain CI configuration'))
 
     @cached_property
-    def _sti_tests_folder(self):
-        # type: () -> Optional[str]
+    def _sti_tests_folder(self) -> Optional[str]:
         """
         STI tests folder, not interesting for the user, so keeping internal.
         """
@@ -120,8 +111,7 @@ class DistGitRepository(gluetool_modules_framework.libs.git.RemoteGitRepository)
         return self._get_url(self.sti_tests_url, 'has STI tests', 'does not have STI tests')
 
     @cached_property
-    def _gating_config_response(self):
-        # type: () -> Any
+    def _gating_config_response(self) -> Any:
         with gluetool.utils.requests() as request:
             response = request.get(self.gating_config_url)
 
@@ -135,8 +125,7 @@ class DistGitRepository(gluetool_modules_framework.libs.git.RemoteGitRepository)
         return None
 
     @cached_property
-    def has_sti_tests(self):
-        # type: () -> bool
+    def has_sti_tests(self) -> bool:
         """
         :returns: ``True`` when dist-git repository contains Standard Test Interface (STI) tests, ``False`` otherwise.
         """
@@ -144,16 +133,14 @@ class DistGitRepository(gluetool_modules_framework.libs.git.RemoteGitRepository)
         return bool(self._sti_tests_folder)
 
     @cached_property
-    def has_gating(self):
-        # type: () -> bool
+    def has_gating(self) -> bool:
         """
         :returns: True if dist-git repository has gating enabled, False otherwise
         """
         return bool(self._gating_config_response)
 
     @cached_property
-    def gating_recipients(self):
-        # type: () -> List[str]
+    def gating_recipients(self) -> List[str]:
         """
         Returns list of recipients specified in a comment in gating.yaml file as a list. Here
         is an example of gating yaml with the recipients in an comment:
@@ -182,8 +169,7 @@ class DistGitRepository(gluetool_modules_framework.libs.git.RemoteGitRepository)
         ]
 
     @cached_property
-    def rpminspect_yaml(self):
-        # type: () -> Optional[str]
+    def rpminspect_yaml(self) -> Optional[str]:
         """
         Returns contents of rpminspect.yaml file. This file can be placed in the dist-git repository
         to customize rpminspect execution.
@@ -283,18 +269,16 @@ class DistGit(gluetool.Module):
     required_options = ('method',)
     shared_functions = ['dist_git_repository', 'dist_git_bugs']
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(DistGit, self).__init__(*args, **kwargs)
 
-        self._repository = None  # type: Optional[DistGitRepository]
+        self._repository: Optional[DistGitRepository] = None
 
-        self._regex_resolves = None  # type: Optional[Pattern[Any]]
-        self._regex_bugzilla = None  # type: Optional[Pattern[Any]]
+        self._regex_resolves: Optional[Pattern[Any]] = None
+        self._regex_bugzilla: Optional[Pattern[Any]] = None
 
     @property
-    def eval_context(self):
-        # type: () -> Dict[str, DistGitRepository]
+    def eval_context(self) -> Dict[str, DistGitRepository]:
         __content__ = {  # noqa
             'DIST_GIT_REPOSITORY': """
                                     Dist-git repository, represented as ``DistGitRepository`` instance.
@@ -309,22 +293,18 @@ class DistGit(gluetool.Module):
         }
 
     @cached_property
-    def branch_map(self):
-        # type: () -> PatternMap
+    def branch_map(self) -> PatternMap:
         return PatternMap(self.option('branch-map'), logger=self.logger)
 
     @cached_property
-    def clone_url_map(self):
-        # type: () -> PatternMap
+    def clone_url_map(self) -> PatternMap:
         return PatternMap(self.option('clone-url-map'), logger=self.logger)
 
     @cached_property
-    def web_url_map(self):
-        # type: () -> PatternMap
+    def web_url_map(self) -> PatternMap:
         return PatternMap(self.option('web-url-map'), logger=self.logger)
 
-    def _artifact_branch(self, task):
-        # type: (KojiTask) -> Optional[str]
+    def _artifact_branch(self, task: KojiTask) -> Optional[str]:
         # if ref is specified, we cannot use also branch, conflict of both checked in sanity
         if self.option('ref'):
             return None
@@ -338,24 +318,20 @@ class DistGit(gluetool.Module):
 
         return None
 
-    def _artifact_ref(self, task):
-        # type: (KojiTask) -> Optional[str]
+    def _artifact_ref(self, task: KojiTask) -> Optional[str]:
         # if branch is specified, we cannot use also ref, conflict of both checked in sanity
         if self.option('branch'):
             return None
 
         return self.option('ref') or cast(Optional[str], task.distgit_ref)
 
-    def _artifact_clone_url(self, task):
-        # type: (KojiTask) -> str
+    def _artifact_clone_url(self, task: KojiTask) -> str:
         return self.option('clone-url') or cast(str, self.clone_url_map.match(task.ARTIFACT_NAMESPACE))
 
-    def _artifact_web_url(self, task):
-        # type: (KojiTask) -> str
+    def _artifact_web_url(self, task: KojiTask) -> str:
         return self.option('web-url') or cast(str, self.web_url_map.match(task.ARTIFACT_NAMESPACE))
 
-    def _artifact_clone_args(self, task):
-        # type: (KojiTask) -> List[str]
+    def _artifact_clone_args(self, task: KojiTask) -> List[str]:
         return normalize_shell_option(self.option('clone-args'))
 
     _methods_branch = {
@@ -378,8 +354,7 @@ class DistGit(gluetool.Module):
         'artifact': _artifact_clone_args,
     }
 
-    def sanity(self):
-        # type: () -> None
+    def sanity(self) -> None:
         required_options = [
             ('clone-url-map', 'clone-url'),
             ('web-url-map', 'web-url')
@@ -405,8 +380,7 @@ class DistGit(gluetool.Module):
             except re.error as error:
                 raise gluetool.GlueError("Failed to compile regular expression in 'regex-bugzilla': {}".format(error))
 
-    def dist_git_repository(self):
-        # type: () -> Optional[DistGitRepository]
+    def dist_git_repository(self) -> Optional[DistGitRepository]:
         """
         Returns a dist-git repository for the primary_task in the pipeline in the form of an instance
         of the py:class:`DistGitRepository` class. The branch or task can be forced via module parameters
@@ -420,8 +394,7 @@ class DistGit(gluetool.Module):
 
         return self._repository
 
-    def _acquire_param(self, name, error_message=None):
-        # type: (str, Optional[str]) -> Optional[Union[str, List[str]]]
+    def _acquire_param(self, name: str, error_message: Optional[str] = None) -> Optional[Union[str, List[str]]]:
         """
         For a given repo parameter, pick one of its getter methods and return the value.
 
@@ -447,8 +420,7 @@ class DistGit(gluetool.Module):
             return [render_template(v, **context) for v in value]
         return render_template(value, **context)
 
-    def dist_git_bugs(self):
-        # type: () -> Set[str]
+    def dist_git_bugs(self) -> Set[str]:
         """
         Finds and returns bugs referenced in commit logs between primary artifact and a baseline package version.
         See module help for more information about baseline package version.
@@ -493,8 +465,7 @@ class DistGit(gluetool.Module):
 
         return bugs
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         self.require_shared('primary_task')
         task = self.shared('primary_task')
         path = normalize_path(self.option('git-repo-path')) if self.option('git-repo-path') else None

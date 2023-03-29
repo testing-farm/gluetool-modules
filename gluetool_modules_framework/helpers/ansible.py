@@ -47,8 +47,7 @@ AnsibleOutput = NamedTuple('AnsibleOutput', (
 
 
 class PlaybookError(ArtifactFingerprintsMixin, gluetool.GlueError):
-    def __init__(self, task, ansible_output):
-        # type: (Any, gluetool.utils.ProcessOutput) -> None
+    def __init__(self, task: Any, ansible_output: gluetool.utils.ProcessOutput) -> None:
 
         super(PlaybookError, self).__init__(task, 'Failure during Ansible playbook execution')
 
@@ -120,8 +119,7 @@ class Ansible(gluetool.Module):
 
     supported_dryrun_level = gluetool.glue.DryRunLevels.DRY
 
-    def get_ansible_playbook_filepath(self, guest):
-        # type: (gluetool_modules_framework.libs.guest.NetworkedGuest) -> str
+    def get_ansible_playbook_filepath(self, guest: gluetool_modules_framework.libs.guest.NetworkedGuest) -> str:
         # Retrieve ansible-playbook from ansible-playbook-filepath option
         if self.option('ansible-playbook-filepath'):
             ansible_playbook_filepath = cast(str, self.option('ansible-playbook-filepath'))
@@ -159,14 +157,12 @@ class Ansible(gluetool.Module):
         return ansible_playbook_filepath
 
     @gluetool.utils.cached_property
-    def additional_options(self):
-        # type: () -> List[str]
+    def additional_options(self) -> List[str]:
 
         return gluetool.utils.normalize_multistring_option(self.option('ansible-playbook-options'))
 
     @gluetool.utils.cached_property
-    def additional_environment_variables(self):
-        # type: () -> Dict[str,str]
+    def additional_environment_variables(self) -> Dict[str,str]:
 
         envs_list = gluetool.utils.normalize_multistring_option(self.option('ansible-playbook-environment-variables'))
 
@@ -179,13 +175,11 @@ class Ansible(gluetool.Module):
         return envs_dict
 
     @gluetool.utils.cached_property
-    def extra_variables_template_files(self):
-        # type: () -> List[str]
+    def extra_variables_template_files(self) -> List[str]:
 
         return gluetool.utils.normalize_path_option(self.option('extra-variables-template-file'))
 
-    def _extra_variables_templates(self, filepaths):
-        # type: (List[str]) -> List[str]
+    def _extra_variables_templates(self, filepaths: List[str]) -> List[str]:
 
         templates = []
 
@@ -201,14 +195,13 @@ class Ansible(gluetool.Module):
 
     def render_extra_variables_templates(
         self,
-        logger,  # type: gluetool.log.ContextAdapter
-        context,  # type: Dict[str, Any]
-        template_filepaths=None,  # type: Optional[List[str]]
-        filepath_dir=None,  # type: Optional[str]
-        filename_prefix=EXTRA_VARS_FILENAME_PREFIX,  # type: str
-        filename_suffix=EXTRA_VARS_FILENAME_SUFFIX  # type: str
-    ):
-        # type: (...) -> List[str]
+        logger: gluetool.log.ContextAdapter,
+        context: Dict[str, Any],
+        template_filepaths: Optional[List[str]] = None,
+        filepath_dir: Optional[str] = None,
+        filename_prefix: str = EXTRA_VARS_FILENAME_PREFIX,
+        filename_suffix: str = EXTRA_VARS_FILENAME_SUFFIX
+    ) -> List[str]:
         """
         Render template files. For each template file, a file with rendered content is created.
 
@@ -248,8 +241,7 @@ class Ansible(gluetool.Module):
 
         return filepaths
 
-    def detect_ansible_interpreter(self, guest):
-        # type: (gluetool_modules_framework.libs.guest.NetworkedGuest) -> List[str]
+    def detect_ansible_interpreter(self, guest: gluetool_modules_framework.libs.guest.NetworkedGuest) -> List[str]:
         """
         Detect Ansible's python interpreter on the given guest and return it.
 
@@ -304,22 +296,21 @@ class Ansible(gluetool.Module):
         return available_interpreters
 
     def run_playbook(self,
-                     playbook_paths,  # type: Union[str, List[str]]
-                     guest,  # type: gluetool_modules_framework.libs.guest.NetworkedGuest
-                     variables=None,  # type: Optional[Dict[str, Any]]
-                     inventory=None,  # type: Optional[str]
-                     cwd=None,  # type: Optional[str]
-                     env=None,  # type: Optional[Dict[str, Any]]
-                     json_output=False,  # type: bool
-                     logger=None,  # type: Optional[gluetool.log.ContextAdapter]
-                     log_filepath=None,  # type: Optional[str]
-                     extra_options=None,  # type: Optional[List[str]]
-                     extra_vars_filename_prefix=EXTRA_VARS_FILENAME_PREFIX,  # type: str
-                     extra_vars_filename_suffix=EXTRA_VARS_FILENAME_SUFFIX,  # type: str
-                     ansible_playbook_filepath=None,  # type: Optional[str]
-                     **kwargs  # type: Any
-                    ):  # noqa
-        # type: (...) -> AnsibleOutput
+                     playbook_paths: Union[str, List[str]],
+                     guest: gluetool_modules_framework.libs.guest.NetworkedGuest,
+                     variables: Optional[Dict[str, Any]] = None,
+                     inventory: Optional[str] = None,
+                     cwd: Optional[str] = None,
+                     env: Optional[Dict[str, Any]] = None,
+                     json_output: bool = False,
+                     logger: Optional[gluetool.log.ContextAdapter] = None,
+                     log_filepath: Optional[str] = None,
+                     extra_options: Optional[List[str]] = None,
+                     extra_vars_filename_prefix: str = EXTRA_VARS_FILENAME_PREFIX,
+                     extra_vars_filename_suffix: str = EXTRA_VARS_FILENAME_SUFFIX,
+                     ansible_playbook_filepath: Optional[str] = None,
+                     **kwargs: Any
+                    ) -> AnsibleOutput:  # noqa
         """
         Run Ansible playbook on a given guest.
 
@@ -412,8 +403,10 @@ class Ansible(gluetool.Module):
 
             cmd += ['-C']
 
-        def _update_env(var_name, var_value, on_present, on_missing):
-            # type: (str, str, Callable[[], None], Callable[[], None]) -> None
+        def _update_env(var_name: str,
+                        var_value: str,
+                        on_present: Callable[[], None],
+                        on_missing: Callable[[], None]) -> None:
 
             assert env is not None
 
@@ -436,8 +429,7 @@ class Ansible(gluetool.Module):
         else:
             # When coupled with `-v`, provides structured and more readable output. But only if user didn't try
             # their own setup.
-            def _json_on_present():
-                # type: () -> None
+            def _json_on_present() -> None:
 
                 assert logger is not None
 
@@ -452,15 +444,13 @@ class Ansible(gluetool.Module):
 
         if gluetool.utils.normalize_bool_option(self.option('use-pipelining')):
             # Don't forget to set ANSIBLE_SSH_PIPELINING too, ANSIBLE_PIPELINING alone is not enough.
-            def _env_on_missing():
-                # type: () -> None
+            def _env_on_missing() -> None:
 
                 assert logger is not None
 
                 logger.debug('ansible pipelining cannot be used, ANSIBLE_PIPELINING is already set')
 
-            def _env_on_present():
-                # type: () -> None
+            def _env_on_present() -> None:
 
                 assert env is not None
 
@@ -496,8 +486,7 @@ class Ansible(gluetool.Module):
                 ansible_call = exc.output
 
         with open(log_filepath, 'w') as f:
-            def _write(label, s):
-                # type: (str, str) -> None
+            def _write(label: str, s: str) -> None:
 
                 f.write('{}\n{}\n\n'.format(label, s))
 
@@ -506,8 +495,7 @@ class Ansible(gluetool.Module):
 
             f.flush()
 
-        def show_ansible_errors(output):
-            # type: (gluetool.utils.ProcessOutput) -> None
+        def show_ansible_errors(output: gluetool.utils.ProcessOutput) -> None:
 
             assert logger is not None
 

@@ -101,8 +101,7 @@ GuestDefinition = collections.namedtuple('GuestDefinition', ('fqdn', 'environmen
 ProvisionerCapabilities = collections.namedtuple('ProvisionerCapabilities', ['available_arches'])
 
 
-def _time_from_now(**kwargs):
-    # type: (**Any) -> datetime.datetime
+def _time_from_now(**kwargs: Any) -> datetime.datetime:
     """
     Returns "deadline": "now", extended by ``timedelta`` which is constructed using given keyword arguments.
     """
@@ -110,8 +109,7 @@ def _time_from_now(**kwargs):
     return datetime.datetime.utcnow() + datetime.timedelta(**kwargs)
 
 
-def parse_guest_spec(guest_spec):
-    # type: (str) -> GuestDefinition
+def parse_guest_spec(guest_spec: str) -> GuestDefinition:
     """
     Parse guest command-line specification and return its internal representation.
 
@@ -134,8 +132,7 @@ class BeakerGuest(NetworkedGuest):
     Implements Beaker guest.
     """
 
-    def __init__(self, module, fqdn, is_static=False, **kwargs):
-        # type: (BeakerProvisioner, str, bool, **Any) -> None
+    def __init__(self, module: BeakerProvisioner, fqdn: str, is_static: bool = False, **kwargs: Any) -> None:
         assert isinstance(module, BeakerProvisioner)
         super(BeakerGuest, self).__init__(module, fqdn, **kwargs)
 
@@ -147,10 +144,9 @@ class BeakerGuest(NetworkedGuest):
         # function and in that case, it was waiting for the lock. When the lock becomes available,
         # refresh function checks timer for being None, and since it now is None, immediately quits.
         self._reservation_refresh_lock = threading.Lock()
-        self._reservation_refresh_timer = None  # type: Optional[Union[threading.Timer, bool]]
+        self._reservation_refresh_timer: Optional[Union[threading.Timer, bool]] = None
 
-    def _is_allowed_degraded(self, service):
-        # type: (str) -> bool
+    def _is_allowed_degraded(self, service: str) -> bool:
         self._module.require_shared('evaluate_instructions')
 
         self.debug("service '{}' is degraded, check whether it's allowed".format(service))
@@ -165,8 +161,7 @@ class BeakerGuest(NetworkedGuest):
         }
 
         # callback for `pattern` command
-        def _pattern(instruction, command, argument, context):
-            # type: (EntryType, str, Any, ContextType) -> bool
+        def _pattern(instruction: EntryType, command: str, argument: Any, context: ContextType) -> bool:
             # either a single pattern or a list of patterns
             patterns = [argument] if isinstance(argument, str) else argument
 
@@ -181,8 +176,7 @@ class BeakerGuest(NetworkedGuest):
             return True
 
         # callback for `allow-any` command
-        def _allow_any(instruction, command, argument, context):
-            # type: (EntryType, str, Any, ContextType) -> bool
+        def _allow_any(instruction: EntryType, command: str, argument: Any, context: ContextType) -> bool:
             self.debug('current decision: {}'.format(result['decision']))
             self.debug("matchig service '{}' with allow-any '{}'".format(service, argument))
 
@@ -203,8 +197,7 @@ class BeakerGuest(NetworkedGuest):
         self.debug("final decision for service '{}' is {}".format(service, result['decision']))
         return result['decision']
 
-    def _wait_alive(self):
-        # type: () -> None
+    def _wait_alive(self) -> None:
         """
         Wait till the guest is alive. That covers several checks.
         """
@@ -221,8 +214,7 @@ class BeakerGuest(NetworkedGuest):
         except GlueError as exc:
             raise GlueError('Guest failed to become alive: {}'.format(exc))
 
-    def _extend_reservation(self, hours=None):
-        # type: (Optional[int]) -> None
+    def _extend_reservation(self, hours: Optional[int] = None) -> None:
         """
         Extend guest reservation by ``hours`` hours.
 
@@ -241,8 +233,7 @@ class BeakerGuest(NetworkedGuest):
         if not self._is_static and cast(BeakerProvisioner, self._module).use_cache:
             cast(BeakerProvisioner, self._module)._touch_dynamic_guest(self, use_by)
 
-    def _refresh_reservation(self):
-        # type: () -> None
+    def _refresh_reservation(self) -> None:
         """
         Extend guest reservation, and schedule next tick of reservation refresh.
 
@@ -271,8 +262,7 @@ class BeakerGuest(NetworkedGuest):
         next_tick = _time_from_now(seconds=self._module.option('reservation-extension-tick'))
         self.debug('scheduled next reservation refresh tick to {}'.format(next_tick))
 
-    def start_reservation_refresh(self):
-        # type: () -> None
+    def start_reservation_refresh(self) -> None:
         """
         Start reservation refresh process in the background.
         """
@@ -285,8 +275,7 @@ class BeakerGuest(NetworkedGuest):
         #
         # Machines from cache already passed this test, therefore in their case, this should
         # be just a quick sanity check.
-        def _check_extendtesttime():
-            # type: () -> Result[bool, str]
+        def _check_extendtesttime() -> Result[bool, str]:
             try:
                 self.execute('type extendtesttime.sh')
 
@@ -306,8 +295,7 @@ class BeakerGuest(NetworkedGuest):
 
         self._refresh_reservation()
 
-    def stop_reservation_refresh(self):
-        # type: () -> None
+    def stop_reservation_refresh(self) -> None:
         """
         Stop reservation refresh process.
         """
@@ -332,16 +320,13 @@ class BeakerGuest(NetworkedGuest):
     # "Public" API
     #
     @property
-    def supports_snapshots(self):
-        # type: () -> bool
+    def supports_snapshots(self) -> bool:
         return False
 
-    def create_snapshot(self, start_again=True):
-        # type: (bool) -> None
+    def create_snapshot(self, start_again: bool = True) -> None:
         raise NotImplementedError()
 
-    def destroy(self):
-        # type: () -> None
+    def destroy(self) -> None:
 
         self.info('destroying guest')
 
@@ -550,28 +535,24 @@ class BeakerProvisioner(gluetool.Module):
 
     shared_functions = ['provision', 'provisioner_capabilities']
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(BeakerProvisioner, self).__init__(*args, **kwargs)
 
-        self._dynamic_guests = []  # type: List[BeakerGuest]
+        self._dynamic_guests: List[BeakerGuest] = []
 
     @cached_property
-    def use_cache(self):
-        # type: () -> bool
+    def use_cache(self) -> bool:
         return gluetool.utils.normalize_bool_option(self.option('use-cache'))
 
     @cached_property
-    def degraded_services_map(self):
-        # type: () -> Any
+    def degraded_services_map(self) -> Any:
         if not self.option('degraded-services-map'):
             return []
 
         return load_yaml(self.option('degraded-services-map'), logger=self.logger)
 
     @cached_property
-    def static_guests(self):
-        # type: () -> List[GuestDefinition]
+    def static_guests(self) -> List[GuestDefinition]:
         guests = []
 
         for guest_spec in normalize_multistring_option(self.option('static-guest')):
@@ -583,8 +564,7 @@ class BeakerProvisioner(gluetool.Module):
 
         return guests
 
-    def provisioner_capabilities(self):
-        # type: () -> ProvisionerCapabilities
+    def provisioner_capabilities(self) -> ProvisionerCapabilities:
         """
         Return description of Beaker provisioner capabilities.
 
@@ -602,8 +582,7 @@ class BeakerProvisioner(gluetool.Module):
             available_arches=gluetool_modules_framework.libs.ANY
         )
 
-    def _get_cache(self):
-        # type: () -> CacheType
+    def _get_cache(self) -> CacheType:
         """
         Helper method to simplify process of getting a cache instance a bit.
         """
@@ -612,8 +591,7 @@ class BeakerProvisioner(gluetool.Module):
 
         return cast(CacheType, self.shared('cache'))
 
-    def _acquire_dynamic_guests_from_beaker(self, environment):
-        # type: (TestingEnvironment) -> List[BeakerGuest]
+    def _acquire_dynamic_guests_from_beaker(self, environment: TestingEnvironment) -> List[BeakerGuest]:
         """
         Provision guests by reserving them in Beaker pool..
 
@@ -726,15 +704,18 @@ class BeakerProvisioner(gluetool.Module):
 
     # Helper construction the actul keys - it prepends cache-prefix (if there's any) and adds slashes.
     # _key('foo', 'bar') => 'cache/prefix/foo/bar'
-    def _key(self, *args):
-        # type: (*Any) -> Any
+    def _key(self, *args: Any) -> Any:
         if self.option('cache-prefix'):
             args = (self.option('cache-prefix'),) + args
 
         return '/'.join(args)
 
-    def _grab_guest_by_fqdn(self, cache, environment, fqdn, ignore_used=False, ignore_use_by=False):
-        # type: (Any, TestingEnvironment, str, bool, bool) -> Optional[BeakerGuest]
+    def _grab_guest_by_fqdn(self,
+                            cache: Any,
+                            environment: TestingEnvironment,
+                            fqdn: str,
+                            ignore_used: bool = False,
+                            ignore_use_by: bool = False) -> Optional[BeakerGuest]:
         """
         Try to grab one specific guest from the cache.
 
@@ -832,8 +813,11 @@ class BeakerProvisioner(gluetool.Module):
 
         return guest
 
-    def _grab_guest_by_spec(self, cache, guest_spec, ignore_used=False, ignore_use_by=False):
-        # type: (Any, str, bool, bool) -> BeakerGuest
+    def _grab_guest_by_spec(self,
+                            cache: Any,
+                            guest_spec: str,
+                            ignore_used: bool = False,
+                            ignore_use_by: bool = False) -> BeakerGuest:
         """
         Try to grab one specific guest from the cache.
 
@@ -855,8 +839,7 @@ class BeakerProvisioner(gluetool.Module):
 
         return guest
 
-    def _acquire_dynamic_guests_from_cache(self, environment):
-        # type: (TestingEnvironment) -> List[BeakerGuest]
+    def _acquire_dynamic_guests_from_cache(self, environment: TestingEnvironment) -> List[BeakerGuest]:
         """
         Provision guests by picking them from the cache.
 
@@ -895,8 +878,7 @@ class BeakerProvisioner(gluetool.Module):
         # to the slow path.
         return []
 
-    def _release_dynamic_guest_to_cache(self, guest):
-        # type: (BeakerGuest) -> None
+    def _release_dynamic_guest_to_cache(self, guest: BeakerGuest) -> None:
         """
         The guest is no longer in use, put it into the cache for others to make use of it.
 
@@ -979,8 +961,7 @@ class BeakerProvisioner(gluetool.Module):
 
                 break
 
-    def _remove_dynamic_guest_from_cache(self, name, environment):
-        # type: (str, TestingEnvironment) -> None
+    def _remove_dynamic_guest_from_cache(self, name: str, environment: TestingEnvironment) -> None:
         """
         For some reason, the guest entry should be removed from the cache.
         We **must** own the guest entry to avoid any race conditions.
@@ -1034,8 +1015,7 @@ class BeakerProvisioner(gluetool.Module):
                 self.debug('guest removed from the list')
                 break
 
-    def _touch_dynamic_guest(self, guest, use_by):
-        # type: (BeakerGuest, str) -> None
+    def _touch_dynamic_guest(self, guest: BeakerGuest, use_by: str) -> None:
         """
         Update guest's ``use-by`` flag.
 
@@ -1044,8 +1024,7 @@ class BeakerProvisioner(gluetool.Module):
 
         self._get_cache().set(self._key('guests', guest.name, 'use-by'), use_by)
 
-    def _acquire_dynamic_guests(self, environment):
-        # type: (TestingEnvironment) -> List[BeakerGuest]
+    def _acquire_dynamic_guests(self, environment: TestingEnvironment) -> List[BeakerGuest]:
         """
         Provision guests dynamically.
 
@@ -1073,8 +1052,7 @@ class BeakerProvisioner(gluetool.Module):
 
         return guests
 
-    def _release_dynamic_guest(self, guest):
-        # type: (BeakerGuest) -> None
+    def _release_dynamic_guest(self, guest: BeakerGuest) -> None:
         """
         Mark the guest as no longer in user. It does not mean the guest is necessarily returned
         to the Beaker pool - if the cache is enabled, the guest is stored there.
@@ -1088,8 +1066,7 @@ class BeakerProvisioner(gluetool.Module):
 
         self._destroy_dynamic_guest(guest)
 
-    def _destroy_dynamic_guest(self, guest):
-        # type: (BeakerGuest) -> None
+    def _destroy_dynamic_guest(self, guest: BeakerGuest) -> None:
         """
         Return the guest back to Beaker pool.
 
@@ -1098,8 +1075,7 @@ class BeakerProvisioner(gluetool.Module):
 
         guest.execute('return2beaker.sh')
 
-    def _provision_dynamic_guests(self, environment):
-        # type: (TestingEnvironment) -> List[BeakerGuest]
+    def _provision_dynamic_guests(self, environment: TestingEnvironment) -> List[BeakerGuest]:
         """
         Provision guests dynamically by either finding them in a cache or by picking new ones from
         Beaker pool.
@@ -1114,8 +1090,7 @@ class BeakerProvisioner(gluetool.Module):
 
         return self._acquire_dynamic_guests(environment)
 
-    def _provision_static_guests(self, environment):
-        # type: (TestingEnvironment) -> List[BeakerGuest]
+    def _provision_static_guests(self, environment: TestingEnvironment) -> List[BeakerGuest]:
         """
         Provision guests stacially. The list of known "static" guests is used as a "pool" from which
         matching guests are picked.
@@ -1148,8 +1123,7 @@ class BeakerProvisioner(gluetool.Module):
 
         return guests
 
-    def provision(self, environment, **kwargs):
-        # type: (TestingEnvironment, **Any) -> List[BeakerGuest]
+    def provision(self, environment: TestingEnvironment, **kwargs: Any) -> List[BeakerGuest]:
         """
         Provision (possibly multiple) guests backed by Beaker machines.
 
@@ -1181,16 +1155,14 @@ class BeakerProvisioner(gluetool.Module):
 
         return guests
 
-    def sanity(self):
-        # type: () -> None
+    def sanity(self) -> None:
         if self.option('provision'):
             if not self.option('environment'):
                 raise GlueError('You must specify ``--environment`` when using direct provisioning')
 
             self._config['environment'] = TestingEnvironment.unserialize_from_string(self.option('environment'))
 
-    def _cache_show_guests(self):
-        # type: () -> None
+    def _cache_show_guests(self) -> None:
         cache = self._get_cache()
 
         cache_dump = cache.dump()
@@ -1239,8 +1211,7 @@ class BeakerProvisioner(gluetool.Module):
         log_table(self.info, 'Cached guests', [headers] + sorted(rows),
                   headers='firstrow', tablefmt='psql')
 
-    def _cache_add_guest(self):
-        # type: () -> None
+    def _cache_add_guest(self) -> None:
         guest_def = parse_guest_spec(self.option('cache-add-guest'))
 
         self.info('Adding guest {} {} to the cache'.format(guest_def.fqdn, guest_def.environment))
@@ -1258,8 +1229,7 @@ class BeakerProvisioner(gluetool.Module):
         # in the hope the user knows what he's doing :)
         self._touch_dynamic_guest(guest, str(_time_from_now(hours=self.option('reservation-extension'))))
 
-    def _cache_remove_guest(self):
-        # type: () -> None
+    def _cache_remove_guest(self) -> None:
         cache = self._get_cache()
 
         guest = self._grab_guest_by_spec(cache, self.option('cache-remove-guest'),
@@ -1270,8 +1240,7 @@ class BeakerProvisioner(gluetool.Module):
 
         self._remove_dynamic_guest_from_cache(guest.name, guest.environment)
 
-    def _cache_ping_guest(self):
-        # type: () -> None
+    def _cache_ping_guest(self) -> None:
         cache = self._get_cache()
 
         guest = self._grab_guest_by_spec(cache, self.option('cache-ping-guest'),
@@ -1293,8 +1262,7 @@ class BeakerProvisioner(gluetool.Module):
 
         self._release_dynamic_guest_to_cache(guest)
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         if self.option('provision'):
             guests = self.provision(self.option('environment'),
                                     count=self.option('provision'))
@@ -1303,8 +1271,7 @@ class BeakerProvisioner(gluetool.Module):
                 for guest in guests:
                     guest.setup()
 
-        def _show_cache():
-            # type: () -> None
+        def _show_cache() -> None:
             if not gluetool.utils.normalize_bool_option(self.option('cache-show-guests')):
                 return
 
@@ -1331,8 +1298,7 @@ class BeakerProvisioner(gluetool.Module):
 
             _show_cache()
 
-    def remove_from_list(self, guest):
-        # type: (BeakerGuest) -> None
+    def remove_from_list(self, guest: BeakerGuest) -> None:
 
         if guest not in self._dynamic_guests:
             self.error('{} is not found in guests list')
@@ -1340,8 +1306,7 @@ class BeakerProvisioner(gluetool.Module):
 
         self._dynamic_guests.remove(guest)
 
-    def destroy(self, failure=None):
-        # type: (Optional[gluetool.Failure]) -> None
+    def destroy(self, failure: Optional[gluetool.Failure] = None) -> None:
         if not self._dynamic_guests:
             return
 

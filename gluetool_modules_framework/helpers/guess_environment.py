@@ -17,8 +17,8 @@ from gluetool.utils import fetch_url, PatternMap, IncompatibleOptionsError
 from typing import cast, Any, Callable, Dict, List, Optional, Tuple, Type, Union  # noqa
 from typing_extensions import TypedDict
 
-DEFAULT_NIGHTLY_LISTING = '<default url>'  # type: str
-DEFAULT_BU_LISTING = '<default url>'  # type: str
+DEFAULT_NIGHTLY_LISTING: str = '<default url>'
+DEFAULT_BU_LISTING: str = '<default url>'
 SEPARATOR = ';'
 
 SourceType = TypedDict(
@@ -216,12 +216,10 @@ class GuessEnvironment(gluetool.Module):
 
     supported_dryrun_level = gluetool.glue.DryRunLevels.DRY
 
-    def __init__(self, *args, **kwargs):
-        # type: (Any, Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(GuessEnvironment, self).__init__(*args, **kwargs)
 
-        def _init_source():
-            # type: () -> SourceType
+        def _init_source() -> SourceType:
             return {
                 'type': '',
                 'specification': None,
@@ -237,8 +235,7 @@ class GuessEnvironment(gluetool.Module):
         self._wow_relevancy_distro = _init_source()
         self._sst = _init_source()
 
-    def compose(self):
-        # type: () -> Union[str, List[str]]
+    def compose(self) -> Union[str, List[str]]:
         """
         Return guessed compose value
 
@@ -250,8 +247,7 @@ class GuessEnvironment(gluetool.Module):
         assert self._compose['result'] is not None
         return self._compose['result']
 
-    def actual_compose(self, possibly_symbolic_compose):
-        # type: (str) -> str
+    def actual_compose(self, possibly_symbolic_compose: str) -> str:
         """
         Convert symbolic compose name to a real compose name using
         a mapping file provided by symbolic-compose-pattern map option
@@ -290,8 +286,7 @@ class GuessEnvironment(gluetool.Module):
 
         return compose
 
-    def distro(self):
-        # type: () -> Union[str, List[str]]
+    def distro(self) -> Union[str, List[str]]:
         """
         Return guessed distro value
 
@@ -303,8 +298,7 @@ class GuessEnvironment(gluetool.Module):
         assert self._distro['result'] is not None
         return self._distro['result']
 
-    def image(self):
-        # type: () -> Union[str, List[str]]
+    def image(self) -> Union[str, List[str]]:
         """
         Return guessed image name
 
@@ -316,8 +310,7 @@ class GuessEnvironment(gluetool.Module):
         assert self._image['result'] is not None
         return self._image['result']
 
-    def product(self):
-        # type: () -> Union[str, List[str]]
+    def product(self) -> Union[str, List[str]]:
         """
         Return guessed product.
 
@@ -329,8 +322,7 @@ class GuessEnvironment(gluetool.Module):
         assert self._product['result'] is not None
         return self._product['result']
 
-    def wow_relevancy_distro(self, distro):
-        # type: (Any) -> Union[str, List[str]]
+    def wow_relevancy_distro(self, distro: Any) -> Union[str, List[str]]:
         """
         Return guessed wow relevancy distro.
         Wow relevancy distro is a part of wow environment and is used for defining distro wow needs to test.
@@ -346,8 +338,7 @@ class GuessEnvironment(gluetool.Module):
         assert self._wow_relevancy_distro['result'] is not None
         return self._wow_relevancy_distro['result']
 
-    def sst(self):
-        # type: () -> str
+    def sst(self) -> str:
         """
         Return RHEL Subsystem Team (called SST) mapped from component name (or forced).
         Knowing SST helps us tag the cloud resource(s) created for a test environemnt.
@@ -361,8 +352,7 @@ class GuessEnvironment(gluetool.Module):
         return cast(str, self._sst['result'])
 
     @gluetool.utils.cached_property
-    def _sst_component_map(self):
-        # type: () -> Dict[str, str]
+    def _sst_component_map(self) -> Dict[str, str]:
 
         if not self.option('sst-component-map'):
             return {}
@@ -373,8 +363,7 @@ class GuessEnvironment(gluetool.Module):
         )
 
     @gluetool.utils.cached_property
-    def _arch_compatibility_map(self):
-        # type: () -> Dict[str, List[str]]
+    def _arch_compatibility_map(self) -> Dict[str, List[str]]:
 
         if not self.option('arch-compatibility-map'):
             return {}
@@ -385,20 +374,16 @@ class GuessEnvironment(gluetool.Module):
         )
 
     @gluetool.utils.cached_property
-    def _arch_completeness_map(self):
-        # type: () -> Optional[PatternMap]
+    def _arch_completeness_map(self) -> Optional[PatternMap]:
 
         if not self.option('arch-completeness-map'):
             return None
 
         return PatternMap(self.option('arch-completeness-map'), logger=self.logger)
 
-    def pattern_map(self, source, test):
-        # type: (SourceType, str) -> Optional[PatternMap]
-        def _create_buc_repl(hint_repl):
-            # type: (Any) -> Any
-            def _replace(pattern, target):
-                # type: (Any, Any) -> Any
+    def pattern_map(self, source: SourceType, test: str) -> Optional[PatternMap]:
+        def _create_buc_repl(hint_repl: Any) -> Any:
+            def _replace(pattern: Any, target: Any) -> Any:
                 """
                 Use `hint_repl` function - which was created by `_create_simple_repl` - to get
                 a hint which is then used to find out the batch update compose.
@@ -411,10 +396,8 @@ class GuessEnvironment(gluetool.Module):
 
             return _replace
 
-        def _create_nightly_repl(hint_repl):
-            # type: (Any) -> Any
-            def _replace(pattern, target):
-                # type: (Any, Any) -> Any
+        def _create_nightly_repl(hint_repl: Any) -> Any:
+            def _replace(pattern: Any, target: Any) -> Any:
                 """
                 Use `hint_repl` function - which was created by `_create_simple_repl` - to get
                 a hint which is then used to find out the nightly compose.
@@ -440,8 +423,7 @@ class GuessEnvironment(gluetool.Module):
                           spices=spices,
                           logger=self.logger)
 
-    def _get_latest_finished_compose(self, base_url, hint):
-        # type: (str, str) -> Optional[str]
+    def _get_latest_finished_compose(self, base_url: str, hint: str) -> Optional[str]:
         """
         Fetch index page listing several composes from BASE_URL, and try to find
         the most recent and FINISHED one, using HINT to limit set of examined
@@ -501,8 +483,7 @@ class GuessEnvironment(gluetool.Module):
 
         return None
 
-    def _find_buc_for_distro(self, hint):
-        # type: (str) -> str
+    def _find_buc_for_distro(self, hint: str) -> str:
         """
         Find batch update compose for a given distro.
 
@@ -531,8 +512,7 @@ class GuessEnvironment(gluetool.Module):
 
         return distro
 
-    def _find_nightly_for_distro(self, hint):
-        # type: (str) -> str
+    def _find_nightly_for_distro(self, hint: str) -> str:
         """
         Find nightly compose for a give distro.
 
@@ -549,8 +529,7 @@ class GuessEnvironment(gluetool.Module):
 
         return distro
 
-    def _guess_recent(self, source):
-        # type: (SourceType) -> None
+    def _guess_recent(self, source: SourceType) -> None:
         self.require_shared('openstack')
 
         hint = '^{}$'.format(source['specification'])
@@ -583,22 +562,19 @@ class GuessEnvironment(gluetool.Module):
 
         source['result'] = sorted(possible_images, key=lambda x: cast(str, x.key))[-1].name
 
-    def _guess_nightly(self, source):
-        # type: (SourceType) -> None
+    def _guess_nightly(self, source: SourceType) -> None:
         assert source['specification'] is not None
         source['result'] = [
             self._find_nightly_for_distro(s.strip()) for s in source['specification']
         ]
 
-    def _guess_buc(self, source):
-        # type: (SourceType) -> None
+    def _guess_buc(self, source: SourceType) -> None:
         assert source['specification'] is not None
         source['result'] = [
             self._find_buc_for_distro(s.strip()) for s in source['specification']
         ]
 
-    def _guess_force(self, source):
-        # type: (SourceType) -> None
+    def _guess_force(self, source: SourceType) -> None:
         if source['type'] in ('compose', 'distro'):
             assert source['specification'] is not None
             source['result'] = gluetool.utils.normalize_multistring_option(source['specification'])
@@ -606,8 +582,7 @@ class GuessEnvironment(gluetool.Module):
         else:
             source['result'] = source['specification']
 
-    def _guess_autodetect(self, source, test, tag, *args):
-        # type: (SourceType, str, str, *Any) -> bool
+    def _guess_autodetect(self, source: SourceType, test: str, tag: str, *args: Any) -> bool:
 
         # wow relevancy distro is related not only to tag, but on beaker distro as well
         if source['type'] == 'wow_relevancy_distro':
@@ -631,8 +606,7 @@ class GuessEnvironment(gluetool.Module):
             # in case ther matching failed for some unexpected reason
             reraise(*sys.exc_info())
 
-    def _guess_target_autodetect(self, source, *args):
-        # type: (SourceType, *Any) -> None
+    def _guess_target_autodetect(self, source: SourceType, *args: Any) -> None:
         self.require_shared('primary_task')
         primary_task = self.shared('primary_task')
 
@@ -659,25 +633,23 @@ class GuessEnvironment(gluetool.Module):
         if not result:
             raise GlueError("Failed to autodetect '{}', no match found".format(source['type']))
 
-    _methods = {
+    _methods: Dict[str, Callable[[GuessEnvironment, SourceType], None]] = {
         'autodetect': _guess_target_autodetect,
         'force': _guess_force,
         'target-autodetection': _guess_target_autodetect,
         'recent': _guess_recent,  # Only for images
         'nightly': _guess_nightly,  # Only for distro
         'buc': _guess_buc  # Only for distro
-    }  # type: Dict[str, Callable[[GuessEnvironment, SourceType], None]]
+    }
 
-    def _pack_sources(self):
-        # type: () -> None
+    def _pack_sources(self) -> None:
         """
         Packs necessary for guessing values to dict.
         This solution provides the same parameters for guessing methods
         what makes guessing methods universal for all types of guessing target
         """
 
-        def _parse_pattern_map(option):
-            # type: (str) -> Dict[str, Any]
+        def _parse_pattern_map(option: str) -> Dict[str, Any]:
             maps = {}
 
             for pattern_map_spec in gluetool.utils.normalize_multistring_option(self.option(option)):
@@ -736,8 +708,7 @@ class GuessEnvironment(gluetool.Module):
             'result': None
         }
 
-    def sanity(self):
-        # type: () -> None
+    def sanity(self) -> None:
 
         # Packs sources here, because self.option is unavailable in __init__
         self._pack_sources()
@@ -760,8 +731,7 @@ class GuessEnvironment(gluetool.Module):
                 raise IncompatibleOptionsError(
                     "--{} option is ignored with method '{}'".format(source['type'], source['method']))
 
-    def execute_method(self, source, *args):
-        # type: (SourceType, *Any) -> None
+    def execute_method(self, source: SourceType, *args: Any) -> None:
 
         method = self._methods.get(source['method'], None)
         if method is None:
@@ -771,8 +741,7 @@ class GuessEnvironment(gluetool.Module):
 
         log_dict(self.info, 'Using {}'.format(source['type']), source['result'])
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
 
         if self.option('test-guessing'):
             log_dict(self.info, 'Guessed environment', {

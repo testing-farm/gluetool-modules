@@ -75,8 +75,7 @@ class InstallMBSBuild(gluetool.Module):
         }
     }
 
-    def _get_repo(self, task, module_nsvc, guest):
-        # type: (MBSTask, str, NetworkedGuest) -> str
+    def _get_repo(self, task: MBSTask, module_nsvc: str, guest: NetworkedGuest) -> str:
         self.info('Generating repo for module via ODCS')
 
         command = [
@@ -142,15 +141,17 @@ class InstallMBSBuild(gluetool.Module):
         return repo_url
 
     @gluetool.utils.cached_property
-    def installation_workarounds(self):
-        # type: () -> Any
+    def installation_workarounds(self) -> Any:
         if not self.option('installation-workarounds'):
             return []
 
         return gluetool.utils.load_yaml(self.option('installation-workarounds'), logger=self.logger)
 
-    def setup_guest(self, guest, stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION, log_dirpath=None, **kwargs):
-        # type: (NetworkedGuest, GuestSetupStage, Optional[str], **Any) -> Any
+    def setup_guest(self,
+                    guest: NetworkedGuest,
+                    stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
+                    log_dirpath: Optional[str] = None,
+                    **kwargs: Any) -> Any:
         self.require_shared('primary_task', 'evaluate_instructions')
 
         log_dirpath = guest_setup_log_dirpath(guest, log_dirpath)
@@ -222,8 +223,7 @@ class InstallMBSBuild(gluetool.Module):
         sut_installation = SUTInstallation(self, installation_log_dirpath, primary_task, logger=guest.logger)
 
         # callback for 'commands' item in installation_workarounds
-        def _add_step_callback(instruction, command, argument, context):
-            # type: (str, str, List[Dict[str, Any]], str) -> None
+        def _add_step_callback(instruction: str, command: str, argument: List[Dict[str, Any]], context: str) -> None:
             for step in argument:
                 sut_installation.add_step(step['label'], step['command'])
 
@@ -236,8 +236,7 @@ class InstallMBSBuild(gluetool.Module):
             items=repo_url
         )
 
-        def _verify_profile(command, output):
-            # type: (str, gluetool.utils.ProcessOutput) -> Optional[str]
+        def _verify_profile(command: str, output: gluetool.utils.ProcessOutput) -> Optional[str]:
             module_info = output.stdout
             assert module_info is not None
 
@@ -266,8 +265,7 @@ class InstallMBSBuild(gluetool.Module):
 
             return None
 
-        def _check_enabled(command, output):
-            # type: (str, gluetool.utils.ProcessOutput) -> Optional[str]
+        def _check_enabled(command: str, output: gluetool.utils.ProcessOutput) -> Optional[str]:
             """
             Process output of `yum module info` command and returns description of issue, when output is not correct.
             """
@@ -283,8 +281,7 @@ class InstallMBSBuild(gluetool.Module):
 
             return None
 
-        def _check_installed(command, output):
-            # type: (str, gluetool.utils.ProcessOutput) -> Optional[str]
+        def _check_installed(command: str, output: gluetool.utils.ProcessOutput) -> Optional[str]:
             """
             Process output of `yum module info` command and returns description of issue, when output is not correct.
             """

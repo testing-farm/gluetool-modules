@@ -153,11 +153,10 @@ class GuestSetup(gluetool.Module):
 
     def _parse_staged_option(
         self,
-        option_name,  # type: str
-        value_callback,  # type: ConfigValueCallbackType
-        stage_initializer=list  # type: Any
-    ):
-        # type: (...) -> ConfigMapType
+        option_name: str,
+        value_callback: ConfigValueCallbackType,
+        stage_initializer: Any = list
+    ) -> ConfigMapType:
 
         self.debug('parsing value of {} option'.format(option_name))
 
@@ -194,11 +193,9 @@ class GuestSetup(gluetool.Module):
         return stages
 
     @gluetool.utils.cached_property
-    def _playbooks_map(self):
-        # type: () -> ConfigInstructionMapType
+    def _playbooks_map(self) -> ConfigInstructionMapType:
 
-        def _load_map(stages, stage, filepath):
-            # type: (ConfigMapType, str, str) -> None
+        def _load_map(stages: ConfigMapType, stage: str, filepath: str) -> None:
 
             cast(
                 ConfigInstructionMapType,
@@ -216,11 +213,9 @@ class GuestSetup(gluetool.Module):
         )
 
     @gluetool.utils.cached_property
-    def _extra_vars(self):
-        # type: () -> ConfigFileMapType
+    def _extra_vars(self) -> ConfigFileMapType:
 
-        def _to_keyval_pair(stages, stage, keyval_pair):
-            # type: (ConfigMapType, str, str) -> None
+        def _to_keyval_pair(stages: ConfigMapType, stage: str, keyval_pair: str) -> None:
 
             key, value = keyval_pair.split('=', 1)
 
@@ -239,11 +234,9 @@ class GuestSetup(gluetool.Module):
         )
 
     @gluetool.utils.cached_property
-    def _playbooks(self):
-        # type: () -> ConfigVarsMapType
+    def _playbooks(self) -> ConfigVarsMapType:
 
-        def _add_playbook_path(stages, stage, filepath):
-            # type: (ConfigMapType, str, str) -> None
+        def _add_playbook_path(stages: ConfigMapType, stage: str, filepath: str) -> None:
 
             cast(
                 ConfigFileMapType,
@@ -262,16 +255,15 @@ class GuestSetup(gluetool.Module):
 
     def _get_details_from_map(
        self,
-       guest,  # type: gluetool_modules_framework.libs.guest.NetworkedGuest
-       stage   # type: GuestSetupStage
-    ):
-        # type: (...) -> Tuple[List[str], Dict[str, str]]
+       guest: gluetool_modules_framework.libs.guest.NetworkedGuest,
+       stage: GuestSetupStage
+    ) -> Tuple[List[str], Dict[str, str]]:
         """
         Returns a tuple with list of playbooks and extra vars from the processed mapping file
         """
 
-        playbooks = []  # type: List[str]
-        extra_vars = {}  # type: Dict[str, Any]
+        playbooks: List[str] = []
+        extra_vars: Dict[str, Any] = {}
 
         context = gluetool.utils.dict_update(
             self.shared('eval_context'),
@@ -280,8 +272,7 @@ class GuestSetup(gluetool.Module):
             }
         )
 
-        def render_context(playbook):
-            # type: (str) -> str
+        def render_context(playbook: str) -> str:
 
             return render_template(playbook, logger=self.logger, **context)
 
@@ -311,13 +302,12 @@ class GuestSetup(gluetool.Module):
         return (playbooks, extra_vars)
 
     def setup_guest(self,
-                    guest,  # type: gluetool_modules_framework.libs.guest.NetworkedGuest
-                    stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION,  # type: GuestSetupStage
-                    variables=None,  # type: Optional[Dict[str, str]]
-                    log_dirpath=None,  # type: Optional[str]
-                    **kwargs  # type: Any
-                   ):  # noqa
-        # type: (...) -> SetupGuestReturnType
+                    guest: gluetool_modules_framework.libs.guest.NetworkedGuest,
+                    stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
+                    variables: Optional[Dict[str, str]] = None,
+                    log_dirpath: Optional[str] = None,
+                    **kwargs: Any
+                   ) -> SetupGuestReturnType:  # noqa
         """
         Setup provided guest using predefined list of Ansible playbooks.
 
@@ -433,8 +423,7 @@ class GuestSetup(gluetool.Module):
             )
         ])
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
 
         self.require_shared('run_playbook')
 

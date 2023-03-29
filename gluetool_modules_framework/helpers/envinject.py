@@ -31,21 +31,18 @@ class EnvInject(gluetool.Module):
 
     shared_functions = ['env']
 
-    def __init__(self, glue, name):
-        # type: (gluetool.Glue, str) -> None
+    def __init__(self, glue: gluetool.Glue, name: str) -> None:
         super(EnvInject, self).__init__(glue, name)
-        self._variables = {}  # type: Dict[str, str]
+        self._variables: Dict[str, str] = {}
 
-    def env(self):
-        # type: () -> Dict[str, str]
+    def env(self) -> Dict[str, str]:
         """
         Returns a dictionary whose content will be passed to EnvInject plugin.
         """
 
         return self._variables
 
-    def destroy(self, failure=None):
-        # type: (Optional[gluetool.Failure]) -> None
+    def destroy(self, failure: Optional[gluetool.Failure] = None) -> None:
         if not self.option('file'):
             self.debug('Do not save exported variables for EnvInject plugin: no file provided')
             return

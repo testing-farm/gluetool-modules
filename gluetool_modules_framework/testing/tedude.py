@@ -15,12 +15,10 @@ class TeDuDeTestResult(TestResult):
     TeDuDe test result data container
     """
 
-    def __init__(self, glue, overall_result, **kwargs):
-        # type: (gluetool.glue.Glue, str, **Any) -> None
+    def __init__(self, glue: gluetool.glue.Glue, overall_result: str, **kwargs: Any) -> None:
         super(TeDuDeTestResult, self).__init__(glue, 'tedude', overall_result, **kwargs)
 
-    def _serialize_to_xunit(self):
-        # type: () -> Any
+    def _serialize_to_xunit(self) -> Any:
         test_suite = super(TeDuDeTestResult, self)._serialize_to_xunit()
         test_suite = self.glue.shared('tedude_xunit_serialize', test_suite, self)
         return test_suite
@@ -62,18 +60,15 @@ class TeDuDe(gluetool.Module):
     }
 
     @cached_property
-    def _instructions(self):
-        # type: () -> Any
+    def _instructions(self) -> Any:
         return gluetool.utils.load_yaml(gluetool.utils.normalize_path(self.option('instructions')))
 
     @cached_property
-    def _bugzilla_attributes(self):
-        # type: () -> List[str]
+    def _bugzilla_attributes(self) -> List[str]:
         return gluetool.utils.normalize_multistring_option(self.option('bugzilla-attributes'))
 
     @cached_property
-    def _tedude_test_statuses(self):
-        # type: () -> Tuple[str, Dict[int, Dict[str,str]]]
+    def _tedude_test_statuses(self) -> Tuple[str, Dict[int, Dict[str,str]]]:
         """
         Evaluates each bug using the provided instructions.
 
@@ -98,8 +93,7 @@ class TeDuDe(gluetool.Module):
             self.info("No bug IDs have been parsed from the changelog")
 
         # method stores the instruction's 'result' and 'message' to a global dictionary with overall results
-        def add_result(instruction, command, argument, context):
-            # type: (Dict[str, Any], str, Any, Dict[str, Any]) -> None
+        def add_result(instruction: Dict[str, Any], command: str, argument: Any, context: Dict[str, Any]) -> None:
 
             gluetool.log.log_dict(self.debug, 'add_result', {
                 'instruction': instruction,
@@ -115,8 +109,7 @@ class TeDuDe(gluetool.Module):
 
         # evaluates instructions using a given context, returns result of a test ('passed' or 'failed'),
         # or raise exception when no rule has matched
-        def check_instructions(instructions, context, current_key):
-            # type: (Dict[str, Any], Dict[str, Any], str) -> Any
+        def check_instructions(instructions: Dict[str, Any], context: Dict[str, Any], current_key: str) -> Any:
 
             # need to evaluate instructions one by one as we want to skip remaining on the first match
             for instruction in instructions:
@@ -173,15 +166,13 @@ class TeDuDe(gluetool.Module):
         self.info("Result of testing: {}".format(overall_result.upper()))
         return overall_result, results
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         self.require_shared('dist_git_bugs', 'bugzilla_attributes', 'evaluate_instructions')
 
         overall_result, statuses = self._tedude_test_statuses
         publish_result(self, TeDuDeTestResult, overall_result, payload=statuses)
 
-    def tedude_xunit_serialize(self, test_suite, result):
-        # type: (Any, Any, Any) -> Any
+    def tedude_xunit_serialize(self: Any, test_suite: Any, result: Any) -> Any:
 
         if not result.payload:
             return test_suite

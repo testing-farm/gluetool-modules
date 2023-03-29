@@ -30,10 +30,9 @@ class TestSchedulerTestingFarm(gluetool.Module):
 
     shared_functions = ['test_schedule']
 
-    _schedule = None  # type: Optional[TestSchedule]
+    _schedule: Optional[TestSchedule] = None
 
-    def test_schedule(self):
-        # type: () -> Optional[TestSchedule]
+    def test_schedule(self) -> Optional[TestSchedule]:
         """
         Returns schedule for runners. It tells runner which schedules
         it should run on which guest.
@@ -43,8 +42,7 @@ class TestSchedulerTestingFarm(gluetool.Module):
 
         return self._schedule
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
 
         self.require_shared('testing_farm_request', 'create_test_schedule', 'provisioner_capabilities')
 

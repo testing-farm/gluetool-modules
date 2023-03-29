@@ -46,17 +46,14 @@ class Debug(gluetool.Module):
             self.available = False
             raise gluetool.GlueError("Install 'development' extras to use this module")
 
-    def _break(self):
-        # type: () -> None
+    def _break(self) -> None:
         self.warn('Dropping into ipdb debug shell')
         ipdb.set_trace()
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         if self.option('execute'):
             self._break()
 
-    def destroy(self, failure=None):
-        # type: (Optional[gluetool.Failure]) -> None
+    def destroy(self, failure: Optional[gluetool.Failure] = None) -> None:
         if self.available and (self.option('destroy') or failure):
             self._break()

@@ -17,8 +17,7 @@ from typing import Any, cast, Dict, List, Optional  # noqa
 
 
 class TestScheduleEntry(BaseTestScheduleEntry):
-    def __init__(self, logger, playbook_filepath, variables):
-        # type: (gluetool.log.ContextAdapter, str, Dict[str, Any]) -> None
+    def __init__(self, logger: gluetool.log.ContextAdapter, playbook_filepath: str, variables: Dict[str, Any]) -> None:
         """
         Test schedule entry, suited for use with STI runners.
 
@@ -38,14 +37,13 @@ class TestScheduleEntry(BaseTestScheduleEntry):
 
         self.playbook_filepath = playbook_filepath
         self.variables = variables
-        self.work_dirpath = None  # type: Optional[str]
-        self.artifact_dirpath = None  # type: Optional[str]
-        self.inventory_filepath = None  # type: Optional[str]
-        self.results = None  # type: Any
-        self.ansible_playbook_filepath = None  # type: Optional[str]
+        self.work_dirpath: Optional[str] = None
+        self.artifact_dirpath: Optional[str] = None
+        self.inventory_filepath: Optional[str] = None
+        self.results: Any = None
+        self.ansible_playbook_filepath: Optional[str] = None
 
-    def log_entry(self, log_fn=None):
-        # type: (Optional[gluetool.log.LoggingFunctionType]) -> None
+    def log_entry(self, log_fn: Optional[gluetool.log.LoggingFunctionType] = None) -> None:
 
         log_fn = log_fn or self.debug
 
@@ -98,8 +96,7 @@ class TestSchedulerSTI(gluetool.Module):
 
     shared_functions = ['create_test_schedule']
 
-    def _playbooks_from_dist_git(self, repodir, tests=None):
-        # type: (str, Optional[str]) -> List[str]
+    def _playbooks_from_dist_git(self, repodir: str, tests: Optional[str] = None) -> List[str]:
         """
         Return STI playbooks (tests) from dist-git.
 
@@ -116,8 +113,8 @@ class TestSchedulerSTI(gluetool.Module):
 
         return playbooks
 
-    def create_test_schedule(self, testing_environment_constraints=None):
-        # type: (Optional[List[TestingEnvironment]]) -> TestSchedule
+    def create_test_schedule(self,
+                             testing_environment_constraints: Optional[List[TestingEnvironment]] = None) -> TestSchedule:
         """
         Create a test schedule based on either content of artifact's dist-git repository,
         or using playbooks specified via ``--playbook`` option.
@@ -164,7 +161,7 @@ class TestSchedulerSTI(gluetool.Module):
                 raise GlueError('Could not clone {} branch of {} repository'.format(
                     repository.branch, repository.clone_url))
 
-            request = self.shared('testing_farm_request')  # type: Optional[TestingFarmRequest]
+            request: Optional[TestingFarmRequest] = self.shared('testing_farm_request')
             if request and request.sti and request.sti.playbooks:
                 for tests in request.sti.playbooks:
                     playbooks.extend(self._playbooks_from_dist_git(repodir, tests))

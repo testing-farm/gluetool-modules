@@ -45,8 +45,7 @@ class ExecuteCommand(gluetool.Module):
 
     shared_functions = ['execute_commands', ]
 
-    def _execute_command(self, command, printable=None):
-        # type: (List[str], Optional[str]) -> ProcessOutput
+    def _execute_command(self, command: List[str], printable: Optional[str] = None) -> ProcessOutput:
         """
         Run a single command.
 
@@ -86,8 +85,7 @@ class ExecuteCommand(gluetool.Module):
 
         return output
 
-    def _execute_command_templates(self, commands, context_extra=None):
-        # type: (List[str], Optional[Dict[str, Any]]) -> None
+    def _execute_command_templates(self, commands: List[str], context_extra: Optional[Dict[str, Any]] = None) -> None:
         """
         Execute sequence of commands, represented as a list of templates. Each template is first rendred
         and the resulting string is treated as a command to execute.
@@ -106,8 +104,7 @@ class ExecuteCommand(gluetool.Module):
 
             self._execute_command(shlex.split(rendered_command), printable=command)
 
-    def execute_commands(self, commands, context_extra=None):
-        # type: (List[str], Optional[Dict[str, Any]]) -> None
+    def execute_commands(self, commands: List[str], context_extra: Optional[Dict[str, Any]] = None) -> None:
         """
         Execute sequence of commands, represented as a list of templates. Each template is first rendred
         and the resulting string is treated as a command to execute.
@@ -119,8 +116,7 @@ class ExecuteCommand(gluetool.Module):
         self._execute_command_templates(commands, context_extra=context_extra)
 
     @gluetool.utils.cached_property
-    def _external_commands(self):
-        # type: () -> List[str]
+    def _external_commands(self) -> List[str]:
         """
         Gather commands specified by module options, and provide them transparently to other parts of the module.
 
@@ -143,15 +139,13 @@ class ExecuteCommand(gluetool.Module):
 
         return commands
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         if gluetool.utils.normalize_bool_option(self.option('on-destroy')):
             return
 
         self._execute_command_templates(self._external_commands)
 
-    def destroy(self, failure=None):
-        # type: (Optional[Failure]) -> None
+    def destroy(self, failure: Optional[Failure] = None) -> None:
         if not gluetool.utils.normalize_bool_option(self.option('on-destroy')):
             return
 

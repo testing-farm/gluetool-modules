@@ -250,8 +250,7 @@ class PipelineStateReporter(gluetool.Module):
     shared_functions = ['report_pipeline_state']
 
     @property
-    def eval_context(self):
-        # type: () -> Dict[str, Optional[str]]
+    def eval_context(self) -> Dict[str, Optional[str]]:
         __content__ = {  # noqa
             'PIPELINE_TEST_TYPE': """
                                   Type of tests provided in this pipeline, e.g. ``tier1``, ``rpmdiff-analysis``,
@@ -293,62 +292,57 @@ class PipelineStateReporter(gluetool.Module):
         return context
 
     @gluetool.utils.cached_property
-    def artifact_map(self):
-        # type: () -> Any
+    def artifact_map(self) -> Any:
         if not self.option('artifact-map'):
             return []
 
         return gluetool.utils.load_yaml(self.option('artifact-map'), logger=self.logger)
 
     @gluetool.utils.cached_property
-    def error_reason_map(self):
-        # type: () -> Any
+    def error_reason_map(self) -> Any:
         if not self.option('error-reason-map'):
             return []
 
         return gluetool.utils.load_yaml(self.option('error-reason-map'), logger=self.logger)
 
     @gluetool.utils.cached_property
-    def test_docs_map(self):
-        # type: () -> Any
+    def test_docs_map(self) -> Any:
         if not self.option('test-docs-map'):
             return []
 
         return gluetool.utils.load_yaml(self.option('test-docs-map'), logger=self.logger)
 
     @gluetool.utils.cached_property
-    def run_map(self):
-        # type: () -> Any
+    def run_map(self) -> Any:
         if not self.option('run-map'):
             return []
 
         return gluetool.utils.load_yaml(self.option('run-map'), logger=self.logger)
 
     @gluetool.utils.cached_property
-    def final_overall_result_map(self):
-        # type: () -> Any
+    def final_overall_result_map(self) -> Any:
         if not self.option('final-overall-result-map'):
             return []
 
         return gluetool.utils.load_yaml(self.option('final-overall-result-map'), logger=self.logger)
 
     @gluetool.utils.cached_property
-    def final_state_map(self):
-        # type: () -> Any
+    def final_state_map(self) -> Any:
         if not self.option('final-state-map'):
             return []
 
         return gluetool.utils.load_yaml(self.option('final-state-map'), logger=self.logger)
 
-    def _subject_info(self, subject_name, instructions):
-        # type: (str, str) -> Dict[str, Any]
+    def _subject_info(self, subject_name: str, instructions: str) -> Dict[str, Any]:
         self.require_shared('evaluate_instructions', 'evaluate_rules')
 
         subject_info = {}
 
         # Callback for 'details' command, applies changes to `subject_info`
-        def _details_callback(instruction, command, argument, context):
-            # type: (Dict[str, Any], str, Dict[str, Any], Dict[Any, Any]) -> None
+        def _details_callback(instruction: Dict[str, Any],
+                              command: str,
+                              argument: Dict[str, Any],
+                              context: Dict[Any, Any]) -> None:
             if instruction.get('eval-as-rule', False):
                 subject_info.update({
                     detail: self.shared('evaluate_rules', value, context=context)
@@ -364,8 +358,7 @@ class PipelineStateReporter(gluetool.Module):
 
         # Callback for 'eval-as-rule' command - it does nothing, it is handled by 'details' callback,
         # but we must provide it anyway to make ``rules-engine`` happy (unhandled command).
-        def _eval_as_rule_callback(instruction, command, argument, context):
-            # type: (Dict[str, Any], str, str, str) -> None
+        def _eval_as_rule_callback(instruction: Dict[str, Any], command: str, argument: str, context: str) -> None:
             pass
 
         self.shared('evaluate_instructions', instructions, {
@@ -375,31 +368,28 @@ class PipelineStateReporter(gluetool.Module):
 
         return subject_info
 
-    def _artifact_info(self):
-        # type: () -> Dict[str, Any]
+    def _artifact_info(self) -> Dict[str, Any]:
         return self._subject_info('artifact', self.artifact_map,)
 
-    def _run_info(self):
-        # type: () -> Dict[str, Any]
+    def _run_info(self) -> Dict[str, Any]:
         return self._subject_info('run', self.run_map)
 
     def report_pipeline_state(
         self,
-        state,  # type: str
-        thread_id=None,  # type: Optional[str]
-        topic=None,  # type: Optional[str]
-        test_category=None,  # type: Optional[str]
-        test_docs=None,  # type: Optional[str]
-        test_namespace=None,  # type: Optional[str]
-        test_type=None,  # type: Optional[str]
-        test_overall_result=None,  # type: Optional[str]
-        test_results=None,  # type: Optional[bs4.element.Tag]
-        distros=None,  # type: Optional[List[Tuple[str, str, str, str]]]
-        error_message=None,  # type: Optional[str]
-        error_url=None,  # type: Optional[str]
-        message_file=None  # type: Optional[str]
-    ):
-        # type: (...) -> None
+        state: str,
+        thread_id: Optional[str] = None,
+        topic: Optional[str] = None,
+        test_category: Optional[str] = None,
+        test_docs: Optional[str] = None,
+        test_namespace: Optional[str] = None,
+        test_type: Optional[str] = None,
+        test_overall_result: Optional[str] = None,
+        test_results: Optional[bs4.element.Tag] = None,
+        distros: Optional[List[Tuple[str, str, str, str]]] = None,
+        error_message: Optional[str] = None,
+        error_url: Optional[str] = None,
+        message_file: Optional[str] = None
+    ) -> None:
         """
         Send out the message reporting the pipeline state.
 
@@ -520,8 +510,7 @@ class PipelineStateReporter(gluetool.Module):
                 'body': umb_message.body
             }))
 
-    def _set_pr_status(self, status, description, upload_status_url=True):
-        # type: (str, str, Optional[bool]) -> None
+    def _set_pr_status(self, status: str, description: str, upload_status_url: Optional[bool] = True) -> None:
         self.require_shared('set_pr_status')
 
         if upload_status_url:
@@ -536,8 +525,7 @@ class PipelineStateReporter(gluetool.Module):
         self.shared('set_pr_status', status, description, context=self.option('pr-label'),
                     target_url=pr_status_url)
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         if normalize_bool_option(self.option('dont-report-running')):
             self.info('not reporting the beginning of the pipeline')
             return
@@ -549,8 +537,7 @@ class PipelineStateReporter(gluetool.Module):
 
         self.report_pipeline_state(STATE_RUNNING)
 
-    def _get_test_namespace(self):
-        # type: () -> str
+    def _get_test_namespace(self) -> str:
         """
         Return a rendered test namespace.
 
@@ -563,8 +550,7 @@ class PipelineStateReporter(gluetool.Module):
             **self.shared('eval_context')
         )
 
-    def _get_overall_result_xunit(self, test_results):
-        # type: (bs4.element.Tag) -> str
+    def _get_overall_result_xunit(self, test_results: bs4.element.Tag) -> str:
         """
         Decide what the overall result should be, based on xUnit representation of test results.
 
@@ -573,8 +559,7 @@ class PipelineStateReporter(gluetool.Module):
 
         return cast(str, test_results['overall-result'])
 
-    def _get_overall_result_legacy(self, results):
-        # type: (bs4.element.Tag) -> str
+    def _get_overall_result_legacy(self, results: bs4.element.Tag) -> str:
         """
         Decide what the overall result should be, based on internal representation of test results.
         """
@@ -590,8 +575,7 @@ class PipelineStateReporter(gluetool.Module):
 
         return 'failed'
 
-    def _get_final_overall_result(self, results, failure):
-        # type: (str, Optional[gluetool.Failure]) -> str
+    def _get_final_overall_result(self, results: str, failure: Optional[gluetool.Failure]) -> str:
         """
         Read instructions from a file, and find out what the final overall result of the current pipeline
         should be. If the instructions yield no decision, use default simple scheme to decide.
@@ -607,8 +591,7 @@ class PipelineStateReporter(gluetool.Module):
         overall_result = argparse.Namespace(result=None)
 
         # Callback for 'result' command
-        def _result_callback(instruction, command, argument, context):
-            # type: (str, str, str, str) -> None
+        def _result_callback(instruction: str, command: str, argument: str, context: str) -> None:
             overall_result.result = argument.strip()
 
             self.debug("final overall result set to '{}'".format(overall_result.result))
@@ -626,8 +609,7 @@ class PipelineStateReporter(gluetool.Module):
 
         return self._get_overall_result_legacy(results)
 
-    def _get_final_state(self, failure):
-        # type: (Any) -> str
+    def _get_final_state(self, failure: Any) -> str:
         """
         Read instructions from a file, and find out what the final state of the current pipeline
         should be.
@@ -654,8 +636,7 @@ class PipelineStateReporter(gluetool.Module):
 
         return STATE_ERROR if failure else STATE_COMPLETE
 
-    def _get_test_docs(self):
-        # type: () -> Optional[str]
+    def _get_test_docs(self) -> Optional[str]:
         """
         Read instructions from a file and find the documentation by evaluating the given rules.
         """
@@ -683,8 +664,7 @@ class PipelineStateReporter(gluetool.Module):
 
         return None
 
-    def _get_error_reason(self, error_message):
-        # type: (Optional[str]) -> Optional[str]
+    def _get_error_reason(self, error_message: Optional[str]) -> Optional[str]:
         """
         Read instructions from a file to determine the error reason. By default return the error message.
         """
@@ -711,8 +691,7 @@ class PipelineStateReporter(gluetool.Module):
 
         return error_message
 
-    def destroy(self, failure=None):
-        # type: (Optional[gluetool.Failure]) -> None
+    def destroy(self, failure: Optional[gluetool.Failure] = None) -> None:
         if failure is not None and isinstance(failure.exc_info[1], SystemExit):
             return
 
@@ -727,10 +706,10 @@ class PipelineStateReporter(gluetool.Module):
         test_results = self.shared('results')
         overall_result = self._get_final_overall_result(test_results, failure)
 
-        kwargs = {
+        kwargs: Dict[str, Any] = {
             'test_results': None,
             'test_overall_result': overall_result
-        }  # type: Dict[str, Any]
+        }
 
         # If the result is already an XML tree, therefore serialized, do nothing.
         if isinstance(test_results, bs4.element.Tag):
@@ -765,37 +744,35 @@ class UMBMessage():
     Contains properties of a UMB message and methods to render a message in various UMB version formats.
     """
 
-    def __init__(self, module):
-        # type: (gluetool.Module) -> None
+    def __init__(self, module: gluetool.Module) -> None:
         self.module = module
-        self.artifact = None  # type: Optional[Dict[str, Any]]
-        self.contact_docs = None  # type: Optional[str]
-        self.contact_email = None  # type: Optional[str]
-        self.contact_irc = None  # type: Optional[str]
-        self.contact_name = None  # type: Optional[str]
-        self.contact_team = None  # type: Optional[str]
-        self.contact_url = None  # type: Optional[str]
-        self.error_reason = None  # type: Optional[str]
-        self.error_issue_url = None  # type: Optional[str]
-        self.generated_at = None  # type: Optional[str]
-        self.label = None  # type: Optional[str]
-        self.note = None  # type: Optional[str]
-        self.recipients = None  # type: Optional[str]
-        self.pipeline_id = None  # type: Optional[str]
-        self.pipeline_name = None  # type: Optional[str]
-        self.run = None  # type: Optional[Dict[str, Optional[str]]]
-        self.system = None  # type: Optional[List[Dict[str, str]]]
-        self.test_category = None  # type: Optional[str]
-        self.test_docs = None  # type: Optional[str]
-        self.test_namespace = None  # type: Optional[str]
-        self.test_result = None  # type: Optional[str]
-        self.test_type = None  # type: Optional[str]
-        self.test_xunit = None  # type: Optional[str]
-        self.version = None  # type: Optional[str]
+        self.artifact: Optional[Dict[str, Any]] = None
+        self.contact_docs: Optional[str] = None
+        self.contact_email: Optional[str] = None
+        self.contact_irc: Optional[str] = None
+        self.contact_name: Optional[str] = None
+        self.contact_team: Optional[str] = None
+        self.contact_url: Optional[str] = None
+        self.error_reason: Optional[str] = None
+        self.error_issue_url: Optional[str] = None
+        self.generated_at: Optional[str] = None
+        self.label: Optional[str] = None
+        self.note: Optional[str] = None
+        self.recipients: Optional[str] = None
+        self.pipeline_id: Optional[str] = None
+        self.pipeline_name: Optional[str] = None
+        self.run: Optional[Dict[str, Optional[str]]] = None
+        self.system: Optional[List[Dict[str, str]]] = None
+        self.test_category: Optional[str] = None
+        self.test_docs: Optional[str] = None
+        self.test_namespace: Optional[str] = None
+        self.test_result: Optional[str] = None
+        self.test_type: Optional[str] = None
+        self.test_xunit: Optional[str] = None
+        self.version: Optional[str] = None
 
     @staticmethod
-    def _dict_filter_no_value(original):
-        # type: (Dict[str, Any]) -> Dict[str, Any]
+    def _dict_filter_no_value(original: Dict[str, Any]) -> Dict[str, Any]:
         return {
             key: value
             for key, value in six.iteritems(original)
@@ -803,8 +780,7 @@ class UMBMessage():
         }
 
     @gluetool.utils.cached_property
-    def new_version(self):
-        # type: () -> bool
+    def new_version(self) -> bool:
         """
         Return True if 1.x.y version of UMB is used
         """
@@ -812,8 +788,7 @@ class UMBMessage():
         return bool(re.search(r'^1\.\d+\.\d+', self.version))
 
     @property
-    def _artifact(self):
-        # type: () -> Optional[Dict[str, Union[str, int]]]
+    def _artifact(self) -> Optional[Dict[str, Union[str, int]]]:
 
         if self.new_version and self.artifact is not None:
             try:
@@ -824,13 +799,11 @@ class UMBMessage():
         return self.artifact
 
     @property
-    def headers(self):
-        # type: () -> Optional[Dict[str, Any]]
+    def headers(self) -> Optional[Dict[str, Any]]:
         return self._artifact
 
     @property
-    def body(self):
-        # type: () -> Dict[str, Any]
+    def body(self) -> Dict[str, Any]:
 
         # Version 1.x.y
         if self.new_version:

@@ -74,8 +74,7 @@ STAGES_ORDERED = [
 
 
 class GuestSetupStageAdapter(gluetool.log.ContextAdapter):
-    def __init__(self, logger, stage):
-        # type: (gluetool.log.ContextAdapter, GuestSetupStage) -> None
+    def __init__(self, logger: gluetool.log.ContextAdapter, stage: GuestSetupStage) -> None:
 
         super(GuestSetupStageAdapter, self).__init__(logger, {
             'ctx_guest_setup_stage': (300, stage.value)
@@ -101,19 +100,18 @@ SetupGuestReturnType = Result[List[GuestSetupOutput], Tuple[List[GuestSetupOutpu
 class SetupGuestType(Protocol):
     def __call__(
         self,
-        guest,  # type: gluetool_modules_framework.libs.guest.NetworkedGuest
-        stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION,  # type: GuestSetupStage
-        variables=None,  # type: Optional[Dict[str, str]]
-        log_dirpath=None,  # type: Optional[str]
-        **kwargs  # type: Any
-    ):
-        # type: (...) -> SetupGuestReturnType
+        guest: gluetool_modules_framework.libs.guest.NetworkedGuest,
+        stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
+        variables: Optional[Dict[str, str]] = None,
+        log_dirpath: Optional[str] = None,
+        **kwargs: Any
+    ) -> SetupGuestReturnType:
 
         pass
 
 
-def guest_setup_log_dirpath(guest, log_dirpath):
-    # type: (gluetool_modules_framework.libs.guest.NetworkedGuest, Optional[str]) -> str
+def guest_setup_log_dirpath(guest: gluetool_modules_framework.libs.guest.NetworkedGuest,
+                            log_dirpath: Optional[str]) -> str:
 
     if not log_dirpath:
         log_dirpath = 'guest-setup-{}'.format(guest.name)

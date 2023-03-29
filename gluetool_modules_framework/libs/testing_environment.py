@@ -69,31 +69,26 @@ class TestingEnvironment(object):
 
     _fields = ('arch', 'compose', 'snapshots', 'variables', 'secrets', 'artifacts', 'hardware', 'settings', 'tmt')
 
-    def __str__(self):
-        # type: () -> str
+    def __str__(self) -> str:
 
         return self.serialize_to_string(hide_secrets=True, show_none_fields=False)
 
-    def __repr__(self):
-        # type: () -> str
+    def __repr__(self) -> str:
 
         return '<TestingEnvironment({})>'.format(str(self))
 
-    def __eq__(self, other):
-        # type: (Any) -> bool
+    def __eq__(self, other: Any) -> bool:
 
         if not isinstance(other, TestingEnvironment):
             return False
 
         return all([getattr(self, field) == getattr(other, field) for field in self._fields])
 
-    def __hash__(self):
-        # type: () -> int
+    def __hash__(self) -> int:
 
         return hash(tuple([getattr(self, field) for field in self._fields]))
 
-    def _serialize_get_fields(self, hide_secrets, show_none_fields):
-        # type: (bool, bool) -> List[Tuple[str, Any]]
+    def _serialize_get_fields(self, hide_secrets: bool, show_none_fields: bool) -> List[Tuple[str, Any]]:
         fields = []
         for field_name in sorted(self._fields):
             field_value = getattr(self, field_name)
@@ -106,8 +101,7 @@ class TestingEnvironment(object):
 
         return fields
 
-    def serialize_to_string(self, hide_secrets=True, show_none_fields=False):
-        # type: (bool, bool) -> str
+    def serialize_to_string(self, hide_secrets: bool = True, show_none_fields: bool = False) -> str:
         """
         Serialize testing environment to comma-separated list of keys and their values, representing
         the environment.
@@ -122,8 +116,7 @@ class TestingEnvironment(object):
             '{}={}'.format(name, value) for name, value in self._serialize_get_fields(hide_secrets, show_none_fields)
         ])
 
-    def serialize_to_json(self, hide_secrets=True, show_none_fields=False):
-        # type: (bool, bool) -> Dict[str, Any]
+    def serialize_to_json(self, hide_secrets: bool = True, show_none_fields: bool = False) -> Dict[str, Any]:
         """
         Serialize testing environment to a JSON dictionary.
 
@@ -135,8 +128,7 @@ class TestingEnvironment(object):
         return {name: value for name, value in self._serialize_get_fields(hide_secrets, show_none_fields)}
 
     @classmethod
-    def _assert_env_properties(cls, env_properties):
-        # type: (List[str]) -> None
+    def _assert_env_properties(cls, env_properties: List[str]) -> None:
 
         for env_property in env_properties:
             if env_property in cls._fields:
@@ -145,8 +137,7 @@ class TestingEnvironment(object):
             raise gluetool.GlueError("Testing environment does not have property '{}'".format(env_property))
 
     @classmethod
-    def unserialize_from_string(cls, serialized):
-        # type: (str) -> TestingEnvironment
+    def unserialize_from_string(cls, serialized: str) -> TestingEnvironment:
         """
         Construct a testing environment from a comma-separated list of key and their values.
 
@@ -156,11 +147,11 @@ class TestingEnvironment(object):
 
         normalized = normalize_multistring_option(serialized)
 
-        env_properties = {
+        env_properties: Dict[str, Any] = {
             key.strip(): value.strip() for key, value in [
                 env_property.split('=') for env_property in normalized
             ]
-        }  # type: Dict[str, Any]
+        }
 
         cls._assert_env_properties(list(env_properties.keys()))
 
@@ -174,8 +165,7 @@ class TestingEnvironment(object):
         return TestingEnvironment(**env_properties)
 
     @classmethod
-    def unserialize_from_json(cls, serialized):
-        # type: (Dict[str, Any]) -> TestingEnvironment
+    def unserialize_from_json(cls, serialized: Dict[str, Any]) -> TestingEnvironment:
         """
         Construct a testing environment from a JSON representation of fields and their values.
 
@@ -187,8 +177,7 @@ class TestingEnvironment(object):
 
         return TestingEnvironment(**serialized)
 
-    def clone(self, **kwargs):
-        # type: (**Any) -> TestingEnvironment
+    def clone(self, **kwargs: Any) -> TestingEnvironment:
         """
         Create - possibly modified - copy of the environment.
 

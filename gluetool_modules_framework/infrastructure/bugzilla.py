@@ -106,13 +106,11 @@ class Bugzilla(gluetool.Module):
     ]
 
     @cached_property
-    def bug_ids(self):
-        # type: () -> List[int]
+    def bug_ids(self) -> List[int]:
 
         return [int(id) for id in normalize_multistring_option(self.option('bug-id'))]
 
-    def sanity(self):
-        # type: () -> None
+    def sanity(self) -> None:
 
         bug_id_options = (
             'list-attributes',
@@ -128,8 +126,7 @@ class Bugzilla(gluetool.Module):
         if any([self.option(option) for option in bug_id_options]) and not self.bug_ids:
             raise GlueError("Option 'bug-id' is required")
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         attributes = normalize_multistring_option(self.option('attributes'))
 
         api = self.bugzilla_api()
@@ -149,8 +146,7 @@ class Bugzilla(gluetool.Module):
             self.bugzilla_attributes(self.bug_ids, attributes, verbose=True)
 
     @gluetool.utils.cached_property
-    def _api(self):
-        # type: () -> bugzilla.Bugzilla
+    def _api(self) -> bugzilla.Bugzilla:
         base_url = self.option('base-url')
 
         try:
@@ -162,13 +158,13 @@ class Bugzilla(gluetool.Module):
         except ConnectionError as error:
             raise GlueError("Could not connect to '{}': {}".format(self.option('base-url'), error))
 
-    def bugzilla_api(self):
-        # type: () -> bugzilla.Bugzilla
+    def bugzilla_api(self) -> bugzilla.Bugzilla:
         """ Provides initialized Bugzilla API object. """
         return self._api
 
-    def bugzilla_tcms_tests(self, ids, verbose=False):
-        # type: (List[int], Optional[bool]) -> Optional[Dict[int, List[TCMSTestCase]]]
+    def bugzilla_tcms_tests(self,
+                            ids: List[int],
+                            verbose: Optional[bool] = False) -> Optional[Dict[int, List[TCMSTestCase]]]:
         """
         Extracts TCMS test case IDs from bugs specified by bug IDs. Returns a unique
         list of TCMS tests for each bug.
@@ -184,7 +180,7 @@ class Bugzilla(gluetool.Module):
 
         api = self.bugzilla_api()
 
-        bz_tests = {}  # type: Dict[int, List[TCMSTestCase]]
+        bz_tests: Dict[int, List[TCMSTestCase]] = {}
 
         log_function = self.info if verbose else self.debug
 
@@ -251,8 +247,11 @@ class Bugzilla(gluetool.Module):
 
         return bz_tests
 
-    def bugzilla_post_comment(self, ids, text, is_private=False, verbose=False):
-        # type: (List[int], str, Optional[bool], Optional[bool]) -> None
+    def bugzilla_post_comment(self,
+                              ids: List[int],
+                              text: str,
+                              is_private: Optional[bool] = False,
+                              verbose: Optional[bool] = False) -> None:
         """
         Submits a new comment to the specified bug.
 
@@ -269,8 +268,7 @@ class Bugzilla(gluetool.Module):
 
         log_function = self.info if verbose else self.debug
 
-        def _post_comment():
-            # type: () -> Result[bool, bool]
+        def _post_comment() -> Result[bool, bool]:
             update = api.build_update(comment=text, comment_private=is_private)
 
             try:
@@ -292,8 +290,10 @@ class Bugzilla(gluetool.Module):
 
         log_blob(log_function, 'Given bugs updated with following comment', text)
 
-    def bugzilla_attributes(self, ids, attributes, verbose=False):
-        # type: (List[int], List[str], Optional[bool]) -> Dict[int, Dict[str, str]]
+    def bugzilla_attributes(self,
+                            ids: List[int],
+                            attributes: List[str],
+                            verbose: Optional[bool] = False) -> Dict[int, Dict[str, str]]:
         """
         Lists requested bug attributes from bugs specified by bug IDs.
 
@@ -312,7 +312,7 @@ class Bugzilla(gluetool.Module):
         log_function = self.info if verbose else self.debug
 
         # use default dict with dict factory
-        bz_attrs = defaultdict(dict)  # type: Dict[int, Dict[str, str]]
+        bz_attrs: Dict[int, Dict[str, str]] = defaultdict(dict)
 
         # always add bug_id
         attributes.append('bug_id')

@@ -25,8 +25,7 @@ COPR_CONFIG = 'copr.conf'
 
 class ValuesEnum(enum.Enum):
     @classmethod
-    def values(cls):
-        # type: () -> List[Any]
+    def values(cls) -> List[Any]:
         """
         Return list of values associated with the enum.
         """
@@ -49,14 +48,17 @@ class Artifact(ValuesEnum):
     """Schedule a copr build on GitHub pull request artifact."""
 
 
-def _assert_never(x):
-    # type: (Any) -> NoReturn
+def _assert_never(x: Any) -> NoReturn:
     assert False, "Unhandled {}: {}".format(type(x).__name__, x)
 
 
 class CoprBuildTestResult(TestResult):
-    def __init__(self, glue, overall_result, build_url=None, process_output=None, **kwargs):
-        # type: (gluetool.Glue, str, Optional[str], Optional[gluetool.utils.ProcessOutput], **Any) -> None
+    def __init__(self,
+                 glue: gluetool.Glue,
+                 overall_result: str,
+                 build_url: Optional[str] = None,
+                 process_output: Optional[gluetool.utils.ProcessOutput] = None,
+                 **kwargs: Any) -> None:
 
         urls = kwargs.pop('urls', {}) or {}
         if build_url:
@@ -69,8 +71,7 @@ class CoprBuildTestResult(TestResult):
 
 
 class CoprBuildFailedError(gluetool.SoftGlueError):
-    def __init__(self, message, output):
-        # type: (str, gluetool.utils.ProcessOutput) -> None
+    def __init__(self, message: str, output: gluetool.utils.ProcessOutput) -> None:
         super(CoprBuildFailedError, self).__init__(message)
         self.output = output
 
@@ -128,8 +129,7 @@ class CoprBuilder(gluetool.Module):
     copr_id = None
 
     @property
-    def eval_context(self):
-        # type: () -> Dict[str, Any]
+    def eval_context(self) -> Dict[str, Any]:
         __content__ = {  # noqa
             'COPR_ID': """
                        ID of the finished COPR build in format 'build-id:chroot-name'.
@@ -140,8 +140,7 @@ class CoprBuilder(gluetool.Module):
             'COPR_ID': self.copr_id
         }
 
-    def _log_and_raise(self, message, blob):
-        # type: (str, Any) -> None
+    def _log_and_raise(self, message: str, blob: Any) -> None:
         """
         Log error and raise exception.
         """
@@ -149,8 +148,7 @@ class CoprBuilder(gluetool.Module):
         gluetool.log.log_blob(self.error, message, blob)
         raise gluetool.GlueError('{}, cannot continue'.format(message))
 
-    def _run_copr_build(self):
-        # type: () -> str
+    def _run_copr_build(self) -> str:
         """
         Trigger copr build and return url of the copr build.
         """
@@ -173,8 +171,7 @@ class CoprBuilder(gluetool.Module):
 
         _assert_never(artifact_type)
 
-    def _copr_build_from_github(self, workdir, pull_request):
-        # type: (str, github.GitHubPullRequest) -> str
+    def _copr_build_from_github(self, workdir: str, pull_request: github.GitHubPullRequest) -> str:
         """
         Trigger copr build on source fetched from GitHub and return url of the copr build.
         """
@@ -192,8 +189,7 @@ class CoprBuilder(gluetool.Module):
 
         _assert_never(method)
 
-    def _fetch_from_github(self, workdir, pull_request):
-        # type: (str, github.GitHubPullRequest) -> None
+    def _fetch_from_github(self, workdir: str, pull_request: github.GitHubPullRequest) -> None:
         """
         Fetch source from GitHub.
         """
@@ -229,8 +225,7 @@ class CoprBuilder(gluetool.Module):
 
         self.info('Successfully checked out commit {}.'.format(commit_sha))
 
-    def _run_make_copr(self, workdir, pull_request):
-        # type: (str, github.GitHubPullRequest) -> str
+    def _run_make_copr(self, workdir: str, pull_request: github.GitHubPullRequest) -> str:
         """
         Trigger copr build by invoking Makefile and return url of the copr build.
         """
@@ -263,7 +258,7 @@ class CoprBuilder(gluetool.Module):
         matches = re.findall(r'^\s*https://.*$', output.stdout, re.M)
         if not matches:
             raise gluetool.GlueError('Unable to find copr build url.')
-        copr_build_url = matches[-1].strip()  # type: str
+        copr_build_url: str = matches[-1].strip()
         gluetool.log.log_blob(self.info, 'Build in copr was successful: {}'.format(copr_build_url), output.stdout)
 
         match = re.search(r'[0-9]+', copr_build_url)
@@ -278,8 +273,7 @@ class CoprBuilder(gluetool.Module):
 
         return copr_build_url
 
-    def _create_copr_config(self, workdir, pull_request):
-        # type: (str, github.GitHubPullRequest) -> None
+    def _create_copr_config(self, workdir: str, pull_request: github.GitHubPullRequest) -> None:
         """
         Create copr config file.
         """
@@ -296,8 +290,7 @@ class CoprBuilder(gluetool.Module):
             config_file.write('# Copr config for {}\n'.format(pull_request.clone_url))
             copr_config.write(config_file)
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         try:
             copr_build_url = self._run_copr_build()
         except CoprBuildFailedError as exc:

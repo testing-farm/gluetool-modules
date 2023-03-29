@@ -46,14 +46,13 @@ INSTALL_COMMANDS_FILE = 'sut_install_commands.sh'
 class SUTInstallationFailedError(ArtifactFingerprintsMixin, SoftGlueError):
     def __init__(
         self,
-        artifact,                        # type: Any
-        guest,                           # type: Optional[gluetool_modules_framework.libs.guest.Guest]
-        items=None,                      # type: Any
-        reason=None,                     # type: Optional[str]
-        installation_logs=None,          # type: Optional[str]
-        installation_logs_location=None  # type: Optional[str]
-    ):
-        # type: (...) -> None
+        artifact: Any,
+        guest: Optional[gluetool_modules_framework.libs.guest.Guest],
+        items: Any = None,
+        reason: Optional[str] = None,
+        installation_logs: Optional[str] = None,
+        installation_logs_location: Optional[str] = None
+    ) -> None:
 
         if reason:
             super(SUTInstallationFailedError, self).__init__(
@@ -75,17 +74,24 @@ class SUTInstallationFailedError(ArtifactFingerprintsMixin, SoftGlueError):
 
 class SUTInstallation(object):
 
-    def __init__(self, module, log_dirpath, artifact, logger=None):
-        # type: (gluetool.Module, str, Any, Optional[gluetool.log.ContextAdapter]) -> None
+    def __init__(self,
+                 module: gluetool.Module,
+                 log_dirpath: str,
+                 artifact: Any,
+                 logger: Optional[gluetool.log.ContextAdapter] = None) -> None:
 
         self.module = module
         self.log_dirpath = log_dirpath
         self.artifact = artifact
-        self.steps = []  # type: List[SUTStep]
+        self.steps: List[SUTStep] = []
         self.logger = logger or gluetool.log.Logging.get_logger()
 
-    def add_step(self, label, command, items=None, ignore_exception=False, callback=None):
-        # type: (str, str, Union[Optional[str], Optional[List[str]]], bool, Optional[StepCallbackType]) -> None
+    def add_step(self,
+                 label: str,
+                 command: str,
+                 items: Union[Optional[str], Optional[List[str]]] = None,
+                 ignore_exception: bool = False,
+                 callback: Optional[StepCallbackType] = None) -> None:
 
         if not items:
             items = []
@@ -95,8 +101,8 @@ class SUTInstallation(object):
 
         self.steps.append(SUTStep(label, command, items, ignore_exception, callback))
 
-    def run(self, guest):
-        # type: (gluetool_modules_framework.libs.guest.NetworkedGuest) -> Result[None, SUTInstallationFailedError]
+    def run(self,
+            guest: gluetool_modules_framework.libs.guest.NetworkedGuest) -> Result[None, SUTInstallationFailedError]:
 
         commands = []
 
@@ -207,12 +213,11 @@ class SUTInstallation(object):
         return Ok(None)
 
 
-def check_ansible_sut_installation(ansible_output,  # type: Dict[str, Any]
-                                   guest,  # type: gluetool_modules_framework.libs.guest.NetworkedGuest
-                                   artifact,  # type: Any
-                                   logger=None  # type: Optional[gluetool.log.ContextAdapter]
-                                  ):  # noqa
-    # type: (...) -> None
+def check_ansible_sut_installation(ansible_output: Dict[str, Any],
+                                   guest: gluetool_modules_framework.libs.guest.NetworkedGuest,
+                                   artifact: Any,
+                                   logger: Optional[gluetool.log.ContextAdapter] = None
+                                  ) -> None:  # noqa
     """
     Checks json output of ansible call. Raises ``SUTInstallationFailedError`` if some of
     ansible installation tasks failed.

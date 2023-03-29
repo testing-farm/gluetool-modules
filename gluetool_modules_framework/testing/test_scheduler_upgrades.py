@@ -15,8 +15,7 @@ from gluetool_modules_framework.testing.test_scheduler_sti import TestScheduleEn
 from typing import List, Optional, cast  # noqa
 
 
-def product_version(product):
-    # type: (str) -> str
+def product_version(product: str) -> str:
     matched_product = re.match(r'(?i).*rhel-(\d.\d)', product)
 
     if not matched_product:
@@ -25,13 +24,11 @@ def product_version(product):
     return matched_product.group(1)
 
 
-def format_for_pes(product):
-    # type: (str) -> str
+def format_for_pes(product: str) -> str:
     return 'RHEL {}'.format(product_version(product))
 
 
-def format_for_test(product):
-    # type: (str) -> str
+def format_for_test(product: str) -> str:
     return product_version(product)
 
 
@@ -55,13 +52,11 @@ class TestSchedulerUpgrades(gluetool.Module):
 
     shared_functions = ['create_test_schedule']
 
-    def sanity(self):
-        # type: () -> None
+    def sanity(self) -> None:
         if self.option('variant') == 'from' and not self.option('destination'):
             raise gluetool.GlueError('Option `destination` is required when `variant` is set to `from`.')
 
-    def binary_rpms_list(self, compose_url, components):
-        # type: (str, List[str]) -> List[str]
+    def binary_rpms_list(self, compose_url: str, components: List[str]) -> List[str]:
 
         # List of binary package names is obtained from compose metadata (metadata/rpms.json).
         # Only x86_64 builds are considered, upgrades for other arches are not yet supported.
@@ -98,8 +93,8 @@ class TestSchedulerUpgrades(gluetool.Module):
 
         return binary_rpms_list
 
-    def create_test_schedule(self, testing_environment_constraints=None):
-        # type: (Optional[List[TestingEnvironment]]) -> TestSchedule
+    def create_test_schedule(self,
+                             testing_environment_constraints: Optional[List[TestingEnvironment]] = None) -> TestSchedule:
         """
         This module modifies STI test schedule provided by other module. It expects one of the test is testing upgrade
         and require special variables for successful run. Namely url of composes, made by OSCI guys based on tested
@@ -143,10 +138,10 @@ class TestSchedulerUpgrades(gluetool.Module):
             'target_release':  format_for_test(destination)
         }
 
-        schedule = self.overloaded_shared(
+        schedule: TestSchedule = self.overloaded_shared(
             'create_test_schedule',
             testing_environment_constraints=testing_environment_constraints
-        )  # type: TestSchedule
+        )
 
         for schedule_entry in schedule:
             if not isinstance(schedule_entry, TestScheduleEntry):

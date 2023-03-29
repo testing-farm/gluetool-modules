@@ -24,8 +24,7 @@ class JenkinsBuildName(gluetool.Module):
 
     required_options = ['name']
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         if not self.require_shared('jenkins'):
             return
 

@@ -100,16 +100,14 @@ class InstallAncestors(gluetool.Module):
     shared_functions = ['setup_guest']
 
     @staticmethod
-    def reduce_list_option(option_value):
-        # type: (List[str]) -> List[str]
+    def reduce_list_option(option_value: List[str]) -> List[str]:
         """
         Get rid of empty values from option list.
         """
 
         return sorted(opt for opt in normalize_multistring_option(option_value) if opt)
 
-    def filter_list(self, lst, option_name):
-        # type: (List[str], str) -> List[str]
+    def filter_list(self, lst: List[str], option_name: str) -> List[str]:
         """
         Filter out list items using provided option.
 
@@ -121,7 +119,7 @@ class InstallAncestors(gluetool.Module):
         if not self.option(option_name):
             return lst
 
-        excluded_items = set()  # type: Set[str]
+        excluded_items: Set[str] = set()
         for exclude in normalize_multistring_option(self.option(option_name)):
             regex = re.compile(exclude)
             excluded_items.update(filter(regex.match, lst))
@@ -134,22 +132,19 @@ class InstallAncestors(gluetool.Module):
 
         return sorted(list(set(lst) - excluded_items))
 
-    def filter_list_decorator(option_name):  # type: ignore[misc]  # noqa: F821
+    def filter_list_decorator(option_name: str) -> Callable[[FuncType], FuncType]:  # type: ignore[misc]  # noqa: F821
         # This decorator needs to be a class memeber as it only makes sense to use it for decorating instance methods.
         # mypy then complains about missing self argument, which needs to be ignored because of
         # https://github.com/python/mypy/issues/7778
-        # type: (str) -> Callable[[FuncType], FuncType]
         """
         Decorator for filtering results (list) of instance methods.
 
         :param str option_name: Option name from which filters are retrieved.
         """
 
-        def decorator(func):
-            # type: (FuncType) -> FuncType
+        def decorator(func: FuncType) -> FuncType:
             @functools.wraps(func)
-            def wrapper(self):
-                # type: (InstallAncestors) -> List[str]
+            def wrapper(self: InstallAncestors) -> List[str]:
                 lst = func(self)
                 lst = self.filter_list(lst, option_name)
                 return lst
@@ -157,8 +152,7 @@ class InstallAncestors(gluetool.Module):
         return decorator
 
     @filter_list_decorator(option_name='exclude-components')
-    def get_ancestor_components(self):
-        # type: () -> List[str]
+    def get_ancestor_components(self) -> List[str]:
         """
         Return ancestor components of the component defined by ``primary_task``.
         """
@@ -195,8 +189,7 @@ class InstallAncestors(gluetool.Module):
         return cast(List[str], ancestor_components)
 
     @filter_list_decorator(option_name='exclude-rpms')
-    def get_ancestor_rpms(self):
-        # type: () -> List[str]
+    def get_ancestor_rpms(self) -> List[str]:
         """
         Return ancestor rpms of the component defined by ``primary_task``.
         """
@@ -238,20 +231,23 @@ class InstallAncestors(gluetool.Module):
 
         return cast(List[str], ancestor_rpms)
 
-    def setup_guest(self, guest, stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION, log_dirpath=None, **kwargs):
-        # type: (NetworkedGuest, GuestSetupStage, Optional[str], **Any) -> SetupGuestReturnType
+    def setup_guest(self,
+                    guest: NetworkedGuest,
+                    stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
+                    log_dirpath: Optional[str] = None,
+                    **kwargs: Any) -> SetupGuestReturnType:
 
         self.require_shared('primary_task')
 
         log_dirpath = guest_setup_log_dirpath(guest, log_dirpath)
 
-        r_overloaded_guest_setup_output = self.overloaded_shared(
+        r_overloaded_guest_setup_output: SetupGuestReturnType = self.overloaded_shared(
             'setup_guest',
             guest,
             stage=stage,
             log_dirpath=log_dirpath,
             **kwargs
-        )  # type: SetupGuestReturnType
+        )
 
         if r_overloaded_guest_setup_output is None:
             r_overloaded_guest_setup_output = Ok([])
@@ -305,8 +301,7 @@ class InstallAncestors(gluetool.Module):
 
         return Ok(guest_setup_output)
 
-    def sanity(self):
-        # type: () -> None
+    def sanity(self) -> None:
 
         # combination of options:
         # ancestor-components

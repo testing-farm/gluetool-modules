@@ -48,15 +48,13 @@ class TriggerMessage(gluetool.Module):
 
     shared_functions = ['trigger_message']
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(TriggerMessage, self).__init__(*args, **kwargs)
 
-        self._message = None  # type: Optional[str]
+        self._message: Optional[str] = None
 
     @property
-    def eval_context(self):
-        # type: () -> Dict[str, str]
+    def eval_context(self) -> Dict[str, str]:
         # pylint: disable=unused-variable
         __content__ = {  # noqa
             'TRIGGER_MESSAGE': """
@@ -72,20 +70,17 @@ class TriggerMessage(gluetool.Module):
             'TRIGGER_MESSAGE': self._message
         }
 
-    def trigger_message(self):
-        # type: () -> Optional[str]
+    def trigger_message(self) -> Optional[str]:
         return self._message
 
-    def sanity(self):
-        # type: () -> None
+    def sanity(self) -> None:
         if self.option('source') == 'file' and not self.option('input-file'):
             raise gluetool.utils.IncompatibleOptionsError("'file' source requires --input-file option")
 
         if self.option('source') == 'environment' and not self.option('env-var'):
             raise gluetool.utils.IncompatibleOptionsError("'environment' source requires --env-var option")
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         if self.option('source') == 'file':
             self._message = gluetool.utils.load_json(self.option('input-file'), logger=self.logger)
 

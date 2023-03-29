@@ -23,8 +23,7 @@ DEFAULT_DUMP_FETCH_TICK = 10
 # and strings using JSON library. Gluetool's support is not usable as it tends to replace Python objects
 # with their __repr__ which is usually not possible to deserialize. This way we can at least catch such
 # objects by raising an exception.
-def _json_serializer(key, value):
-    # type: (str, Any) -> Tuple[str, int]
+def _json_serializer(key: str, value: Any) -> Tuple[str, int]:
     # sends strings as they are, set flag to 1 to announce it's pure string
     if isinstance(value, str):
         return value, 1
@@ -33,8 +32,7 @@ def _json_serializer(key, value):
     return json.dumps(value), 2
 
 
-def _json_deserializer(key, value, flags):
-    # type: (str, Any, int) -> Any
+def _json_deserializer(key: str, value: Any, flags: int) -> Any:
     # if the flag is 1, the value was a string
     if flags == 1:
         return value
@@ -51,8 +49,7 @@ class Cache(LoggerMixin, object):
     Provides access to cache API.
     """
 
-    def __init__(self, module, client):
-        # type: (Memcached, base.Client) -> None
+    def __init__(self, module: Memcached, client: base.Client) -> None:
         super(Cache, self).__init__(module.logger)
 
         self._module = module
@@ -61,8 +58,7 @@ class Cache(LoggerMixin, object):
         # guards access to self._client - apparently, it's not thread-safe by default
         self._lock = threading.Lock()
 
-    def get(self, key, default=None):
-        # type: (str, Optional[Any]) -> Any
+    def get(self, key: str, default: Optional[Any] = None) -> Any:
         """
         Retrieve value for a given key.
 
@@ -78,8 +74,7 @@ class Cache(LoggerMixin, object):
 
         return value
 
-    def gets(self, key, default=None, cas_default=None):
-        # type: (str, Optional[Any], Optional[bytes]) -> Tuple[Any, bytes]
+    def gets(self, key: str, default: Optional[Any] = None, cas_default: Optional[bytes] = None) -> Tuple[Any, bytes]:
         """
         Retrieve value for a given key and its CAS tag.
 
@@ -98,8 +93,7 @@ class Cache(LoggerMixin, object):
 
         return value, cas_tag
 
-    def add(self, key, value):
-        # type: (str, Any) -> bool
+    def add(self, key: str, value: Any) -> bool:
         """
         Add a key with a given value.
 
@@ -115,8 +109,7 @@ class Cache(LoggerMixin, object):
         with self._lock:
             return cast(bool, self._client.add(ensure_binary(key), value, noreply=False))
 
-    def set(self, key, value):
-        # type: (str, Any) -> bool
+    def set(self, key: str, value: Any) -> bool:
         """
         Set a value of a given key.
 
@@ -131,8 +124,7 @@ class Cache(LoggerMixin, object):
         with self._lock:
             return cast(bool, self._client.set(ensure_binary(key), value, noreply=False))
 
-    def cas(self, key, value, tag):
-        # type: (str, Any, bytes) -> Optional[bool]
+    def cas(self, key: str, value: Any, tag: bytes) -> Optional[bool]:
         """
         *Check And Set* operation. Set a value of a given key but only when it didn't change - to honor this
         condition, a CAS tag is used. It is retrieved with the value via ``gets`` method and passed to ``cas``
@@ -156,8 +148,7 @@ class Cache(LoggerMixin, object):
         with self._lock:
             return cast(Optional[bool], self._client.cas(ensure_binary(key), value, tag, noreply=False))
 
-    def delete(self, key):
-        # type: (str) -> bool
+    def delete(self, key: str) -> bool:
         """
         Delete a given key.
 
@@ -171,8 +162,7 @@ class Cache(LoggerMixin, object):
         with self._lock:
             return cast(bool, self._client.delete(ensure_binary(key), noreply=False))
 
-    def dump(self, separator='/'):
-        # type: (str) -> Dict[str, Any]
+    def dump(self, separator: str = '/') -> Dict[str, Any]:
         """
         Dump content of the cache in a form of nested dictionaries, forming a tree and subtrees based on key
         and their components.
@@ -188,8 +178,7 @@ class Cache(LoggerMixin, object):
         # other metadata. We cut out all these keys, and then we ask cache to provide values. Then we split
         # keys to their bits, and we construct pile of nested dictionaries of keys and values.
 
-        def _fetch_metadump():
-            # type: () -> Result[List[bytes], str]
+        def _fetch_metadump() -> Result[List[bytes], str]:
             with self._lock:
                 response = cast(List[bytes], self._client._misc_cmd(
                     [b'lru_crawler metadump all\r\n'],
@@ -208,7 +197,7 @@ class Cache(LoggerMixin, object):
                                        timeout=self._module.option('dump-fetch-timeout'),
                                        tick=self._module.option('dump-fetch-tick'))
 
-        dump = {}  # type: Dict[str, Any]
+        dump: Dict[str, Any] = {}
 
         # metadump consists of a list of strings
         for part in metadump:
@@ -282,17 +271,15 @@ class Memcached(gluetool.Module):
     # they may get unpredictable number of different instances...
     #
     # Until a fix lands in upstream, we have to deal with it here by providing our own locks :/
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(Memcached, self).__init__(*args, **kwargs)
 
         self._lock = threading.RLock()
 
-        self._client = None  # type: Optional[base.Client]
-        self._cache = None  # type: Optional[Cache]
+        self._client: Optional[base.Client] = None
+        self._cache: Optional[Cache] = None
 
-    def _get_client(self):
-        # type: () -> base.Client
+    def _get_client(self) -> base.Client:
         with self._lock:
             if not self._client:
                 self._client = base.Client((self.option('server-hostname'), self.option('server-port')),
@@ -300,8 +287,7 @@ class Memcached(gluetool.Module):
 
             return self._client
 
-    def _get_cache(self):
-        # type: () -> Cache
+    def _get_cache(self) -> Cache:
         with self._lock:
             if not self._cache:
                 self._cache = Cache(self, self._get_client())
@@ -321,8 +307,7 @@ class Memcached(gluetool.Module):
 #
 #        return cache
 
-    def cache(self):
-        # type: () -> Cache
+    def cache(self) -> Cache:
         """
         Returns an object providing access to the cache.
 

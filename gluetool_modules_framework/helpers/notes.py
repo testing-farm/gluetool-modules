@@ -44,15 +44,13 @@ class Notes(gluetool.Module):
 
     shared_functions = ['add_note']
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
 
         super(Notes, self).__init__(*args, **kwargs)
 
-        self._notes = []  # type: List[Note]
+        self._notes: List[Note] = []
 
-    def add_note(self, text, level=logging.INFO):
-        # type: (str, Union[int, str]) -> None
+    def add_note(self, text: str, level: Union[int, str] = logging.INFO) -> None:
         """
         Add new note.
 
@@ -85,8 +83,7 @@ class Notes(gluetool.Module):
         gluetool.log.log_dict(self.debug, 'note recorded', note)
 
     @property
-    def eval_context(self):
-        # type: () -> Dict[str, List[Note]]
+    def eval_context(self) -> Dict[str, List[Note]]:
         __content__ = {  # noqa
             'NOTES': """
                      List of all gathered notes, sorted by their levels from the more important levels

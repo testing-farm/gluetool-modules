@@ -35,20 +35,23 @@ class InstallCoprBuild(gluetool.Module):
 
     shared_functions = ['setup_guest']
 
-    def setup_guest(self, guest, stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION, log_dirpath=None, **kwargs):
-        # type: (NetworkedGuest, GuestSetupStage, Optional[str], **Any) -> SetupGuestReturnType
+    def setup_guest(self,
+                    guest: NetworkedGuest,
+                    stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
+                    log_dirpath: Optional[str] = None,
+                    **kwargs: Any) -> SetupGuestReturnType:
 
         self.require_shared('tasks')
 
         log_dirpath = guest_setup_log_dirpath(guest, log_dirpath)
 
-        r_overloaded_guest_setup_output = self.overloaded_shared(
+        r_overloaded_guest_setup_output: SetupGuestReturnType = self.overloaded_shared(
             'setup_guest',
             guest,
             stage=stage,
             log_dirpath=log_dirpath,
             **kwargs
-        )  # type: SetupGuestReturnType
+        )
 
         if r_overloaded_guest_setup_output is None:
             r_overloaded_guest_setup_output = Ok([])
@@ -84,7 +87,7 @@ class InstallCoprBuild(gluetool.Module):
         # though the object is used to process all artifacts. This shouldn't affect the functionality, the single passed
         # artifact is used only for logging purposes.
         sut_installation = SUTInstallation(self, installation_log_dirpath, builds[0], logger=guest.logger)
-        rpm_urls = []  # type: List[str]
+        rpm_urls: List[str] = []
 
         try:
             guest.execute('command -v dnf')

@@ -38,7 +38,7 @@ class DispatchJenkinsJobMixin(_Base):
     """
 
     # pylint: disable=unused-variable
-    job_name = None  # type: str
+    job_name: str = None
     """Name of the Jenkins job this module dispatches."""
     supported_dryrun_level = gluetool.glue.DryRunLevels.ISOLATED
 
@@ -100,8 +100,7 @@ class DispatchJenkinsJobMixin(_Base):
     required_options = ('artifact-id',)
 
     @cached_property
-    def build_params(self):
-        # type: () -> Dict[str, Any]
+    def build_params(self) -> Dict[str, Any]:
         """
         Converts command-line options - and possibly other sources as well - to a build parameters, a dictionary
         that's passed to Jenkins, listing keys and values which form parameters of the triggered Jenkins build.
@@ -110,8 +109,8 @@ class DispatchJenkinsJobMixin(_Base):
         """
 
         # Gather all options for `notify-recipients` module
-        notify_recipients_options_list = []  # type: List[str]
-        notify_recipients_options = None  # type: Optional[str]
+        notify_recipients_options_list: List[str] = []
+        notify_recipients_options: Optional[str] = None
 
         if self.option('notify-recipients-options'):
             notify_recipients_options_list += self.option('notify-recipients-options')
@@ -129,8 +128,8 @@ class DispatchJenkinsJobMixin(_Base):
             notify_recipients_options = None
 
         # Gather all options for `pipeline-state-reporter` module
-        pipeline_state_reporter_options_list = []  # type: List[str]
-        pipeline_state_reporter_options = None  # type: Optional[str]
+        pipeline_state_reporter_options_list: List[str] = []
+        pipeline_state_reporter_options: Optional[str] = None
 
         if self.option('pipeline-state-reporter-options'):
             pipeline_state_reporter_options_list += shlex.split(self.option('pipeline-state-reporter-options'))
@@ -159,8 +158,7 @@ class DispatchJenkinsJobMixin(_Base):
             'priority': self.option('priority')
         }
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
 
         job_name = self.option('job-name') if self.option('job-name') else self.job_name
 

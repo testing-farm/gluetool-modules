@@ -94,13 +94,11 @@ class UploadResults(gluetool.Module):
         },
     }
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(UploadResults, self).__init__(*args, **kwargs)
-        self.full_target_url = None  # type: Optional[str]
+        self.full_target_url: Optional[str] = None
 
-    def _get_pull_request_info(self):
-        # type: () -> str
+    def _get_pull_request_info(self) -> str:
         """
         It generates a string from pull request information.
 
@@ -110,8 +108,7 @@ class UploadResults(gluetool.Module):
         task = self.shared('primary_task')
         return "{}-{}-{}".format(task.repo, task.pull_number, task.commit_sha[0:7])
 
-    def _get_artifact_dir_name(self):
-        # type: () -> str
+    def _get_artifact_dir_name(self) -> str:
         """
         It generates a name for the results folder.
 
@@ -129,8 +126,7 @@ class UploadResults(gluetool.Module):
         )
         return cast(str, artifact_folder_name)
 
-    def _create_subdir_for_artifacts(self, destination_sub_path, user_and_domain):
-        # type: (str, str) -> Optional[str]
+    def _create_subdir_for_artifacts(self, destination_sub_path: str, user_and_domain: str) -> Optional[str]:
         """
         This will create a folder for the results on the target file hosting.
 
@@ -155,8 +151,7 @@ class UploadResults(gluetool.Module):
 
         return None
 
-    def _get_files_to_upload(self):
-        # type: () -> List[Dict[str, str]]
+    def _get_files_to_upload(self) -> List[Dict[str, str]]:
         """
         Get the results to be uploaded to the server.
 
@@ -189,8 +184,10 @@ class UploadResults(gluetool.Module):
 
         return files
 
-    def _upload_results(self, destination_path, user_and_domain, results_files):
-        # type: (str, str, List[Dict[str, str]]) -> None
+    def _upload_results(self,
+                        destination_path: str,
+                        user_and_domain: str,
+                        results_files: List[Dict[str, str]]) -> None:
         """
         It uploads the artifacts to the server.
 
@@ -199,7 +196,7 @@ class UploadResults(gluetool.Module):
         :param dict results_files: Full paths to the source artifacts and destination filenames.
         """
         for results_file in results_files:
-            cmd_upload = ['scp', '-i', cast(str, self.option('key-path'))]  # type: Optional[List[str]]
+            cmd_upload: Optional[List[str]] = ['scp', '-i', cast(str, self.option('key-path'))]
             assert cmd_upload is not None
 
             cmd_upload.append(results_file['src-file-path'])
@@ -216,8 +213,7 @@ class UploadResults(gluetool.Module):
                 assert exc.output.stderr is not None
                 raise GlueError('Uploading results failed: {} cmd: {}'.format(exc, cmd_upload))
 
-    def _create_summary_file(self, results_files):
-        # type: (List[Dict[str, str]]) -> Dict[str,str]
+    def _create_summary_file(self, results_files: List[Dict[str, str]]) -> Dict[str,str]:
         """
         Creates summary html with results summary
         """
@@ -260,13 +256,11 @@ class UploadResults(gluetool.Module):
         }
 
     @property
-    def _full_target_url(self):
-        # type: () -> Optional[str]
+    def _full_target_url(self) -> Optional[str]:
         return self.full_target_url
 
     @property
-    def eval_context(self):
-        # type: () -> Dict[str, Optional[str]]
+    def eval_context(self) -> Dict[str, Optional[str]]:
         __content__ = { # noqa
             'PR_TESTING_ARTIFACTS_URL': """
                           The URL with results of testing
@@ -276,8 +270,7 @@ class UploadResults(gluetool.Module):
             'PR_TESTING_ARTIFACTS_URL': '{}/summary.html'.format(self._full_target_url)
         }
 
-    def destroy(self, failure=None):
-        # type: (Optional[Failure]) -> None
+    def destroy(self, failure: Optional[Failure] = None) -> None:
         """
         It creates a directory for results in destination and then it uploads test results.
         At the end ``PR_TESTING_ARTIFACTS_URL`` contains the URL with the uploaded results.

@@ -40,8 +40,10 @@ class URLShortener(gluetool.Module):
 
     shared_functions = ['get_shortened_url']
 
-    def get_shortened_url(self, url, raise_on_error=True, logger=None):
-        # type: (str, bool, Optional[gluetool.log.ContextAdapter]) -> str
+    def get_shortened_url(self,
+                          url: str,
+                          raise_on_error: bool = True,
+                          logger: Optional[gluetool.log.ContextAdapter] = None) -> str:
         """
         Retun the shortened url.
 
@@ -69,8 +71,7 @@ class URLShortener(gluetool.Module):
 
         return response.text
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
 
         if self.option('print-shortened-url'):
             self.info(self.get_shortened_url(self.option('print-shortened-url')))

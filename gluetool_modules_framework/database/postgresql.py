@@ -50,16 +50,14 @@ class PostgreSQL(gluetool.Module):
     required_options = ('dbname',)
     shared_functions = ['db_cursor']
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
 
         super(PostgreSQL, self).__init__(*args, **kwargs)
 
         self._connection = None
 
     @property
-    def connection(self):
-        # type: () -> Any
+    def connection(self) -> Any:
 
         if self._connection is None:
             host, port = self.option('host'), self.option('port')
@@ -76,8 +74,7 @@ class PostgreSQL(gluetool.Module):
 
         return self._connection
 
-    def db_cursor(self, cursor_factory=NamedTupleCursor, **kwargs):
-        # type: (Any, **Any) -> Any
+    def db_cursor(self, cursor_factory: Any = NamedTupleCursor, **kwargs: Any) -> Any:
         """
         Return :py:class:`psycopg2.connection.cursor` instance.
 
@@ -90,8 +87,7 @@ class PostgreSQL(gluetool.Module):
 
         return self.connection.cursor(cursor_factory=cursor_factory)
 
-    def server_version(self):
-        # type: () -> Any
+    def server_version(self) -> Any:
 
         cursor = self.db_cursor()
 
@@ -103,8 +99,7 @@ class PostgreSQL(gluetool.Module):
 
         return row[0]
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
 
         version = self.server_version()
 

@@ -43,13 +43,12 @@ STI_ANSIBLE_LOG_FILENAME = 'ansible-output.txt'
 TaskRun = collections.namedtuple('TaskRun', ('name', 'schedule_entry', 'result', 'logs'))
 
 
-def gather_test_results(schedule_entry, artifacts_directory):
-    # type: (TestScheduleEntry, str) -> List[TaskRun]
+def gather_test_results(schedule_entry: TestScheduleEntry, artifacts_directory: str) -> List[TaskRun]:
     """
     Extract detailed test results from 'results.yml' or 'test.log'.
     """
 
-    results = []  # type: List[TaskRun]
+    results: List[TaskRun] = []
 
     # By default, check results in the new results.yml format
     # https://docs.fedoraproject.org/en-US/ci/standard-test-interface/#_results_format
@@ -128,8 +127,7 @@ class STIRunner(gluetool.Module):
 
     shared_functions = ['run_test_schedule_entry', 'serialize_test_schedule_entry_results']
 
-    def _set_schedule_entry_result(self, schedule_entry):
-        # type: (TestScheduleEntry) -> None
+    def _set_schedule_entry_result(self, schedule_entry: TestScheduleEntry) -> None:
         """
         Try to find at least one task that didn't complete or didn't pass.
         """
@@ -150,8 +148,7 @@ class STIRunner(gluetool.Module):
 
         schedule_entry.result = TestScheduleResult.PASSED
 
-    def _prepare_environment(self, schedule_entry):
-        # type: (TestScheduleEntry) -> Tuple[str, str, str]
+    def _prepare_environment(self, schedule_entry: TestScheduleEntry) -> Tuple[str, str, str]:
         """
         Prepare local environment for running the schedule entry, by setting up some directories and files.
 
@@ -224,8 +221,11 @@ sut     ansible_host={} ansible_user=root {}
 
         return work_dir, artifact_dir, inventory.name
 
-    def _run_playbook(self, schedule_entry, work_dirpath, artifact_dirpath, inventory_filepath):
-        # type: (TestScheduleEntry, str, str, str) -> List[TaskRun]
+    def _run_playbook(self,
+                      schedule_entry: TestScheduleEntry,
+                      work_dirpath: str,
+                      artifact_dirpath: str,
+                      inventory_filepath: str) -> List[TaskRun]:
         """
         Run an STI playbook, observe and report results.
         """
@@ -234,8 +234,7 @@ sut     ansible_host={} ansible_user=root {}
         # root action to the current one of this thread.
         current_action = Action.current_action()
 
-        def _run_playbook_wrapper():
-            # type: () -> Any
+        def _run_playbook_wrapper() -> Any:
 
             assert schedule_entry.guest is not None
 
@@ -261,7 +260,7 @@ sut     ansible_host={} ansible_user=root {}
             )
 
             if schedule_entry.ansible_playbook_filepath:
-                ansible_playbook_filepath = schedule_entry.ansible_playbook_filepath  # type: Optional[str]
+                ansible_playbook_filepath: Optional[str] = schedule_entry.ansible_playbook_filepath
             elif self.option('ansible-playbook-filepath'):
                 ansible_playbook_filepath = normalize_path(self.option('ansible-playbook-filepath'))
             else:
@@ -286,7 +285,7 @@ sut     ansible_host={} ansible_user=root {}
         notify.add_watch(artifact_dirpath)
 
         # initial values
-        run_tests = []  # type: List[str]
+        run_tests: List[str] = []
 
         # testname matching regex
         testname_regex = re.compile(r'^\.?([^_]*)_(.*).log.*$')
@@ -340,8 +339,7 @@ sut     ansible_host={} ansible_user=root {}
 
         return results
 
-    def run_test_schedule_entry(self, schedule_entry):
-        # type: (TestScheduleEntry) -> None
+    def run_test_schedule_entry(self, schedule_entry: TestScheduleEntry) -> None:
 
         if schedule_entry.runner_capability != 'sti':
             self.overloaded_shared('run_test_schedule_entry', schedule_entry)
@@ -376,15 +374,16 @@ sut     ansible_host={} ansible_user=root {}
         self.shared('trigger_event', 'test-schedule-runner-sti.schedule-entry.finished',
                     schedule_entry=schedule_entry)
 
-    def serialize_test_schedule_entry_results(self, schedule_entry, test_suite):
-        # type: (TestScheduleEntry, Any) -> None
+    def serialize_test_schedule_entry_results(self, schedule_entry: TestScheduleEntry, test_suite: Any) -> None:
 
-        def _add_property(properties, name, value):
-            # type: (Any, str, str) -> Any
+        def _add_property(properties: Any, name: str, value: str) -> Any:
             return new_xml_element('property', _parent=properties, name='baseosci.{}'.format(name), value=value or '')
 
-        def _add_log(logs, name, path, href, schedule_entry=None):
-            # type: (Any, str, str, str, Optional[TestScheduleEntry]) -> Any
+        def _add_log(logs: Any,
+                     name: str,
+                     path: str,
+                     href: str,
+                     schedule_entry: Optional[TestScheduleEntry] = None) -> Any:
 
             attrs = {
                 'name': name,
@@ -408,8 +407,7 @@ sut     ansible_host={} ansible_user=root {}
                 **attrs
             )
 
-        def _add_testing_environment(test_case, name, arch, compose):
-            # type: (Any, str, Any, Any) -> Any
+        def _add_testing_environment(test_case: Any, name: str, arch: Any, compose: Any) -> Any:
             parent_elem = new_xml_element('testing-environment', _parent=test_case, name=name)
             new_xml_element('property', _parent=parent_elem, name='arch', value=arch)
             new_xml_element('property', _parent=parent_elem, name='compose', value=compose)

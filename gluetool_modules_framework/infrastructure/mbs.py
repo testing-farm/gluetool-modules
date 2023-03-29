@@ -207,7 +207,7 @@ class MBSTask(LoggerMixin, object):
     ARTIFACT_NAMESPACE = 'redhat-module'
 
     def __init__(self,
-                 module: MBS,
+                 module: 'MBS',
                  build_id: Optional[int] = None,
                  nsvc: Optional[str] = None,
                  nvr: Optional[str] = None) -> None:
@@ -406,7 +406,7 @@ class MBSTask(LoggerMixin, object):
         return task.nvr
 
     @cached_property
-    def baseline_task(self) -> Optional[MBSTask]:
+    def baseline_task(self) -> Optional['MBSTask']:
         """
         Return baseline task. For documentation of the baseline methods see the module's help.
 
@@ -468,7 +468,7 @@ class MBSTask(LoggerMixin, object):
 
         return previous_tags
 
-    def latest_released(self, tags: Optional[List[str]] = None) -> Optional[MBSTask]:
+    def latest_released(self, tags: Optional[List[str]] = None) -> Optional['MBSTask']:
         """
         Returns task of the latest module build tagged with the same build target.
 

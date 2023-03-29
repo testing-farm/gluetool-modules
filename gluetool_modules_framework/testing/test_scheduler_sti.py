@@ -113,8 +113,10 @@ class TestSchedulerSTI(gluetool.Module):
 
         return playbooks
 
-    def create_test_schedule(self,
-                             testing_environment_constraints: Optional[List[TestingEnvironment]] = None) -> TestSchedule:
+    def create_test_schedule(
+        self,
+        testing_environment_constraints: Optional[List[TestingEnvironment]] = None
+    ) -> TestSchedule:
         """
         Create a test schedule based on either content of artifact's dist-git repository,
         or using playbooks specified via ``--playbook`` option.

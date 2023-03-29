@@ -137,7 +137,7 @@ class RulesASTVisitor(ast.NodeTransformer):
         )
     ])
 
-    def __init__(self, rules: Rules) -> None:
+    def __init__(self, rules: 'Rules') -> None:
 
         super(RulesASTVisitor, self).__init__()
 
@@ -629,8 +629,13 @@ class RulesEngine(gluetool.Module):
 
         return result
 
-    def evaluate_filter(self, entries: List[EntryType], context: Optional[Union[ContextType, ContextGetterType]] = None, default_rule: str = 'True',
-                        stop_at_first_hit: bool = False) -> List[EntryType]:
+    def evaluate_filter(
+        self,
+        entries: List[EntryType],
+        context: Optional[Union[ContextType, ContextGetterType]] = None,
+        default_rule: str = 'True',
+        stop_at_first_hit: bool = False
+    ) -> List[EntryType]:
         """
         Find out what entries of the list are allowed by their rules, and return them.
 

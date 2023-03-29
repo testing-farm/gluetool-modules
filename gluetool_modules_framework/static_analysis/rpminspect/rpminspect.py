@@ -18,9 +18,7 @@ from gluetool_modules_framework.libs.results import TestResult, publish_result
 
 # Type annotations
 from typing import cast, TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Type, Union  # noqa
-
-if TYPE_CHECKING:
-    from gluetool.utils import ProcessOutput  # noqa
+from gluetool.utils import ProcessOutput  # noqa
 
 # Map RPMINSPECT_SCORE to resultsdb 2.0 API outcome states - http://docs.resultsdb20.apiary.io/
 # Note: WAIVED score is mapped to INFO

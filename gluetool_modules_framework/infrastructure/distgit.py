@@ -15,11 +15,11 @@ import gluetool_modules_framework.libs.git
 
 # Type annotations
 from typing import Any, Dict, List, Optional, Set, Union, TYPE_CHECKING, cast  # noqa
+from gluetool.log import ContextAdapter
+from gluetool_modules_framework.infrastructure.koji_fedora import KojiTask
 
 if TYPE_CHECKING:
     from gluetool.utils import Pattern
-    from gluetool_modules_framework.infrastructure.koji_fedora import KojiTask
-    from gluetool.log import ContextAdapter
 
 
 class DistGitRepository(gluetool_modules_framework.libs.git.RemoteGitRepository):

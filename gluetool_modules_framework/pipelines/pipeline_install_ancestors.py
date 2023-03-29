@@ -10,10 +10,8 @@ from gluetool.log import log_dict
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupStage
 
 from typing import Any, Dict, List, TYPE_CHECKING, Union, Optional  # noqa
-
-if TYPE_CHECKING:
-    from gluetool_modules_framework.libs.guest import NetworkedGuest
-    from gluetool_modules_framework.libs.guest_setup import SetupGuestReturnType
+from gluetool_modules_framework.libs.guest import NetworkedGuest
+from gluetool_modules_framework.libs.guest_setup import SetupGuestReturnType
 
 
 class PipelineInstallAncestors(gluetool.Module):

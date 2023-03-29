@@ -27,8 +27,7 @@ from gluetool.result import Result
 from typing import TYPE_CHECKING, Any, Dict, List, NamedTuple, Optional, NamedTuple, Tuple  # noqa
 from typing_extensions import Protocol
 
-if TYPE_CHECKING:
-    import gluetool_modules_framework.libs.guest  # noqa
+import gluetool_modules_framework.libs.guest  # noqa
 
 
 class GuestSetupStage(GlueEnum):

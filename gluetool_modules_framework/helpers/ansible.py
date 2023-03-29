@@ -18,8 +18,7 @@ from gluetool_modules_framework.libs.sentry import ArtifactFingerprintsMixin
 # Type annotations
 from typing import cast, TYPE_CHECKING, Any, Callable, Dict, List, NamedTuple, Optional, Tuple, Union  # noqa
 
-if TYPE_CHECKING:
-    import gluetool_modules_framework.libs.guest  # noqa
+import gluetool_modules_framework.libs.guest  # noqa
 
 
 # possible python interpreters
@@ -162,7 +161,7 @@ class Ansible(gluetool.Module):
         return gluetool.utils.normalize_multistring_option(self.option('ansible-playbook-options'))
 
     @gluetool.utils.cached_property
-    def additional_environment_variables(self) -> Dict[str,str]:
+    def additional_environment_variables(self) -> Dict[str, str]:
 
         envs_list = gluetool.utils.normalize_multistring_option(self.option('ansible-playbook-environment-variables'))
 

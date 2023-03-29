@@ -633,7 +633,7 @@ class GuessEnvironment(gluetool.Module):
         if not result:
             raise GlueError("Failed to autodetect '{}', no match found".format(source['type']))
 
-    _methods: Dict[str, Callable[[GuessEnvironment, SourceType], None]] = {
+    _methods: Dict[str, Callable[['GuessEnvironment', SourceType], None]] = {
         'autodetect': _guess_target_autodetect,
         'force': _guess_force,
         'target-autodetection': _guess_target_autodetect,

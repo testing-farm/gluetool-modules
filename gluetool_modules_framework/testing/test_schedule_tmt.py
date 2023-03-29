@@ -549,8 +549,10 @@ class TestScheduleTMT(Module):
 
         return cast(Dict[str, Any], exported_plans[0])
 
-    def create_test_schedule(self,
-                             testing_environment_constraints: Optional[List[TestingEnvironment]] = None) -> TestSchedule:
+    def create_test_schedule(
+        self,
+        testing_environment_constraints: Optional[List[TestingEnvironment]] = None
+    ) -> TestSchedule:
         """
         Create a test schedule based on list of tmt plans.
 

@@ -93,8 +93,10 @@ class TestSchedulerUpgrades(gluetool.Module):
 
         return binary_rpms_list
 
-    def create_test_schedule(self,
-                             testing_environment_constraints: Optional[List[TestingEnvironment]] = None) -> TestSchedule:
+    def create_test_schedule(
+        self,
+        testing_environment_constraints: Optional[List[TestingEnvironment]] = None
+    ) -> TestSchedule:
         """
         This module modifies STI test schedule provided by other module. It expects one of the test is testing upgrade
         and require special variables for successful run. Namely url of composes, made by OSCI guys based on tested

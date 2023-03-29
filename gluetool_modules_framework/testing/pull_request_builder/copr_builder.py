@@ -15,9 +15,7 @@ from gluetool_modules_framework.libs.results import TestResult, publish_result
 
 # Type annotations
 from typing import Any, Iterator, List, NoReturn, Optional, TYPE_CHECKING, Dict  # noqa
-
-if TYPE_CHECKING:
-    from gluetool_modules_framework.infrastructure import github  # noqa
+from gluetool_modules_framework.infrastructure import github  # noqa
 
 
 COPR_CONFIG = 'copr.conf'

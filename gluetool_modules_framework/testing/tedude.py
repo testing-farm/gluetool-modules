@@ -68,7 +68,7 @@ class TeDuDe(gluetool.Module):
         return gluetool.utils.normalize_multistring_option(self.option('bugzilla-attributes'))
 
     @cached_property
-    def _tedude_test_statuses(self) -> Tuple[str, Dict[int, Dict[str,str]]]:
+    def _tedude_test_statuses(self) -> Tuple[str, Dict[int, Dict[str, str]]]:
         """
         Evaluates each bug using the provided instructions.
 

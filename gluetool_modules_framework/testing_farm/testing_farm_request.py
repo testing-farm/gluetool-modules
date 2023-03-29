@@ -190,7 +190,7 @@ class TestingFarmRequestSTI():
 class TestingFarmRequest(LoggerMixin, object):
     ARTIFACT_NAMESPACE = 'testing-farm-request'
 
-    def __init__(self, module: TestingFarmRequestModule) -> None:
+    def __init__(self, module: 'TestingFarmRequestModule') -> None:
         super(TestingFarmRequest, self).__init__(module.logger)
 
         assert module._tf_api is not None

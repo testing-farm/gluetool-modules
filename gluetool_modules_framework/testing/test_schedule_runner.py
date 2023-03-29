@@ -145,8 +145,10 @@ class TestScheduleRunner(gluetool.Module):
 
         pass
 
-    def _provision_guest(self,
-                         schedule_entry: TestScheduleEntry) -> List[gluetool_modules_framework.libs.guest.NetworkedGuest]:
+    def _provision_guest(
+        self,
+        schedule_entry: TestScheduleEntry
+    ) -> List[gluetool_modules_framework.libs.guest.NetworkedGuest]:
 
         # This is necessary - the output would tie the thread and the schedule entry in
         # the output. Modules used to actually provision the guest use their own module

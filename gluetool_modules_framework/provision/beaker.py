@@ -132,7 +132,7 @@ class BeakerGuest(NetworkedGuest):
     Implements Beaker guest.
     """
 
-    def __init__(self, module: BeakerProvisioner, fqdn: str, is_static: bool = False, **kwargs: Any) -> None:
+    def __init__(self, module: 'BeakerProvisioner', fqdn: str, is_static: bool = False, **kwargs: Any) -> None:
         assert isinstance(module, BeakerProvisioner)
         super(BeakerGuest, self).__init__(module, fqdn, **kwargs)
 

@@ -51,7 +51,7 @@ class StaticGuest(NetworkedGuest):
     def _is_allowed_degraded(self, service: Any) -> Literal[True]:
         return True
 
-    def __init__(self, module: CIStaticGuest, fqdn: str, **kwargs: Any) -> None:
+    def __init__(self, module: 'CIStaticGuest', fqdn: str, **kwargs: Any) -> None:
         super(StaticGuest, self).__init__(module, fqdn, **kwargs)
 
         try:
@@ -84,7 +84,7 @@ class StaticLocalhostGuest(Guest):
     def _is_allowed_degraded(self, service: Any) -> Literal[True]:
         return True
 
-    def __init__(self, module: CIStaticGuest, fqdn: str, **kwargs: Any) -> None:
+    def __init__(self, module: 'CIStaticGuest', fqdn: str, **kwargs: Any) -> None:
         super(StaticLocalhostGuest, self).__init__(module, fqdn, **kwargs)
 
         # populate guest architecture from the OS`

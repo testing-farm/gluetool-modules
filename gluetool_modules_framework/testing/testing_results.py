@@ -106,9 +106,11 @@ class TestingResults(gluetool.Module):
         'xunit': lambda stream, results: stream.write(results.prettify(encoding='utf-8' if six.PY2 else None))
     }
 
-    def serialize_results(self,
-                          output_format: str,
-                          results: Optional[List[gluetool_modules_framework.libs.results.TestResult]] = None) -> List[Any]:
+    def serialize_results(
+        self,
+        output_format: str,
+        results: Optional[List[gluetool_modules_framework.libs.results.TestResult]] = None
+    ) -> List[Any]:
         if results is None:
             results = self._results
 

@@ -7,10 +7,10 @@ from gluetool_modules_framework.libs import run_and_log
 
 # Type annotations
 from typing import TYPE_CHECKING, List, Callable  # noqa
+import gluetool.utils # noqa
 
 if TYPE_CHECKING:
     import gluetool # noqa
-    import gluetool.utils # noqa
 
 
 class BrewBuildFailedError(SoftGlueError):
@@ -24,10 +24,12 @@ def executor(command: List[str]) -> gluetool.utils.ProcessOutput:
     return Command(command).run()
 
 
-def run_command(command: List[str],
-                log_path: str,
-                comment: str,
-                executor: Callable[[List[str]], gluetool.utils.ProcessOutput] = executor) -> gluetool.utils.ProcessOutput:
+def run_command(
+    command: List[str],
+    log_path: str,
+    comment: str,
+    executor: Callable[[List[str]], gluetool.utils.ProcessOutput] = executor
+) -> gluetool.utils.ProcessOutput:
     command_failed, err_msg, output = run_and_log(command=command,
                                                   log_filepath=log_path,
                                                   executor=executor

@@ -32,7 +32,7 @@ class GuestConnectionError(gluetool.GlueError):
     Failed to connect to guest.
     """
 
-    def __init__(self, guest: NetworkedGuest) -> None:
+    def __init__(self, guest: 'NetworkedGuest') -> None:
 
         super(GuestConnectionError, self).__init__('Failed to connect to guest {}'.format(guest))
 
@@ -129,7 +129,7 @@ class Guest(LoggerMixin, object):
 
         raise NotImplementedError()
 
-    def restore_snapshot(self, snapshot: Any) -> Guest:
+    def restore_snapshot(self, snapshot: Any) -> 'Guest':
         """
         Restore given snapshot.
 

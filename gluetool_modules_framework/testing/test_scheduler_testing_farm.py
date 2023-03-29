@@ -4,7 +4,6 @@
 import gluetool_modules_framework.libs
 
 from typing import cast
-from typing import TYPE_CHECKING
 from typing import Optional
 
 import gluetool
@@ -14,9 +13,7 @@ from gluetool.log import log_dict
 
 from gluetool_modules_framework.testing.test_scheduler_baseosci import ProvisionerCapabilities
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
-
-if TYPE_CHECKING:
-    from gluetool_modules_framework.libs.test_schedule import TestSchedule
+from gluetool_modules_framework.libs.test_schedule import TestSchedule
 
 
 class TestSchedulerTestingFarm(gluetool.Module):

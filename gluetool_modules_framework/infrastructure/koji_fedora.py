@@ -190,31 +190,23 @@ class KojiTask(LoggerMixin, object):
             raise GlueError('instance details do not contain all required keys')
 
     @overload  # noqa F811  # flake8 thinks the method is being redefined but only the types are being overloaded
-    def _call_api(self,
-                  method: Literal['listBuilds'],
-                  *args: Any,
-                  **kwargs: Any) -> Optional[List[Dict[str, str]]]:  # noqa F811
+    def _call_api(self, method: Literal['listBuilds'], *args: Any,  # noqa F811
+                  **kwargs: Any) -> Optional[List[Dict[str, str]]]:
         pass
 
     @overload  # noqa F811
-    def _call_api(self,
-                  method: Literal['getFullInheritance', 'getTaskChildren', 'listBuildRPMs'],
-                  *args: Any,
-                  **kwargs: Any) -> List[Dict[str, str]]:  # noqa F811
+    def _call_api(self, method: Literal['getFullInheritance', 'getTaskChildren', 'listBuildRPMs'], *args: Any,  # noqa F811
+                  **kwargs: Any) -> List[Dict[str, str]]:
         pass
 
     @overload  # noqa F811
-    def _call_api(self,
-                  method: Literal['listArchives', 'listTagged'],
-                  *args: Any,
-                  **kwargs: Any) -> List[Dict[str, Any]]:  # noqa F811
+    def _call_api(self, method: Literal['listArchives', 'listTagged'], *args: Any,  # noqa F811
+                  **kwargs: Any) -> List[Dict[str, Any]]:
         pass
 
     @overload  # noqa F811
-    def _call_api(self,
-                  method: Literal['getBuild', 'getUser', 'getTaskResult', 'getBuildTarget'],
-                  *args: Any,
-                  **kwargs: Any) -> Dict[str, Any]:  # noqa F811
+    def _call_api(self, method: Literal['getBuild', 'getUser', 'getTaskResult', 'getBuildTarget'], *args: Any,  # noqa F811
+                  **kwargs: Any) -> Dict[str, Any]:
         pass
 
     @overload  # noqa F811
@@ -252,7 +244,7 @@ class KojiTask(LoggerMixin, object):
             self,
             details: InitDetailsType,
             task_id: int,
-            module: Koji,
+            module: 'Koji',
             logger: Optional[ContextAdapter] = None,
             wait_timeout: Optional[int] = None,
             build_id: Optional[int] = None,
@@ -604,7 +596,7 @@ class KojiTask(LoggerMixin, object):
 
         return "{}/taskinfo?taskID={}".format(self.web_url, self.id)
 
-    def latest_released(self, tags: Optional[List[str]] = None) -> Optional[Union[KojiTask, BrewTask]]:
+    def latest_released(self, tags: Optional[List[str]] = None) -> Optional[Union['KojiTask', 'BrewTask']]:
         """
         Returns task of the latest builds tagged with the same destination tag or build target.
 
@@ -661,7 +653,7 @@ class KojiTask(LoggerMixin, object):
         return self._module.task_factory(TaskInitializer(task_id=build['task_id'], build_id=None)) if build else None
 
     @cached_property
-    def latest(self: Union[KojiTask, BrewTask]) -> Optional[str]:
+    def latest(self: Union['KojiTask', 'BrewTask']) -> Optional[str]:
         """
         NVR of the latest released package with the same build target, or ``None`` if none found.
 
@@ -736,7 +728,7 @@ class KojiTask(LoggerMixin, object):
         return cast(str, self.baseline_task.nvr)
 
     @cached_property
-    def baseline_task(self) -> Optional[Union[KojiTask, BrewTask]]:
+    def baseline_task(self) -> Optional[Union['KojiTask', 'BrewTask']]:
         """
         Return baseline task. For documentation of the baseline methods see the module's help.
 
@@ -1234,7 +1226,7 @@ class BrewTask(KojiTask):
             self,
             details: InitDetailsType,
             task_id: int,
-            module: Brew,
+            module: 'Brew',
             logger: Optional[ContextAdapter] = None,
             wait_timeout: Optional[int] = None,
             build_id: Optional[int] = None,

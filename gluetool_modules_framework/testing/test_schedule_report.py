@@ -13,8 +13,7 @@ from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestSche
 # Type annotations
 from typing import cast, TYPE_CHECKING, Any, Dict, List, Optional  # noqa
 
-if TYPE_CHECKING:
-    import bs4  # noqa
+import bs4  # noqa
 
 
 class TestScheduleReport(gluetool.Module):

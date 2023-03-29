@@ -290,7 +290,7 @@ class GitHubAPI(object):
     def _set_commit_status(self, url: str, status_data: Dict[str, str]) -> Any:
         return self._post(url, status_data).json()
 
-    def set_commit_status(self, pull_request: GitHubPullRequest, status_data: Dict[str, str]) -> Any:
+    def set_commit_status(self, pull_request: 'GitHubPullRequest', status_data: Dict[str, str]) -> Any:
         """
         Update status of the specified pull request.
 
@@ -305,7 +305,7 @@ class GitHubAPI(object):
 
         return self._set_commit_status(url, status_data)
 
-    def get_file(self, pull_request: GitHubPullRequest, file_path: str) -> str:
+    def get_file(self, pull_request: 'GitHubPullRequest', file_path: str) -> str:
         """
         Get a single file from the repository.
 
@@ -326,7 +326,7 @@ class GitHubAPI(object):
 
         return six.ensure_str(response.content)
 
-    def get_file_from_pull_request(self, pull_request: GitHubPullRequest, file_path: str) -> str:
+    def get_file_from_pull_request(self, pull_request: 'GitHubPullRequest', file_path: str) -> str:
         """
         Get a single file from the pull request changed repository.
 
@@ -354,7 +354,7 @@ class GitHubAPI(object):
 class GitHubPullRequest(object):
     ARTIFACT_NAMESPACE = 'github-pr'
 
-    def __init__(self, module: GitHub, pull_request_id: PullRequestID) -> None:
+    def __init__(self, module: 'GitHub', pull_request_id: 'PullRequestID') -> None:
 
         self.has_artifacts = True
 

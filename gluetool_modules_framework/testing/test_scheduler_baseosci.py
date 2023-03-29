@@ -19,8 +19,7 @@ from gluetool_modules_framework.libs.testing_environment import TestingEnvironme
 # Type annotations
 from typing import TYPE_CHECKING, cast, Any, Dict, List, NamedTuple, Union, Optional  # noqa
 
-if TYPE_CHECKING:
-    from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleEntry  # noqa
+from gluetool_modules_framework.libs.test_schedule import TestSchedule  # noqa
 
 
 class PatchAction(GlueEnum):

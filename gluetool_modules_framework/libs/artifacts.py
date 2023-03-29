@@ -41,7 +41,7 @@ def has_artifacts(*tasks: Any) -> None:
             raise NoArtifactsError(task.id)
 
 
-def artifacts_location(module: gluetool.Module, local_path: str, logger: Optional[ContextAdapter] = None) -> str:
+def artifacts_location(module: gluetool.Module, local_path: str, logger: Optional['ContextAdapter'] = None) -> str:
     """
     If we have access to ``artifacts_location`` shared function, return its output. Otherwise, return
     the input string.

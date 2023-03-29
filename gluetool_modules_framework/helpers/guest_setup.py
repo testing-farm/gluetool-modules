@@ -16,9 +16,9 @@ from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath,
 
 # Type annotations
 from typing import cast, TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union  # noqa
+import gluetool_modules_framework.libs.guest  # noqa
 
 if TYPE_CHECKING:
-    import gluetool_modules_framework.libs.guest  # noqa
     import gluetool_modules_framework.helpers.ansible  # noqa
 
 

@@ -272,8 +272,10 @@ class TestSchedulerSystemRoles(gluetool.Module):
 {}
 '''.format(vault_variables_file, playbook))
 
-    def create_test_schedule(self,
-                             testing_environment_constraints: Optional[List[TestingEnvironment]] = None) -> TestSchedule:
+    def create_test_schedule(
+        self,
+        testing_environment_constraints: Optional[List[TestingEnvironment]] = None
+    ) -> TestSchedule:
         """
         This module modifies STI test schedule provided by other module. It adds provided ansible playbook filepath
         to schedule entries.

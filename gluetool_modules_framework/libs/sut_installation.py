@@ -19,8 +19,7 @@ from .artifacts import artifacts_location
 # Type annotations
 from typing import TYPE_CHECKING, cast, Any, Dict, List, Tuple, Union, Optional, Callable  # noqa
 
-if TYPE_CHECKING:
-    import gluetool_modules_framework.libs.guest # noqa
+import gluetool_modules_framework.libs.guest # noqa
 
 #: Step callback type
 StepCallbackType = Callable[[str, gluetool.utils.ProcessOutput], Optional[str]]

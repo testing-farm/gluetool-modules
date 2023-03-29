@@ -49,7 +49,7 @@ class Cache(LoggerMixin, object):
     Provides access to cache API.
     """
 
-    def __init__(self, module: Memcached, client: base.Client) -> None:
+    def __init__(self, module: 'Memcached', client: base.Client) -> None:
         super(Cache, self).__init__(module.logger)
 
         self._module = module

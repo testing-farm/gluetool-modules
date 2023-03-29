@@ -137,7 +137,7 @@ class TestingEnvironment(object):
             raise gluetool.GlueError("Testing environment does not have property '{}'".format(env_property))
 
     @classmethod
-    def unserialize_from_string(cls, serialized: str) -> TestingEnvironment:
+    def unserialize_from_string(cls, serialized: str) -> 'TestingEnvironment':
         """
         Construct a testing environment from a comma-separated list of key and their values.
 
@@ -165,7 +165,7 @@ class TestingEnvironment(object):
         return TestingEnvironment(**env_properties)
 
     @classmethod
-    def unserialize_from_json(cls, serialized: Dict[str, Any]) -> TestingEnvironment:
+    def unserialize_from_json(cls, serialized: Dict[str, Any]) -> 'TestingEnvironment':
         """
         Construct a testing environment from a JSON representation of fields and their values.
 
@@ -177,7 +177,7 @@ class TestingEnvironment(object):
 
         return TestingEnvironment(**serialized)
 
-    def clone(self, **kwargs: Any) -> TestingEnvironment:
+    def clone(self, **kwargs: Any) -> 'TestingEnvironment':
         """
         Create - possibly modified - copy of the environment.
 

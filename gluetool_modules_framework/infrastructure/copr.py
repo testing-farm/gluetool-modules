@@ -170,7 +170,7 @@ class CoprTask(object):
 
     ARTIFACT_NAMESPACE = 'copr-build'
 
-    def __init__(self, task_id: BuildTaskID, module: Copr) -> None:
+    def __init__(self, task_id: BuildTaskID, module: 'Copr') -> None:
         # as an "official ID", use string representation - some users might be confused by the object,
         # despite it has proper __str__ and __repr__
         self.id = self.dispatch_id = str(task_id)

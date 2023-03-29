@@ -38,7 +38,7 @@ class DispatchJenkinsJobMixin(_Base):
     """
 
     # pylint: disable=unused-variable
-    job_name: str = None
+    job_name: Optional[str] = None
     """Name of the Jenkins job this module dispatches."""
     supported_dryrun_level = gluetool.glue.DryRunLevels.ISOLATED
 

@@ -118,7 +118,9 @@ def strptime(*args: Any, **kwargs: Any) -> Any:
         return datetime.datetime.strptime(*args, **kwargs)
 
 
-def create_inspect_callback(logger: gluetool.log.ContextAdapter) -> Callable[[gluetool.utils.StreamReader, Optional[str], bool], None]:
+def create_inspect_callback(
+    logger: gluetool.log.ContextAdapter
+) -> Callable[[gluetool.utils.StreamReader, Optional[str], bool], None]:
 
     # Note that we're using `warning` for stderr, to make it pop up in the output.
     streams = {

@@ -11,9 +11,7 @@ from gluetool import utils
 
 # Type annotations
 from typing import TYPE_CHECKING, List # noqa
-
-if TYPE_CHECKING:
-    import gluetool_modules_framework.libs.mail # noqa
+import gluetool_modules_framework.libs.mail # noqa
 
 
 class SMTP(gluetool.Module):

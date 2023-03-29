@@ -33,7 +33,7 @@ class Image(object):
     """
 
     @staticmethod
-    def image_by_id(docker: Any, image_id: str) -> Image:
+    def image_by_id(docker: Any, image_id: str) -> 'Image':
         """
         Create ``Image`` instance from Docker image ID.
         """
@@ -41,7 +41,7 @@ class Image(object):
         return Image(docker.images.get(image_id))
 
     @staticmethod
-    def image_by_name(docker: Any, image_name: str) -> Image:
+    def image_by_name(docker: Any, image_name: str) -> 'Image':
         """
         Create ``Image`` instance from human-readable name.
         """
@@ -108,7 +108,7 @@ class DockerGuest(gluetool_modules_framework.libs.guest.Guest):
     """
 
     def __init__(self,
-                 module: DockerProvisioner,
+                 module: 'DockerProvisioner',
                  name: str,
                  docker: Any,
                  image: Image,
@@ -346,7 +346,7 @@ class DockerGuest(gluetool_modules_framework.libs.guest.Guest):
         self.debug('snapshot is {}'.format(self._image))
         return self._image
 
-    def restore_snapshot(self, snapshot: Image) -> DockerGuest:
+    def restore_snapshot(self, snapshot: Image) -> 'DockerGuest':
         self.debug("restoring snapshot {}".format(snapshot))
 
         return cast(DockerProvisioner, self._module).guest_factory(

@@ -15,9 +15,7 @@ from jq import jq
 
 # Type annotations
 from typing import TYPE_CHECKING, cast, Any, Dict, List, Optional, Tuple, Union  # noqa
-
-if TYPE_CHECKING:
-    import requests as orig_requests  # noqa
+import requests as orig_requests  # noqa
 
 
 DEFAULT_RETRY_TIMEOUT = 30

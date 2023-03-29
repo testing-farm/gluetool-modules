@@ -34,7 +34,7 @@ DEFAULT_JENKINSAPI_TIMEOUT_TICK = 30
 # counterparts when necessary.
 
 class JenkinsJob(object):
-    def __init__(self, module: CIJenkins, job_name: str) -> None:
+    def __init__(self, module: 'CIJenkins', job_name: str) -> None:
         self.module = module
 
         self.name = job_name
@@ -45,7 +45,7 @@ class JenkinsJob(object):
 
 
 class JenkinsBuild(object):
-    def __init__(self, module: CIJenkins, job: JenkinsJob, build_id: str) -> None:
+    def __init__(self, module: 'CIJenkins', job: JenkinsJob, build_id: str) -> None:
         self.module = module
 
         self.job = job
@@ -77,7 +77,7 @@ class JenkinsProxy(Proxy):
 
     _CUSTOM_METHODS = ('set_build_name', 'enable_quiet_mode', 'disable_quiet_mode', 'invoke_job')
 
-    def __init__(self, jenkins: Jenkins, module: CIJenkins) -> None:
+    def __init__(self, jenkins: Jenkins, module: 'CIJenkins') -> None:
         super(JenkinsProxy, self).__init__(jenkins)  # type: ignore
 
         # This is a proxy, so 'self.foo' would change attribute of

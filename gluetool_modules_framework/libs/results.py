@@ -82,7 +82,7 @@ class TestResult(object):
         }
 
     @classmethod
-    def _unserialize_from_json(cls, glue: gluetool.Glue, input_data: Dict[str, Any]) -> TestResult:
+    def _unserialize_from_json(cls, glue: gluetool.Glue, input_data: Dict[str, Any]) -> 'TestResult':
 
         return cls(glue, input_data['test_type'], input_data['overall_result'],
                    ids=input_data['ids'], urls=input_data['urls'], payload=input_data['payload'])
@@ -174,7 +174,7 @@ class TestResult(object):
         return serializer()
 
     @classmethod
-    def unserialize(cls, glue: gluetool.Glue, input_format: str, input_data: Any) -> TestResult:
+    def unserialize(cls, glue: gluetool.Glue, input_format: str, input_data: Any) -> 'TestResult':
         """
         Return instance of the result class, containing information provided in ``input_data``.
 

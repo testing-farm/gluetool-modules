@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Union, cast  # noqa
 
 class PagureApi(object):
 
-    def __init__(self, pagure_url: str, pagure_url_port: str, module: Pagure) -> None:
+    def __init__(self, pagure_url: str, pagure_url_port: str, module: 'Pagure') -> None:
         self.pagure_url = pagure_url
         self.pagure_url_port = pagure_url_port
         self.module = module
@@ -70,7 +70,7 @@ class PullRequestID(object):
 
 
 class PagureProject(object):
-    def __init__(self, module: Pagure, full_name: str) -> None:
+    def __init__(self, module: 'Pagure', full_name: str) -> None:
         self.module = module
         self.logger = module.logger
 
@@ -86,7 +86,7 @@ class PagureProject(object):
 class PagurePullRequest(object):
     ARTIFACT_NAMESPACE = 'dist-git-pr'
 
-    def __init__(self, module: Pagure, pull_request_id: PullRequestID) -> None:
+    def __init__(self, module: 'Pagure', pull_request_id: PullRequestID) -> None:
         self.module = module
         self.logger = module.logger
 

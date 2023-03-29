@@ -198,7 +198,7 @@ class ArtemisAPI(object):
                      pool: Optional[str] = None,
                      keyname: Optional[str] = None,
                      priority: Optional[str] = None,
-                     user_data: Optional[Dict[str,Any]] = None,
+                     user_data: Optional[Dict[str, Any]] = None,
                      post_install_script: Optional[str] = None
                      ) -> Any:
         '''
@@ -319,7 +319,7 @@ class ArtemisAPI(object):
 
         return self.api_call('guests/{}/events'.format(guest_id)).json()
 
-    def get_guest_events(self, guest: ArtemisGuest) -> List[Any]:
+    def get_guest_events(self, guest: 'ArtemisGuest') -> List[Any]:
         '''
         Fetch all guest's events from Artemis API.
 
@@ -342,7 +342,7 @@ class ArtemisAPI(object):
 
         return events
 
-    def dump_events(self, guest: ArtemisGuest, events: Optional[List[Any]] = None) -> None:
+    def dump_events(self, guest: 'ArtemisGuest', events: Optional[List[Any]] = None) -> None:
         if events is None:
             self.get_guest_events(guest)
 
@@ -443,9 +443,9 @@ class ArtemisAPI(object):
 
 class ArtemisSnapshot(LoggerMixin):
     def __init__(self,
-                 module: ArtemisProvisioner,
+                 module: 'ArtemisProvisioner',
                  name: str,
-                 guest: ArtemisGuest
+                 guest: 'ArtemisGuest'
                  ) -> None:
         super(ArtemisSnapshot, self).__init__(module.logger)
 
@@ -497,7 +497,7 @@ class ArtemisSnapshot(LoggerMixin):
 class ArtemisGuest(NetworkedGuest):
 
     def __init__(self,
-                 module: ArtemisProvisioner,
+                 module: 'ArtemisProvisioner',
                  guestname: str,
                  hostname: Optional[str],
                  environment: TestingEnvironment,
@@ -651,7 +651,7 @@ class ArtemisGuest(NetworkedGuest):
 
         return snapshot
 
-    def restore_snapshot(self, snapshot: ArtemisSnapshot) -> ArtemisGuest:
+    def restore_snapshot(self, snapshot: ArtemisSnapshot) -> 'ArtemisGuest':
         """
         Rebuilds server with the given snapshot.
 

@@ -5,9 +5,7 @@ from gluetool.log import log_blob, log_dict
 
 # Type annotations
 from typing import TYPE_CHECKING, Dict, List, Optional, Union  # noqa
-
-if TYPE_CHECKING:
-    from gluetool.log import LoggingFunctionType # noqa
+from gluetool.log import LoggingFunctionType # noqa
 
 
 class Message(object):

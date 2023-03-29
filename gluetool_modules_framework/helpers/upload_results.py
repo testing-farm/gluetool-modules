@@ -213,7 +213,7 @@ class UploadResults(gluetool.Module):
                 assert exc.output.stderr is not None
                 raise GlueError('Uploading results failed: {} cmd: {}'.format(exc, cmd_upload))
 
-    def _create_summary_file(self, results_files: List[Dict[str, str]]) -> Dict[str,str]:
+    def _create_summary_file(self, results_files: List[Dict[str, str]]) -> Dict[str, str]:
         """
         Creates summary html with results summary
         """

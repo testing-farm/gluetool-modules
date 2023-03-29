@@ -13,9 +13,10 @@ from gluetool_modules_framework.libs import GlueEnum
 # Type annotations
 from typing import TYPE_CHECKING, cast, Any, Dict, List, Optional, NamedTuple  # noqa
 
+from gluetool.log import LoggingFunctionType  # noqa
+
 if TYPE_CHECKING:
     import bs4  # noqa
-    from gluetool.log import LoggingFunctionType  # noqa
     import gluetool_modules_framework.libs.guest  # noqa
     import gluetool_modules_framework.libs.guest_setup  # noqa
     import gluetool_modules_framework.libs.testing_environment  # noqa
@@ -32,7 +33,9 @@ GuestSetupOutputsContainerType = Dict[
 # `serialize_to_string is not that nice, it adds field names and no spaces between fields,
 # it is for machines mostly, and output of this function is supposed to be easily
 # readable by humans.
-def _env_to_str(testing_environment: Optional[gluetool_modules_framework.libs.testing_environment.TestingEnvironment]) -> str:
+def _env_to_str(
+    testing_environment: Optional[gluetool_modules_framework.libs.testing_environment.TestingEnvironment]
+) -> str:
 
     if not testing_environment:
         return ''

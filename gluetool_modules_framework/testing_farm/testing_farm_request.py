@@ -463,6 +463,6 @@ class TestingFarmRequestModule(gluetool.Module):
             'plan': request.tmt.plan if request.tmt and request.tmt.plan else '<not applicable>',
             'url': request.url,
             'ref': request.ref,
-            'environments_requested': request.environments_requested,
+            'environments_requested': [env.serialize_to_json() for env in request.environments_requested],
             'webhook_url': request.webhook_url or '<no webhook specified>',
         })

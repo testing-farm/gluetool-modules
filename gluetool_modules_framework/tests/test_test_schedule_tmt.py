@@ -212,7 +212,7 @@ dummytmt run --all --verbose provision plan --name ^plan1$ plan --name ^plan1$''
                 variables={'user_variable1': 'user_value1', 'user_variable2': 'user_value2'}
             ),
             """# tmt reproducer
-curl -LO {tmpdir}/tmt-environment-lan1.yaml
+curl -LO {tmpdir_relpath}/tmt-environment-lan1.yaml
 dummytmt run --all --verbose -e @tmt-environment-lan1.yaml provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
             """user_variable1: user_value1
 user_variable2: user_value2
@@ -263,14 +263,14 @@ def test_tmt_output_dir(
     with open(os.path.join(schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
         c = f.read()
         print(c)
-        print(expected_reproducer.format(tmpdir=tmpdir))
-        assert c == expected_reproducer.format(tmpdir=tmpdir)
+        print(expected_reproducer.format(tmpdir_relpath=os.path.relpath(tmpdir)))
+        assert c == expected_reproducer.format(tmpdir_relpath=os.path.relpath(tmpdir))
 
     with open(os.path.join(schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
         c = f.read()
         print(c)
-        print(expected_reproducer.format(tmpdir=tmpdir))
-        assert c == expected_reproducer.format(tmpdir=tmpdir)
+        print(expected_reproducer.format(tmpdir_relpath=os.path.relpath(tmpdir)))
+        assert c == expected_reproducer.format(tmpdir_relpath=os.path.relpath(tmpdir))
 
     tmt_environment_file = os.path.join(schedule_entry.repodir, 'tmt-environment-lan1.yaml')
     if expected_environment:

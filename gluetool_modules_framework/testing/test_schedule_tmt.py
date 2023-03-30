@@ -774,7 +774,9 @@ class TestScheduleTMT(Module):
             # reproducer command to download the environment file
             schedule_entry.tmt_reproducer.append(
                 'curl -LO {}'.format(
-                    artifacts_location(self, os.path.join(schedule_entry.repodir, tmt_env_file), logger=self.logger)
+                    artifacts_location(
+                        self,
+                        os.path.relpath(os.path.join(schedule_entry.repodir, tmt_env_file)), logger=self.logger)
                 )
             )
 

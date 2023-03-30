@@ -20,16 +20,14 @@ class NoArtifactsError(gluetool.glue.SoftGlueError):
     :param task_id: ID of the task without artifacts.
     """
 
-    def __init__(self, task_id):
-        # type: (Any) -> None
+    def __init__(self, task_id: Any) -> None:
 
         super(NoArtifactsError, self).__init__('No artifacts found for task')
 
         self.task_id = task_id
 
 
-def has_artifacts(*tasks):
-    # type: (Any) -> None
+def has_artifacts(*tasks: Any) -> None:
     """
     Check whether tasks have artifacts, any artifacts at all - no constraints like architecture are imposed,
     we're not trying to check whether the artifacts are testable with environments we have at our disposal.
@@ -43,8 +41,7 @@ def has_artifacts(*tasks):
             raise NoArtifactsError(task.id)
 
 
-def artifacts_location(module, local_path, logger=None):
-    # type: (gluetool.Module, str, Optional[ContextAdapter]) -> str
+def artifacts_location(module: gluetool.Module, local_path: str, logger: Optional['ContextAdapter'] = None) -> str:
     """
     If we have access to ``artifacts_location`` shared function, return its output. Otherwise, return
     the input string.
@@ -64,8 +61,7 @@ def artifacts_location(module, local_path, logger=None):
 # With python3 we can use `Subject` from `dnf` package
 # see https://bugzilla.redhat.com/show_bug.cgi?id=1452801#c7
 
-def splitFilename(filename):
-    # type: (str) -> Tuple[str, ...]
+def splitFilename(filename: str) -> Tuple[str, ...]:
     """
     Split N(E)VRA to its pieces
 

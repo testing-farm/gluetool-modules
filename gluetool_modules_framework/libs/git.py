@@ -57,15 +57,14 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
     def __init__(
         self,
-        logger,  # type: gluetool.log.ContextAdapter
-        clone_url=None,  # type: Optional[str]
-        branch=None,  # type: Optional[str]
-        path=None,  # type: Optional[str]
-        ref=None,  # type: Optional[str]
-        web_url=None,  # type: Optional[str]
-        clone_args=None  # type: Optional[List[str]]
-    ):
-        # type: (...) -> None
+        logger: gluetool.log.ContextAdapter,
+        clone_url: Optional[str] = None,
+        branch: Optional[str] = None,
+        path: Optional[str] = None,
+        ref: Optional[str] = None,
+        web_url: Optional[str] = None,
+        clone_args: Optional[List[str]] = None
+    ) -> None:
 
         super(RemoteGitRepository, self).__init__(logger)
 
@@ -77,25 +76,23 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         self.clone_args = clone_args or []
 
         # holds git.Git instance, GitPython has no typing support
-        self._instance = None  # type: Any
+        self._instance: Any = None
 
         # list of commands use to clone the repository
-        self.commands = []  # type: List[str]
+        self.commands: List[str] = []
 
         # initialize from given path if given
         if self.path:
             self.initialize_from_path(self.path)
 
-    def __repr__(self):
-        # type: () -> str
+    def __repr__(self) -> str:
         clone_url = self.clone_url
         branch = self.branch or 'not specified'
         ref = self.ref or 'not specified'
         return '<RemoteGitRepository(clone_url={}, branch={}, ref={})>'.format(clone_url, branch, ref)
 
     @property
-    def is_cloned(self):
-        # type: () -> bool
+    def is_cloned(self) -> bool:
         """
         Repository is considered cloned if there is a git repository available on the local host
         and instance of :py:class:`git.Git` was initialized from it.
@@ -103,21 +100,19 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         return bool(self._instance)
 
     @property
-    def clonedir_prefix(self):
-        # type: () -> str
+    def clonedir_prefix(self) -> str:
         # NOTE: this can be a ref, sanitize for paths - e.g. refs/merge-requests/15/head
         return 'git-{}'.format(self.branch or self.ref).replace('/', '-')
 
     def _get_clone_options(
         self,
-        branch,  # type: Optional[str]
-        clone_url,  # type: str
-        path,  # type: str
-        shallow_clone=True,  # type: bool
-        ref=None,  # type: Optional[str]
-        clone_args=None,  # type: Optional[List[str]]
-    ):
-        # type: (...) -> List[str]
+        branch: Optional[str],
+        clone_url: str,
+        path: str,
+        shallow_clone: bool = True,
+        ref: Optional[str] = None,
+        clone_args: Optional[List[str]] = None,
+    ) -> List[str]:
 
         options = []
         options += clone_args or self.clone_args
@@ -131,17 +126,16 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
     def clone(
         self,
-        logger=None,  # type: Optional[gluetool.log.ContextAdapter]
-        clone_url=None,  # type: Optional[str]
-        branch=None,  # type: Optional[str]
-        ref=None,  # type: Optional[str]
-        path=None,  # type: Optional[str]
-        prefix=None,  # type: Optional[str]
-        clone_args=None,  # type: Optional[List[str]]
-        clone_timeout=120,  # type: int
-        clone_tick=20  # type: int
-    ):
-        # type: (...) -> str
+        logger: Optional[gluetool.log.ContextAdapter] = None,
+        clone_url: Optional[str] = None,
+        branch: Optional[str] = None,
+        ref: Optional[str] = None,
+        path: Optional[str] = None,
+        prefix: Optional[str] = None,
+        clone_args: Optional[List[str]] = None,
+        clone_timeout: int = 120,
+        clone_tick: int = 20
+    ) -> str:
         """
         Clone remote repository and initialize :py:class:`git.Git` from it.
 
@@ -222,16 +216,15 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
     def _do_clone(
         self,
-        logger,  # type: gluetool.log.ContextAdapter
-        clone_url,  # type: str
-        branch,  # type: Optional[str]
-        actual_path,  # type: str
-        clone_timeout,  # type: int
-        clone_tick,  # type: int
-        ref=None,  # type: Optional[str]
-        clone_args=None  # type: Optional[List[str]]
-    ):
-        # type: (...) -> None
+        logger: gluetool.log.ContextAdapter,
+        clone_url: str,
+        branch: Optional[str],
+        actual_path: str,
+        clone_timeout: int,
+        clone_tick: int,
+        ref: Optional[str] = None,
+        clone_args: Optional[List[str]] = None
+    ) -> None:
 
         # TODO: it would be nice to be able to use the `self.__repr__` method but it is actually not correct using it
         # here, values such `branch` and `ref` can be different than the ones printed in `self.__repr__`
@@ -250,8 +243,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         reproducer_command = ['git', 'clone'] + cmd.options
         self.commands.append(' '.join(reproducer_command).replace(actual_path, TESTCODE_DIR))
 
-        def _clone():
-            # type: () -> Result[None, str]
+        def _clone() -> Result[None, str]:
 
             # Log the 'git clone' command that's about to run. This log is used for unit tests too.
             logger.debug("{}".format(cmd.executable + cmd.options))
@@ -290,16 +282,14 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
     def _set_clone_directory_permissions(
         self,
-        actual_path  # type: str
-    ):
-        # type: (...) -> None
+        actual_path: str
+    ) -> None:
         os.chmod(
             actual_path,
             stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH  # noqa: E501  # line too long
         )
 
-    def _generate_path(self, path=None,  prefix=None):
-        # type: (Optional[str], Optional[str]) -> str
+    def _generate_path(self, path: Optional[str] = None,  prefix: Optional[str] = None) -> str:
         if path:
             return path
 
@@ -308,8 +298,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
         return tempfile.mkdtemp(dir=os.getcwd())
 
-    def _checkout_merge_request_ref(self, actual_path, ref):
-        # type: (str, str) -> None
+    def _checkout_merge_request_ref(self, actual_path: str, ref: str) -> None:
         """
         Checkout git reference for merge/pull requests.
         These require special handling for some of the git forges.
@@ -376,16 +365,14 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         except gluetool.GlueCommandError as exc:
             raise FailedToCheckoutRef('Failed to checkout branch {}: {}'.format(ref, exc.output.stderr))
 
-    def _checkout_ref(self, actual_path, ref):
-        # type: (str, str) -> None
+    def _checkout_ref(self, actual_path: str, ref: str) -> None:
 
         if ref.startswith('refs/'):
             self._checkout_merge_request_ref(actual_path, ref)
         else:
             self._checkout_general_ref(actual_path, ref)
 
-    def _checkout_general_ref(self, actual_path, ref):
-        # type: (str, str) -> None
+    def _checkout_general_ref(self, actual_path: str, ref: str) -> None:
         """
         Checkout git reference.
         The reference can be a branch, tag or git SHA.
@@ -438,8 +425,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         except gluetool.GlueCommandError as exc:
             raise FailedToCheckoutRef('Failed to checkout ref {}: {}'.format(ref, exc.output.stderr))
 
-    def initialize_from_path(self, path):
-        # type: (str) -> Any
+    def initialize_from_path(self, path: str) -> Any:
         """
         Initialize a :py:class:`git.Git` instance from given path.
 
@@ -451,8 +437,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         except git.exc.GitError as error:
             raise gluetool.GlueError("Failed to initialize git repository from path '{}': {}".format(path, error))
 
-    def gitlog(self, *args):
-        # type: (*str) -> Any
+    def gitlog(self, *args: str) -> Any:
         """
         Return git log according to given parameters. Note that we cannot call this method `log` as it would
         collide with method `log` of our parent :py:class:`gluetool.log.LoggerMixin`

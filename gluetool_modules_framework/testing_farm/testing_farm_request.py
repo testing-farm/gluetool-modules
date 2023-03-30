@@ -70,8 +70,7 @@ class UserType(TypedDict):
 
 
 class TestingFarmAPI(LoggerMixin, object):
-    def __init__(self, module, api_url):
-        # type: (gluetool.Module, str) -> None
+    def __init__(self, module: gluetool.Module, api_url: str) -> None:
         super(TestingFarmAPI, self).__init__(module.logger)
 
         self._module = module
@@ -81,8 +80,7 @@ class TestingFarmAPI(LoggerMixin, object):
         self._get_request = partial(self._request, type='get')
         self._delete_request = partial(self._request, type='delete')
 
-    def _request(self, endpoint, payload=None, type=None):
-        # type: (str, Optional[Dict[str, Any]], Optional[str]) -> Any
+    def _request(self, endpoint: str, payload: Optional[Dict[str, Any]] = None, type: Optional[str] = None) -> Any:
         """
         Post payload to the given API endpoint. Retry if failed to mitigate connection/service
         instabilities.
@@ -98,8 +96,7 @@ class TestingFarmAPI(LoggerMixin, object):
         url = urljoin(self._api_url, endpoint)  # type: ignore
         log_dict(self.debug, "posting following payload to url '{}'".format(url), payload)
 
-        def _response():
-            # type: () -> Any
+        def _response() -> Any:
             assert type is not None
             try:
                 with requests() as req:
@@ -141,8 +138,7 @@ class TestingFarmAPI(LoggerMixin, object):
                                    timeout=self._module.option('retry-timeout'),
                                    tick=self._module.option('retry-tick'))
 
-    def get_request(self, request_id, api_key):
-        # type: (str, str) -> RequestType
+    def get_request(self, request_id: str, api_key: str) -> RequestType:
         request = self._get_request('v0.1/requests/{}?api_key={}'.format(request_id, api_key))
 
         if not request:
@@ -150,8 +146,7 @@ class TestingFarmAPI(LoggerMixin, object):
 
         return cast(RequestType, request.json())
 
-    def get_user(self, user_id, api_key):
-        # type: (str, str) -> UserType
+    def get_user(self, user_id: str, api_key: str) -> UserType:
         request = self._get_request('v0.1/users/{}?api_key={}'.format(user_id, api_key))
 
         if not request:
@@ -159,8 +154,7 @@ class TestingFarmAPI(LoggerMixin, object):
 
         return cast(UserType, request.json())
 
-    def put_request(self, request_id, payload):
-        # type: (str, Optional[Dict[str, Any]]) -> Any
+    def put_request(self, request_id: str, payload: Optional[Dict[str, Any]]) -> Any:
         request = self._put_request('v0.1/requests/{}'.format(request_id), payload=payload)
         if not request:
             raise gluetool.GlueError("Request failed: {}".format(request))
@@ -178,8 +172,7 @@ class TestingFarmRequestTMT():
     settings: Optional[Dict[str, Any]] = None
 
     @property
-    def plan(self):
-        # type: () -> Optional[str]
+    def plan(self) -> Optional[str]:
         # In the TF API v0.1, the field `name` represents which TMT plans shall be run. This field will be renamed to
         # `plan` in API v0.2. This provides a property to allow working with the future name.
         return self.name
@@ -197,8 +190,7 @@ class TestingFarmRequestSTI():
 class TestingFarmRequest(LoggerMixin, object):
     ARTIFACT_NAMESPACE = 'testing-farm-request'
 
-    def __init__(self, module):
-        # type: (TestingFarmRequestModule) -> None
+    def __init__(self, module: 'TestingFarmRequestModule') -> None:
         super(TestingFarmRequest, self).__init__(module.logger)
 
         assert module._tf_api is not None
@@ -238,7 +230,7 @@ class TestingFarmRequest(LoggerMixin, object):
         self.url = test.url
         self.ref = test.ref
 
-        environments_requested = []  # type: List[TestingEnvironment]
+        environments_requested: List[TestingEnvironment] = []
         for environment_raw in request['environments_requested']:
             environments_requested.append(TestingEnvironment(
                 arch=environment_raw['arch'],
@@ -270,8 +262,7 @@ class TestingFarmRequest(LoggerMixin, object):
         user = self._api.get_user(request['user_id'], self._api_key)
         self.request_username = user['name']
 
-    def webhook(self):
-        # type: () -> Any
+    def webhook(self) -> Any:
         """
         Post to webhook, as defined in the API.
         """
@@ -285,8 +276,7 @@ class TestingFarmRequest(LoggerMixin, object):
         if self.webhook_token:
             payload.update({'token': self.webhook_token})
 
-        def _response():
-            # type: () -> Any
+        def _response() -> Any:
             try:
                 with requests() as req:
                     response = req.post(self.webhook_url, json=payload)
@@ -306,9 +296,13 @@ class TestingFarmRequest(LoggerMixin, object):
                                    timeout=self._module.option('retry-timeout'),
                                    tick=self._module.option('retry-tick'))
 
-    def update(self, state=None, overall_result=None, xunit=None, summary=None, artifacts_url=None):
-        # type: (Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]) -> None
-        payload = {}  # type: Dict[str, Any]
+    def update(self,
+               state: Optional[str] = None,
+               overall_result: Optional[str] = None,
+               xunit: Optional[str] = None,
+               summary: Optional[str] = None,
+               artifacts_url: Optional[str] = None) -> None:
+        payload: Dict[str, Any] = {}
         result = {}
         run = {}
 
@@ -404,29 +398,25 @@ class TestingFarmRequestModule(gluetool.Module):
     required_options = ('api-url', 'api-key', 'request-id')
     shared_functions = ['testing_farm_request']
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(TestingFarmRequestModule, self).__init__(*args, **kwargs)
-        self._tf_request = None  # type: Optional[TestingFarmRequest]
-        self._tf_api = None  # type: Optional[TestingFarmAPI]
+        self._tf_request: Optional[TestingFarmRequest] = None
+        self._tf_api: Optional[TestingFarmAPI] = None
 
     @property
-    def api_url(self):
-        # type: () -> str
+    def api_url(self) -> str:
         option = self.option('api-url')
 
         return render_template(option, **self.shared('eval_context'))
 
     @property
-    def api_key(self):
-        # type: () -> str
+    def api_key(self) -> str:
         option = self.option('api-key')
 
         return render_template(option, **self.shared('eval_context'))
 
     @property
-    def eval_context(self):
-        # type: () -> Dict[str, str]
+    def eval_context(self) -> Dict[str, str]:
         if not self._tf_request:
             return {}
         return {
@@ -438,12 +428,10 @@ class TestingFarmRequestModule(gluetool.Module):
             'TESTING_FARM_REQUEST_USERNAME': self._tf_request.request_username,
         }
 
-    def testing_farm_request(self):
-        # type: () -> Optional[TestingFarmRequest]
+    def testing_farm_request(self) -> Optional[TestingFarmRequest]:
         return self._tf_request
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         self._tf_api = TestingFarmAPI(self, self.api_url)
 
         self.info(

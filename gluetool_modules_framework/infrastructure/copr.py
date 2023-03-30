@@ -21,13 +21,11 @@ TaskArches = collections.namedtuple('TaskArches', ['arches'])
 
 class CoprApi(object):
 
-    def __init__(self, copr_url, module):
-        # type: (str, gluetool.Module) -> None
+    def __init__(self, copr_url: str, module: gluetool.Module) -> None:
         self.copr_url = copr_url
         self.module = module
 
-    def _api_request(self, url, label, full_url=False):
-        # type: (str, str, bool) -> requests.Response
+    def _api_request(self, url: str, label: str, full_url: bool = False) -> requests.Response:
         if not full_url:
             url = '{}/{}'.format(self.copr_url, url)
 
@@ -43,26 +41,23 @@ class CoprApi(object):
 
         return request
 
-    def _get_text(self, url, label, full_url=False):
-        # type: (str, str, bool) -> str
+    def _get_text(self, url: str, label: str, full_url: bool = False) -> str:
         # Using `.content` instead of `.text` - `text` provides unicode string, and we'd have to encode them
         # anyway.
         output = six.ensure_str(self._api_request(url, label, full_url=full_url).content)
         log_blob(self.module.debug, '[copr API] {} output'.format(label), output)
         return six.ensure_str(output, 'utf-8')
 
-    def _get_json(self, url, label, full_url=False):
-        # type: (str, str, bool) -> Dict[str, Any]
+    def _get_json(self, url: str, label: str, full_url: bool = False) -> Dict[str, Any]:
         try:
-            output = self._api_request(url, label, full_url=full_url).json()  # type: Dict[str, Any]
+            output: Dict[str, Any] = self._api_request(url, label, full_url=full_url).json()
         except Exception:
             raise gluetool.GlueError('Unable to get: {}'.format(url))
 
         log_dict(self.module.debug, '[copr API] {} output'.format(label), output)
         return output
 
-    def get_build_info(self, build_id):
-        # type: (int) -> Dict[str, Any]
+    def get_build_info(self, build_id: int) -> Dict[str, Any]:
         build_info = self._get_json('api_3/build/{}'.format(build_id), 'build info')
 
         error = build_info.get('error')
@@ -80,8 +75,7 @@ class CoprApi(object):
 
         return build_info
 
-    def get_build_task_info(self, build_id, chroot_name):
-        # type: (int, str) -> Any
+    def get_build_task_info(self, build_id: int, chroot_name: str) -> Any:
         build_task_info = self._get_json(
             'api_3/build-chroot?build_id={}&chrootname={}'.format(build_id, chroot_name),
             'build tasks info'
@@ -97,20 +91,17 @@ class CoprApi(object):
 
         return build_task_info
 
-    def get_project_builds(self, ownername, projectname):
-        # type: (str, str) -> Any
+    def get_project_builds(self, ownername: str, projectname: str) -> Any:
         return self._get_json(
             'api_3/build/list/?ownername={}&projectname={}'.format(ownername, projectname),
             'get project builds'
         )['items']
 
-    def _result_url(self, build_id, chroot_name):
-        # type: (int, str) -> Any
+    def _result_url(self, build_id: int, chroot_name: str) -> Any:
         build_task_info = self.get_build_task_info(build_id, chroot_name)
         return build_task_info.get('result_url', 'UNKNOWN-COPR-RESULT-DIR-URL')
 
-    def _get_builder_live_log(self, build_id, chroot_name):
-        # type: (int, str) -> Optional[str]
+    def _get_builder_live_log(self, build_id: int, chroot_name: str) -> Optional[str]:
         result_url = self._result_url(build_id, chroot_name)
 
         if result_url == 'UNKNOWN-COPR-RESULT-DIR-URL':
@@ -119,8 +110,7 @@ class CoprApi(object):
         result_url = '{}/builder-live.log.gz'.format(result_url)
         return self._get_text(result_url, 'builder live log', full_url=True)
 
-    def _find_in_log(self, regex, build_id, chroot_name):
-        # type: (str, int, str) -> List[str]
+    def _find_in_log(self, regex: str, build_id: int, chroot_name: str) -> List[str]:
         builder_live_log = self._get_builder_live_log(build_id, chroot_name)
 
         if not builder_live_log:
@@ -128,21 +118,17 @@ class CoprApi(object):
 
         return list(set(re.findall(regex, builder_live_log)))
 
-    def get_rpm_names(self, build_id, chroot_name):
-        # type: (int, str) -> List[str]
+    def get_rpm_names(self, build_id: int, chroot_name: str) -> List[str]:
         return self._find_in_log(r'Wrote: /builddir/build/RPMS/(.*)\.rpm', build_id, chroot_name)
 
-    def get_srpm_names(self, build_id, chroot_name):
-        # type: (int, str) -> List[str]
+    def get_srpm_names(self, build_id: int, chroot_name: str) -> List[str]:
         return self._find_in_log(r'Wrote: /builddir/build/SRPMS/(.*)\.src\.rpm', build_id, chroot_name)
 
-    def add_result_url(self, build_id, chroot_name, file_names):
-        # type: (int, str, str) -> List[str]
+    def add_result_url(self, build_id: int, chroot_name: str, file_names: str) -> List[str]:
         result_url = self._result_url(build_id, chroot_name)
         return ['{}{}.rpm'.format(result_url, file_name) for file_name in file_names]
 
-    def get_repo_url(self, owner, project, chroot):
-        # type: (str, str, str) -> str
+    def get_repo_url(self, owner: str, project: str, chroot: str) -> str:
         # strip architecture - string following last dash
 
         match = re.match('(.+)-.+', chroot)
@@ -163,17 +149,14 @@ class BuildTaskID(object):
     one string, with following format: '[build_id]:[chroot_name]'
     """
 
-    def __init__(self, build_id, chroot_name):
-        # type: (int, str) -> None
+    def __init__(self, build_id: int, chroot_name: str) -> None:
         self.build_id = build_id
         self.chroot_name = chroot_name
 
-    def __str__(self):
-        # type: () -> str
+    def __str__(self) -> str:
         return '{}:{}'.format(self.build_id, self.chroot_name)
 
-    def __repr__(self):
-        # type: () -> str
+    def __repr__(self) -> str:
         return self.__str__()
 
 
@@ -187,8 +170,7 @@ class CoprTask(object):
 
     ARTIFACT_NAMESPACE = 'copr-build'
 
-    def __init__(self, task_id, module):
-        # type: (BuildTaskID, Copr) -> None
+    def __init__(self, task_id: BuildTaskID, module: 'Copr') -> None:
         # as an "official ID", use string representation - some users might be confused by the object,
         # despite it has proper __str__ and __repr__
         self.id = self.dispatch_id = str(task_id)
@@ -203,7 +185,7 @@ class CoprTask(object):
 
         self.error = build.get('error') or build_task.get('error')
         self.status = build_task['state']
-        self.component = build['source_package']['name']  # type: str
+        self.component: str = build['source_package']['name']
         self.target = task_id.chroot_name
         # required API for our modules providing artifacts, we have no tags in copr, use target
         self.destination_tag = self.target
@@ -221,25 +203,21 @@ class CoprTask(object):
             self.module.info('Initialized with {}: {} ({})'.format(self.id, self.full_name, self.url))
 
     @cached_property
-    def has_artifacts(self):
-        # type: () -> bool
+    def has_artifacts(self) -> bool:
         # We believe Copr keeps artifacts "forever" - or, at least, long enough to matter to us - therefore
         # we don't even bother to check for their presence.
         return True
 
     @cached_property
-    def rpm_names(self):
-        # type: () -> List[str]
+    def rpm_names(self) -> List[str]:
         return self.copr_api.get_rpm_names(self.task_id.build_id, self.task_id.chroot_name)
 
     @cached_property
-    def srpm_names(self):
-        # type: () -> List[str]
+    def srpm_names(self) -> List[str]:
         return self.copr_api.get_srpm_names(self.task_id.build_id, self.task_id.chroot_name)
 
     @cached_property
-    def rpm_urls(self):
-        # type: () -> List[str]
+    def rpm_urls(self) -> List[str]:
         return self.copr_api.add_result_url(
             self.task_id.build_id,
             self.task_id.chroot_name,
@@ -247,8 +225,7 @@ class CoprTask(object):
         )
 
     @cached_property
-    def srpm_urls(self):
-        # type: () -> List[str]
+    def srpm_urls(self) -> List[str]:
         return self.copr_api.add_result_url(
             self.task_id.build_id,
             self.task_id.chroot_name,
@@ -256,8 +233,7 @@ class CoprTask(object):
         )
 
     @cached_property
-    def task_arches(self):
-        # type: () -> TaskArches
+    def task_arches(self) -> TaskArches:
         """
         :rtype: TaskArches
         :return: information about arches the task was building for
@@ -266,8 +242,7 @@ class CoprTask(object):
         return TaskArches([self.target.split('-')[-1]])
 
     @cached_property
-    def url(self):
-        # type: () -> str
+    def url(self) -> str:
         context = dict_update(self.module.shared('eval_context'), {
             'TASK': self
         })
@@ -275,8 +250,7 @@ class CoprTask(object):
         return render_template(self.module.option('copr-web-url-template'), **context)
 
     @cached_property
-    def full_name(self):
-        # type: () -> str
+    def full_name(self) -> str:
         """
         String with human readable task details. Used for slightly verbose representation e.g. in logs.
 
@@ -292,8 +266,7 @@ class CoprTask(object):
         return ' '.join(name)
 
     @cached_property
-    def dist_git_repository_name(self):
-        # type: () -> str
+    def dist_git_repository_name(self) -> str:
         return self.component
 
 
@@ -327,18 +300,15 @@ class Copr(gluetool.Module):
 
     shared_functions = ['primary_task', 'tasks', 'copr_api']
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(Copr, self).__init__(*args, **kwargs)
-        self.task = None  # type: Optional[CoprTask]
-        self._tasks = None  # type: Optional[List[CoprTask]]
+        self.task: Optional[CoprTask] = None
+        self._tasks: Optional[List[CoprTask]] = None
 
-    def primary_task(self):
-        # type: () -> Optional[CoprTask]
+    def primary_task(self) -> Optional[CoprTask]:
         return self.task
 
-    def tasks(self, task_ids=None, **kwargs):
-        # type: (Optional[List[str]], Any) -> Optional[List[CoprTask]]
+    def tasks(self, task_ids: Optional[List[str]] = None, **kwargs: Any) -> Optional[List[CoprTask]]:
 
         if not task_ids:
             return self._tasks
@@ -364,8 +334,7 @@ class Copr(gluetool.Module):
         return self._tasks
 
     @property
-    def eval_context(self):
-        # type: () -> Dict[str, Union[str, Optional[List[CoprTask]], CoprTask]]
+    def eval_context(self) -> Dict[str, Union[str, Optional[List[CoprTask]], CoprTask]]:
         __content__ = {  # noqa
             'ARTIFACT_TYPE': """
                              Type of the artifact, ``copr-build`` in the case of ``copr`` module.
@@ -400,16 +369,13 @@ class Copr(gluetool.Module):
         }
 
     @cached_property
-    def _copr_api(self):
-        # type: () -> CoprApi
+    def _copr_api(self) -> CoprApi:
         return CoprApi(self.option('copr-url'), self)
 
-    def copr_api(self):
-        # type: () -> CoprApi
+    def copr_api(self) -> CoprApi:
         return cast(CoprApi, self._copr_api)
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         if not self.option('task-id'):
             return
 

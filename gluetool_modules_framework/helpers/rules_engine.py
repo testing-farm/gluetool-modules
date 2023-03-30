@@ -27,8 +27,7 @@ CommandCallbackType = Callable[[EntryType, str, Any, ContextType], bool]  # noqa
 # The module makes context available to rules via `EVAL_CONTEXT()` call. Level the playground
 # by making it available to templates as well.
 @jinja2.pass_context
-def _get_context(context):
-    # type: (Dict[str, Any]) -> Dict[str, Any]
+def _get_context(context: Dict[str, Any]) -> Dict[str, Any]:
 
     return context
 
@@ -41,8 +40,7 @@ class AttrDict(Dict[str, Any]):
     Access dictonary items as its attributes.
     """
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
 
         super(AttrDict, self).__init__(*args, **kwargs)
 
@@ -52,13 +50,12 @@ class AttrDict(Dict[str, Any]):
 class RulesExecutionError(GlueError):
     def __init__(
         self,
-        message,  # type: str
-        rules,  # type: str
-        rule_locals,  # type: ContextType
-        rule_globals,  # type: ContextType
-        exc_info=None  # type: Optional[gluetool.log.ExceptionInfoType]
-    ):
-        # type: (...) -> None
+        message: str,
+        rules: str,
+        rule_locals: ContextType,
+        rule_globals: ContextType,
+        exc_info: Optional[gluetool.log.ExceptionInfoType] = None
+    ) -> None:
 
         super(RulesExecutionError, self).__init__(message)
 
@@ -78,8 +75,7 @@ class RulesError(SoftGlueError):
     :param str error: specific error message.
     """
 
-    def __init__(self, message, rules, intro, error):
-        # type: (str, str, str, str) -> None
+    def __init__(self, message: str, rules: str, intro: str, error: str) -> None:
 
         super(RulesError, self).__init__(message)
 
@@ -89,8 +85,7 @@ class RulesError(SoftGlueError):
 
 
 class InvalidASTNodeError(RulesError):
-    def __init__(self, rules, node):
-        # type: (str, ast.AST) -> None
+    def __init__(self, rules: str, node: ast.AST) -> None:
 
         super(InvalidASTNodeError, self).__init__(
             "It is not allowed to use '{}' in rules".format(node.__class__.__name__),
@@ -100,8 +95,7 @@ class InvalidASTNodeError(RulesError):
 
 
 class RulesSyntaxError(RulesError):
-    def __init__(self, rules, exc):
-        # type: (str, SyntaxError) -> None
+    def __init__(self, rules: str, exc: SyntaxError) -> None:
 
         super(RulesSyntaxError, self).__init__(
             'Cannot parse rules',
@@ -111,8 +105,7 @@ class RulesSyntaxError(RulesError):
 
 
 class RulesTypeError(RulesError):
-    def __init__(self, rules, exc):
-        # type: (str, Exception) -> None
+    def __init__(self, rules: str, exc: Exception) -> None:
 
         super(RulesTypeError, self).__init__(
             'Cannot parse rules',
@@ -144,15 +137,13 @@ class RulesASTVisitor(ast.NodeTransformer):
         )
     ])
 
-    def __init__(self, rules):
-        # type: (Rules) -> None
+    def __init__(self, rules: 'Rules') -> None:
 
         super(RulesASTVisitor, self).__init__()
 
         self._rules = rules
 
-    def generic_visit(self, node):
-        # type: (ast.AST) -> Any
+    def generic_visit(self, node: ast.AST) -> Any:
 
         if not isinstance(node, RulesASTVisitor._valid_classes):
             raise InvalidASTNodeError(self._rules._rules, node)
@@ -166,13 +157,13 @@ class MatchableString(str):
     :py:ref:`re.match` and :py:ref:`re.search` as instance methods.
     """
 
-    def match(self, pattern, I=True):  # noqa: E741  # ambiguous variable name 'I'
-        # type: (str, bool) -> Optional[Match[Any]]
+    def match(self, pattern: str, I: bool = True) -> Optional[Match[Any]]:  # noqa: E741  # ambiguous variable name 'I'
 
         return re.match(pattern, str(self), re.I if I is True else 0)
 
-    def search(self, pattern, I=True):  # noqa: E741  # ambiguous variable name 'I'
-        # type: (str, bool) -> Optional[Match[Any]]
+    def search(self,
+               pattern: str,
+               I: bool = True) -> Optional[Match[Any]]:  # noqa: E741  # ambiguous variable name 'I'
 
         return re.search(pattern, str(self), re.I if I is True else 0)
 
@@ -184,19 +175,16 @@ class Rules(object):
     :param str rules: Rule is a Python expression that could be evaluated.
     """
 
-    def __init__(self, rules):
-        # type: (str) -> None
+    def __init__(self, rules: str) -> None:
 
         self._rules = rules
-        self._code = None  # type: Any
+        self._code: Any = None
 
-    def __repr__(self):
-        # type: () -> str
+    def __repr__(self) -> str:
 
         return '<Rules: {}>'.format(self._rules)
 
-    def _compile(self):
-        # type: () -> Any
+    def _compile(self) -> Any:
         """
         Compile rule. Parse rule into an AST, perform its sanity checks,
         and then compile it into executable.
@@ -222,8 +210,7 @@ class Rules(object):
         except Exception as e:
             raise RulesTypeError(self._rules, e)
 
-    def eval(self, our_globals, our_locals):
-        # type: (ContextType, ContextType) -> Any
+    def eval(self, our_globals: ContextType, our_locals: ContextType) -> Any:
         """
         Evaluate rule. User must provide both `locals` and `globals` dictionaries
         we use as a context for the rule.
@@ -357,16 +344,14 @@ class RulesEngine(gluetool.Module):
     supported_dryrun_level = gluetool.glue.DryRunLevels.DRY
 
     @gluetool.utils.cached_property
-    def _user_variable_files(self):
-        # type: () -> List[str]
+    def _user_variable_files(self) -> List[str]:
 
         return gluetool.utils.normalize_path_option(self.option('user-variables'))
 
     @gluetool.utils.cached_property
-    def _user_variable_templates(self):
-        # type: () -> Dict[str, str]
+    def _user_variable_templates(self) -> Dict[str, str]:
 
-        templates = {}  # type: Dict[str, str]
+        templates: Dict[str, str] = {}
 
         for filepath in self._user_variable_files:
             templates.update(gluetool.utils.load_yaml(filepath, logger=self.logger))
@@ -374,8 +359,7 @@ class RulesEngine(gluetool.Module):
         return templates
 
     @property
-    def eval_context(self):
-        # type: () -> Any
+    def eval_context(self) -> Any:
 
         return gluetool.utils.dict_update(
             self.functions,
@@ -383,12 +367,11 @@ class RulesEngine(gluetool.Module):
         )
 
     def _filter(self,
-                entries,  # type: List[EntryType]
-                context=None,  # type: Optional[Union[ContextType, ContextGetterType]]
-                default_rule='True',  # type: str
-                stop_at_first_hit=False  # type: bool
-               ):  # noqa
-        # type: (...) -> Iterator[Tuple[EntryType, ContextType]]
+                entries: List[EntryType],
+                context: Optional[Union[ContextType, ContextGetterType]] = None,
+                default_rule: str = 'True',
+                stop_at_first_hit: bool = False
+               ) -> Iterator[Tuple[EntryType, ContextType]]:  # noqa
         """
         Yields entries that are allowed by their rules.
 
@@ -436,15 +419,13 @@ class RulesEngine(gluetool.Module):
                 break
 
     @cached_property
-    def functions(self):
-        # type: () -> Dict[str, Callable[..., Any]]
+    def functions(self) -> Dict[str, Callable[..., Any]]:
 
         sources = normalize_multistring_option(self.option('functions'))
 
-        functions = {}  # type: Dict[str, Callable[..., Any]]
+        functions: Dict[str, Callable[..., Any]] = {}
 
-        def _wrapper(wrapped, *args, **kwargs):
-            # type: (Callable[..., Any], *Any, **Any) -> Any
+        def _wrapper(wrapped: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
 
             return wrapped(
                 self.shared('eval_context'),
@@ -511,8 +492,9 @@ class RulesEngine(gluetool.Module):
 
         return functions
 
-    def _render_user_variables(self, logger=None, context=None):
-        # type: (Optional[gluetool.log.ContextAdapter], Optional[Dict[str, Any]]) -> Dict[str, Any]
+    def _render_user_variables(self,
+                               logger: Optional[gluetool.log.ContextAdapter] = None,
+                               context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Returns mapping of variables, with values fully rendered.
         """
@@ -526,15 +508,13 @@ class RulesEngine(gluetool.Module):
         }
 
     @cached_property
-    def variables(self):
-        # type: () -> Any
+    def variables(self) -> Any:
 
         configs = normalize_multistring_option(self.option('variables'))
 
-        variables = {}  # type: Any
+        variables: Any = {}
 
-        def _assert_var_names(d, *path):
-            # type: (Dict[str, Any], *str) -> None
+        def _assert_var_names(d: Dict[str, Any], *path: str) -> None:
             """
             Make sure no key in the dictionary collides with any dictionary method. Should there be any collision,
             value of the key would replace the method, and calling such method would result in error since it's
@@ -553,8 +533,7 @@ class RulesEngine(gluetool.Module):
 
                 raise GlueError("Invalid variable name '{}' in {}:{}".format(k, path[0], '.'.join(path[1:])))
 
-        def _replace_dicts(current, *path):
-            # type: (Any, *str) -> Any
+        def _replace_dicts(current: Any, *path: str) -> Any:
             """
             Replaces all dictionaries under (and including) ``current`` with :py:class:`AttrDict`.
             An object is returned, to be used instead of ``current`` - it *may* be the same object,
@@ -600,13 +579,13 @@ class RulesEngine(gluetool.Module):
 
         return variables
 
-    def user_variables(self, logger=None, context=None):
-        # type: (Optional[gluetool.log.ContextAdapter], Optional[Dict[str, Any]]) -> Dict[str, Any]
+    def user_variables(self,
+                       logger: Optional[gluetool.log.ContextAdapter] = None,
+                       context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
 
         return self._render_user_variables(logger=logger, context=context)
 
-    def evaluate_rules(self, rules, context=None):
-        # type: (str, Optional[ContextType]) -> Any
+    def evaluate_rules(self, rules: str, context: Optional[ContextType] = None) -> Any:
         """
         Evaluate rules to a single value (usualy bool-ish - ``True``/``False``, (non-)empty string, etc.),
         within a context provided by the caller via ``context`` mapping.
@@ -618,8 +597,7 @@ class RulesEngine(gluetool.Module):
         :returns: whatever comes out from rules evaluation.
         """
 
-        def _enhance_strings(variables):
-            # type: (ContextType) -> ContextType
+        def _enhance_strings(variables: ContextType) -> ContextType:
 
             return {
                 key: MatchableString(value) if isinstance(value, str) else value
@@ -651,9 +629,13 @@ class RulesEngine(gluetool.Module):
 
         return result
 
-    def evaluate_filter(self, entries, context=None, default_rule='True',
-                        stop_at_first_hit=False):
-        # type: (List[EntryType], Optional[Union[ContextType, ContextGetterType]], str, bool) -> List[EntryType]
+    def evaluate_filter(
+        self,
+        entries: List[EntryType],
+        context: Optional[Union[ContextType, ContextGetterType]] = None,
+        default_rule: str = 'True',
+        stop_at_first_hit: bool = False
+    ) -> List[EntryType]:
         """
         Find out what entries of the list are allowed by their rules, and return them.
 
@@ -687,14 +669,13 @@ class RulesEngine(gluetool.Module):
         ]
 
     def evaluate_instructions(self,
-                              instructions,  # type: List[EntryType]
-                              commands,  # type: Dict[str, CommandCallbackType]
-                              context=None,  # type: Optional[Union[ContextType, ContextGetterType]]
-                              default_rule='True',  # type: str
-                              stop_at_first_hit=False,  # type: bool
-                              ignore_unhandled_commands=False  # type: bool
-                             ):  # noqa
-        # type: (...) -> None
+                              instructions: List[EntryType],
+                              commands: Dict[str, CommandCallbackType],
+                              context: Optional[Union[ContextType, ContextGetterType]] = None,
+                              default_rule: str = 'True',
+                              stop_at_first_hit: bool = False,
+                              ignore_unhandled_commands: bool = False
+                             ) -> None:  # noqa
         """
         Evaluate "instructions", using given callbacks to perform commands ordered by instructions.
 
@@ -773,8 +754,7 @@ class RulesEngine(gluetool.Module):
                     self.debug('command handled and we should stop at first hit')
                     break
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
 
         if not self.option('rules'):
             return

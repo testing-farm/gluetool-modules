@@ -59,8 +59,7 @@ BuildInfoType = TypedDict(
 )
 
 
-def nsvc_from_string(nsvc):
-    # type: (str) -> NSVCType
+def nsvc_from_string(nsvc: str) -> NSVCType:
     """
     Helper function to return a tuple of NSVC from a string.
 
@@ -76,8 +75,7 @@ def nsvc_from_string(nsvc):
     return cast(NSVCType, match.groups())
 
 
-def nsvc_from_nvr(nvr):
-    # type: (str) -> NSVCType
+def nsvc_from_nvr(nvr: str) -> NSVCType:
     """
     Helper function to return a tuple of NSVC from an Brew/Koji compatible module NVR.
 
@@ -99,15 +97,13 @@ def nsvc_from_nvr(nvr):
 
 class MBSApi(object):
 
-    def __init__(self, mbs_api_url, mbs_ui_url, module):
-        # type: (str, str, gluetool.Module) -> None
+    def __init__(self, mbs_api_url: str, mbs_ui_url: str, module: gluetool.Module) -> None:
         self.mbs_api_url = mbs_api_url
         self.mbs_ui_url = mbs_ui_url
         self.module = module
 
     @cached_property
-    def about(self):
-        # type: () -> MBSAbout
+    def about(self) -> MBSAbout:
         """
         Returns MBS about endpoint as a namedtuple.
 
@@ -116,8 +112,7 @@ class MBSApi(object):
         """
         return MBSAbout(**self._get_json('module-build-service/1/about'))
 
-    def _get_json(self, location, params=None):
-        # type: (str, Optional[Dict[str, Any]]) -> Any
+    def _get_json(self, location: str, params: Optional[Dict[str, Any]] = None) -> Any:
         """
         Query MBS API endpoint location and return the JSON reply.
 
@@ -153,8 +148,7 @@ class MBSApi(object):
 
         return output
 
-    def get_build_info_by_id(self, build_id, verbose=False):
-        # type: (int, bool) -> BuildInfoType
+    def get_build_info_by_id(self, build_id: int, verbose: bool = False) -> BuildInfoType:
         """
         Get MBS build information from build ID.
 
@@ -170,8 +164,7 @@ class MBSApi(object):
             self._get_json('module-build-service/1/module-builds/{}'.format(build_id), params=params)
         )
 
-    def get_build_info_by_nsvc(self, nsvc_tuple, verbose=False):
-        # type: (NSVCType, bool) -> BuildInfoType
+    def get_build_info_by_nsvc(self, nsvc_tuple: NSVCType, verbose: bool = False) -> BuildInfoType:
         """
         Get MBS build information from NSVC tuple.
 
@@ -199,8 +192,7 @@ class MBSApi(object):
                 "Could not find module with nsvc '{}:{}:{}:{}'".format(name, stream, version, context)
             )
 
-    def get_build_ui_url(self, build_id):
-        # type: (int) -> str
+    def get_build_ui_url(self, build_id: int) -> str:
         """
         Returns URL to the MBS web interface for the given build ID.
 
@@ -214,8 +206,11 @@ class MBSApi(object):
 class MBSTask(LoggerMixin, object):
     ARTIFACT_NAMESPACE = 'redhat-module'
 
-    def __init__(self, module, build_id=None, nsvc=None, nvr=None):
-        # type: (MBS, Optional[int], Optional[str], Optional[str]) -> None
+    def __init__(self,
+                 module: 'MBS',
+                 build_id: Optional[int] = None,
+                 nsvc: Optional[str] = None,
+                 nvr: Optional[str] = None) -> None:
         super(MBSTask, self).__init__(module.logger)
 
         self.module = module
@@ -245,7 +240,7 @@ class MBSTask(LoggerMixin, object):
         self.issuer = build_info['owner']
         self.scratch = build_info['scratch']
         self.nsvc = '{}:{}:{}:{}'.format(self.name, self.stream, self.version, self.context)
-        self.tags = []  # type: List[str]
+        self.tags: List[str] = []
 
         # `nvr` is:
         # - often used as unique id of artifact (e.g. in mail notifications)
@@ -278,8 +273,7 @@ class MBSTask(LoggerMixin, object):
         self.destination_tag = self.target
 
     @cached_property
-    def platform_stream(self):
-        # type: () -> str
+    def platform_stream(self) -> str:
         """
         :rtype: str
         :returns: Platform stream from the modulemd document.
@@ -295,8 +289,7 @@ class MBSTask(LoggerMixin, object):
         return cast(str, platform_stream.encode('ascii') if six.PY2 else platform_stream)
 
     @cached_property
-    def _modulemd(self):
-        # type: () -> Dict[str, Any]
+    def _modulemd(self) -> Dict[str, Any]:
         """
         Returns ``modulemd`` document if available in build info. Describes details of the artifacts
         used to build the module. It is embedded in a form of string, containing the YAML document.
@@ -320,16 +313,14 @@ class MBSTask(LoggerMixin, object):
         return cast(Dict[str, Any], modulemd)
 
     @cached_property
-    def has_artifacts(self):
-        # type: () -> bool
+    def has_artifacts(self) -> bool:
         # We believe MBS - and Brew behind it keeps artifacts "forever" - or, at least, long enough to matter to us
         # - therefore we don't even bother to check for their presence.
 
         return True
 
     @cached_property
-    def task_arches(self):
-        # type: () -> TaskArches
+    def task_arches(self) -> TaskArches:
         """
         :rtype: TaskArches
         :returns: Information about arches the task was building for
@@ -362,8 +353,7 @@ class MBSTask(LoggerMixin, object):
         return TaskArches(arches)
 
     @cached_property
-    def dependencies(self):
-        # type: () -> List[str]
+    def dependencies(self) -> List[str]:
         dependencies = []
 
         try:
@@ -378,13 +368,11 @@ class MBSTask(LoggerMixin, object):
         return sorted(dependencies)
 
     @cached_property
-    def url(self):
-        # type: () -> str
+    def url(self) -> str:
         return self.module.mbs_api().get_build_ui_url(self.id)
 
     @cached_property
-    def distgit_ref(self):
-        # type: () -> Optional[str]
+    def distgit_ref(self) -> Optional[str]:
         """
         Distgit ref id from which package has been built or ``None`` if it's impossible to find it.
 
@@ -401,13 +389,11 @@ class MBSTask(LoggerMixin, object):
         return None
 
     @cached_property
-    def dist_git_repository_name(self):
-        # type: () -> str
+    def dist_git_repository_name(self) -> str:
         return self.component
 
     @cached_property
-    def baseline(self):
-        # type: () -> Optional[str]
+    def baseline(self) -> Optional[str]:
         """
         Return baseline task NVR if `baseline-method` specified, otherwise return None.
 
@@ -420,8 +406,7 @@ class MBSTask(LoggerMixin, object):
         return task.nvr
 
     @cached_property
-    def baseline_task(self):
-        # type: () -> Optional[MBSTask]
+    def baseline_task(self) -> Optional['MBSTask']:
         """
         Return baseline task. For documentation of the baseline methods see the module's help.
 
@@ -458,8 +443,7 @@ class MBSTask(LoggerMixin, object):
 
         return baseline_task
 
-    def previous_tags(self, tags):
-        # type: (List[str]) -> List[str]
+    def previous_tags(self, tags: List[str]) -> List[str]:
         """
         Return previous tags according to the inheritance tag hierarchy to the given tags.
 
@@ -484,8 +468,7 @@ class MBSTask(LoggerMixin, object):
 
         return previous_tags
 
-    def latest_released(self, tags=None):
-        # type: (Optional[List[str]]) -> Optional[MBSTask]
+    def latest_released(self, tags: Optional[List[str]] = None) -> Optional['MBSTask']:
         """
         Returns task of the latest module build tagged with the same build target.
 
@@ -532,8 +515,7 @@ class MBSTask(LoggerMixin, object):
         return self.module.tasks(nvrs=[build['nvr']])[1] if build else None
 
     @cached_property
-    def _tags_from_map(self):
-        # type: () -> List[str]
+    def _tags_from_map(self) -> List[str]:
         """
         Unfortunately tags used for looking up baseline builds need to be resolved from a rules
         file due to their specifics.
@@ -548,12 +530,11 @@ class MBSTask(LoggerMixin, object):
         self.module.require_shared('evaluate_instructions', 'evaluate_rules')
 
         # use dictionary which can be altered in _tags_callback
-        map = {
+        map: Dict[str, List[str]] = {
             'tags': []
-        }  # type: Dict[str, List[str]]
+        }
 
-        def _tags_callback(instruction, command, argument, context):
-            # type: (str, str, List[str], str) -> None
+        def _tags_callback(instruction: str, command: str, argument: List[str], context: str) -> None:
             map['tags'] = []
 
             for arg in argument:
@@ -636,18 +617,15 @@ class MBS(gluetool.Module):
 
     shared_functions = ['primary_task', 'tasks', 'mbs_api']
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(MBS, self).__init__(*args, **kwargs)
-        self._tasks = []  # type: List[MBSTask]
+        self._tasks: List[MBSTask] = []
 
     @cached_property
-    def _default_task_arches(self):
-        # type: () -> TaskArches
+    def _default_task_arches(self) -> TaskArches:
         return TaskArches(gluetool.utils.normalize_multistring_option(self.option('default-task-arches')))
 
-    def primary_task(self):
-        # type: () -> Optional[MBSTask]
+    def primary_task(self) -> Optional[MBSTask]:
         """
         Returns a `primary` module build, the first build in the list of current nodules.
 
@@ -659,8 +637,10 @@ class MBS(gluetool.Module):
 
         return self._tasks[0] if self._tasks else None
 
-    def _init_mbs_builds(self, build_ids=None, nsvcs=None, nvrs=None):
-        # type: (Optional[List[str]], Optional[List[str]], Optional[List[str]]) -> None
+    def _init_mbs_builds(self,
+                         build_ids: Optional[List[str]] = None,
+                         nsvcs: Optional[List[str]] = None,
+                         nvrs: Optional[List[str]] = None) -> None:
         """
         Initializes MBS builds in parallel.
 
@@ -680,8 +660,7 @@ class MBS(gluetool.Module):
         # Our API routines call `Action.current_action` to get parent for their own actions,
         # and since we're spawning threads for our `MBSTask` calls, we need to provide
         # the initial action in each of those threads.
-        def _init_trampoline(**kwargs):
-            # type: (**Any) -> MBSTask
+        def _init_trampoline(**kwargs: Any) -> MBSTask:
             Action.set_thread_root(current_action)
 
             return MBSTask(self, **kwargs)
@@ -711,8 +690,10 @@ class MBS(gluetool.Module):
             for future in wait_result.done:
                 self._tasks.append(future.result())
 
-    def tasks(self, build_ids=None, nsvcs=None, nvrs=None):
-        # type: (Optional[List[str]], Optional[List[str]], Optional[List[str]]) -> List[MBSTask]
+    def tasks(self,
+              build_ids: Optional[List[str]] = None,
+              nsvcs: Optional[List[str]] = None,
+              nvrs: Optional[List[str]] = None) -> List[MBSTask]:
         """
         Returns list of module builds available. If any of the additional parameters
         are provided, modules list is extended with them first.
@@ -730,8 +711,7 @@ class MBS(gluetool.Module):
         return self._tasks
 
     @property
-    def eval_context(self):
-        # type: () -> Dict[str, Union[str, MBSTask, List[str], List[MBSTask]]]
+    def eval_context(self) -> Dict[str, Union[str, MBSTask, List[str], List[MBSTask]]]:
         __content__ = {  # noqa
             'ARTIFACT_TYPE': """
                              Type of the artifact, ``mbs-build`` in the case of ``mbs`` module.
@@ -766,27 +746,23 @@ class MBS(gluetool.Module):
         }
 
     @cached_property
-    def _mbs_api(self):
-        # type: () -> MBSApi
+    def _mbs_api(self) -> MBSApi:
         return MBSApi(self.option('mbs-api-url'), self.option('mbs-ui-url'), self)
 
     @cached_property
-    def baseline_tag_map(self):
-        # type: () -> Any
+    def baseline_tag_map(self) -> Any:
         if not self.option('baseline-tag-map'):
             return []
 
         return gluetool.utils.load_yaml(self.option('baseline-tag-map'))
 
-    def mbs_api(self):
-        # type: () -> MBSApi
+    def mbs_api(self) -> MBSApi:
         """
         Returns MBSApi instance.
         """
         return cast(MBSApi, self._mbs_api)
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         self.info(
             "connected to MBS instance '{}' version '{}'".format(
                 self.option('mbs-api-url'),

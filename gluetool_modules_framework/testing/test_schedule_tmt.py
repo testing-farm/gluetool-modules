@@ -127,8 +127,7 @@ class TMTExitCodes(enum.IntEnum):
 
 class TestScheduleEntry(BaseTestScheduleEntry):
     @staticmethod
-    def construct_id(tec, plan=None):
-        # type: (TestingEnvironment, Optional[str]) -> str
+    def construct_id(tec: TestingEnvironment, plan: Optional[str] = None) -> str:
 
         entry_id = '{}:{}'.format(tec.compose, tec.arch)
 
@@ -137,8 +136,12 @@ class TestScheduleEntry(BaseTestScheduleEntry):
 
         return '{}:{}'.format(entry_id, plan)
 
-    def __init__(self, logger, tec, plan, repodir, excludes):
-        # type: (ContextAdapter, TestingEnvironment, str, str, List[str]) -> None
+    def __init__(self,
+                 logger: ContextAdapter,
+                 tec: TestingEnvironment,
+                 plan: str,
+                 repodir: str,
+                 excludes: List[str]) -> None:
         """
         Test schedule entry, suited for use with TMT runners.
 
@@ -155,17 +158,16 @@ class TestScheduleEntry(BaseTestScheduleEntry):
 
         self.testing_environment = tec
         self.plan = plan
-        self.work_dirpath = None  # type: Optional[str]
-        self.results = None  # type: Any
-        self.repodir = repodir  # type: str
-        self.excludes = excludes  # type: List[str]
-        self.tmt_reproducer = []  # type: List[str]
-        self.tmt_reproducer_filepath = None  # type: Optional[str]
+        self.work_dirpath: Optional[str] = None
+        self.results: Any = None
+        self.repodir: str = repodir
+        self.excludes: List[str] = excludes
+        self.tmt_reproducer: List[str] = []
+        self.tmt_reproducer_filepath: Optional[str] = None
 
-        self.context_files = []  # type: List[str]
+        self.context_files: List[str] = []
 
-    def log_entry(self, log_fn=None):
-        # type: (Optional[LoggingFunctionType]) -> None
+    def log_entry(self, log_fn: Optional[LoggingFunctionType] = None) -> None:
 
         log_fn = log_fn or self.debug
 
@@ -188,8 +190,9 @@ PlanRun = NamedTuple('PlanRun', (
 ))
 
 
-def gather_plan_results(schedule_entry, work_dir, recognize_errors=False):
-    # type: (TestScheduleEntry, str, bool) -> Tuple[TestScheduleResult, List[TestResult]]
+def gather_plan_results(schedule_entry: TestScheduleEntry,
+                        work_dir: str,
+                        recognize_errors: bool = False) -> Tuple[TestScheduleResult, List[TestResult]]:
     """
     Extracts plan results from tmt logs.
 
@@ -198,7 +201,7 @@ def gather_plan_results(schedule_entry, work_dir, recognize_errors=False):
     :rtype: tuple
     :returns: A tuple with overall_result and results detected for the plan.
     """
-    test_results = []  # type: List[TestResult]
+    test_results: List[TestResult] = []
 
     # TMT uses plan name as a relative directory to the working directory, but
     # plan start's with '/' character, strip it so we can use it with os.path.join
@@ -323,18 +326,15 @@ class TestScheduleTMT(Module):
 
     shared_functions = ['create_test_schedule', 'run_test_schedule_entry', 'serialize_test_schedule_entry_results']
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(TestScheduleTMT, self).__init__(*args, **kwargs)
 
     @gluetool.utils.cached_property
-    def context_template_files(self):
-        # type: () -> List[str]
+    def context_template_files(self) -> List[str]:
 
         return gluetool.utils.normalize_path_option(self.option('context-template-file'))
 
-    def _context_templates(self, filepaths):
-        # type: (List[str]) -> List[str]
+    def _context_templates(self, filepaths: List[str]) -> List[str]:
 
         templates = []
 
@@ -350,14 +350,13 @@ class TestScheduleTMT(Module):
 
     def render_context_templates(
         self,
-        logger,  # type: gluetool.log.ContextAdapter
-        context,  # type: Dict[str, Any]
-        template_filepaths=None,  # type: Optional[List[str]]
-        filepath_dir=None,  # type: Optional[str]
-        filename_prefix=CONTEXT_FILENAME_PREFIX,  # type: str
-        filename_suffix=CONTEXT_FILENAME_SUFFIX  # type: str
-    ):
-        # type: (...) -> List[str]
+        logger: gluetool.log.ContextAdapter,
+        context: Dict[str, Any],
+        template_filepaths: Optional[List[str]] = None,
+        filepath_dir: Optional[str] = None,
+        filename_prefix: str = CONTEXT_FILENAME_PREFIX,
+        filename_suffix: str = CONTEXT_FILENAME_SUFFIX
+    ) -> List[str]:
         """
         Render context template files. For each template file, a file with rendered content is created.
 
@@ -397,12 +396,11 @@ class TestScheduleTMT(Module):
 
         return filepaths
 
-    def _tmt_context_to_options(self, context):
-        # type: (Dict[str, str]) -> List[str]
+    def _tmt_context_to_options(self, context: Dict[str, str]) -> List[str]:
         if not context:
             return []
 
-        options = []  # type: List[str]
+        options: List[str] = []
 
         for name, value in six.iteritems(context):
             options += [
@@ -411,8 +409,11 @@ class TestScheduleTMT(Module):
 
         return options
 
-    def _plans_from_git(self, repodir, context_files, testing_environment, filter=None):
-        # type: (str, List[str], TestingEnvironment, Optional[str]) -> List[str]
+    def _plans_from_git(self,
+                        repodir: str,
+                        context_files: List[str],
+                        testing_environment: TestingEnvironment,
+                        filter: Optional[str] = None) -> List[str]:
         """
         Return list of plans from given repository.
 
@@ -483,19 +484,17 @@ class TestScheduleTMT(Module):
 
         return plans
 
-    def hardware_from_tmt(self, exported_plan):
-        # type: (Dict[str, Any]) -> Dict[str, Any]
+    def hardware_from_tmt(self, exported_plan: Dict[str, Any]) -> Dict[str, Any]:
         return cast(Dict[str, Any], exported_plan.get('provision', {}).get('hardware', {}))
 
-    def excludes_from_tmt(self, exported_plan):
-        # type: (Dict[str, Any]) -> List[str]
+    def excludes_from_tmt(self, exported_plan: Dict[str, Any]) -> List[str]:
         if 'prepare' not in exported_plan:
             return []
 
         prepare = exported_plan['prepare']
         prepare_steps = prepare if isinstance(exported_plan['prepare'], list) else [prepare]
 
-        excludes = []  # type: List[str]
+        excludes: List[str] = []
 
         for step in prepare_steps:
             # we are interesed only on `how: install` step
@@ -516,8 +515,7 @@ class TestScheduleTMT(Module):
 
         return excludes
 
-    def export_plan(self, repodir, plan, context_files):
-        # type: (str, str, List[str]) -> Dict[str, Any]
+    def export_plan(self, repodir: str, plan: str, context_files: List[str]) -> Dict[str, Any]:
 
         command = [self.option('command')] + [
             '--context=@{}'.format(filepath)
@@ -551,8 +549,10 @@ class TestScheduleTMT(Module):
 
         return cast(Dict[str, Any], exported_plans[0])
 
-    def create_test_schedule(self, testing_environment_constraints=None):
-        # type: (Optional[List[TestingEnvironment]]) -> TestSchedule
+    def create_test_schedule(
+        self,
+        testing_environment_constraints: Optional[List[TestingEnvironment]] = None
+    ) -> TestSchedule:
         """
         Create a test schedule based on list of tmt plans.
 
@@ -576,7 +576,7 @@ class TestScheduleTMT(Module):
             prefix=repository.clonedir_prefix
         )
 
-        root_logger = Logging.get_logger()  # type: ContextAdapter
+        root_logger: ContextAdapter = Logging.get_logger()
 
         schedule = TestSchedule()
 
@@ -588,7 +588,7 @@ class TestScheduleTMT(Module):
             # Construct a custom logger for this particular TEC, to provide more context.
             # If we ever construct a schedule entry based on this TEC, such an entry would
             # construct the very similar logger, too.
-            logger = TestScheduleEntryAdapter(root_logger, TestScheduleEntry.construct_id(tec))  # type: ContextAdapter
+            logger: ContextAdapter = TestScheduleEntryAdapter(root_logger, TestScheduleEntry.construct_id(tec))
 
             logger.info('looking for plans')
 
@@ -638,8 +638,7 @@ class TestScheduleTMT(Module):
 
         return schedule
 
-    def _prepare_environment(self, schedule_entry):
-        # type: (TestScheduleEntry) -> str
+    def _prepare_environment(self, schedule_entry: TestScheduleEntry) -> str:
         """
         Prepare local environment for running the schedule entry, by setting up some directories and files.
 
@@ -674,8 +673,10 @@ class TestScheduleTMT(Module):
 
         return work_dir
 
-    def _run_plan(self, schedule_entry, work_dirpath, tmt_log_filepath):
-        # type: (TestScheduleEntry, str, str) -> Tuple[TestScheduleResult, List[TestResult]]
+    def _run_plan(self,
+                  schedule_entry: TestScheduleEntry,
+                  work_dirpath: str,
+                  tmt_log_filepath: str) -> Tuple[TestScheduleResult, List[TestResult]]:
         """
         Run a test plan, observe and report results.
         """
@@ -713,9 +714,9 @@ class TestScheduleTMT(Module):
 
         # work_dirpath is relative to the current directory, but tmt expects it to be a absolute path
         # so it recognizes it as a path instead of run directory name
-        command = [
+        command: List[str] = [
             self.option('command')
-        ]  # type: List[str]
+        ]
 
         command += [
             '--context=@{}'.format(filepath)
@@ -831,12 +832,10 @@ class TestScheduleTMT(Module):
                 # and finally run the test plan
                 schedule_entry.tmt_reproducer.append('{} run --last --since prepare'.format(self.option('command')))
 
-        def _save_output(output):
-            # type: (gluetool.utils.ProcessOutput) -> None
+        def _save_output(output: gluetool.utils.ProcessOutput) -> None:
 
             with open(tmt_log_filepath, 'w') as f:
-                def _write(label, s):
-                    # type: (str, str) -> None
+                def _write(label: str, s: str) -> None:
                     f.write('{}\n{}\n\n'.format(label, s))
 
                 _write('# STDOUT:', format_blob(cast(str, output.stdout)))
@@ -844,13 +843,11 @@ class TestScheduleTMT(Module):
 
                 f.flush()
 
-        def _save_reproducer(reproducer):
-            # type: (str) -> None
+        def _save_reproducer(reproducer: str) -> None:
 
             assert schedule_entry.tmt_reproducer_filepath
             with open(schedule_entry.tmt_reproducer_filepath, 'w') as f:
-                def _write(*args):
-                    # type: (Any) -> None
+                def _write(*args: Any) -> None:
                     f.write('\n'.join(args))
 
                 # TODO: artifacts instalation should be added once new plugin is ready
@@ -900,8 +897,7 @@ class TestScheduleTMT(Module):
         # gather and return overall plan run result and test results
         return gather_plan_results(schedule_entry, work_dirpath, self.option('recognize-errors'))
 
-    def run_test_schedule_entry(self, schedule_entry):
-        # type: (TestScheduleEntry) -> None
+    def run_test_schedule_entry(self, schedule_entry: TestScheduleEntry) -> None:
 
         # this schedule entry is not ours, move it along
         if schedule_entry.runner_capability != 'tmt':
@@ -931,15 +927,16 @@ class TestScheduleTMT(Module):
         self.shared('trigger_event', 'test-schedule-runner-sti.schedule-entry.finished',
                     schedule_entry=schedule_entry)
 
-    def serialize_test_schedule_entry_results(self, schedule_entry, test_suite):
-        # type: (TestScheduleEntry, Any) -> None
+    def serialize_test_schedule_entry_results(self, schedule_entry: TestScheduleEntry, test_suite: Any) -> None:
 
-        def _add_property(properties, name, value):
-            # type: (Any, str, str) -> Any
+        def _add_property(properties: Any, name: str, value: str) -> Any:
             return new_xml_element('property', _parent=properties, name='baseosci.{}'.format(name), value=value or '')
 
-        def _add_artifact(logs, name, path, href, schedule_entry=None):
-            # type: (Any, str, str, str, Optional[TestScheduleEntry]) -> Any
+        def _add_artifact(logs: Any,
+                          name: str,
+                          path: str,
+                          href: str,
+                          schedule_entry: Optional[TestScheduleEntry] = None) -> Any:
 
             attrs = {
                 'name': name,
@@ -963,8 +960,7 @@ class TestScheduleTMT(Module):
                 **attrs
             )
 
-        def _add_testing_environment(test_case, name, arch, compose, snapshots):
-            # type: (Any, str, Any, Any, bool) -> Any
+        def _add_testing_environment(test_case: Any, name: str, arch: Any, compose: Any, snapshots: bool) -> Any:
             parent_elem = new_xml_element('testing-environment', _parent=test_case, name=name)
             new_xml_element('property', _parent=parent_elem, name='arch', value=arch)
             if compose:

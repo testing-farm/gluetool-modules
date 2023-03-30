@@ -16,8 +16,13 @@ from typing import Dict, Any, Optional, List, cast # noqa
 
 
 class BrewBuildTestResult(TestResult):
-    def __init__(self, glue, overall_result, build_url, comment, process_output, **kwargs):
-        # type: (gluetool.Glue, str, str, str, str, **Any) -> None
+    def __init__(self,
+                 glue: gluetool.Glue,
+                 overall_result: str,
+                 build_url: str,
+                 comment: str,
+                 process_output: str,
+                 **kwargs: Any) -> None:
         super(BrewBuildTestResult, self).__init__(glue, 'brew-build', overall_result, **kwargs)
 
         self.build_url = build_url
@@ -42,8 +47,10 @@ class BrewBuilder(gluetool.Module):
         }
     }
 
-    def report_result(self, result, build_url=None, exception=None):
-        # type: (str, Optional[str], Optional[BrewBuildFailedError]) -> None
+    def report_result(self,
+                      result: str,
+                      build_url: Optional[str] = None,
+                      exception: Optional[BrewBuildFailedError] = None) -> None:
         self.info('Result of testing: {}'.format(result))
 
         comment = str(exception) if exception else None
@@ -51,16 +58,14 @@ class BrewBuilder(gluetool.Module):
 
         publish_result(self, BrewBuildTestResult, result, build_url, comment, process_output)
 
-    def _make_brew_build(self):
-        # type: () -> str
+    def _make_brew_build(self) -> str:
         self.require_shared('src_rpm')
 
         src_rpm_name, path_to_src_rpm = self.shared('src_rpm')
 
         self.info('Initializing brew scratch build')
 
-        def _executor(command):
-            # type: (List[str]) -> gluetool.utils.ProcessOutput
+        def _executor(command: List[str]) -> gluetool.utils.ProcessOutput:
             return Command(command).run(cwd=path_to_src_rpm)
 
         command = [
@@ -112,8 +117,7 @@ class BrewBuilder(gluetool.Module):
 
         return task_url
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         try:
             brew_task_url = self._make_brew_build()
         except BrewBuildFailedError as exc:

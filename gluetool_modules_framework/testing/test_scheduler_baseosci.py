@@ -19,8 +19,7 @@ from gluetool_modules_framework.libs.testing_environment import TestingEnvironme
 # Type annotations
 from typing import TYPE_CHECKING, cast, Any, Dict, List, NamedTuple, Union, Optional  # noqa
 
-if TYPE_CHECKING:
-    from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleEntry  # noqa
+from gluetool_modules_framework.libs.test_schedule import TestSchedule  # noqa
 
 
 class PatchAction(GlueEnum):
@@ -52,8 +51,7 @@ class NoTestableArtifactsError(gluetool_modules_framework.libs.sentry.ArtifactFi
        e.g. in Beaker - yet. Hence the explicit list of supported arches in the message.
     """
 
-    def __init__(self, task, supported_arches):
-        # type: (Any, AvailableArchesType) -> None
+    def __init__(self, task: Any, supported_arches: AvailableArchesType) -> None:
 
         self.task_arches = task.task_arches.arches
         self.supported_arches = supported_arches
@@ -65,8 +63,7 @@ class NoTestableArtifactsError(gluetool_modules_framework.libs.sentry.ArtifactFi
         super(NoTestableArtifactsError, self).__init__(task, message)
 
     @property
-    def submit_to_sentry(self):
-        # type: () -> bool
+    def submit_to_sentry(self) -> bool:
         return False
 
 
@@ -152,11 +149,10 @@ class TestSchedulerBaseOSCI(gluetool.Module):
 
     shared_functions = ['test_schedule']
 
-    _schedule = None  # type: Optional[TestSchedule]
+    _schedule: Optional[TestSchedule] = None
 
     @utils.cached_property
-    def arch_compatibility_map(self):
-        # type: () -> Dict[str, List[str]]
+    def arch_compatibility_map(self) -> Dict[str, List[str]]:
 
         if not self.option('arch-compatibility-map'):
             return {}
@@ -167,8 +163,7 @@ class TestSchedulerBaseOSCI(gluetool.Module):
         )
 
     @utils.cached_property
-    def tec_patch_map(self):
-        # type: () -> Dict[str, List[str]]
+    def tec_patch_map(self) -> Dict[str, List[str]]:
 
         if not self.option('tec-patch-map'):
             return {}
@@ -179,22 +174,19 @@ class TestSchedulerBaseOSCI(gluetool.Module):
         )
 
     @gluetool.utils.cached_property
-    def use_snapshots(self):
-        # type: () -> bool
+    def use_snapshots(self) -> bool:
 
         return utils.normalize_bool_option(self.option('use-snapshots'))
 
     @gluetool.utils.cached_property
-    def compose_constraint_arches_map(self):
-        # type: () -> utils.PatternMap
+    def compose_constraint_arches_map(self) -> utils.PatternMap:
         return utils.PatternMap(
             utils.normalize_path(self.option('compose-constraint-arches-map')),
             logger=self.logger,
             allow_variables=True
         )
 
-    def compose_constraint_arches(self, compose):
-        # type: (str) -> Any
+    def compose_constraint_arches(self, compose: str) -> Any:
         try:
             return self.compose_constraint_arches_map.match(compose, multiple=True)
         except GlueError as exc:
@@ -202,8 +194,7 @@ class TestSchedulerBaseOSCI(gluetool.Module):
             self.warn('Return empty compose constraint arches')
             return []
 
-    def test_schedule(self):
-        # type: () -> Optional[TestSchedule]
+    def test_schedule(self) -> Optional[TestSchedule]:
         """
         Returns schedule for runners. It tells runner which recipe sets
         it should run on which guest.
@@ -213,8 +204,7 @@ class TestSchedulerBaseOSCI(gluetool.Module):
 
         return self._schedule
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
 
         self.require_shared('create_test_schedule', 'provisioner_capabilities', 'compose', 'evaluate_instructions')
 
@@ -236,7 +226,7 @@ class TestSchedulerBaseOSCI(gluetool.Module):
         # architecture as well.
 
         # These are arches which we'd use to constraint the schedule - we're going to add to this list later...
-        constraint_arches = []  # type: List[str]
+        constraint_arches: List[str] = []
 
         provisioner_capabilities = cast(
             ProvisionerCapabilities,
@@ -246,7 +236,7 @@ class TestSchedulerBaseOSCI(gluetool.Module):
         log_dict(self.debug, 'provisioner capabilities', provisioner_capabilities)
 
         # ... these are *valid* artifact arches - those supported by the provisioner...
-        valid_arches = []  # type: List[str]
+        valid_arches: List[str] = []
 
         # ... these are arches supported by the provisioner...
         supported_arches = provisioner_capabilities.available_arches if provisioner_capabilities else []
@@ -387,7 +377,7 @@ class TestSchedulerBaseOSCI(gluetool.Module):
 
         # Create constraints, for composes and arches
         composes = self.shared('compose')
-        constraints = []  # type: List[TestingEnvironment]
+        constraints: List[TestingEnvironment] = []
 
         for compose in composes:
 
@@ -436,14 +426,12 @@ class TestSchedulerBaseOSCI(gluetool.Module):
             )
 
             # Callback for 'drop' command
-            def _drop_callback(instruction, command, argument, context):
-                # type: (Any, str, bool, Dict[str, Any]) -> None
+            def _drop_callback(instruction: Any, command: str, argument: bool, context: Dict[str, Any]) -> None:
 
                 if argument is True:
                     patch_action.action = PatchAction.DROP
 
-            def _patch_arch_callback(instruction, command, argument, context):
-                # type: (Any, str, str, Dict[str, Any]) -> None
+            def _patch_arch_callback(instruction: Any, command: str, argument: str, context: Dict[str, Any]) -> None:
 
                 patch_action.action = PatchAction.PATCH_ARCH
                 patch_action.arch = argument

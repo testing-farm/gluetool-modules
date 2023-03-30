@@ -53,8 +53,7 @@ class RpminspectJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkins
 
     required_options = ('type',)
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
 
         if self.option('profile'):
             self.build_params.update({

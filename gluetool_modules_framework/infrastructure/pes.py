@@ -15,9 +15,7 @@ from jq import jq
 
 # Type annotations
 from typing import TYPE_CHECKING, cast, Any, Dict, List, Optional, Tuple, Union  # noqa
-
-if TYPE_CHECKING:
-    import requests as orig_requests  # noqa
+import requests as orig_requests  # noqa
 
 
 DEFAULT_RETRY_TIMEOUT = 30
@@ -29,22 +27,19 @@ class PESApi(LoggerMixin, object):
     API to Package Evolution Service
     """
 
-    def __init__(self, module):
-        # type: (gluetool.Module) -> None
+    def __init__(self, module: gluetool.Module) -> None:
 
         super(PESApi, self).__init__(module.logger)
 
-        self.api_url = module.option('api-url')  # type: str
-        self.module = module  # type: gluetool.Module
+        self.api_url: str = module.option('api-url')
+        self.module: gluetool.Module = module
 
-    def _request_with_payload(self, method, location, payload):
-        # type: (str, str, Dict[str, Any]) -> orig_requests.Response
+    def _request_with_payload(self, method: str, location: str, payload: Dict[str, Any]) -> orig_requests.Response:
         url = urljoin(self.api_url, location)
 
         self.debug('[PES API]: {}'.format(url))
 
-        def _request_response():
-            # type: () -> Result[orig_requests.Response, Exception]
+        def _request_response() -> Result[orig_requests.Response, Exception]:
             try:
                 with requests() as req:
                     if method == 'post':
@@ -89,8 +84,7 @@ class PESApi(LoggerMixin, object):
                                    timeout=self.module.option('retry-timeout'),
                                    tick=self.module.option('retry-tick'))
 
-    def get_ancestor_components(self, component, release):
-        # type: (str, str) -> List[str]
+    def get_ancestor_components(self, component: str, release: str) -> List[str]:
         """
         Get ancestor components of the given component from given major release by querying Package Evolution Service.
         This can be used for testing upgrades from the ancestor package(s) to the given component.
@@ -121,8 +115,7 @@ class PESApi(LoggerMixin, object):
         # remove duplicate ancestors and sort them, so their list is predictable
         return sorted(set(ancestors))
 
-    def get_component_rpms(self, component, release, architectures):
-        # type: (str, str, List[str]) -> List[str]
+    def get_component_rpms(self, component: str, release: str, architectures: List[str]) -> List[str]:
         """
         Get binary rpms built from component by querying Package Evolution Service.
 
@@ -141,8 +134,7 @@ class PESApi(LoggerMixin, object):
 
         return sorted(rpm['name'] for rpm in response.json()['rpms'])
 
-    def get_successor_components(self, component, initial_release, release):
-        # type: (str, str, str) -> List[str]
+    def get_successor_components(self, component: str, initial_release: str, release: str) -> List[str]:
         """
         Get successor components of the given component by querying Package Evolution Service. This can be used
         for testing upgrades from given component to the the successor component(s).
@@ -198,27 +190,23 @@ class PES(gluetool.Module):
 
     shared_functions = ['ancestor_components', 'successor_components', 'pes_api', 'component_rpms']
 
-    def __init__(self, *args, **kwargs):
-        # type: (Any, Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
 
         super(PES, self).__init__(*args, **kwargs)
 
-        self._components = []  # type: List[str]
+        self._components: List[str] = []
 
     @cached_property
-    def _pes_api(self):
-        # type: () -> PESApi
+    def _pes_api(self) -> PESApi:
         return PESApi(self)
 
-    def pes_api(self):
-        # type: () -> PESApi
+    def pes_api(self) -> PESApi:
         """
         Returns PESApi instance.
         """
         return cast(PESApi, self._pes_api)
 
-    def ancestor_components(self, component, target_release):
-        # type: (str, str) -> List[str]
+    def ancestor_components(self, component: str, target_release: str) -> List[str]:
         """
         Return list of ancestor components of a specified component from specified major target release.
 
@@ -234,8 +222,7 @@ class PES(gluetool.Module):
 
         return ancestors
 
-    def component_rpms(self, component, release, architectures):
-        # type: (str, str, List[str]) -> List[str]
+    def component_rpms(self, component: str, release: str, architectures: List[str]) -> List[str]:
         """
         Return list of binary rpms built from component in specified release and architectures.
 
@@ -254,8 +241,7 @@ class PES(gluetool.Module):
 
         return rpms
 
-    def successor_components(self, component, initial_release, release):
-        # type: (str, str, str) -> List[str]
+    def successor_components(self, component: str, initial_release: str, release: str) -> List[str]:
         """
         Returns list of successor components from a next major release.
 

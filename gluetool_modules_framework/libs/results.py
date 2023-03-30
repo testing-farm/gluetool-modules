@@ -43,14 +43,13 @@ class TestResult(object):
     # pylint: disable=too-many-arguments,too-few-public-methods
 
     def __init__(self,
-                 glue,  # type: gluetool.Glue
-                 test_type,  # type: str
-                 overall_result,  # type: str
-                 ids=None,  # type: Optional[Dict[str, Any]]
-                 urls=None,  # type: Optional[Dict[str, str]]
-                 payload=None  # type: Any
-                ):  # noqa
-        # type: (...) -> None
+                 glue: gluetool.Glue,
+                 test_type: str,
+                 overall_result: str,
+                 ids: Optional[Dict[str, Any]] = None,
+                 urls: Optional[Dict[str, str]] = None,
+                 payload: Any = None
+                ) -> None:  # noqa
 
         self.glue = glue
 
@@ -64,13 +63,11 @@ class TestResult(object):
         if 'jenkins_build' not in self.urls and 'BUILD_URL' in os.environ:
             self.urls['jenkins_build'] = os.environ['BUILD_URL']
 
-    def __repr__(self):
-        # type: () -> str
+    def __repr__(self) -> str:
 
         return gluetool.log.format_dict(self._serialize_to_json())
 
-    def _serialize_to_json(self):
-        # type: () -> Dict[str, Any]
+    def _serialize_to_json(self) -> Dict[str, Any]:
         """
         Return JSON representation of the result.
         """
@@ -85,14 +82,15 @@ class TestResult(object):
         }
 
     @classmethod
-    def _unserialize_from_json(cls, glue, input_data):
-        # type: (gluetool.Glue, Dict[str, Any]) -> TestResult
+    def _unserialize_from_json(cls, glue: gluetool.Glue, input_data: Dict[str, Any]) -> 'TestResult':
 
         return cls(glue, input_data['test_type'], input_data['overall_result'],
                    ids=input_data['ids'], urls=input_data['urls'], payload=input_data['payload'])
 
-    def _serialize_to_xunit_property_dict(self, parent, properties, names):
-        # type: (Any, Dict[str, Any], Dict[str, str]) -> None
+    def _serialize_to_xunit_property_dict(self,
+                                          parent: Any,
+                                          properties: Dict[str, Any],
+                                          names: Dict[str, str]) -> None:
         """
         Serialize ``key: value`` properties. Method serializes only known properties,
         and raises a warning when there are unknown properties left when it's done.
@@ -114,14 +112,12 @@ class TestResult(object):
         if properties:
             self.glue.warn('Unconsumed properties:\n{}'.format(gluetool.log.format_dict(properties)), sentry=True)
 
-    def _serialize_to_xunit(self):
-        # type: () -> Any
+    def _serialize_to_xunit(self) -> Any:
 
         test_suite = new_xml_element('testsuite', name=self.test_type)
         test_suite_properties = new_xml_element('properties', _parent=test_suite)
 
-        def _add_property(name, value):
-            # type: (str, str) -> None
+        def _add_property(name: str, value: str) -> None:
 
             new_xml_element('property', _parent=test_suite_properties, name='baseosci.{}'.format(name), value=value)
 
@@ -146,8 +142,7 @@ class TestResult(object):
 
         return test_suite
 
-    def can_serialize(self, output_format):
-        # type: (str) -> bool
+    def can_serialize(self, output_format: str) -> bool:
         """
         Returns ``True`` if the class supports serialization into a given format.
         """
@@ -155,16 +150,14 @@ class TestResult(object):
         return hasattr(self, '_serialize_to_{}'.format(output_format))
 
     @classmethod
-    def can_unserialize(cls, input_format):
-        # type: (str) -> bool
+    def can_unserialize(cls, input_format: str) -> bool:
         """
         Returns ``True`` if the class supports unserialization from a given format.
         """
 
         return hasattr(cls, '_unserialize_from_{}'.format(input_format))
 
-    def serialize(self, output_format):
-        # type: (str) -> Any
+    def serialize(self, output_format: str) -> Any:
         """
         Return representation of the result in given format.
 
@@ -181,8 +174,7 @@ class TestResult(object):
         return serializer()
 
     @classmethod
-    def unserialize(cls, glue, input_format, input_data):
-        # type: (gluetool.Glue, str, Any) -> TestResult
+    def unserialize(cls, glue: gluetool.Glue, input_format: str, input_data: Any) -> 'TestResult':
         """
         Return instance of the result class, containing information provided in ``input_data``.
 
@@ -200,8 +192,7 @@ class TestResult(object):
         return unserializer(glue, input_data)
 
 
-def publish_result(module, result_class, *args, **kwargs):
-    # type: (gluetool.Module, Type[TestResult], *Any, **Any) -> None
+def publish_result(module: gluetool.Module, result_class: Type[TestResult], *args: Any, **kwargs: Any) -> None:
     """
     Helper function for publishing test results. It creates a result instance,
     and makes it available for other modules.

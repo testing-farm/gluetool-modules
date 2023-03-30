@@ -48,12 +48,10 @@ class StaticGuest(NetworkedGuest):
     services.
     """
 
-    def _is_allowed_degraded(self, service):
-        # type: (Any) -> Literal[True]
+    def _is_allowed_degraded(self, service: Any) -> Literal[True]:
         return True
 
-    def __init__(self, module, fqdn, **kwargs):
-        # type: (CIStaticGuest, str, **Any) -> None
+    def __init__(self, module: 'CIStaticGuest', fqdn: str, **kwargs: Any) -> None:
         super(StaticGuest, self).__init__(module, fqdn, **kwargs)
 
         try:
@@ -72,8 +70,7 @@ class StaticGuest(NetworkedGuest):
             raise GlueError('Error retrieving guest architecture')
         self.environment = TestingEnvironment(arch=arch.rstrip(), compose=None)
 
-    def destroy(self):
-        # type: () -> None
+    def destroy(self) -> None:
         """
         Destroy guest. For a remote guest this is no-op.
         """
@@ -84,12 +81,10 @@ class StaticLocalhostGuest(Guest):
     StaticLocalhostGuest provides access to the local machine under the same user running the module.
     """
 
-    def _is_allowed_degraded(self, service):
-        # type: (Any) -> Literal[True]
+    def _is_allowed_degraded(self, service: Any) -> Literal[True]:
         return True
 
-    def __init__(self, module, fqdn, **kwargs):
-        # type: (CIStaticGuest, str, **Any) -> None
+    def __init__(self, module: 'CIStaticGuest', fqdn: str, **kwargs: Any) -> None:
         super(StaticLocalhostGuest, self).__init__(module, fqdn, **kwargs)
 
         # populate guest architecture from the OS`
@@ -102,16 +97,14 @@ class StaticLocalhostGuest(Guest):
 
         self.hostname = fqdn
 
-    def execute(self, cmd, **kwargs):
-        # type: (str, **Any) -> gluetool.utils.ProcessOutput
+    def execute(self, cmd: str, **kwargs: Any) -> gluetool.utils.ProcessOutput:
         """
         Execute a command on the guest. Should behave like `utils.run_command`.
         """
 
         return Command([cmd], logger=self.logger).run(**kwargs)
 
-    def setup(self, variables=None, **kwargs):
-        # type: (Optional[Dict[str, Any]], **Any) -> Any
+    def setup(self, variables: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Any:
         variables = variables or {}
 
         # pylint: disable=arguments-differ
@@ -124,13 +117,11 @@ class StaticLocalhostGuest(Guest):
 
         return self._module.shared('setup_guest', self, variables=variables, **kwargs)
 
-    def __repr__(self):
-        # type: () -> str
+    def __repr__(self) -> str:
 
         return self.hostname
 
-    def destroy(self):
-        # type: () -> None
+    def destroy(self) -> None:
         """
         Destroy guest. For localhost this is no-op.
         """
@@ -186,15 +177,13 @@ class CIStaticGuest(gluetool.Module):
     shared_functions = ['provision', 'provisioner_capabilities']
     required_options = ('guest',)
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(CIStaticGuest, self).__init__(*args, **kwargs)
 
         # All guests connected
-        self._guests = []  # type: List[StaticGuest]
+        self._guests: List[StaticGuest] = []
 
-    def sanity(self):
-        # type: () -> None
+    def sanity(self) -> None:
         if not self.option('guest'):
             return
 
@@ -202,8 +191,7 @@ class CIStaticGuest(gluetool.Module):
             if guest not in LOCALHOST_GUEST_HOSTNAMES and not self.option('ssh-key'):
                 raise IncompatibleOptionsError("Option 'ssh-key' is required")
 
-    def guest_remote(self, guest):
-        # type: (str) -> StaticGuest
+    def guest_remote(self, guest: str) -> StaticGuest:
         """
         Connect to a guest and return a StaticGuest instance.
 
@@ -214,7 +202,7 @@ class CIStaticGuest(gluetool.Module):
         if not match:
             raise GlueError("'{}' is not a valid hostname".format(guest))
 
-        port = None  # type: Optional[str]
+        port: Optional[str] = None
         (user, hostname, port) = match.groups()
 
         user = user or DEFAULT_SSH_USER
@@ -228,8 +216,7 @@ class CIStaticGuest(gluetool.Module):
 
         return static_guest
 
-    def guest_localhost(self, guest):
-        # type: (str) -> StaticLocalhostGuest
+    def guest_localhost(self, guest: str) -> StaticLocalhostGuest:
         """
         Connect to a localhost guest and return a StaticLocalhostGuest instance.
 
@@ -241,8 +228,7 @@ class CIStaticGuest(gluetool.Module):
 
         return localhost_guest
 
-    def provisioner_capabilities(self):
-        # type: () -> ProvisionerCapabilities
+    def provisioner_capabilities(self) -> ProvisionerCapabilities:
         """
         Return description of Static Guest provisioner capabilities.
 
@@ -256,8 +242,7 @@ class CIStaticGuest(gluetool.Module):
             ]
         )
 
-    def provision(self, environment, count=1, **kwargs):
-        # type: (TestingEnvironment, int, **Any) -> List[StaticGuest]
+    def provision(self, environment: TestingEnvironment, count: int = 1, **kwargs: Any) -> List[StaticGuest]:
         """
         Returns a list of N static guests, where N is specified by the parameter ``count``.
 
@@ -278,15 +263,13 @@ class CIStaticGuest(gluetool.Module):
 
         return returned_guests
 
-    def guest_connect(self, guest):
-        # type: (str) -> Union[StaticGuest, StaticLocalhostGuest]
+    def guest_connect(self, guest: str) -> Union[StaticGuest, StaticLocalhostGuest]:
         if guest in LOCALHOST_GUEST_HOSTNAMES:
             return self.guest_localhost(guest)
 
         return self.guest_remote(guest)
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         with ThreadPoolExecutor(thread_name_prefix="connect-thread") as executor:
             futures = {executor.submit(self.guest_connect, guest) for guest in self.option('guest')}
 

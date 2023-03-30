@@ -45,8 +45,7 @@ class ComposeUrl(gluetool.Module):
     shared_functions = ['get_compose_url']
 
     @cached_property
-    def directory_path(self):
-        # type: () -> Optional[str]
+    def directory_path(self) -> Optional[str]:
         directory_path_template = self.option('directory-path-template')
 
         if directory_path_template is None:
@@ -55,8 +54,7 @@ class ComposeUrl(gluetool.Module):
         return render_template(directory_path_template, logger=self.logger, **self.shared('eval_context'))
 
     @cached_property
-    def name_regex(self):
-        # type: () -> Optional[str]
+    def name_regex(self) -> Optional[str]:
         name_regex_template = self.option('name-regex-template')
 
         if name_regex_template is None:
@@ -65,8 +63,7 @@ class ComposeUrl(gluetool.Module):
         return render_template(name_regex_template, logger=self.logger, **self.shared('eval_context'))
 
     @cached_property
-    def osci_compose_url(self):
-        # type: () -> str
+    def osci_compose_url(self) -> str:
         """
         Generates compose url from primary_task object.
 
@@ -126,8 +123,7 @@ class ComposeUrl(gluetool.Module):
 
         return compose_url
 
-    def sanity(self):
-        # type: () -> None
+    def sanity(self) -> None:
         hostname = self.option('hostname')
         static_compose_url = self.option('static-compose-url')
 
@@ -137,8 +133,7 @@ class ComposeUrl(gluetool.Module):
         if hostname and static_compose_url:
             self.warn('Both --hostname and --static-compose-url specified, --static-compose-url will be used.')
 
-    def get_compose_url(self):
-        # type: () -> str
+    def get_compose_url(self) -> str:
         static_compose_url = cast(Optional[str], self.option('static-compose-url'))
 
         if static_compose_url:

@@ -45,8 +45,7 @@ class TaskDispatcher(gluetool.Module):
         }
     }
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
 
         super(TaskDispatcher, self).__init__(*args, **kwargs)
 
@@ -55,8 +54,7 @@ class TaskDispatcher(gluetool.Module):
         self._child_thread_id = None
 
     @cached_property
-    def pipeline_test_categories(self):
-        # type: () -> Optional[gluetool.utils.SimplePatternMap]
+    def pipeline_test_categories(self) -> Optional[gluetool.utils.SimplePatternMap]:
 
         if not self.option('pipeline-test-categories'):
             return None
@@ -64,16 +62,14 @@ class TaskDispatcher(gluetool.Module):
         return gluetool.utils.SimplePatternMap(self.option('pipeline-test-categories'), logger=self.logger)
 
     @cached_property
-    def pipeline_test_types(self):
-        # type: () -> Optional[gluetool.utils.SimplePatternMap]
+    def pipeline_test_types(self) -> Optional[gluetool.utils.SimplePatternMap]:
 
         if not self.option('pipeline-test-types'):
             return None
 
         return gluetool.utils.SimplePatternMap(self.option('pipeline-test-types'), logger=self.logger)
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         """
         Dispatch tests for a component. Ask for what modules should be called, and their options,
         and run them.
@@ -87,8 +83,10 @@ class TaskDispatcher(gluetool.Module):
         if self.has_shared('thread_id'):
             self._thread_id = self.shared('thread_id')
 
-        def _find_test_property(module, args, test_property, mapping):
-            # type: (str, List[str], str, gluetool.utils.SimplePatternMap) -> str
+        def _find_test_property(module: str,
+                                args: List[str],
+                                test_property: str,
+                                mapping: gluetool.utils.SimplePatternMap) -> str:
 
             joined_args = ' '.join(args)
 

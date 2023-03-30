@@ -69,15 +69,13 @@ class TestingThread(gluetool.Module):
         }
     }
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(TestingThread, self).__init__(*args, **kwargs)
 
-        self._thread_id = None  # type: Optional[str]
+        self._thread_id: Optional[str] = None
 
     @property
-    def eval_context(self):
-        # type: () -> Dict[str, Optional[str]]
+    def eval_context(self) -> Dict[str, Optional[str]]:
         if gluetool_modules_framework.libs.is_recursion(__file__, 'eval_context'):
             return {}
 
@@ -91,8 +89,7 @@ class TestingThread(gluetool.Module):
             'THREAD_ID': self._thread_id
         }
 
-    def thread_id(self):
-        # type: () -> Optional[str]
+    def thread_id(self) -> Optional[str]:
         """
         Returns current testing thread ID.
 
@@ -101,8 +98,7 @@ class TestingThread(gluetool.Module):
 
         return self._thread_id
 
-    def _create_thread_id(self, template):
-        # type: (str) -> str
+    def _create_thread_id(self, template: str) -> str:
         self.debug("creating a thread ID from template: '{}'".format(template))
 
         context = gluetool.utils.dict_update(self.shared('eval_context'),
@@ -117,23 +113,20 @@ class TestingThread(gluetool.Module):
 
         return sha.hexdigest()[0:self.option('id-length')]
 
-    def sanity(self):
-        # type: () -> None
+    def sanity(self) -> None:
         if self.option('id'):
             self._thread_id = self.option('id')
 
             self.info('testing thread ID set to {}'.format(self._thread_id))
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         if self._thread_id is not None:
             return
 
         self._thread_id = self._create_thread_id(self.option('id-template'))
         self.info('testing thread ID set to {}'.format(self._thread_id))
 
-    def destroy(self, failure=None):
-        # type: (Optional[gluetool.Failure]) -> None
+    def destroy(self, failure: Optional[gluetool.Failure] = None) -> None:
         if self._thread_id is None:
             self.warn('Testing thread ID is not set')
             return

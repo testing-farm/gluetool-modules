@@ -25,8 +25,7 @@ class ArtifactFingerprintsMixin(object):
         or a Testing Farm request.
     """
 
-    def __init__(self, artifact, *args, **kwargs):
-        # type: (Any, *Any, **Any) -> None
+    def __init__(self, artifact: Any, *args: Any, **kwargs: Any) -> None:
 
         super(ArtifactFingerprintsMixin, self).__init__(*args, **kwargs)  # type: ignore  # multiple inheritance
 
@@ -42,8 +41,7 @@ class ArtifactFingerprintsMixin(object):
         self.sentry_fingerpint = self._task_sentry_fingerprint
         self.sentry_tags = self._task_sentry_tags
 
-    def _request_sentry_fingerprint(self, current):
-        # type: (List[Any]) -> List[Any]
+    def _request_sentry_fingerprint(self, current: List[Any]) -> List[Any]:
         # pylint: disable=unused-argument
         """
         Sets Sentry fingerprints to class name and ``task``'s component and ID,
@@ -62,8 +60,7 @@ class ArtifactFingerprintsMixin(object):
             self.artifact.ref
         ]
 
-    def _request_sentry_tags(self, current):
-        # type: (Dict[str, Any]) -> Dict[str, Any]
+    def _request_sentry_tags(self, current: Dict[str, Any]) -> Dict[str, Any]:
         """
         Adds task namespace and ID as Sentry tags.
         """
@@ -83,8 +80,7 @@ class ArtifactFingerprintsMixin(object):
 
         return current
 
-    def _task_sentry_fingerprint(self, current):
-        # type: (List[Any]) -> List[Any]
+    def _task_sentry_fingerprint(self, current: List[Any]) -> List[Any]:
         # pylint: disable=unused-argument
         """
         Sets Sentry fingerprints to class name and ``task``'s component and ID,
@@ -101,8 +97,7 @@ class ArtifactFingerprintsMixin(object):
             self.artifact.id
         ]
 
-    def _task_sentry_tags(self, current):
-        # type: (Dict[str, Any]) -> Dict[str, Any]
+    def _task_sentry_tags(self, current: Dict[str, Any]) -> Dict[str, Any]:
         """
         Adds task namespace and ID as Sentry tags.
         """

@@ -5,9 +5,7 @@ from gluetool.log import log_blob, log_dict
 
 # Type annotations
 from typing import TYPE_CHECKING, Dict, List, Optional, Union  # noqa
-
-if TYPE_CHECKING:
-    from gluetool.log import LoggingFunctionType # noqa
+from gluetool.log import LoggingFunctionType # noqa
 
 
 class Message(object):
@@ -28,18 +26,17 @@ class Message(object):
     """
 
     def __init__(self,
-                 subject=None,     # type: Optional[str]
-                 header=None,      # type: Optional[str]
-                 footer=None,      # type: Optional[str]
-                 body=None,        # type: Optional[str]
-                 recipients=None,  # type: Optional[List[str]]
-                 cc=None,          # type: Optional[List[str]]
-                 bcc=None,         # type: Optional[List[str]]
-                 sender=None,      # type: Optional[str]
-                 reply_to=None,    # type: Optional[str]
-                 xheaders=None     # type: Optional[Dict[str, str]]
-                ):  # noqa
-        # type: (...) -> None
+                 subject: Optional[str] = None,
+                 header: Optional[str] = None,
+                 footer: Optional[str] = None,
+                 body: Optional[str] = None,
+                 recipients: Optional[List[str]] = None,
+                 cc: Optional[List[str]] = None,
+                 bcc: Optional[List[str]] = None,
+                 sender: Optional[str] = None,
+                 reply_to: Optional[str] = None,
+                 xheaders: Optional[Dict[str, str]] = None
+                ) -> None:  # noqa
 
         self.subject = subject or ''
         self.header = header or ''
@@ -52,8 +49,7 @@ class Message(object):
         self.reply_to = reply_to or ''
         self.xheaders = xheaders or {}
 
-    def log(self, log_fn):
-        # type: (LoggingFunctionType) -> None
+    def log(self, log_fn: LoggingFunctionType) -> None:
         """
         Log the message and its properties.
         """

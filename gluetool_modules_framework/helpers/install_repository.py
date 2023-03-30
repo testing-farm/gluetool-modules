@@ -44,20 +44,18 @@ class InstallRepository(gluetool.Module):
 
     shared_functions = ['setup_guest']
 
-    def __init__(self, *args, **kwargs):
-        # type: (Any, Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(InstallRepository, self).__init__(*args, **kwargs)
         self.request = None
         self.request_artifacts = None
 
     def setup_guest(
         self,
-        guest,  # type: NetworkedGuest
-        stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION,  # type: GuestSetupStage
-        log_dirpath=None,  # type: Optional[str]
-        **kwargs  # type: Any
-    ):
-        # type: (...) -> Any
+        guest: NetworkedGuest,
+        stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
+        log_dirpath: Optional[str] = None,
+        **kwargs: Any
+    ) -> Any:
         download_path = self.option('download-path')
 
         self.require_shared('evaluate_instructions')
@@ -154,8 +152,7 @@ class InstallRepository(gluetool.Module):
 
         return Ok(guest_setup_output)
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         if not self.has_shared('testing_farm_request'):
             return
 

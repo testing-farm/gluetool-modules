@@ -68,23 +68,20 @@ ProvisionerCapabilities = collections.namedtuple('ProvisionerCapabilities', ['av
 
 
 class ArtemisResourceError(GlueError):
-    def __init__(self):
-        # type: () -> None
+    def __init__(self) -> None:
         super(ArtemisResourceError, self).__init__("Artemis resource ended in 'error' state")
 
 
 class PipelineCancelled(GlueError):
-    def __init__(self):
-        # type: () -> None
+    def __init__(self) -> None:
         super(PipelineCancelled, self).__init__('Pipeline was cancelled, aborting')
 
 
 class ArtemisAPIError(SoftGlueError):
-    def __init__(self, response, error=None):
-        # type: (Any, Optional[str]) -> None
+    def __init__(self, response: Any, error: Optional[str] = None) -> None:
 
         self.status_code = response.status_code
-        self.json = {}  # type: Dict[str, str]
+        self.json: Dict[str, str] = {}
         self.text = six.ensure_str(response.text.encode('ascii', 'replace'))
         self._errors = error
 
@@ -104,8 +101,7 @@ class ArtemisAPIError(SoftGlueError):
                 self.status_code, self.errors))
 
     @property
-    def errors(self):
-        # type: () -> str
+    def errors(self) -> str:
 
         if self._errors:
             return self._errors
@@ -122,8 +118,7 @@ class ArtemisAPIError(SoftGlueError):
 class ArtemisAPI(object):
     ''' Class that allows RESTful communication with Artemis API '''
 
-    def __init__(self, module, api_url, api_version, timeout, tick):
-        # type: (gluetool.Module, str, str, int, int) -> None
+    def __init__(self, module: gluetool.Module, api_url: str, api_version: str, timeout: int, tick: int) -> None:
 
         self.module = module
         self.url = treat_url(api_url)
@@ -132,11 +127,13 @@ class ArtemisAPI(object):
         self.tick = tick
         self.check_if_artemis()
 
-    def api_call(self, endpoint, method='GET', expected_status_code=200, data=None):
-        # type: (str, str, int, Optional[Dict[str, Any]]) -> requests.Response
+    def api_call(self,
+                 endpoint: str,
+                 method: str = 'GET',
+                 expected_status_code: int = 200,
+                 data: Optional[Dict[str, Any]] = None) -> requests.Response:
 
-        def _api_call():
-            # type: () -> Result[Optional[requests.Response], str]
+        def _api_call() -> Result[Optional[requests.Response], str]:
 
             _request = getattr(requests, method.lower(), None)
             if _request is None:
@@ -180,14 +177,12 @@ class ArtemisAPI(object):
 
         return response
 
-    def check_if_artemis(self):
-        # type: () -> None
+    def check_if_artemis(self) -> None:
         '''
         Checks if `url` actually points to ArtemisAPI by calling '/guests' endpoint (which should always return a list)
         '''
 
-        def error(response):
-            # type: (Any) -> ArtemisAPIError
+        def error(response: Any) -> ArtemisAPIError:
             err_msg = 'URL {} does not point to Artemis API. Expected list, got {}' \
                 .format(self.url, six.ensure_str(response.text.encode('ascii', 'replace')))
             err = ArtemisAPIError(response, error=err_msg)
@@ -199,14 +194,13 @@ class ArtemisAPI(object):
             raise error(response)
 
     def create_guest(self,
-                     environment,  # type: TestingEnvironment
-                     pool=None,   # type: Optional[str]
-                     keyname=None,  # type: Optional[str]
-                     priority=None,  # type: Optional[str]
-                     user_data=None,  # type: Optional[Dict[str,Any]]
-                     post_install_script=None  # type: Optional[str]
-                     ):
-        # type: (...) -> Any
+                     environment: TestingEnvironment,
+                     pool: Optional[str] = None,
+                     keyname: Optional[str] = None,
+                     priority: Optional[str] = None,
+                     user_data: Optional[Dict[str, Any]] = None,
+                     post_install_script: Optional[str] = None
+                     ) -> Any:
         '''
         Submits a guest request to Artemis API.
 
@@ -242,7 +236,7 @@ class ArtemisAPI(object):
         # TODO: yes, semver will make this much better... Or better, artemis-cli package provide an easy-to-use
         # bit of code to construct the payload.
         if self.version >= API_FEATURE_VERSIONS['arch-under-hw']:
-            data = {
+            data: Dict[str, Any] = {
                 'keyname': keyname,
                 'environment': {
                     'hw': {
@@ -256,7 +250,7 @@ class ArtemisAPI(object):
                 'priority_group': priority,
                 'post_install_script': post_install_script_contents,
                 'user_data': user_data
-            }  # type: Dict[str, Any]
+            }
 
             if pool:
                 data['environment']['pool'] = pool
@@ -299,8 +293,7 @@ class ArtemisAPI(object):
 
         return self.api_call('guests/', method='POST', expected_status_code=201, data=data).json()
 
-    def inspect_guest(self, guest_id):
-        # type: (str) -> Any
+    def inspect_guest(self, guest_id: str) -> Any:
         '''
         Requests Artemis API for data about a specific guest.
 
@@ -313,8 +306,7 @@ class ArtemisAPI(object):
 
         return self.api_call('guests/{}'.format(guest_id)).json()
 
-    def inspect_guest_events(self, guest_id):
-        # type: (str) -> Any
+    def inspect_guest_events(self, guest_id: str) -> Any:
         '''
         Requests Artemis API for data about a specific guest's events.
 
@@ -327,8 +319,7 @@ class ArtemisAPI(object):
 
         return self.api_call('guests/{}/events'.format(guest_id)).json()
 
-    def get_guest_events(self, guest):
-        # type: (ArtemisGuest) -> List[Any]
+    def get_guest_events(self, guest: 'ArtemisGuest') -> List[Any]:
         '''
         Fetch all guest's events from Artemis API.
 
@@ -339,7 +330,7 @@ class ArtemisAPI(object):
         '''
         max_page = 10000
         page_size = 25
-        events = []  # type: List[Any]
+        events: List[Any] = []
         for page in range(1, max_page):
             uri = 'guests/{}/events?page_size={}&page={}'.format(guest.artemis_id, page_size, page)
             response = self.api_call(uri).json()
@@ -351,8 +342,7 @@ class ArtemisAPI(object):
 
         return events
 
-    def dump_events(self, guest, events=None):
-        # type: (ArtemisGuest, Optional[List[Any]]) -> None
+    def dump_events(self, guest: 'ArtemisGuest', events: Optional[List[Any]] = None) -> None:
         if events is None:
             self.get_guest_events(guest)
 
@@ -368,8 +358,7 @@ class ArtemisAPI(object):
         else:
             os.remove(tmpname)
 
-    def cancel_guest(self, guest_id):
-        # type: (str) -> Any
+    def cancel_guest(self, guest_id: str) -> Any:
         '''
         Requests Artemis API to cancel guest provision (or, in case a guest os already provisioned, return the guest).
 
@@ -382,8 +371,7 @@ class ArtemisAPI(object):
 
         return self.api_call('guests/{}'.format(guest_id), method='DELETE', expected_status_code=204)
 
-    def create_snapshot(self, guest_id, start_again=True):
-        # type: (str, bool) -> Any
+    def create_snapshot(self, guest_id: str, start_again: bool = True) -> Any:
         '''
         Requests Aremis API to create a snapshot of a guest.
 
@@ -404,8 +392,7 @@ class ArtemisAPI(object):
                              expected_status_code=201
                              ).json()
 
-    def inspect_snapshot(self, guest_id, snapshot_id):
-        # type: (str, str) -> Any
+    def inspect_snapshot(self, guest_id: str, snapshot_id: str) -> Any:
         '''
         Requests Artemis API for data about a specific snapshot.
 
@@ -419,8 +406,7 @@ class ArtemisAPI(object):
 
         return self.api_call('guests/{}/snapshots/{}'.format(guest_id, snapshot_id)).json()
 
-    def restore_snapshot(self, guest_id, snapshot_id):
-        # type: (str, str) -> Any
+    def restore_snapshot(self, guest_id: str, snapshot_id: str) -> Any:
         '''
         Requests Artemis API to restore a guest to a snapshot.
 
@@ -437,8 +423,7 @@ class ArtemisAPI(object):
                              expected_status_code=201
                              ).json()
 
-    def cancel_snapshot(self, guest_id, snapshot_id):
-        # type: (str, str) -> Any
+    def cancel_snapshot(self, guest_id: str, snapshot_id: str) -> Any:
         '''
         Requests Artemis API to cancel snapshot creating
         (or, in case a snapshot is already provisioned, delete the snapshot).
@@ -458,23 +443,20 @@ class ArtemisAPI(object):
 
 class ArtemisSnapshot(LoggerMixin):
     def __init__(self,
-                 module,  # type: ArtemisProvisioner
-                 name,  # type: str
-                 guest  # type: ArtemisGuest
-                 ):
-        # type: (...) -> None
+                 module: 'ArtemisProvisioner',
+                 name: str,
+                 guest: 'ArtemisGuest'
+                 ) -> None:
         super(ArtemisSnapshot, self).__init__(module.logger)
 
         self._module = module
         self.name = name
         self.guest = guest
 
-    def __repr__(self):
-        # type: () -> str
+    def __repr__(self) -> str:
         return '<ArtemisSnapshot(name="{}")>'.format(self.name)
 
-    def wait_snapshot_ready(self, timeout, tick):
-        # type: (int, int) -> None
+    def wait_snapshot_ready(self, timeout: int, tick: int) -> None:
 
         try:
             wait('snapshot_ready', self._check_snapshot_ready, timeout=timeout, tick=tick)
@@ -482,8 +464,7 @@ class ArtemisSnapshot(LoggerMixin):
         except GlueError as exc:
             raise GlueError("Snapshot couldn't be ready: {}".format(exc))
 
-    def _check_snapshot_ready(self):
-        # type: () -> Result[bool, str]
+    def _check_snapshot_ready(self) -> Result[bool, str]:
 
         snapshot_state = None
 
@@ -509,23 +490,22 @@ class ArtemisSnapshot(LoggerMixin):
 
         return Result.Error("Couldn't get snapshot {}".format(self.name))
 
-    def release(self):
-        # type: () -> None
+    def release(self) -> None:
         self._module.api.cancel_snapshot(self.guest.artemis_id, self.name)
 
 
 class ArtemisGuest(NetworkedGuest):
 
     def __init__(self,
-                 module,  # type: ArtemisProvisioner
-                 guestname,  # type: str
-                 hostname,  # type: Optional[str]
-                 environment,  # type: TestingEnvironment
-                 port=None,  # type: Optional[int]
-                 username=None,  # type: Optional[str]
-                 key=None,  # type: Optional[str]
-                 options=None,  # type: Optional[List[str]]
-                 **kwargs   # type: Optional[Dict[str, Any]]
+                 module: 'ArtemisProvisioner',
+                 guestname: str,
+                 hostname: Optional[str],
+                 environment: TestingEnvironment,
+                 port: Optional[int] = None,
+                 username: Optional[str] = None,
+                 key: Optional[str] = None,
+                 options: Optional[List[str]] = None,
+                 **kwargs: Optional[Dict[str, Any]]
                  ):
 
         super(ArtemisGuest, self).__init__(module,
@@ -537,17 +517,15 @@ class ArtemisGuest(NetworkedGuest):
                                            key=key,
                                            options=options)
         self.artemis_id = guestname
-        self._snapshots = []  # type: List[ArtemisSnapshot]
-        self.module = module  # type: ArtemisProvisioner
-        self.api = module.api  # type: ArtemisAPI
+        self._snapshots: List[ArtemisSnapshot] = []
+        self.module: ArtemisProvisioner = module
+        self.api: ArtemisAPI = module.api
         self.event_log_path = '{}{}'.format(guestname, EVENT_LOG_SUFFIX)
 
-    def __str__(self):
-        # type: () -> str
+    def __str__(self) -> str:
         return 'ArtemisGuest({}, {}@{}, {})'.format(self.artemis_id, self.username, self.hostname, self.environment)
 
-    def _check_ip_ready(self):
-        # type: () -> Result[bool, str]
+    def _check_ip_ready(self) -> Result[bool, str]:
 
         try:
             guest_data = self.api.inspect_guest(self.artemis_id)
@@ -588,8 +566,7 @@ class ArtemisGuest(NetworkedGuest):
 
         return Result.Error("Couldn't get address for guest {}".format(self.artemis_id))
 
-    def _wait_ready(self, timeout, tick):
-        # type: (int, int)-> None
+    def _wait_ready(self, timeout: int, tick: int) -> None:
         '''
         Wait till the guest is ready to be provisioned, which it's IP/hostname is available
         '''
@@ -602,12 +579,11 @@ class ArtemisGuest(NetworkedGuest):
 
     def _wait_alive(
         self,
-        connect_socket_timeout,
-        connect_timeout, connect_tick,
-        echo_timeout, echo_tick,
-        boot_timeout, boot_tick
-    ):
-        # type: (int, int, int, int, int, int, int) -> None
+        connect_socket_timeout: int,
+        connect_timeout: int, connect_tick: int,
+        echo_timeout: int, echo_tick: int,
+        boot_timeout: int, boot_tick: int
+    ) -> None:
         '''
         Wait till the guest is alive. That covers several checks.
         '''
@@ -622,13 +598,11 @@ class ArtemisGuest(NetworkedGuest):
             raise GlueError('Guest failed to become alive: {}'.format(exc))
 
     @property
-    def supports_snapshots(self):
-        # type: () -> bool
+    def supports_snapshots(self) -> bool:
         assert self.environment
         return self.environment.snapshots
 
-    def setup(self, variables=None, **kwargs):
-        # type: (Optional[Dict[str, Any]], **Any) -> Any
+    def setup(self, variables: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Any:
         """
         Custom setup for Artemis guests. Add a hostname in case there is none.
 
@@ -651,8 +625,7 @@ class ArtemisGuest(NetworkedGuest):
 
         return super(ArtemisGuest, self).setup(variables=variables, **kwargs)
 
-    def create_snapshot(self, start_again=True):
-        # type: (bool) -> ArtemisSnapshot
+    def create_snapshot(self, start_again: bool = True) -> ArtemisSnapshot:
         """
         Creates a snapshot from the current running image of the guest.
 
@@ -678,8 +651,7 @@ class ArtemisGuest(NetworkedGuest):
 
         return snapshot
 
-    def restore_snapshot(self, snapshot):
-        # type: (ArtemisSnapshot) -> ArtemisGuest
+    def restore_snapshot(self, snapshot: ArtemisSnapshot) -> 'ArtemisGuest':
         """
         Rebuilds server with the given snapshot.
 
@@ -698,8 +670,7 @@ class ArtemisGuest(NetworkedGuest):
 
         return self
 
-    def _release_snapshots(self):
-        # type: () -> None
+    def _release_snapshots(self) -> None:
         for snapshot in self._snapshots:
             snapshot.release()
 
@@ -708,12 +679,10 @@ class ArtemisGuest(NetworkedGuest):
 
         self._snapshots = []
 
-    def _release_instance(self):
-        # type: () -> None
+    def _release_instance(self) -> None:
         self.api.cancel_guest(self.artemis_id)
 
-    def destroy(self):
-        # type: () -> None
+    def destroy(self) -> None:
         if self._module.option('keep'):
             self.warn("keeping guest provisioned as requested")
             return
@@ -920,22 +889,20 @@ class ArtemisProvisioner(gluetool.Module):
     shared_functions = ['provision', 'provisioner_capabilities']
 
     @property
-    def api_url(self):
-        # type: () -> str
+    def api_url(self) -> str:
         option = self.option('api-url')
 
         return render_template(option, **self.shared('eval_context'))
 
     @gluetool.utils.cached_property
-    def hw_constraints(self):
-        # type: () -> Optional[Dict[str, Any]]
+    def hw_constraints(self) -> Optional[Dict[str, Any]]:
 
         normalized_constraints = gluetool.utils.normalize_multistring_option(self.option('hw-constraint'))
 
         if not normalized_constraints:
             return None
 
-        constraints = {}  # type: Dict[str, Any]
+        constraints: Dict[str, Any] = {}
 
         for raw_constraint in normalized_constraints:
             path, value = raw_constraint.split('=', 1)
@@ -963,8 +930,7 @@ class ArtemisProvisioner(gluetool.Module):
         return constraints
 
     @gluetool.utils.cached_property
-    def user_data(self):
-        # type: () -> Dict[str, str]
+    def user_data(self) -> Dict[str, str]:
 
         context = self.shared('eval_context')
         user_data = {}
@@ -982,8 +948,7 @@ class ArtemisProvisioner(gluetool.Module):
 
         return user_data
 
-    def sanity(self):
-        # type: () -> None
+    def sanity(self) -> None:
 
         # test whether parsing of HW requirements yields anything valid - the value is just ignored, we just want
         # to be sure it doesn't raise any exception
@@ -998,15 +963,13 @@ class ArtemisProvisioner(gluetool.Module):
         if self.option('api-version') not in SUPPORTED_API_VERSIONS:
             raise GlueError('Unsupported API version, only {} are supported'.format(', '.join(SUPPORTED_API_VERSIONS)))
 
-    def __init__(self, *args, **kwargs):
-        # type: (Any, Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(ArtemisProvisioner, self).__init__(*args, **kwargs)
 
-        self.guests = []  # type: List[ArtemisGuest]
-        self.api = None  # type: ArtemisAPI  # type: ignore
+        self.guests: List[ArtemisGuest] = []
+        self.api: ArtemisAPI = None  # type: ignore
 
-    def provisioner_capabilities(self):
-        # type: () -> ProvisionerCapabilities
+    def provisioner_capabilities(self) -> ProvisionerCapabilities:
         '''
         Return description of Artemis provisioner capabilities.
 
@@ -1018,16 +981,15 @@ class ArtemisProvisioner(gluetool.Module):
         )
 
     def provision_guest(self,
-                        environment,  # type: TestingEnvironment
-                        pool=None,  # type: Optional[str]
-                        key=None,  # type: Optional[str]
-                        priority=None,  # type: Optional[str]
-                        ssh_key=None,  # type: Optional[str]
-                        options=None,  # type: Optional[List[str]]
-                        post_install_script=None,  # type: Optional[str]
-                        user_data=None,  # type: Optional[Dict[str, str]]
-                       ):  # noqa
-        # type: (...) -> ArtemisGuest
+                        environment: TestingEnvironment,
+                        pool: Optional[str] = None,
+                        key: Optional[str] = None,
+                        priority: Optional[str] = None,
+                        ssh_key: Optional[str] = None,
+                        options: Optional[List[str]] = None,
+                        post_install_script: Optional[str] = None,
+                        user_data: Optional[Dict[str, str]] = None,
+                       ) -> ArtemisGuest:  # noqa
         '''
         Provision Artemis guest by submitting a request to Artemis API.
 
@@ -1094,8 +1056,7 @@ class ArtemisProvisioner(gluetool.Module):
 
         return guest
 
-    def provision(self, environment, **kwargs):
-        # type: (TestingEnvironment, Any) -> List[ArtemisGuest]
+    def provision(self, environment: TestingEnvironment, **kwargs: Any) -> List[ArtemisGuest]:
         '''
         Provision Artemis guest(s).
 
@@ -1141,8 +1102,7 @@ class ArtemisProvisioner(gluetool.Module):
 
         return [guest]
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
 
         self.api = ArtemisAPI(self,
                               self.api_url,
@@ -1173,16 +1133,14 @@ class ArtemisProvisioner(gluetool.Module):
             for guest in self.guests:
                 guest.setup()
 
-    def remove_from_list(self, guest):
-        # type: (ArtemisGuest) -> None
+    def remove_from_list(self, guest: ArtemisGuest) -> None:
         if guest not in self.guests:
             self.error('{} is not found in guests list')
             return
 
         self.guests.remove(guest)
 
-    def destroy(self, failure=None):
-        # type: (Optional[Any]) -> None
+    def destroy(self, failure: Optional[Any] = None) -> None:
         for guest in self.guests[:]:
             guest.destroy()
             self.api.dump_events(guest)

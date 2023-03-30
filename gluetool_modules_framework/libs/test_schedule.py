@@ -13,9 +13,10 @@ from gluetool_modules_framework.libs import GlueEnum
 # Type annotations
 from typing import TYPE_CHECKING, cast, Any, Dict, List, Optional, NamedTuple  # noqa
 
+from gluetool.log import LoggingFunctionType  # noqa
+
 if TYPE_CHECKING:
     import bs4  # noqa
-    from gluetool.log import LoggingFunctionType  # noqa
     import gluetool_modules_framework.libs.guest  # noqa
     import gluetool_modules_framework.libs.guest_setup  # noqa
     import gluetool_modules_framework.libs.testing_environment  # noqa
@@ -32,8 +33,9 @@ GuestSetupOutputsContainerType = Dict[
 # `serialize_to_string is not that nice, it adds field names and no spaces between fields,
 # it is for machines mostly, and output of this function is supposed to be easily
 # readable by humans.
-def _env_to_str(testing_environment):
-    # type: (Optional[gluetool_modules_framework.libs.testing_environment.TestingEnvironment]) -> str
+def _env_to_str(
+    testing_environment: Optional[gluetool_modules_framework.libs.testing_environment.TestingEnvironment]
+) -> str:
 
     if not testing_environment:
         return ''
@@ -46,8 +48,7 @@ def _env_to_str(testing_environment):
 
 
 # The same but for guests.
-def _guest_to_str(guest):
-    # type: (Optional[gluetool_modules_framework.libs.guest.NetworkedGuest]) -> str
+def _guest_to_str(guest: Optional[gluetool_modules_framework.libs.guest.NetworkedGuest]) -> str:
 
     if not guest:
         return ''
@@ -56,14 +57,12 @@ def _guest_to_str(guest):
 
 
 class EmptyTestScheduleError(gluetool_modules_framework.libs.sentry.ArtifactFingerprintsMixin, gluetool.SoftGlueError):
-    def __init__(self, task):
-        # type: (Any) -> None
+    def __init__(self, task: Any) -> None:
 
         super(EmptyTestScheduleError, self).__init__(task, 'No tests were found for the component')
 
     @property
-    def submit_to_sentry(self):
-        # type: () -> bool
+    def submit_to_sentry(self) -> bool:
 
         return False
 
@@ -72,14 +71,12 @@ class InvalidTmtReferenceError(
     gluetool_modules_framework.libs.sentry.ArtifactFingerprintsMixin,
     gluetool.SoftGlueError
 ):
-    def __init__(self, task, tmt_reference):
-        # type: (Any, str) -> None
+    def __init__(self, task: Any, tmt_reference: str) -> None:
         self.tmt_reference = tmt_reference
         super(InvalidTmtReferenceError, self).__init__(task, 'Incorrect TMT reference: {}'.format(tmt_reference))
 
     @property
-    def submit_to_sentry(self):
-        # type: () -> bool
+    def submit_to_sentry(self) -> bool:
 
         return False
 
@@ -176,8 +173,7 @@ TestScheduleEntryOutput = NamedTuple('TestScheduleEntryOutput', (
 
 
 class TestScheduleEntryAdapter(gluetool.log.ContextAdapter):
-    def __init__(self, logger, entry_id):
-        # type: (gluetool.log.ContextAdapter, str) -> None
+    def __init__(self, logger: gluetool.log.ContextAdapter, entry_id: str) -> None:
 
         super(TestScheduleEntryAdapter, self).__init__(logger, {
             'ctx_schedule_entry_index': (200, entry_id)
@@ -204,8 +200,7 @@ class TestScheduleEntry(LoggerMixin, object):
     :ivar NetworkedGuest guest: guest assigned to this entry.
     """
 
-    def __init__(self, logger, entry_id, runner_capability):
-        # type: (gluetool.log.ContextAdapter, str, str) -> None
+    def __init__(self, logger: gluetool.log.ContextAdapter, entry_id: str, runner_capability: str) -> None:
 
         super(TestScheduleEntry, self).__init__(TestScheduleEntryAdapter(logger, entry_id))
 
@@ -216,36 +211,33 @@ class TestScheduleEntry(LoggerMixin, object):
         self.state = TestScheduleEntryState.OK
         self.result = TestScheduleResult.UNDEFINED
 
-        self.testing_environment = None  # type: Optional[gluetool_modules_framework.libs.testing_environment.TestingEnvironment]  # noqa
-        self.guest = None  # type: Optional[gluetool_modules_framework.libs.guest.NetworkedGuest]
+        self.testing_environment: Optional[gluetool_modules_framework.libs.testing_environment.TestingEnvironment] = None  # noqa
+        self.guest: Optional[gluetool_modules_framework.libs.guest.NetworkedGuest] = None
 
         # List of exceptions encountered while processing the entry
-        self.exceptions = []  # type: List[gluetool.log.ExceptionInfoType]
+        self.exceptions: List[gluetool.log.ExceptionInfoType] = []
 
         # List of outputs produced by different guest setup actions
-        self.guest_setup_outputs = {}  # type: GuestSetupOutputsContainerType
+        self.guest_setup_outputs: GuestSetupOutputsContainerType = {}
 
         # List of test logs produced by tests.
-        self.outputs = []  # type: List[TestScheduleEntryOutput]
+        self.outputs: List[TestScheduleEntryOutput] = []
 
-        self.action = None  # type: Optional[gluetool.action.Action]
+        self.action: Optional[gluetool.action.Action] = None
 
     @property
-    def has_exceptions(self):
-        # type: () -> bool
+    def has_exceptions(self) -> bool:
 
         return bool(self.exceptions)
 
-    def log_entry(self, log_fn=None):
-        # type: (Optional[LoggingFunctionType]) -> None
+    def log_entry(self, log_fn: Optional[LoggingFunctionType] = None) -> None:
 
         log_fn = log_fn or self.debug
 
         log_fn('testing environment: {}'.format(self.testing_environment))
         log_fn('guest: {}'.format(self.guest))
 
-    def log_guest_setup_outputs(self, module, log_fn=None):
-        # type: (gluetool.Module, Optional[LoggingFunctionType]) -> None
+    def log_guest_setup_outputs(self, module: gluetool.Module, log_fn: Optional[LoggingFunctionType] = None) -> None:
 
         log_fn = log_fn or self.debug
 
@@ -278,25 +270,23 @@ class TestSchedule(List[TestScheduleEntry]):
     helper.
     """
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
 
         super(TestSchedule, self).__init__(*args, **kwargs)
 
         self.result = TestScheduleResult.UNDEFINED
-        self.action = None  # type: Optional[gluetool.action.Action]
+        self.action: Optional[gluetool.action.Action] = None
 
     def log(
         self,
-        log_fn,
-        label=None,
-        include_errors=False,
-        include_logs=False,
-        include_connection_info=False,
-        connection_info_docs_link=None,
-        module=None
-    ):
-        # type: (LoggingFunctionType, Optional[str], bool, bool, bool, Optional[str], Optional[gluetool.Module]) -> None
+        log_fn: LoggingFunctionType,
+        label: Optional[str] = None,
+        include_errors: bool = False,
+        include_logs: bool = False,
+        include_connection_info: bool = False,
+        connection_info_docs_link: Optional[str] = None,
+        module: Optional[gluetool.Module] = None
+    ) -> None:
         """
         Log a table giving a nice, user-readable overview of the test schedule.
 

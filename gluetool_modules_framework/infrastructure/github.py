@@ -28,31 +28,29 @@ DEFAULT_RETRY_TIMEOUT = 30
 DEFAULT_RETRY_TICK = 10
 
 
-def is_json_response(response):
-    # type: (requests.models.Response) -> bool
+def is_json_response(response: requests.models.Response) -> bool:
 
     content_type_list = re.split('[ ;]+', response.headers.get('content-type', ''))
     return 'application/json' in content_type_list
 
 
 class GitHubAPI(object):
-    def __init__(self, module, api_url, username, token):
-        # type: (gluetool.Module, str, str, str) -> None
+    def __init__(self, module: gluetool.Module, api_url: str, username: str, token: str) -> None:
 
         self.module = module
         self.api_url = api_url
         self.username = username
         self.token = token
 
-    def _compose_url(self, path, params=None):
-        # type: (str, Optional[Dict[str, str]]) -> str
+    def _compose_url(self, path: str, params: Optional[Dict[str, str]] = None) -> str:
 
         if params is None:
             return '{}/{}'.format(self.api_url, urlquote(path))
         return '{}/{}?{}'.format(self.api_url, urlquote(path), urlencode(params))
 
-    def _check_status(self, response, allow_statuses=None):
-        # type: (requests.models.Response, Optional[List[int]]) -> Result[requests.models.Response, bool]
+    def _check_status(self,
+                      response: requests.models.Response,
+                      allow_statuses: Optional[List[int]] = None) -> Result[requests.models.Response, bool]:
         if response.status_code < 200 or response.status_code > 299:
             if not allow_statuses or response.status_code not in allow_statuses:
                 if is_json_response(response):
@@ -65,14 +63,15 @@ class GitHubAPI(object):
                 return Result.Error(False)
         return Result.Ok(response)
 
-    def _get(self, url, allow_statuses=None, params=None):
-        # type: (str, Optional[List[int]], Optional[Dict[str, Any]]) -> requests.models.Response
+    def _get(self,
+             url: str,
+             allow_statuses: Optional[List[int]] = None,
+             params: Optional[Dict[str, Any]] = None) -> requests.models.Response:
         # The user can specify a list of additional http status codes
         # to allow.  This method will raise a GlueError if the http status
         # code is not in the 2xx range and not in the allow_statuses list
 
-        def _api_request():
-            # type: () -> Result[requests.models.Response, bool]
+        def _api_request() -> Result[requests.models.Response, bool]:
             self.module.debug('[GitHub API] GET: {}'.format(url))
             try:
                 if self.username and self.token:
@@ -104,8 +103,11 @@ class GitHubAPI(object):
 
         return response
 
-    def _get_paginated_json(self, url, allow_statuses=None, pages_limit=None, params=None):
-        # type: (str, Optional[List[int]], Optional[int], Optional[Dict[str, Any]]) -> List[Dict[Any, Any]]
+    def _get_paginated_json(self,
+                            url: str,
+                            allow_statuses: Optional[List[int]] = None,
+                            pages_limit: Optional[int] = None,
+                            params: Optional[Dict[str, Any]] = None) -> List[Dict[Any, Any]]:
         """
         Return list of response pages.
         """
@@ -129,8 +131,10 @@ class GitHubAPI(object):
         log_dict(self.module.debug, '[GitHub API] all paginated output with {} pages'.format(page_count), data)
         return data
 
-    def _post(self, url, data, allow_statuses=None):
-        # type: (str, Dict[str, str], Optional[List[int]]) -> requests.models.Response
+    def _post(self,
+              url: str,
+              data: Dict[str, str],
+              allow_statuses: Optional[List[int]] = None) -> requests.models.Response:
 
         log_dict(self.module.debug, '[GitHub API] POST: {}'.format(url), data)
 
@@ -139,8 +143,7 @@ class GitHubAPI(object):
             empty_response._content = b'{}'  # type: ignore
             return empty_response
 
-        def _api_request():
-            # type: () -> Result[requests.models.Response, bool]
+        def _api_request() -> Result[requests.models.Response, bool]:
             try:
                 if self.username and self.token:
                     response = requests.post(url, auth=(self.username, self.token), json=data)
@@ -167,8 +170,7 @@ class GitHubAPI(object):
 
         return response
 
-    def get_pull_request(self, owner, repo, pull_number):
-        # type: (str, str, str) -> Any
+    def get_pull_request(self, owner: str, repo: str, pull_number: str) -> Any:
         """
         Return general info about the specified pull request.
 
@@ -183,8 +185,7 @@ class GitHubAPI(object):
         pr_data = self._get(pr_url).json()
         return pr_data
 
-    def get_commit_statuses(self, owner, repo, commit_sha):
-        # type: (str, str, str) -> Any
+    def get_commit_statuses(self, owner: str, repo: str, commit_sha: str) -> Any:
         """
         Return combined state and commit statuses for the specified ref.
 
@@ -205,8 +206,7 @@ class GitHubAPI(object):
 
         return statuses_data
 
-    def get_comment(self, owner, repo, comment_id):
-        # type: (str, str, str) -> Any
+    def get_comment(self, owner: str, repo: str, comment_id: str) -> Any:
         """
         Return the specified comment.
 
@@ -221,8 +221,7 @@ class GitHubAPI(object):
         comment_data = self._get(comment_url).json()
         return comment_data
 
-    def get_commit(self, owner, repo, sha):
-        # type: (str, str, str) -> Any
+    def get_commit(self, owner: str, repo: str, sha: str) -> Any:
         """
         Return the specified commit.
 
@@ -237,8 +236,7 @@ class GitHubAPI(object):
         commit_data = self._get(commit_url).json()
         return commit_data
 
-    def get_pr_commits(self, owner, repo, pr):
-        # type: (str, str, str) -> Any
+    def get_pr_commits(self, owner: str, repo: str, pr: str) -> Any:
         """
         Return a list of commits for a specified pr.
 
@@ -251,8 +249,7 @@ class GitHubAPI(object):
         commits_url = self._compose_url(commits_path)
         return self._get(commits_url).json()
 
-    def get_commit_by_timestamp(self, owner, repo, base_sha, timestamp):
-        # type: (str, str, str, str) -> Any
+    def get_commit_by_timestamp(self, owner: str, repo: str, base_sha: str, timestamp: str) -> Any:
         """
         Return commit preceding given timestamp from a branch specified by `base_sha`.
 
@@ -273,8 +270,7 @@ class GitHubAPI(object):
         commit_data = self._get(commit_url).json()
         return commit_data[0] if len(commit_data) else None
 
-    def is_collaborator(self, owner, repo, username):
-        # type: (str, str, str) -> bool
+    def is_collaborator(self, owner: str, repo: str, username: str) -> bool:
         """
         Return true if the user with the given username is a collaborator in owner/repo
 
@@ -291,12 +287,10 @@ class GitHubAPI(object):
         response = self._get(collaborators_url, allow_statuses=[401, 403, 404])
         return (response.status_code == 204)
 
-    def _set_commit_status(self, url, status_data):
-        # type: (str, Dict[str, str]) -> Any
+    def _set_commit_status(self, url: str, status_data: Dict[str, str]) -> Any:
         return self._post(url, status_data).json()
 
-    def set_commit_status(self, pull_request, status_data):
-        # type: (GitHubPullRequest, Dict[str, str]) -> Any
+    def set_commit_status(self, pull_request: 'GitHubPullRequest', status_data: Dict[str, str]) -> Any:
         """
         Update status of the specified pull request.
 
@@ -311,8 +305,7 @@ class GitHubAPI(object):
 
         return self._set_commit_status(url, status_data)
 
-    def get_file(self, pull_request, file_path):
-        # type: (GitHubPullRequest, str) -> str
+    def get_file(self, pull_request: 'GitHubPullRequest', file_path: str) -> str:
         """
         Get a single file from the repository.
 
@@ -333,8 +326,7 @@ class GitHubAPI(object):
 
         return six.ensure_str(response.content)
 
-    def get_file_from_pull_request(self, pull_request, file_path):
-        # type: (GitHubPullRequest, str) -> str
+    def get_file_from_pull_request(self, pull_request: 'GitHubPullRequest', file_path: str) -> str:
         """
         Get a single file from the pull request changed repository.
 
@@ -362,20 +354,19 @@ class GitHubAPI(object):
 class GitHubPullRequest(object):
     ARTIFACT_NAMESPACE = 'github-pr'
 
-    def __init__(self, module, pull_request_id):
-        # type: (GitHub, PullRequestID) -> None
+    def __init__(self, module: 'GitHub', pull_request_id: 'PullRequestID') -> None:
 
         self.has_artifacts = True
 
         self.pull_request_id = pull_request_id
         self.id = self.dispatch_id = str(pull_request_id)
 
-        self.owner = self.pull_request_id.owner  # type: str
-        self.repo = self.pull_request_id.repo  # type: str
+        self.owner: str = self.pull_request_id.owner
+        self.repo: str = self.pull_request_id.repo
         self.pull_number = self.pull_request_id.pull_number
-        self.commit_sha = self.pull_request_id.commit_sha  # type: str
+        self.commit_sha: str = self.pull_request_id.commit_sha
         self.comment_id = self.pull_request_id.comment_id
-        self.depends_on = []  # type: List[str]
+        self.depends_on: List[str] = []
 
         self.component = self.repo
         self.component_id = self.component
@@ -396,9 +387,9 @@ class GitHubPullRequest(object):
         self.html_url = links['html']['href']
         self.comments_url = links['comments']['href']
 
-        self.source_branch = pull_request['head']['ref']  # type: str
-        self.source_repo_owner = pull_request['head']['repo']['owner']['login']  # type: str
-        self.source_repo_name = pull_request['head']['repo']['name']  # type: str
+        self.source_branch: str = pull_request['head']['ref']
+        self.source_repo_owner: str = pull_request['head']['repo']['owner']['login']
+        self.source_repo_name: str = pull_request['head']['repo']['name']
 
         self.target_branch = pull_request['base']['ref']
 
@@ -431,7 +422,7 @@ class GitHubPullRequest(object):
         commit_statuses = self.github_api.get_commit_statuses(self.owner, self.repo, self.commit_sha)
 
         self.commit_state = commit_statuses['state']
-        self.commit_statuses = {}  # type: Dict[str, Dict[str, str]]
+        self.commit_statuses: Dict[str, Dict[str, str]] = {}
         for status in commit_statuses['statuses']:
             self.commit_statuses[status['context']] = {
                 'state': status['state'],
@@ -454,7 +445,7 @@ class GitHubPullRequest(object):
 
         commits = self.github_api.get_pr_commits(self.owner, self.repo, self.pull_number)
         depends_on_regex = re.compile(r'\s*Depends-On:\s*(.*/pull/|#)(\d+)', flags=re.IGNORECASE)
-        depends_on = []  # type: List[str]
+        depends_on: List[str] = []
         for commit_message in [c['commit']['message'] for c in reversed(commits)]:
             match = depends_on_regex.search(commit_message)
             if match:
@@ -470,12 +461,10 @@ class GitHubPullRequest(object):
         self.depends_on = list(collections.OrderedDict.fromkeys(depends_on))
 
     @cached_property
-    def task_arches(self):
-        # type: () -> TaskArches
+    def task_arches(self) -> TaskArches:
         return TaskArches(True, ['noarch'])
 
-    def get_file(self, path):
-        # type: (str) -> str
+    def get_file(self, path: str) -> str:
         """
         Return the content of a file in the pull request.
         """
@@ -483,8 +472,7 @@ class GitHubPullRequest(object):
         assert isinstance(content, str)
         return content
 
-    def get_file_from_pull_request(self, path):
-        # type: (str) -> str
+    def get_file_from_pull_request(self, path: str) -> str:
         """
         Return the content of a file in the pull request.
         """
@@ -502,8 +490,12 @@ class PullRequestID(object):
     with the following format: 'owner:repo:pull_number:[commit_sha|:comment_id]'.
     """
 
-    def __init__(self, owner, repo, pull_number, commit_sha, comment_id=None):
-        # type: (str, str, str, str, Optional[str]) -> None
+    def __init__(self,
+                 owner: str,
+                 repo: str,
+                 pull_number: str,
+                 commit_sha: str,
+                 comment_id: Optional[str] = None) -> None:
 
         self.owner = owner
         self.repo = repo
@@ -511,8 +503,7 @@ class PullRequestID(object):
         self.commit_sha = commit_sha
         self.comment_id = comment_id
 
-    def __str__(self):
-        # type: () -> str
+    def __str__(self) -> str:
 
         msg = '{}:{}:{}:{}'.format(self.owner, self.repo, self.pull_number, self.commit_sha)
         if self.comment_id:
@@ -520,8 +511,7 @@ class PullRequestID(object):
 
         return msg
 
-    def __repr__(self):
-        # type: () -> str
+    def __repr__(self) -> str:
 
         return ('{0}(owner={1.owner!r}, repo={1.repo!r},'
                 ' pull_number={1.pull_number!r}, commit_sha={1.commit_sha!r},'
@@ -598,15 +588,13 @@ class GitHub(gluetool.Module):
 
     shared_functions = ['primary_task', 'tasks', 'github_api', 'set_pr_status']
 
-    def __init__(self, *args, **kwargs):
-        # type: (Any, Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
 
         super(GitHub, self).__init__(*args, **kwargs)
-        self._pull_request = None  # type: Optional[GitHubPullRequest]
+        self._pull_request: Optional[GitHubPullRequest] = None
 
     @property
-    def eval_context(self):
-        # type: () -> Dict[str, Any]
+    def eval_context(self) -> Dict[str, Any]:
 
         __content__ = {  # noqa
             'ARTIFACT_TYPE': """
@@ -638,8 +626,7 @@ class GitHub(gluetool.Module):
         }
 
     @cached_property
-    def _github_api(self):
-        # type: () -> GitHubAPI
+    def _github_api(self) -> GitHubAPI:
 
         return GitHubAPI(
             self,
@@ -648,32 +635,28 @@ class GitHub(gluetool.Module):
             self.option('api-token'),
         )
 
-    def github_api(self):
-        # type: () -> GitHubAPI
+    def github_api(self) -> GitHubAPI:
         """
         Return GitHubAPI instance.
         """
 
         return cast(GitHubAPI, self._github_api)
 
-    def primary_task(self):
-        # type: () -> Optional[GitHubPullRequest]
+    def primary_task(self) -> Optional[GitHubPullRequest]:
         """
         Return the GitHubPullRequest instance.
         """
 
         return self._pull_request
 
-    def tasks(self):
-        # type: () -> List[GitHubPullRequest]
+    def tasks(self) -> List[GitHubPullRequest]:
         """
         Return the available GitHubPullRequest instance as a list.
         """
 
         return [self._pull_request] if self._pull_request else []
 
-    def _get_github_status(self, status):
-        # type: (str) -> str
+    def _get_github_status(self, status: str) -> str:
         """
         Translate overall pipeline result into GitHub status.
         """
@@ -686,8 +669,11 @@ class GitHub(gluetool.Module):
 
         return status_map.get(status, 'error')
 
-    def set_pr_status(self, status, message, context=None, target_url=None):
-        # type: (str, str, Optional[str], Optional[str]) -> None
+    def set_pr_status(self,
+                      status: str,
+                      message: str,
+                      context: Optional[str] = None,
+                      target_url: Optional[str] = None) -> None:
         """
         Create a commit status for the initialized pull request.
 
@@ -736,8 +722,7 @@ class GitHub(gluetool.Module):
         self.info('Status for {pull_id} with context \'{context}\' successfully set to \'{status}\''.format(
                   pull_id=pull_request.pull_request_id, context=context, status=status))
 
-    def sanity(self):
-        # type: () -> None
+    def sanity(self) -> None:
 
         if self.option('pull-request'):
             # pull-request = 'owner:repo:pull_number:[commit_sha|:comment_id]'
@@ -758,8 +743,7 @@ class GitHub(gluetool.Module):
                 raise gluetool.GlueError('Check set-status option, vaild values for state are:'
                                          ' {}.'.format(VALID_STATUSES))
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
 
         if self.dryrun_enabled:
             self.warn('DRY mode supported for functionality provided by this module, '

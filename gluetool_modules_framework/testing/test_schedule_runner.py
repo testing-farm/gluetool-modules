@@ -92,16 +92,14 @@ class TestScheduleRunner(gluetool.Module):
         }
     }
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
 
         super(TestScheduleRunner, self).__init__(*args, **kwargs)
 
-        self._test_schedule = TestSchedule()  # type: TestSchedule
+        self._test_schedule: TestSchedule = TestSchedule()
 
     @property
-    def eval_context(self):
-        # type: () -> Any
+    def eval_context(self) -> Any:
 
         __content__ = {  # noqa
             'TEST_SCHEDULE': """
@@ -114,14 +112,12 @@ class TestScheduleRunner(gluetool.Module):
         }
 
     @gluetool.utils.cached_property
-    def parallelize(self):
-        # type: () -> bool
+    def parallelize(self) -> bool:
 
         return normalize_bool_option(self.option('parallelize'))
 
     @gluetool.utils.cached_property
-    def schedule_entry_attribute_map(self):
-        # type: () -> Any
+    def schedule_entry_attribute_map(self) -> Any:
 
         if not self.option('schedule-entry-attribute-map'):
             return []
@@ -129,12 +125,10 @@ class TestScheduleRunner(gluetool.Module):
         return load_yaml(self.option('schedule-entry-attribute-map'), logger=self.logger)
 
     @gluetool.utils.cached_property
-    def skip_guest_setup_stages(self):
-        # type: () -> List[str]
+    def skip_guest_setup_stages(self) -> List[str]:
         return normalize_multistring_option(self.option('skip-guest-setup-stages'))
 
-    def sanity(self):
-        # type: () -> None
+    def sanity(self) -> None:
 
         if normalize_bool_option(self.option('parallelize')):
             if self.option('max-parallel'):
@@ -147,13 +141,14 @@ class TestScheduleRunner(gluetool.Module):
         else:
             self.info('Will run schedule entries serially')
 
-    def _get_entry_ready(self, schedule_entry):
-        # type: (TestScheduleEntry) -> None
+    def _get_entry_ready(self, schedule_entry: TestScheduleEntry) -> None:
 
         pass
 
-    def _provision_guest(self, schedule_entry):
-        # type: (TestScheduleEntry) -> List[gluetool_modules_framework.libs.guest.NetworkedGuest]
+    def _provision_guest(
+        self,
+        schedule_entry: TestScheduleEntry
+    ) -> List[gluetool_modules_framework.libs.guest.NetworkedGuest]:
 
         # This is necessary - the output would tie the thread and the schedule entry in
         # the output. Modules used to actually provision the guest use their own module
@@ -173,13 +168,11 @@ class TestScheduleRunner(gluetool.Module):
                 self.shared('provision', schedule_entry.testing_environment)
             )
 
-    def _setup_guest(self, schedule_entry):
-        # type: (TestScheduleEntry) -> Any
+    def _setup_guest(self, schedule_entry: TestScheduleEntry) -> Any:
 
         schedule_entry.info('starting guest setup')
 
-        def _run_setup(stage):
-            # type: (GuestSetupStage) -> None
+        def _run_setup(stage: GuestSetupStage) -> None:
 
             assert schedule_entry.guest is not None
 
@@ -249,8 +242,7 @@ class TestScheduleRunner(gluetool.Module):
         ):
             _run_setup(GuestSetupStage.POST_ARTIFACT_INSTALLATION)
 
-    def _destroy_guest(self, schedule_entry):
-        # type: (TestScheduleEntry) -> None
+    def _destroy_guest(self, schedule_entry: TestScheduleEntry) -> None:
 
         assert schedule_entry.guest is not None
 
@@ -263,26 +255,22 @@ class TestScheduleRunner(gluetool.Module):
         ):
             schedule_entry.guest.destroy()
 
-    def _cleanup(self, schedule_entry):
-        # type: (TestScheduleEntry) -> None
+    def _cleanup(self, schedule_entry: TestScheduleEntry) -> None:
 
         self._destroy_guest(schedule_entry)
 
-    def _run_tests(self, schedule_entry):
-        # type: (TestScheduleEntry) -> None
+    def _run_tests(self, schedule_entry: TestScheduleEntry) -> None:
 
         schedule_entry.info('starting tests execution')
 
         with Action('test execution', parent=schedule_entry.action, logger=schedule_entry.logger):
             self.shared('run_test_schedule_entry', schedule_entry)
 
-    def _run_schedule(self, schedule):
-        # type: (TestSchedule) -> None
+    def _run_schedule(self, schedule: TestSchedule) -> None:
 
         schedule_queue = schedule[:] if not self.parallelize or self.option('max-parallel') else None
 
-        def _job(schedule_entry, name, target):
-            # type: (TestScheduleEntry, str, Callable[[TestScheduleEntry], Any]) -> Job
+        def _job(schedule_entry: TestScheduleEntry, name: str, target: Callable[[TestScheduleEntry], Any]) -> Job:
 
             return Job(
                 logger=schedule_entry.logger,
@@ -292,8 +280,9 @@ class TestScheduleRunner(gluetool.Module):
                 kwargs={}
             )
 
-        def _shift(schedule_entry, new_stage, new_state=None):
-            # type: (TestScheduleEntry, TestScheduleEntryStage, Optional[TestScheduleEntryState]) -> None
+        def _shift(schedule_entry: TestScheduleEntry,
+                   new_stage: TestScheduleEntryStage,
+                   new_state: Optional[TestScheduleEntryState] = None) -> None:
 
             old_stage, old_state = schedule_entry.stage, schedule_entry.state
 
@@ -306,8 +295,7 @@ class TestScheduleRunner(gluetool.Module):
                 old_stage, new_stage, old_state, new_state
             ))
 
-        def _set_action(schedule_entry):
-            # type: (TestScheduleEntry) -> None
+        def _set_action(schedule_entry: TestScheduleEntry) -> None:
 
             assert schedule_entry.testing_environment is not None
 
@@ -322,8 +310,7 @@ class TestScheduleRunner(gluetool.Module):
                 }
             )
 
-        def _finish_action(schedule_entry):
-            # type: (TestScheduleEntry) -> None
+        def _finish_action(schedule_entry: TestScheduleEntry) -> None:
 
             assert schedule_entry.action is not None
 
@@ -335,8 +322,7 @@ class TestScheduleRunner(gluetool.Module):
 
             schedule_entry.action.finish()
 
-        def _on_job_start(schedule_entry):
-            # type: (TestScheduleEntry) -> None
+        def _on_job_start(schedule_entry: TestScheduleEntry) -> None:
 
             self.require_shared('evaluate_filter')
 
@@ -392,8 +378,7 @@ class TestScheduleRunner(gluetool.Module):
 
                 _shift(schedule_entry, TestScheduleEntryStage.RUNNING)
 
-        def _on_job_complete(result, schedule_entry):
-            # type: (Any, TestScheduleEntry) -> None
+        def _on_job_complete(result: Any, schedule_entry: TestScheduleEntry) -> None:
 
             if schedule_entry.stage == TestScheduleEntryStage.CREATED:
                 schedule_entry.info('Entry is ready')
@@ -443,8 +428,7 @@ class TestScheduleRunner(gluetool.Module):
                     _set_action(schedule_queue_entry)
                     engine.enqueue_jobs(_job(schedule_queue_entry, 'get entry ready', self._get_entry_ready))
 
-        def _on_job_error(exc_info, schedule_entry):
-            # type: (Any, TestScheduleEntry) -> None
+        def _on_job_error(exc_info: Any, schedule_entry: TestScheduleEntry) -> None:
 
             schedule_entry.exceptions.append(exc_info)
 
@@ -479,8 +463,7 @@ class TestScheduleRunner(gluetool.Module):
                 _set_action(schedule_queue_entry)
                 engine.enqueue_jobs(_job(schedule_queue_entry, 'get entry ready', self._get_entry_ready))
 
-        def _on_job_done(remaining_count, schedule_entry):
-            # type: (int, TestScheduleEntry) -> None
+        def _on_job_done(remaining_count: int, schedule_entry: TestScheduleEntry) -> None:
 
             # `remaining_count` is number of remaining jobs, but we're more interested in a number of remaining
             # schedule entries (one entry spawns multiple jobs, hence jobs are not useful to us).
@@ -563,8 +546,7 @@ class TestScheduleRunner(gluetool.Module):
         self.shared('trigger_event', 'test-schedule.finished',
                     schedule=schedule)
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
 
         schedule = cast(
             TestSchedule,

@@ -32,8 +32,7 @@ class InstallMBSBuild(gluetool.Module):
 
     shared_functions = ['setup_guest', ]
 
-    def _get_repo(self, module_nsvc, guest):
-        # type: (str, Guest) -> str
+    def _get_repo(self, module_nsvc: str, guest: Guest) -> str:
         self.info('Generating repo for module via ODCS')
 
         assert guest.environment is not None
@@ -59,8 +58,7 @@ class InstallMBSBuild(gluetool.Module):
         self.info('Module repo from ODCS: {}'.format(repo_url))
         return repo_url
 
-    def setup_guest(self, guest, **kwargs):
-        # type: (NetworkedGuest, **Any) -> None
+    def setup_guest(self, guest: NetworkedGuest, **kwargs: Any) -> None:
 
         self.require_shared('run_playbook', 'primary_task')
 

@@ -23,13 +23,11 @@ class _UniqObject(object):
     logs.
     """
 
-    def __init__(self, name):
-        # type: (str) -> None
+    def __init__(self, name: str) -> None:
 
         self.name = name
 
-    def __repr__(self):
-        # type: () -> str
+    def __repr__(self) -> str:
 
         return self.name
 
@@ -43,21 +41,18 @@ class StreamAdapter(gluetool.log.ContextAdapter):
     Generic adapter used for logging stdout/stderr streams of commands by inspect callbacks.
     """
 
-    def __init__(self, logger, name):
-        # type: (gluetool.log.ContextAdapter, str) -> None
+    def __init__(self, logger: gluetool.log.ContextAdapter, name: str) -> None:
 
         super(StreamAdapter, self).__init__(logger, {'ctx_stream': (100, name)})
 
 
 class GlueEnum(enum.Enum):
 
-    def __str__(self):
-        # type: () -> str
+    def __str__(self) -> str:
 
         return self.name
 
-    def __repr__(self):
-        # type: () -> str
+    def __repr__(self) -> str:
 
         return self.name
 
@@ -71,15 +66,13 @@ class StreamHandler(argparse.Namespace):
     buffer by incoming data, once it spots a new-line, flushes the buffer to the output.
     """
 
-    def write(self):
-        # type: () -> None
+    def write(self) -> None:
 
         self.log_fn(''.join(self.buff))
-        self.buff = []  # type: List[str]
+        self.buff: List[str] = []
 
 
-def is_recursion(filepath, function_name):
-    # type: (str, str) -> bool
+def is_recursion(filepath: str, function_name: str) -> bool:
     """
     Check whether the caller haven't been called already before, detecting the possible recursion.
 
@@ -107,8 +100,7 @@ def is_recursion(filepath, function_name):
 _strptime_lock = threading.Lock()
 
 
-def strptime(*args, **kwargs):
-    # type: (*Any, **Any) -> Any
+def strptime(*args: Any, **kwargs: Any) -> Any:
     """
     ``datetime.datetime.strptime`` in Python 2.7 is slightly broken when it comes to multithreading.
     See [1] and [2] for details. It will not be fixed, since it's limited to Python 2 only, and it appears
@@ -126,8 +118,9 @@ def strptime(*args, **kwargs):
         return datetime.datetime.strptime(*args, **kwargs)
 
 
-def create_inspect_callback(logger):
-    # type: (gluetool.log.ContextAdapter) -> Callable[[gluetool.utils.StreamReader, Optional[str], bool], None]
+def create_inspect_callback(
+    logger: gluetool.log.ContextAdapter
+) -> Callable[[gluetool.utils.StreamReader, Optional[str], bool], None]:
 
     # Note that we're using `warning` for stderr, to make it pop up in the output.
     streams = {
@@ -135,8 +128,7 @@ def create_inspect_callback(logger):
         '<stderr>': StreamHandler(buff=[], log_fn=StreamAdapter(logger, 'stderr').warning)
     }
 
-    def _callback(stream, data, flush=False):
-        # type: (gluetool.utils.StreamReader, Optional[str], bool) -> None
+    def _callback(stream: gluetool.utils.StreamReader, data: Optional[str], flush: bool = False) -> None:
 
         stream_handler = streams[stream.name]
 
@@ -160,13 +152,12 @@ def create_inspect_callback(logger):
     return _callback
 
 
-def run_and_log(command,  # type: List[str]
-                log_filepath,  # type: str
-                executor,  # type: Callable[[List[str]], gluetool.utils.ProcessOutput]
-                callback=None,  # type: Optional[Callable[[List[str], gluetool.utils.ProcessOutput], str]]
-                label=None  # type: Optional[str]
-                ):  # noqa
-    # type: (...) -> Tuple[bool, Optional[str], gluetool.utils.ProcessOutput]
+def run_and_log(command: List[str],
+                log_filepath: str,
+                executor: Callable[[List[str]], gluetool.utils.ProcessOutput],
+                callback: Optional[Callable[[List[str], gluetool.utils.ProcessOutput], str]] = None,
+                label: Optional[str] = None
+                ) -> Tuple[bool, Optional[str], gluetool.utils.ProcessOutput]:  # noqa
 
     # Set to `True` when the exception was raised by a command - we cannot immediately
     # raise `SUTInstallationFailedError` because we want to log output of the command,
@@ -189,8 +180,7 @@ def run_and_log(command,  # type: List[str]
         error_message = label
 
     with open(log_filepath, 'a') as log_file:
-        def write_cover(text, **kwargs):
-            # type: (str, **Any) -> None
+        def write_cover(text: str, **kwargs: Any) -> None:
 
             assert log_file is not None
             log_file.write('{}\n\n'.format(text))
@@ -202,8 +192,7 @@ def run_and_log(command,  # type: List[str]
     return execute_failed, error_message, output
 
 
-def sort_children(parent, key_getter):
-    # type: (Any, Callable[[Any], Any]) -> None
+def sort_children(parent: Any, key_getter: Callable[[Any], Any]) -> None:
 
     sorted_children = sorted(parent.children, key=key_getter)
 

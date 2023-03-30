@@ -32,8 +32,7 @@ class GuestConnectionError(gluetool.GlueError):
     Failed to connect to guest.
     """
 
-    def __init__(self, guest):
-        # type: (NetworkedGuest) -> None
+    def __init__(self, guest: 'NetworkedGuest') -> None:
 
         super(GuestConnectionError, self).__init__('Failed to connect to guest {}'.format(guest))
 
@@ -43,8 +42,7 @@ class GuestLoggingAdapter(gluetool.log.ContextAdapter):
     Custom logger adapter, adding guest's name as a context.
     """
 
-    def __init__(self, logger, guest_name):
-        # type: (gluetool.log.ContextAdapter, str) -> None
+    def __init__(self, logger: gluetool.log.ContextAdapter, guest_name: str) -> None:
 
         super(GuestLoggingAdapter, self).__init__(logger, {'ctx_guest_name': (20, guest_name)})
 
@@ -58,8 +56,7 @@ class Guest(LoggerMixin, object):
     :param environment: Testing environment provided by the guest.
     """
 
-    def init_logging(self, logger, name=None):
-        # type: (gluetool.log.ContextAdapter, Optional[str]) -> None
+    def init_logging(self, logger: gluetool.log.ContextAdapter, name: Optional[str] = None) -> None:
         """
         Initialize guest's logging facilities. This is usualy done by ``__init__`` method, but in some cases
         one might need to emit guest-related messages **before** the guest is fully initialized, e.g. when
@@ -77,8 +74,10 @@ class Guest(LoggerMixin, object):
 
         self.attach_logger(GuestLoggingAdapter(logger, name))
 
-    def __init__(self, module, name, environment=None):
-        # type: (gluetool.glue.Module, str, Optional[TestingEnvironment]) -> None
+    def __init__(self,
+                 module: gluetool.glue.Module,
+                 name: str,
+                 environment: Optional[TestingEnvironment] = None) -> None:
 
         self._module = module
         self.name = name
@@ -94,8 +93,7 @@ class Guest(LoggerMixin, object):
 
         self.environment = environment
 
-    def destroy(self):
-        # type: () -> None
+    def destroy(self) -> None:
         """
         Destroy guest. Free its resources, and no one should be able to use it
         after this method finishes.
@@ -103,8 +101,7 @@ class Guest(LoggerMixin, object):
 
         raise NotImplementedError()
 
-    def setup(self, variables=None, **kwargs):
-        # type: (Optional[Dict[str, Any]], **Any) -> None
+    def setup(self, variables: Optional[Dict[str, Any]] = None, **kwargs: Any) -> None:
         """
         Setup guest before testing. This is up to child classes to implement - it
         may be a mix of direct commands, temporary files, Ansible playbooks (via
@@ -114,16 +111,14 @@ class Guest(LoggerMixin, object):
         raise NotImplementedError()
 
     @property
-    def supports_snapshots(self):
-        # type: () -> bool
+    def supports_snapshots(self) -> bool:
         """
         Returns `True` if it's possible to create and re-use snapshots of the guest.
         """
 
         return False
 
-    def create_snapshot(self, start_again=True):
-        # type: (bool) -> Any
+    def create_snapshot(self, start_again: bool = True) -> Any:
         """
         Create a snapshot of the guest.
 
@@ -134,8 +129,7 @@ class Guest(LoggerMixin, object):
 
         raise NotImplementedError()
 
-    def restore_snapshot(self, snapshot):
-        # type: (Any) -> Guest
+    def restore_snapshot(self, snapshot: Any) -> 'Guest':
         """
         Restore given snapshot.
 
@@ -145,32 +139,32 @@ class Guest(LoggerMixin, object):
 
         raise NotImplementedError()
 
-    def execute(self, cmd, **kwargs):
-        # type: (str, **Any) -> gluetool.utils.ProcessOutput
+    def execute(self, cmd: str, **kwargs: Any) -> gluetool.utils.ProcessOutput:
         """
         Execute a command on the guest. Should behave like `utils.run_command`.
         """
 
         raise NotImplementedError()
 
-    def copy_to(self, src, dst, recursive=False, **kwargs):
-        # type: (str, str, bool, **Any) -> gluetool.utils.ProcessOutput
+    def copy_to(self, src: str, dst: str, recursive: bool = False, **kwargs: Any) -> gluetool.utils.ProcessOutput:
         """
         Copy a file (or a tree) from local filesystem to the guest.
         """
 
         raise NotImplementedError()
 
-    def copy_from(self, src, dst, recursive=False, **kwargs):
-        # type: (str, str, bool, **Any) -> gluetool.utils.ProcessOutput
+    def copy_from(self, src: str, dst: str, recursive: bool = False, **kwargs: Any) -> gluetool.utils.ProcessOutput:
         """
         Copy a file (or a tree) from the guest to local filesystem.
         """
 
         raise NotImplementedError()
 
-    def wait(self, label, check, timeout=None, tick=30):
-        # type: (str, gluetool.utils.WaitCheckType[Any], Optional[int], int) -> Any
+    def wait(self,
+             label: str,
+             check: gluetool.utils.WaitCheckType[Any],
+             timeout: Optional[int] = None,
+             tick: int = 30) -> Any:
         """
         Wait for the guest to become responsive (e.g. after reboot).
 
@@ -184,8 +178,7 @@ class Guest(LoggerMixin, object):
 
         return gluetool.utils.wait(label, check, timeout=timeout, tick=tick, logger=self.logger)
 
-    def create_file(self, dst, content):
-        # type: (str, str) -> None
+    def create_file(self, dst: str, content: str) -> None:
         """
         Given the name and content, create a file on the guest.
         """
@@ -196,8 +189,7 @@ class Guest(LoggerMixin, object):
 
             self.copy_to(f.name, dst)
 
-    def create_repo(self, name, label, baseurl, **kwargs):
-        # type: (str, str, str, **str) -> None
+    def create_repo(self, name: str, label: str, baseurl: str, **kwargs: str) -> None:
         """
         Given name and its properties, create a repository config file
         on the guest.
@@ -212,8 +204,7 @@ baseurl={}
         self.create_file(os.path.join(os.sep, 'etc', 'yum.repos.d', '{}.repo'.format(name)), repo)
 
 
-def sshize_options(options):
-    # type: (List[str]) -> List[str]
+def sshize_options(options: List[str]) -> List[str]:
 
     return sum([['-o', option] for option in options], [])
 
@@ -241,16 +232,15 @@ class NetworkedGuest(Guest):
 
     # pylint: disable=too-many-arguments
     def __init__(self,
-                 module,  # type: gluetool.Module
-                 hostname,  # type: Optional[str]
-                 name=None,  # type: Optional[str]
-                 port=None,  # type: Optional[int]
-                 username=None,  # type: Optional[str]
-                 key=None,  # type: Optional[str]
-                 options=None,  # type: Optional[List[str]]
-                 **kwargs  # type: Any
-                ):  # noqa
-        # type: (...) -> None
+                 module: gluetool.Module,
+                 hostname: Optional[str],
+                 name: Optional[str] = None,
+                 port: Optional[int] = None,
+                 username: Optional[str] = None,
+                 key: Optional[str] = None,
+                 options: Optional[List[str]] = None,
+                 **kwargs: Any
+                ) -> None:  # noqa
 
         name = name or hostname
         assert name
@@ -281,11 +271,10 @@ class NetworkedGuest(Guest):
         self._ssh += options
         self._scp += options
 
-        self._supports_systemctl = None  # type: Optional[bool]
-        self._supports_initctl = None  # type: Optional[bool]
+        self._supports_systemctl: Optional[bool] = None
+        self._supports_initctl: Optional[bool] = None
 
-    def __repr__(self):
-        # type: () -> str
+    def __repr__(self) -> str:
 
         username = getattr(self, 'username', '<unknown username>')
 
@@ -295,8 +284,7 @@ class NetworkedGuest(Guest):
             getattr(self, 'port', '<unknown port>')
         )
 
-    def _is_allowed_degraded(self, service):
-        # type: (str) -> bool
+    def _is_allowed_degraded(self, service: str) -> bool:
         # pylint: disable=unused-argument,no-self-use
         """
         Decide whether a service is allowed to be degraded after booting the guest, or not. By default,
@@ -309,8 +297,7 @@ class NetworkedGuest(Guest):
 
         return False
 
-    def setup(self, variables=None, **kwargs):
-        # type: (Optional[Dict[str, Any]], **Any) -> Any
+    def setup(self, variables: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Any:
 
         # pylint: disable=arguments-differ
         if not self._module.has_shared('setup_guest'):
@@ -318,8 +305,7 @@ class NetworkedGuest(Guest):
 
         return self._module.shared('setup_guest', self, variables=variables, **kwargs)
 
-    def _execute(self, cmd, **kwargs):
-        # type: (List[str], **Any) -> gluetool.utils.ProcessOutput
+    def _execute(self, cmd: List[str], **kwargs: Any) -> gluetool.utils.ProcessOutput:
 
         try:
             return Command(cmd, logger=self.logger).run(**kwargs)
@@ -332,8 +318,11 @@ class NetworkedGuest(Guest):
 
             raise exc
 
-    def execute(self, cmd, ssh_options=None, connection_timeout=None, **kwargs):
-        # type: (str, Optional[List[str]], Optional[int], **Any) -> gluetool.utils.ProcessOutput
+    def execute(self,
+                cmd: str,
+                ssh_options: Optional[List[str]] = None,
+                connection_timeout: Optional[int] = None,
+                **kwargs: Any) -> gluetool.utils.ProcessOutput:
 
         # pylint: disable=arguments-differ
 
@@ -360,8 +349,7 @@ class NetworkedGuest(Guest):
         assert self.hostname
         return self._execute(self._ssh + sshize_options(ssh_options) + [self.hostname] + [cmd], **kwargs)
 
-    def _discover_rc_support(self):
-        # type: () -> None
+    def _discover_rc_support(self) -> None:
 
         self._supports_systemctl = False
         self._supports_initctl = False
@@ -384,8 +372,7 @@ class NetworkedGuest(Guest):
             self._supports_initctl = True
             return
 
-    def _check_connectivity(self, connect_socket_timeout):
-        # type: (int) -> Result[bool, str]
+    def _check_connectivity(self, connect_socket_timeout: int) -> Result[bool, str]:
         """
         Check whether guest is reachable over network by inspecting its ssh port.
         """
@@ -409,8 +396,7 @@ class NetworkedGuest(Guest):
 
         return Result.Error('connection failed')
 
-    def _check_echo(self, **kwargs):
-        # type: (**Any) -> Result[bool, str]
+    def _check_echo(self, **kwargs: Any) -> Result[bool, str]:
         """
         Check whether remote shell is available by running a simple ``echo`` command.
 
@@ -432,8 +418,7 @@ class NetworkedGuest(Guest):
 
         return Result.Error('echo failed')
 
-    def _get_rc_status(self, cmd, **kwargs):
-        # type: (str, **Any) -> str
+    def _get_rc_status(self, cmd: str, **kwargs: Any) -> str:
 
         try:
             output = self.execute(cmd, **kwargs)
@@ -445,8 +430,7 @@ class NetworkedGuest(Guest):
 
         return output.stdout.strip()
 
-    def _check_boot_systemctl(self, **kwargs):
-        # type: (**Any) -> Result[bool, str]
+    def _check_boot_systemctl(self, **kwargs: Any) -> Result[bool, str]:
         """
         Check whether boot process finished using ``systemctl``.
         """
@@ -495,8 +479,7 @@ class NetworkedGuest(Guest):
 
         return Result.Error('systemctl reporting not ready')
 
-    def _check_boot_initctl(self, **kwargs):
-        # type: (**Any) -> Result[bool, str]
+    def _check_boot_initctl(self, **kwargs: Any) -> Result[bool, str]:
         """
         Check whether boot process finished using ``initctl``.
         """
@@ -510,15 +493,14 @@ class NetworkedGuest(Guest):
         return Result.Error('initctl reports not ready')
 
     def wait_alive(self,
-                   connect_socket_timeout=10,  # type: int
-                   connect_timeout=None,  # type: Optional[int]
-                   connect_tick=10,  # type: int
-                   echo_timeout=None,  # type: Optional[int]
-                   echo_tick=30,  # type: int
-                   boot_timeout=None,  # type: Optional[int]
-                   boot_tick=10  # type: int
-                  ):  # noqa
-        # type: (...) -> None
+                   connect_socket_timeout: int = 10,
+                   connect_timeout: Optional[int] = None,
+                   connect_tick: int = 10,
+                   echo_timeout: Optional[int] = None,
+                   echo_tick: int = 30,
+                   boot_timeout: Optional[int] = None,
+                   boot_tick: int = 10
+                  ) -> None:  # noqa
 
         self.debug('waiting for guest to become alive')
 
@@ -548,8 +530,7 @@ class NetworkedGuest(Guest):
 
         self.wait('boot finished', check_boot, timeout=boot_timeout, tick=boot_tick)
 
-    def copy_to(self, src, dst, recursive=False, **kwargs):
-        # type: (str, str, bool, **Any) -> gluetool.utils.ProcessOutput
+    def copy_to(self, src: str, dst: str, recursive: bool = False, **kwargs: Any) -> gluetool.utils.ProcessOutput:
 
         self.debug("copy to the guest: '{}' => '{}'".format(src, dst))
 
@@ -562,8 +543,7 @@ class NetworkedGuest(Guest):
 
         return self._execute(cmd, **kwargs)
 
-    def copy_from(self, src, dst, recursive=False, **kwargs):
-        # type: (str, str, bool, **Any) -> gluetool.utils.ProcessOutput
+    def copy_from(self, src: str, dst: str, recursive: bool = False, **kwargs: Any) -> gluetool.utils.ProcessOutput:
 
         self.debug("copy from the guest: '{}' => '{}'".format(src, dst))
 

@@ -36,8 +36,9 @@ Job = NamedTuple('Job', (
 JobErrorType = Tuple[Job, gluetool.log.ExceptionInfoType]
 
 
-def handle_job_errors(errors, exception_message, logger=None):
-    # type: (List[JobErrorType], str, Optional[gluetool.log.ContextAdapter]) -> None
+def handle_job_errors(errors: List[JobErrorType],
+                      exception_message: str,
+                      logger: Optional[gluetool.log.ContextAdapter] = None) -> None:
     """
     Take care of reporting exceptions gathered from futures, and re-raise one of them - or a new,
     generic one - to report a process, performed by jobs, failed.
@@ -52,8 +53,7 @@ def handle_job_errors(errors, exception_message, logger=None):
     logger.debug('at least one job failed')
 
     # filter exceptions using given ``check`` callback, and raise the first suitable one - or return back
-    def _raise_first(check):
-        # type: (Callable[[gluetool.log.ExceptionInfoType], bool]) -> None
+    def _raise_first(check: Callable[[gluetool.log.ExceptionInfoType], bool]) -> None:
 
         for _, exc_info in errors:
             if not check(exc_info):
@@ -74,33 +74,31 @@ def handle_job_errors(errors, exception_message, logger=None):
 
 class JobEngine(object):
     def __init__(self,
-                 logger=None,  # type: Optional[gluetool.log.ContextAdapter]
-                 max_workers=None,  # type: Optional[int]
-                 worker_name_prefix='worker',  # type: str
-                 on_job_start=None,  # type: Optional[Callable[..., None]]
-                 on_job_complete=None,  # type: Optional[Callable[..., None]]
-                 on_job_error=None,  # type: Optional[Callable[..., None]]
-                 on_job_done=None  # type: Optional[Callable[..., None]]
-                ):  # noqa
-        # type: (...) -> None
+                 logger: Optional[gluetool.log.ContextAdapter] = None,
+                 max_workers: Optional[int] = None,
+                 worker_name_prefix: str = 'worker',
+                 on_job_start: Optional[Callable[..., None]] = None,
+                 on_job_complete: Optional[Callable[..., None]] = None,
+                 on_job_error: Optional[Callable[..., None]] = None,
+                 on_job_done: Optional[Callable[..., None]] = None
+                ) -> None:  # noqa
 
         self.logger = logger or gluetool.log.Logging.get_logger()
 
-        self._jobs = []  # type: List[Job]
-        self._executor = None  # type: Optional[concurrent.futures.ThreadPoolExecutor]
-        self._futures = {}  # type: Dict[concurrent.futures.Future[Any], Job]
-        self.errors = []  # type: List[JobErrorType]
+        self._jobs: List[Job] = []
+        self._executor: Optional[concurrent.futures.ThreadPoolExecutor] = None
+        self._futures: Dict[concurrent.futures.Future[Any], Job] = {}
+        self.errors: List[JobErrorType] = []
 
         self.max_workers = max_workers
         self.worker_name_prefix = worker_name_prefix
 
-        self.on_job_start = on_job_start  # type: Optional[Callable[..., None]]
-        self.on_job_complete = on_job_complete  # type: Optional[Callable[..., None]]
-        self.on_job_error = on_job_error  # type: Optional[Callable[..., None]]
-        self.on_job_done = on_job_done  # type: Optional[Callable[..., None]]
+        self.on_job_start: Optional[Callable[..., None]] = on_job_start
+        self.on_job_complete: Optional[Callable[..., None]] = on_job_complete
+        self.on_job_error: Optional[Callable[..., None]] = on_job_error
+        self.on_job_done: Optional[Callable[..., None]] = on_job_done
 
-    def _log_futures(self, label):
-        # type: (str) -> None
+    def _log_futures(self, label: str) -> None:
 
         table = [
             ['Future', 'Job']
@@ -110,8 +108,7 @@ class JobEngine(object):
 
         gluetool.log.log_table(self.logger.debug, label, table, headers='firstrow', tablefmt='psql')
 
-    def _start_job(self, job):
-        # type: (Job) -> None
+    def _start_job(self, job: Job) -> None:
         """
         Submit a job to the execution. Takes care of logging and calling `on_job_start` callback.
 
@@ -129,8 +126,7 @@ class JobEngine(object):
         job.logger.debug("job '{}' scheduled".format(job.name))
         self._log_futures("job '{}' scheduled".format(job.name))
 
-    def enqueue_jobs(self, *jobs):
-        # type: (*Job) -> None
+    def enqueue_jobs(self, *jobs: Job) -> None:
         """
         Add new jobs to the queue. If the engine is already running, jobs are immediately handed over
         to the internal executor.
@@ -144,8 +140,7 @@ class JobEngine(object):
             if self._executor:
                 self._start_job(job)
 
-    def run(self):
-        # type: () -> None
+    def run(self) -> None:
 
         max_workers = self.max_workers or len(self._jobs)
 
@@ -176,8 +171,7 @@ class JobEngine(object):
         # When it does, we would start new round of `_handle_finished_futures` and only after that we would notice
         # future C.
 
-        def _handle_finished_futures():
-            # type: () -> None
+        def _handle_finished_futures() -> None:
 
             future = next(concurrent.futures.as_completed(self._futures))
 
@@ -241,16 +235,15 @@ class JobEngine(object):
         )
 
 
-def run_jobs(jobs,  # type: List[Job]
-             logger=None,  # type: Optional[gluetool.log.ContextAdapter]
-             max_workers=None,  # type: Optional[int]
-             worker_name_prefix='worker',  # type: str
-             on_job_start=None,  # type: Optional[Callable[..., None]]
-             on_job_complete=None,  # type: Optional[Callable[..., None]]
-             on_job_error=None,  # type: Optional[Callable[..., None]]
-             on_job_done=None  # type: Optional[Callable[..., None]]
-            ):  # noqa
-    # type: (...) -> List[JobErrorType]
+def run_jobs(jobs: List[Job],
+             logger: Optional[gluetool.log.ContextAdapter] = None,
+             max_workers: Optional[int] = None,
+             worker_name_prefix: str = 'worker',
+             on_job_start: Optional[Callable[..., None]] = None,
+             on_job_complete: Optional[Callable[..., None]] = None,
+             on_job_error: Optional[Callable[..., None]] = None,
+             on_job_done: Optional[Callable[..., None]] = None
+            ) -> List[JobErrorType]:  # noqa
     """
     Run jobs in parallel.
 

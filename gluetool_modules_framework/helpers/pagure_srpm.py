@@ -38,10 +38,12 @@ class PagureSRPM(gluetool.Module):
 
     shared_functions = ['src_rpm']
 
-    def _run_command(self, cmd, log_path, comment, cwd=None):
-        # type: (List[str], str, str, Optional[str]) -> gluetool.utils.ProcessOutput
-        def _executor(command):
-            # type: (List[str]) -> gluetool.utils.ProcessOutput
+    def _run_command(self,
+                     cmd: List[str],
+                     log_path: str,
+                     comment: str,
+                     cwd: Optional[str] = None) -> gluetool.utils.ProcessOutput:
+        def _executor(command: List[str]) -> gluetool.utils.ProcessOutput:
             return Command(command).run(cwd=cwd) if cwd else Command(command).run()
 
         return run_command(
@@ -51,8 +53,7 @@ class PagureSRPM(gluetool.Module):
                     executor=_executor
                 )
 
-    def src_rpm(self):
-        # type: () -> Tuple[str, str]
+    def src_rpm(self) -> Tuple[str, str]:
         self.require_shared('primary_task')
 
         pull_request = self.shared('primary_task')

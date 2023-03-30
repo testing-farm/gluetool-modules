@@ -25,13 +25,12 @@ class HideSecrets(gluetool.Module):
         }
     }
 
-    def destroy(self, failure=None):
-        # type: (Optional[Any]) -> None
+    def destroy(self, failure: Optional[Any] = None) -> None:
         testing_farm_request = cast(TestingFarmRequest, self.shared('testing_farm_request'))
         if not testing_farm_request:
             return
 
-        secret_values = []  # type: List[str]
+        secret_values: List[str] = []
         for environment in testing_farm_request.environments_requested:
             if environment.secrets:
                 secret_values += [secret_value for secret_value in environment.secrets.values() if secret_value]

@@ -11,9 +11,7 @@ from gluetool import utils
 
 # Type annotations
 from typing import TYPE_CHECKING, List # noqa
-
-if TYPE_CHECKING:
-    import gluetool_modules_framework.libs.mail # noqa
+import gluetool_modules_framework.libs.mail # noqa
 
 
 class SMTP(gluetool.Module):
@@ -64,16 +62,14 @@ class SMTP(gluetool.Module):
     shared_functions = ['send_email', ]
 
     @utils.cached_property
-    def archive_bcc(self):
-        # type: () -> List[str]
+    def archive_bcc(self) -> List[str]:
         """
         List of archive (Bcc) recipients.
         """
 
         return gluetool.utils.normalize_multistring_option(self.option('archive-bcc'))
 
-    def _lower_message(self, message):
-        # type: (gluetool_modules_framework.libs.mail.Message) -> MIMEText
+    def _lower_message(self, message: gluetool_modules_framework.libs.mail.Message) -> MIMEText:
         """
         "Lower" a message from our representation to object understood by Python's SMTP libraries.
 
@@ -117,8 +113,7 @@ class SMTP(gluetool.Module):
 
         return msg
 
-    def _send_email(self, message, lowered_message):
-        # type: (gluetool_modules_framework.libs.mail.Message, MIMEText) -> None
+    def _send_email(self, message: gluetool_modules_framework.libs.mail.Message, lowered_message: MIMEText) -> None:
         """
         Send a single "lowered" message.
 
@@ -149,8 +144,7 @@ class SMTP(gluetool.Module):
         except (socket.error, smtplib.SMTPException) as exc:
             self.warn('Cannot send e-mail, SMTP raised an exception: {}'.format(exc), sentry=True)
 
-    def send_email(self, message):
-        # type: (gluetool_modules_framework.libs.mail.Message) -> None
+    def send_email(self, message: gluetool_modules_framework.libs.mail.Message) -> None:
         """
         Send an e-mail message.
 

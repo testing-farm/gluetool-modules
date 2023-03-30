@@ -37,21 +37,19 @@ class InstallKojiBuildExecute(gluetool.Module):
         },
     }
 
-    def __init__(self, *args, **kwargs):
-        # type: (Any, Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(InstallKojiBuildExecute, self).__init__(*args, **kwargs)
         self.request = None
         self.request_artifacts = None
 
     def setup_guest(
         self,
-        guest,  # type: NetworkedGuest
-        schedule_entry=None,  # type: Optional[TestScheduleEntry]
-        stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION,  # type: GuestSetupStage
-        log_dirpath=None,  # type: Optional[str]
-        **kwargs  # type: Any
-    ):
-        # type: (...) -> Any
+        guest: NetworkedGuest,
+        schedule_entry: Optional[TestScheduleEntry] = None,
+        stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
+        log_dirpath: Optional[str] = None,
+        **kwargs: Any
+    ) -> Any:
 
         self.require_shared('evaluate_instructions')
 
@@ -206,8 +204,7 @@ class InstallKojiBuildExecute(gluetool.Module):
 
         return Ok(guest_setup_output)
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         if not self.has_shared('testing_farm_request'):
             return
 

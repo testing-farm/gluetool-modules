@@ -60,23 +60,20 @@ class BuildDependencies(gluetool.Module):
         }
     }
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
 
         super(BuildDependencies, self).__init__(*args, **kwargs)
-        self.companions = None  # type: Optional[List[str]]
+        self.companions: Optional[List[str]] = None
 
     @gluetool.utils.cached_property
-    def companion_target_fallback_map(self):
-        # type: () -> Optional[gluetool.utils.PatternMap]
+    def companion_target_fallback_map(self) -> Optional[gluetool.utils.PatternMap]:
 
         if not self.option('companion-target-fallback-map'):
             return None
 
         return gluetool.utils.PatternMap(self.option('companion-target-fallback-map'), logger=self.logger)
 
-    def _find_task_for_target_and_component(self, session, target, component):
-        # type: (Any, str, str) -> Optional[int]
+    def _find_task_for_target_and_component(self, session: Any, target: str, component: str) -> Optional[int]:
         """
         Find the most recent task ID for given component and build target.
 
@@ -129,8 +126,7 @@ class BuildDependencies(gluetool.Module):
 
         return int(builds[0]['task_id'])
 
-    def _companions_from_koji(self):
-        # type: () -> List[int]
+    def _companions_from_koji(self) -> List[int]:
         """
         Probably the simplest dynamic method: look for the most recent build for each companion,
         with the matching build target.
@@ -160,8 +156,7 @@ class BuildDependencies(gluetool.Module):
 
         return real_task_ids
 
-    def _companions_from_copr(self):
-        # type: () -> List[str]
+    def _companions_from_copr(self) -> List[str]:
 
         assert self.companions is not None
 
@@ -210,8 +205,7 @@ class BuildDependencies(gluetool.Module):
         'companions-from-copr': _companions_from_copr
     }
 
-    def sanity(self):
-        # type: () -> None
+    def sanity(self) -> None:
         method = self.option('method')
 
         self.companions = normalize_multistring_option(self.option('companions'))
@@ -227,8 +221,7 @@ class BuildDependencies(gluetool.Module):
                 "--companions-nvr is not compatible with '{}'".format(method)
             )
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         self.require_shared('primary_task', 'tasks')
 
         if self.option('method') is None:

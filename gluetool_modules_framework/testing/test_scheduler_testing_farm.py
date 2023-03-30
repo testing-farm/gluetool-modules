@@ -4,7 +4,6 @@
 import gluetool_modules_framework.libs
 
 from typing import cast
-from typing import TYPE_CHECKING
 from typing import Optional
 
 import gluetool
@@ -14,9 +13,7 @@ from gluetool.log import log_dict
 
 from gluetool_modules_framework.testing.test_scheduler_baseosci import ProvisionerCapabilities
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
-
-if TYPE_CHECKING:
-    from gluetool_modules_framework.libs.test_schedule import TestSchedule
+from gluetool_modules_framework.libs.test_schedule import TestSchedule
 
 
 class TestSchedulerTestingFarm(gluetool.Module):
@@ -30,10 +27,9 @@ class TestSchedulerTestingFarm(gluetool.Module):
 
     shared_functions = ['test_schedule']
 
-    _schedule = None  # type: Optional[TestSchedule]
+    _schedule: Optional[TestSchedule] = None
 
-    def test_schedule(self):
-        # type: () -> Optional[TestSchedule]
+    def test_schedule(self) -> Optional[TestSchedule]:
         """
         Returns schedule for runners. It tells runner which schedules
         it should run on which guest.
@@ -43,8 +39,7 @@ class TestSchedulerTestingFarm(gluetool.Module):
 
         return self._schedule
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
 
         self.require_shared('testing_farm_request', 'create_test_schedule', 'provisioner_capabilities')
 

@@ -47,16 +47,14 @@ class MySQL(gluetool.Module):
     required_options = ('dbname',)
     shared_functions = ['db_cursor']
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
 
         super(MySQL, self).__init__(*args, **kwargs)
 
         self._connection = None
 
     @property
-    def connection(self):
-        # type: () -> Any
+    def connection(self) -> Any:
 
         if self._connection is None:
             try:
@@ -69,8 +67,7 @@ class MySQL(gluetool.Module):
 
         return self._connection
 
-    def db_cursor(self, **kwargs):
-        # type: (**Any) -> Any
+    def db_cursor(self, **kwargs: Any) -> Any:
         """
         Return a database cursor.
 
@@ -79,8 +76,7 @@ class MySQL(gluetool.Module):
 
         return self.connection.cursor()
 
-    def server_version(self):
-        # type: () -> Any
+    def server_version(self) -> Any:
 
         cursor = self.db_cursor()
 
@@ -92,8 +88,7 @@ class MySQL(gluetool.Module):
 
         return row[0]
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
 
         version = self.server_version()
 

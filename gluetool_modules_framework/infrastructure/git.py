@@ -45,31 +45,27 @@ class Git(gluetool.Module):
 
     shared_functions = ['git_repository', 'dist_git_repository']
 
-    _repository = None  # type: Optional[RemoteGitRepository]
+    _repository: Optional[RemoteGitRepository] = None
 
     @property
-    def clone_url(self):
-        # type: () -> Optional[str]
+    def clone_url(self) -> Optional[str]:
         option = self.option('clone-url')
 
         return render_template(option, **self.shared('eval_context'))
 
     @property
-    def ref(self):
-        # type: () -> Optional[str]
+    def ref(self) -> Optional[str]:
         option = self.option('ref')
         if option is None:
             return option
         return render_template(option, **self.shared('eval_context'))
 
     @property
-    def clone_args(self):
-        # type: () -> List[str]
+    def clone_args(self) -> List[str]:
         return normalize_shell_option(self.option('clone-args'))
 
     @property
-    def eval_context(self):
-        # type: () -> Dict[str, RemoteGitRepository]
+    def eval_context(self) -> Dict[str, RemoteGitRepository]:
         __content__ = {  # noqa
             'GIT_REPOSITORY': """
                                git repository, represented as ``GitRepository`` instance.
@@ -83,8 +79,7 @@ class Git(gluetool.Module):
             'GIT_REPOSITORY': self._repository,
         }
 
-    def git_repository(self):
-        # type: () -> Optional[RemoteGitRepository]
+    def git_repository(self) -> Optional[RemoteGitRepository]:
         """
         Returns a git repository in the form of an instance
         of the py:class:`RemoteGitRepository` class.
@@ -98,12 +93,10 @@ class Git(gluetool.Module):
         return self._repository
 
     # TODO: temporary method because other modules are calling `self.shared('dist_git_repository')`
-    def dist_git_repository(self):
-        # type: () -> Optional[RemoteGitRepository]
+    def dist_git_repository(self) -> Optional[RemoteGitRepository]:
         return self._repository
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         self._repository = RemoteGitRepository(self.logger, clone_url=self.clone_url, ref=self.ref,
                                                clone_args=self.clone_args)
 

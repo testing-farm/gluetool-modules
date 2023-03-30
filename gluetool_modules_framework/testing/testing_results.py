@@ -45,14 +45,12 @@ class TestingResults(gluetool.Module):
 
     shared_functions = ['results', 'serialize_results']
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(TestingResults, self).__init__(*args, **kwargs)
 
-        self._results = []  # type: List[gluetool_modules_framework.libs.results.TestResult]
+        self._results: List[gluetool_modules_framework.libs.results.TestResult] = []
 
-    def results(self):
-        # type: () -> List[gluetool_modules_framework.libs.results.TestResult]
+    def results(self) -> List[gluetool_modules_framework.libs.results.TestResult]:
         """
         Return list of gathered results.
 
@@ -63,8 +61,7 @@ class TestingResults(gluetool.Module):
 
         return self._results
 
-    def _parse_formats(self, option):
-        # type: (str) -> List[Tuple[str, ...]]
+    def _parse_formats(self, option: str) -> List[Tuple[str, ...]]:
         """
         Converts different forms on format:file specifications into a ``list``. These:
 
@@ -74,12 +71,12 @@ class TestingResults(gluetool.Module):
         will result into ``[('foo', 'bar'), ('bar', 'baz')]``.
         """
 
-        specs = self.option(option)  # type: Union[str, List[str]]
+        specs: Union[str, List[str]] = self.option(option)
 
         if isinstance(specs, str):
             specs = [s.strip() for s in specs.split(',')]
 
-        parsed = []  # type: List[Tuple[str, ...]]
+        parsed: List[Tuple[str, ...]] = []
 
         for spec in specs:
             if ':' not in spec:
@@ -92,14 +89,12 @@ class TestingResults(gluetool.Module):
         return parsed
 
     @staticmethod
-    def _serialize_to_json(results):
-        # type: (List[gluetool_modules_framework.libs.results.TestResult]) -> List[Any]
+    def _serialize_to_json(results: List[gluetool_modules_framework.libs.results.TestResult]) -> List[Any]:
         return [result.serialize('json') for result in results]
 
     @staticmethod
-    def _serialize_to_xunit(results):
-        # type: (List[gluetool_modules_framework.libs.results.TestResult]) -> List[Any]
-        test_suites = gluetool.utils.new_xml_element('testsuites')  # type: List[Any]
+    def _serialize_to_xunit(results: List[gluetool_modules_framework.libs.results.TestResult]) -> List[Any]:
+        test_suites: List[Any] = gluetool.utils.new_xml_element('testsuites')
 
         for result in results:
             test_suites.append(result.serialize('xunit'))
@@ -111,8 +106,11 @@ class TestingResults(gluetool.Module):
         'xunit': lambda stream, results: stream.write(results.prettify(encoding='utf-8' if six.PY2 else None))
     }
 
-    def serialize_results(self, output_format, results=None):
-        # type: (str, Optional[List[gluetool_modules_framework.libs.results.TestResult]]) -> List[Any]
+    def serialize_results(
+        self,
+        output_format: str,
+        results: Optional[List[gluetool_modules_framework.libs.results.TestResult]] = None
+    ) -> List[Any]:
         if results is None:
             results = self._results
 
@@ -126,8 +124,7 @@ class TestingResults(gluetool.Module):
 
         return serializer(results)
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         initfile = self.option('init-file')
 
         if initfile is None:
@@ -137,8 +134,7 @@ class TestingResults(gluetool.Module):
 
         self.info("loading results from '{}', in format '{}'".format(input_file, input_format))
 
-        def _default_unserialize(result):
-            # type: (Any) -> gluetool_modules_framework.libs.results.TestResult
+        def _default_unserialize(result: Any) -> gluetool_modules_framework.libs.results.TestResult:
             return gluetool_modules_framework.libs.results.TestResult.unserialize(self.glue, 'json', result)
 
         # load results from init file
@@ -183,8 +179,7 @@ class TestingResults(gluetool.Module):
         except IOError as e:
             raise gluetool.GlueError(str(e))
 
-    def destroy(self, failure=None):
-        # type: (Optional[Any]) -> None
+    def destroy(self, failure: Optional[Any] = None) -> None:
         # the results-file option can be empty if parsing of arguments failed
         if not self.option('results-file'):
             self.warn('No results file set.', sentry=True)

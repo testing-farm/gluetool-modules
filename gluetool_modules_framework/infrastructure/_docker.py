@@ -29,18 +29,15 @@ class Docker(gluetool.Module):
 
     shared_functions = ['docker']
 
-    def __init__(self, *args, **kwargs):
-        # type: (*Any, **Any) -> None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(Docker, self).__init__(*args, **kwargs)
 
         self._docker = None
 
-    def docker(self):
-        # type: () -> Optional[docker.DockerClient]
+    def docker(self) -> Optional[docker.DockerClient]:
         return self._docker
 
-    def execute(self):
-        # type: () -> None
+    def execute(self) -> None:
         self._docker = docker.from_env(version=self.option('protocol-version'))
         assert self._docker is not None
 

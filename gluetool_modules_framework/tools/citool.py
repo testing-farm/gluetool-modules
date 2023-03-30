@@ -23,8 +23,7 @@ MODULE_CONFIG_PATHS = ', '.join([
 ])
 
 
-def run():
-    # type: () -> None
+def run() -> None:
 
     env = gluetool.utils.dict_update(os.environ.copy(), {
         'GLUETOOL_CONFIG_PATHS': CONFIG_PATHS,

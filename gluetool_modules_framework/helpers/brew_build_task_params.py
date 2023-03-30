@@ -49,8 +49,7 @@ class BrewBuildOptions(gluetool.Module):
 
     shared_functions = ['brew_build_task_params']
 
-    def brew_build_task_params(self, artifacts=None):
-        # type: (Optional[List[Any]]) -> Dict[str, str]
+    def brew_build_task_params(self, artifacts: Optional[List[Any]] = None) -> Dict[str, str]:
         """
         Return mapping with options for ``/distribution/install/brew-build``, to install currently known artifacts.
 
@@ -60,8 +59,8 @@ class BrewBuildOptions(gluetool.Module):
         self.require_shared('primary_task', 'tasks')
 
         # temporary holders of options
-        tasks = []  # type: List[int]
-        builds = []  # type: List[int]
+        tasks: List[int] = []
+        builds: List[int] = []
 
         input_tasks = artifacts if artifacts else self.shared('tasks')
 

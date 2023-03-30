@@ -337,21 +337,23 @@ def test_tasks(module, monkeypatch):
     # turn off logging for the module, so we do not spoil the output with info messages
     # when threads involved, pytest does not correctly catch the output
     original_loglevel = module.logger.logger.logger.level
-    module.logger.setLevel(logging.ERROR)
+    try:
+        module.logger.setLevel(logging.ERROR)
 
-    futures = []
+        futures = []
 
-    # we need this function to be multithread safe, because it is called
-    # like that in Testing Farm when setting up a guest
-    with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
-        for _ in range(100):
-            futures.append(executor.submit(module.tasks, task_ids=task_ids))
+        # we need this function to be multithread safe, because it is called
+        # like that in Testing Farm when setting up a guest
+        with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
+            for _ in range(100):
+                futures.append(executor.submit(module.tasks, task_ids=task_ids))
 
-        _, pending = concurrent.futures.wait(futures)
+            _, pending = concurrent.futures.wait(futures)
 
-        assert not pending
+            assert not pending
 
-    module.logger.setLevel(original_loglevel)
+    finally:
+        module.logger.setLevel(original_loglevel)
 
     for future in futures:
         assert len(future.result()) == len(task_ids)

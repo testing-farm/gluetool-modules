@@ -5,13 +5,14 @@ import os
 
 import gluetool
 from gluetool.result import Ok, Error
+from gluetool_modules_framework.infrastructure.copr import CoprTask
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage, \
     SetupGuestReturnType
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
 from gluetool_modules_framework.libs.guest import NetworkedGuest
 
 # Type annotations
-from typing import Any, List, Optional  # noqa
+from typing import cast, Any, List, Optional  # noqa
 
 # accepted artifact types from testing farm request
 TESTING_FARM_ARTIFACT_TYPES = ['fedora-copr-build']
@@ -70,7 +71,7 @@ class InstallCoprBuild(gluetool.Module):
                 if artifact['type'] in TESTING_FARM_ARTIFACT_TYPES
             ]
 
-        builds = self.shared('tasks', task_ids=artifact_ids or None)
+        builds = cast(Optional[List[CoprTask]], self.shared('tasks', task_ids=artifact_ids))
 
         # no artifact to install
         if not builds:

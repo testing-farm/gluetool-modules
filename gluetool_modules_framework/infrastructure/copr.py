@@ -313,7 +313,7 @@ class Copr(gluetool.Module):
         if not task_ids:
             return self._tasks
 
-        self._tasks = []
+        tasks: List[CoprTask] = []
 
         for task_id in task_ids:
             try:
@@ -324,13 +324,14 @@ class Copr(gluetool.Module):
                 )
 
             try:
-                self._tasks.append(CoprTask(BuildTaskID(int(build_id), chroot_name), self))
+                tasks.append(CoprTask(BuildTaskID(int(build_id), chroot_name), self))
             except gluetool.glue.GlueError as error:
                 self.error(str(error))
                 raise gluetool.GlueError(
                     "Could not find copr build id '{}' for chroot '{}'".format(build_id, chroot_name)
                 )
 
+        self._tasks = tasks
         return self._tasks
 
     @property

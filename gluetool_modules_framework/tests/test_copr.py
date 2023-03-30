@@ -1,6 +1,9 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+import concurrent.futures
+import logging
+
 import pytest
 
 import gluetool
@@ -330,9 +333,28 @@ def test_tasks(module, monkeypatch):
     monkeypatch.setattr(gluetool_modules_framework.infrastructure.copr.requests, 'get', mocked_get)
 
     task_ids = ['802020:fedora-28-x86_64', '802020:fedora-29-x86_64']
-    tasks = module.tasks(task_ids=task_ids)
 
-    assert len(tasks) == len(task_ids)
+    # turn off logging for the module, so we do not spoil the output with info messages
+    # when threads involved, pytest does not correctly catch the output
+    original_loglevel = module.logger.logger.logger.level
+    module.logger.setLevel(logging.ERROR)
+
+    futures = []
+
+    # we need this function to be multithread safe, because it is called
+    # like that in Testing Farm when setting up a guest
+    with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
+        for _ in range(100):
+            futures.append(executor.submit(module.tasks, task_ids=task_ids))
+
+        _, pending = concurrent.futures.wait(futures)
+
+        assert not pending
+
+    module.logger.setLevel(original_loglevel)
+
+    for future in futures:
+        assert len(future.result()) == len(task_ids)
 
 
 def test_expired(module, monkeypatch):

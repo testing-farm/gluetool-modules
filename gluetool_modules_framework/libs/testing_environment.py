@@ -50,6 +50,7 @@ class TestingEnvironment(object):
     :param dict hardware: Test environment hardware specification.
     :param dict settings: Various environment settings or tweaks.
     :param dict tmt: Special environment settings for tmt tool.
+    :param dict kickstart: Kickstart specification for provisioning.
     """
 
     arch: Optional[ArchType] = None
@@ -62,12 +63,14 @@ class TestingEnvironment(object):
     hardware: Optional[Dict[str, Any]] = None
     settings: Optional[Dict[str, Any]] = None
     tmt: Optional[Dict[str, Any]] = None
+    kickstart: Optional[Dict[str, str]] = None
 
     # Make special values available to templates, they are now reachable as class variables
     # of each instance.
     ANY = gluetool_modules_framework.libs.ANY
 
-    _fields = ('arch', 'compose', 'snapshots', 'variables', 'secrets', 'artifacts', 'hardware', 'settings', 'tmt')
+    _fields = ('arch', 'compose', 'snapshots', 'variables', 'secrets', 'artifacts',
+               'hardware', 'settings', 'tmt', 'kickstart')
 
     def __str__(self) -> str:
 
@@ -158,7 +161,7 @@ class TestingEnvironment(object):
         if 'snapshots' in env_properties:
             env_properties['snapshots'] = gluetool.utils.normalize_bool_option(env_properties['snapshots'])
 
-        for property in ['variables', 'secrets', 'artifacts', 'hardware', 'settings', 'tmt']:
+        for property in ['variables', 'secrets', 'artifacts', 'hardware', 'settings', 'tmt', 'kickstart']:
             if property in env_properties:
                 env_properties[property] = ast.literal_eval(env_properties[property])
 

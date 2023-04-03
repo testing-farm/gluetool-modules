@@ -23,8 +23,8 @@ def test_serialize():
     # Nesting the object into a list and calling str() results in a call to TestingEnvironment.__repr__()
     assert str([env]) == '[<TestingEnvironment(arch=foo,compose=bar,secrets=******,snapshots=False)>]'  # noqa
 
-    assert env.serialize_to_string(hide_secrets=False, show_none_fields=True) == "arch=foo,artifacts=None,compose=bar,hardware=None,secrets={'hello': 'world'},settings=None,snapshots=False,tmt=None,variables=None"  # noqa
-    assert env.serialize_to_json(hide_secrets=False, show_none_fields=True) == {'arch': 'foo', 'artifacts': None, 'compose': 'bar', 'hardware': None, 'secrets': {'hello': 'world'}, 'settings': None, 'snapshots': False, 'tmt': None, 'variables': None}  # noqa
+    assert env.serialize_to_string(hide_secrets=False, show_none_fields=True) == "arch=foo,artifacts=None,compose=bar,hardware=None,kickstart=None,secrets={'hello': 'world'},settings=None,snapshots=False,tmt=None,variables=None"  # noqa
+    assert env.serialize_to_json(hide_secrets=False, show_none_fields=True) == {'arch': 'foo', 'artifacts': None, 'compose': 'bar', 'hardware': None, 'kickstart': None, 'secrets': {'hello': 'world'}, 'settings': None, 'snapshots': False, 'tmt': None, 'variables': None}  # noqa
 
 
 def test_unserialize():
@@ -36,15 +36,17 @@ def test_unserialize():
     except TypeError as exc:
         assert str(exc) == "__init__() missing 1 required positional argument: 'arch'"
 
-    env = TestingEnvironment.unserialize_from_string("arch=foo,compose=bar,snapshots=False,secrets={'hello':'world'}")
+    env = TestingEnvironment.unserialize_from_string(
+        "arch=foo,compose=bar,kickstart={'pre-install':'baz'},snapshots=False,secrets={'hello':'world'}")
     assert env.arch == 'foo'
     assert env.compose == 'bar'
     assert env.snapshots == False
     assert env.secrets == {'hello': 'world'}
 
-    env = TestingEnvironment.unserialize_from_json({'arch': 'foo', 'compose': 'bar', 'snapshots': False, 'secrets': {'hello':'world'}})  # noqa
+    env = TestingEnvironment.unserialize_from_json({'arch': 'foo', 'compose': 'bar', 'kickstart': {'pre-install': 'baz'}, 'snapshots': False, 'secrets': {'hello':'world'}})  # noqa
     assert env.arch == 'foo'
     assert env.compose == 'bar'
+    assert env.kickstart == {'pre-install': 'baz'}
     assert env.snapshots == False
     assert env.secrets == {'hello': 'world'}
 

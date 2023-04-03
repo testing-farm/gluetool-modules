@@ -487,6 +487,9 @@ class TestScheduleTMT(Module):
     def hardware_from_tmt(self, exported_plan: Dict[str, Any]) -> Dict[str, Any]:
         return cast(Dict[str, Any], exported_plan.get('provision', {}).get('hardware', {}))
 
+    def kickstart_from_tmt(self, exported_plan: Dict[str, Any]) -> Dict[str, str]:
+        return cast(Dict[str, str], exported_plan.get('provision', {}).get('kickstart', {}))
+
     def excludes_from_tmt(self, exported_plan: Dict[str, Any]) -> List[str]:
         if 'prepare' not in exported_plan:
             return []
@@ -624,6 +627,7 @@ class TestScheduleTMT(Module):
                     secrets=tec.secrets,
                     artifacts=tec.artifacts,
                     hardware=tec.hardware or self.hardware_from_tmt(exported_plan),
+                    kickstart=tec.kickstart or self.kickstart_from_tmt(exported_plan),
                     settings=tec.settings,
                     tmt=tec.tmt
                 )

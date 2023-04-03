@@ -221,6 +221,7 @@ class ArtemisAPI(object):
         compose = environment.compose
         snapshots = environment.snapshots
         pool = pool or environment.pool
+        kickstart = environment.kickstart
 
         post_install_script_contents = None
         if post_install_script:
@@ -287,7 +288,7 @@ class ArtemisAPI(object):
             raise GlueError('unsupported API version {}'.format(self.version))
 
         if self.version >= API_FEATURE_VERSIONS['hw-constraints-kickstart']:
-            data['environment']['kickstart'] = {}
+            data['environment']['kickstart'] = kickstart or {}
 
         log_dict(self.module.debug, 'guest data', data)
 
@@ -778,6 +779,11 @@ class ArtemisProvisioner(gluetool.Module):
                 'action': 'append',
                 'default': []
             },
+            'kickstart': {
+                'help': 'Specify parameters for kickstart that modifies the installation of a guest',
+                'type': str,
+                'default': None
+            },
             'pool': {
                 'help': 'Desired pool',
                 'metavar': 'POOL',
@@ -1119,9 +1125,11 @@ class ArtemisProvisioner(gluetool.Module):
         provision_count = self.option('provision')
         arch = self.option('arch')
         compose = self.option('compose')
+        kickstart = self.option('kickstart')
 
         environment = TestingEnvironment(arch=arch,
-                                         compose=compose)
+                                         compose=compose,
+                                         kickstart=kickstart)
 
         for num in range(provision_count):
             self.info("Trying to provision guest #{}".format(num+1))

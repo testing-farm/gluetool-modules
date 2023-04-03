@@ -764,6 +764,9 @@ class TestScheduleTMT(Module):
         # variables from rules-engine's user variables, rendered with the evaluation context
         variables.update(self.shared('user_variables', logger=schedule_entry.logger, context=eval_context) or {})
 
+        # add secrets
+        variables.update(schedule_entry.testing_environment.secrets or {})
+
         if variables:
             # we MUST use a dedicated env file for each plan, to mitigate race conditions
             # plans are handled in threads ...

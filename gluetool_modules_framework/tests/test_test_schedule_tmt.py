@@ -200,7 +200,7 @@ dummytmt run --all --verbose provision --how virtual --image guest-compose plan 
 dummytmt run --all --verbose provision plan --name ^plan1$ plan --name ^plan1$''',
             None
         ),
-        (  # with environment variables
+        (  # with environment variables and secrets
             {},
             {
                 'user_variables': {
@@ -209,7 +209,8 @@ dummytmt run --all --verbose provision plan --name ^plan1$ plan --name ^plan1$''
             },
             TestingEnvironment(
                 'x86_64', 'rhel-9',
-                variables={'user_variable1': 'user_value1', 'user_variable2': 'user_value2'}
+                variables={'user_variable1': 'user_value1', 'user_variable2': 'user_value2'},
+                secrets={'secret_variable1': 'secret_value1', 'secret_variable2': 'secret_value2'}
             ),
             """# tmt reproducer
 curl -LO {tmpdir_relpath}/tmt-environment-lan1.yaml
@@ -217,6 +218,8 @@ dummytmt run --all --verbose -e @tmt-environment-lan1.yaml provision --how virtu
             """user_variable1: user_value1
 user_variable2: user_value2
 user_variable3: user_value3
+secret_variable1: secret_value1
+secret_variable2: secret_value2
 """
         ),
         (  # with tmt context

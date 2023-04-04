@@ -164,6 +164,7 @@ def test_execute_local_no_arch(monkeypatch, module):
 def test_execute_local(monkeypatch, module):
     module._config['guest'] = ['localhost']
     module._config['guest-setup'] = True
+    module._config['compose'] = 'container'
 
     patch_shared(monkeypatch, module, {
         'setup_guest': MagicMock()
@@ -177,6 +178,7 @@ def test_execute_local(monkeypatch, module):
     assert len(module._guests) == 1
     assert module._guests[0].hostname == 'localhost'
     assert module._guests[0].environment.arch == 'x86_64'
+    assert module._guests[0].environment.compose == 'container'
     assert module._guests[0]._is_allowed_degraded('service') == True
     assert module._guests[0].destroy() == None
 

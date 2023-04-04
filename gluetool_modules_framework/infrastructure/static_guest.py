@@ -93,7 +93,7 @@ class StaticLocalhostGuest(Guest):
         if not arch_output.stdout:
             raise GlueError('Error retrieving guest architecture')
 
-        self.environment = TestingEnvironment(arch=arch_output.stdout.rstrip(), compose=None)
+        self.environment = TestingEnvironment(arch=arch_output.stdout.rstrip(), compose=module.option('compose'))
 
         self.hostname = fqdn
 
@@ -150,6 +150,9 @@ class CIStaticGuest(gluetool.Module):
             },
             'ssh-key': {
                 'help': 'SSH key to use to connect to the guests. Does not apply for localhost.'
+            },
+            'compose': {
+                'help': 'Compose name to force in the TestingEnvironment.'
             }
         }),
         ('Timeouts', {

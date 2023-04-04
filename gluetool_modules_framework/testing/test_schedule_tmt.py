@@ -311,6 +311,15 @@ class TestScheduleTMT(Module):
                 'action': 'append',
                 'default': []
             },
+            'accepted-environment-variables': {
+                'help': """
+                        A comma delimited list of accepted environment variable names for the ``tmt`` process.
+                        In case an environment a variable is provided, which does not match this list, the execution
+                        is aborted.
+                        """,
+                'action': 'append',
+                'default': []
+            }
         }),
         ('Result options', {
             'recognize-errors': {
@@ -333,6 +342,10 @@ class TestScheduleTMT(Module):
     def context_template_files(self) -> List[str]:
 
         return gluetool.utils.normalize_path_option(self.option('context-template-file'))
+
+    @gluetool.utils.cached_property
+    def accepted_environment_variables(self) -> List[str]:
+        return gluetool.utils.normalize_multistring_option(self.option('accepted-environment-variables'))
 
     def _context_templates(self, filepaths: List[str]) -> List[str]:
 
@@ -830,6 +843,32 @@ class TestScheduleTMT(Module):
             '--name', r'^{}$'.format(re.escape(schedule_entry.plan))
         ])
 
+        # create environment variables for the tmt process
+        tmt_process_environment: Dict[str, str] = {}
+
+        def _check_accepted_environment_variables(variables: Dict[str, str]) -> None:
+            for key, _ in six.iteritems(variables):
+                if key not in self.accepted_environment_variables:
+                    raise GlueError(
+                        "Environment variable '{}' is not allowed to be exposed to the tmt process".format(key)
+                    )
+
+        def _sanitize_environment_variables(variables: Dict[str, str]) -> str:
+            return ' '.join(["{}=*****".format(key) for key, _ in six.iteritems(variables)])
+
+        # using `# noqa` because flake8 and coala are confused by the walrus operator
+        # Ignore PEP8Bear
+        if (tmt := schedule_entry.testing_environment.tmt) and 'environment' in tmt and tmt['environment']:  # noqa: E203 E231 E501
+            tmt_process_environment = tmt['environment']
+
+            _check_accepted_environment_variables(tmt_process_environment)
+
+            schedule_entry.tmt_reproducer.append(
+                'export {}'.format(
+                    _sanitize_environment_variables(tmt['environment'])
+                )
+            )
+
         # add tmt reproducer suitable for local execution: run until provisioning
         schedule_entry.tmt_reproducer.append(' '.join(reproducer))
 
@@ -874,7 +913,8 @@ class TestScheduleTMT(Module):
             tmt_output = Command(command).run(
                 cwd=schedule_entry.repodir,
                 inspect=True,
-                inspect_callback=create_inspect_callback(schedule_entry.logger)
+                inspect_callback=create_inspect_callback(schedule_entry.logger),
+                env=tmt_process_environment or None
             )
 
         except GlueCommandError as exc:

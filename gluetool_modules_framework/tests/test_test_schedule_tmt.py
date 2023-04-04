@@ -183,13 +183,14 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
 
 
 @pytest.mark.parametrize(
-        'additional_options, additional_shared, testing_environment, expected_reproducer, expected_environment', [
+        'additional_options, additional_shared, testing_environment, expected_reproducer, expected_environment, exception', [
         (  # virtual provision
             {},
             {},
             TestingEnvironment('x86_64', 'rhel-9'),
             '''# tmt reproducer
 dummytmt run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$''',
+            None,
             None
         ),
         (  # local - provision done by tmt
@@ -198,6 +199,7 @@ dummytmt run --all --verbose provision --how virtual --image guest-compose plan 
             TestingEnvironment('x86_64', 'rhel-9'),
             '''# tmt reproducer
 dummytmt run --all --verbose provision plan --name ^plan1$ plan --name ^plan1$''',
+            None,
             None
         ),
         (  # with environment variables and secrets
@@ -220,7 +222,8 @@ user_variable2: user_value2
 user_variable3: user_value3
 secret_variable1: secret_value1
 secret_variable2: secret_value2
-"""
+""",
+            None
         ),
         (  # with tmt context
             {},
@@ -228,16 +231,42 @@ secret_variable2: secret_value2
             TestingEnvironment('x86_64', 'rhel-9', tmt={'context': {'distro': 'rhel', 'trigger': 'push'}}),
             """# tmt reproducer
 dummytmt -c distro=rhel -c trigger=push run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+            None,
             None
         ),
+        (  # with tmt process environment variables
+            {
+                'accepted-environment-variables': 'VARIABLE1,VARIABLE2'
+            },
+            {},
+            TestingEnvironment('x86_64', 'rhel-9', tmt={'environment': {'VARIABLE1': 'VALUE1', 'VARIABLE2': 'VALUE2'}}),
+            """# tmt reproducer
+export VARIABLE1=***** VARIABLE2=*****
+dummytmt run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+            None,
+            None
+        ),
+        (  # with tmt process environment variables, variables not accepted
+            {
+                'accepted-environment-variables': 'VARIABLE1'
+            },
+            {},
+            TestingEnvironment('x86_64', 'rhel-9', tmt={'environment': {'VARIABLE1': 'VALUE1', 'VARIABLE2': 'VALUE2'}}),
+            """# tmt reproducer
+export VARIABLE1=***** VARIABLE2=*****
+dummytmt run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+            None,
+            (gluetool.glue.GlueError, "Environment variable 'VARIABLE2' is not allowed to be exposed to the tmt process")
+        ),
     ],
-    ids=['virtual', 'local', 'variables', 'tmt_context']
+    ids=['virtual', 'local', 'variables', 'tmt_context', 'tmt_process_environment', 'tmt_process_environment_not_accepted']
 )
 def test_tmt_output_dir(
     module, guest, monkeypatch, tmpdir,
     additional_options, additional_shared,
     testing_environment,
-    expected_reproducer, expected_environment
+    expected_reproducer, expected_environment,
+    exception
 ):
     module._config = {**module._config, **additional_options}
     patch_shared(monkeypatch, module, additional_shared)
@@ -258,7 +287,16 @@ def test_tmt_output_dir(
     with monkeypatch.context() as m:
         # tmt run
         _set_run_outputs(m, 'dummy test done')
-        module.run_test_schedule_entry(schedule_entry)
+
+        if exception:
+            with pytest.raises(exception[0], match=exception[1]):
+                module.run_test_schedule_entry(schedule_entry)
+        else:
+            module.run_test_schedule_entry(schedule_entry)
+
+    # do not continue if test schedule entry fails in an exception
+    if exception:
+        return
 
     with open(os.path.join(schedule_entry.work_dirpath, 'tmt-run.log')) as f:
         assert 'dummy test done\n' in f.read()

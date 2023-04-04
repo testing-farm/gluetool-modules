@@ -141,8 +141,26 @@ def test_repo_already_initialized(remote_git_repository, monkeypatch):
     assert 'some-path' == remote_git_repository.clone(path='some-path')
 
 
-def test_clone_shallow_failed(remote_git_repository, monkeypatch, log):
-    remote_git_repository.branch = 'some-branch'
+@pytest.mark.parametrize('attribute, value, messages', [
+    (
+        'branch',
+        'some-branch',
+        [
+            "['--depth', '1', '-b', 'some-branch', 'clone-url', 'some-path']",
+            "['-b', 'some-branch', 'clone-url', 'some-path']"
+        ]
+    ),
+    (
+        'ref',
+        'some-ref',
+        [
+            "['clone-url', 'some-path']",
+            "['clone-url', 'some-path']"
+        ]
+    )
+], ids=['branch', 'ref'])
+def test_clone_shallow_failed(remote_git_repository, monkeypatch, log, attribute, value, messages):
+    setattr(remote_git_repository, attribute, value)
     remote_git_repository.clone_url = 'clone-url'
     monkeypatch.setattr(os, 'chmod', MagicMock())
 
@@ -164,8 +182,8 @@ def test_clone_shallow_failed(remote_git_repository, monkeypatch, log):
     with pytest.raises(gluetool.GlueError, match="Condition 'cloning with timeout 2s, tick 1s' failed to pass within given time"):
         remote_git_repository.clone(clone_timeout=2, clone_tick=1)
 
-    assert log.match(levelno=logging.INFO, message="['--depth', '1', '-b', 'some-branch', 'clone-url', 'some-path']")
-    assert log.match(levelno=logging.INFO, message="['-b', 'some-branch', 'clone-url', 'some-path']")
+    for message in messages:
+        assert log.match(levelno=logging.INFO, message=message)
 
 
 def test_clone_invalid_ref(remote_git_repository, monkeypatch):

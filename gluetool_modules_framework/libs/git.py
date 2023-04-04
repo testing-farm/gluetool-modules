@@ -257,7 +257,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
                 # Asserts are required here, see
                 # https://mypy.readthedocs.io/en/latest/common_issues.html#narrowing-and-inner-functions
-                assert branch
+                assert branch or ref
                 assert clone_url
                 if exc.output.stderr is not None and \
                         'dumb http transport does not support shallow capabilities' in exc.output.stderr:

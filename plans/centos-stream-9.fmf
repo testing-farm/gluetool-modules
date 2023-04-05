@@ -1,3 +1,7 @@
+# Disabled due to CS9 breakage
+# https://lists.corp.redhat.com/archives/rhel-devel/2023-April/thread.html#4500
+enabled: false
+
 description: |
   Test gluetool-modules installation on CentOS Stream 9.
 

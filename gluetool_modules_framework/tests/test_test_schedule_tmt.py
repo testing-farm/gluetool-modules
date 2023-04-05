@@ -46,7 +46,7 @@ def fixture_module(monkeypatch):
     module._config['reproducer-comment'] = '# tmt reproducer'
     patch_shared(monkeypatch,
                  module,
-                 {'testing_farm_request': MagicMock(environments_requested=[{}], tmt=MagicMock(plan=None), plans=None)})
+                 {'testing_farm_request': MagicMock(environments_requested=[{}], tmt=MagicMock(plan=None, plan_filter=None), plans=None)})
     return module
 
 
@@ -486,6 +486,42 @@ def test_plans_from_git(module, monkeypatch, log, tmt_plan_ls, expected_logs, ex
 
     for log_level, log_message in expected_logs:
         assert log.match(levelno=log_level, message=log_message)
+
+
+def test_plans_from_git_filter(module, monkeypatch):
+    repodir = 'foo'
+    context_files = []
+    testing_environment = TestingEnvironment('x86_64')
+    filter = 'filter1'
+
+    mock_output = MagicMock(exit_code=0, stdout='plan1', stderr='')
+    mock_command_run = MagicMock(return_value=mock_output)
+    mock_command = MagicMock(return_value=MagicMock(run=mock_command_run))
+    monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt, 'Command', mock_command)
+
+    module._plans_from_git(repodir, context_files, testing_environment, filter)
+
+    mock_command.assert_called_once_with(['dummytmt', 'plan', 'ls', '--filter', 'filter1'])
+
+
+def test_plans_from_git_filter_from_request(module, monkeypatch):
+    repodir = 'foo'
+    context_files = []
+    testing_environment = TestingEnvironment('x86_64')
+    filter = None
+
+    patch_shared(monkeypatch,
+                 module,
+                 {'testing_farm_request': MagicMock(environments_requested=[{}], tmt=MagicMock(plan=None, plan_filter='filter1'), plans=None)})
+
+    mock_output = MagicMock(exit_code=0, stdout='plan1', stderr='')
+    mock_command_run = MagicMock(return_value=mock_output)
+    mock_command = MagicMock(return_value=MagicMock(run=mock_command_run))
+    monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt, 'Command', mock_command)
+
+    module._plans_from_git(repodir, context_files, testing_environment, filter)
+
+    mock_command.assert_called_once_with(['dummytmt', 'plan', 'ls', '--filter', 'filter1'])
 
 
 @pytest.mark.parametrize('plan, expected', [

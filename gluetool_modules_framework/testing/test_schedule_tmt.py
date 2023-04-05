@@ -454,6 +454,11 @@ class TestScheduleTMT(Module):
         if filter:
             command.extend(['--filter', filter])
 
+        # using `# noqa` because flake8 and coala are confused by the walrus operator
+        # Ignore PEP8Bear
+        elif (tf_request := self.shared('testing_farm_request')) and tf_request.tmt and tf_request.tmt.plan_filter:  # noqa: E203 E231 E501
+            command.extend(['--filter', tf_request.tmt.plan_filter])
+
         # by default we add enabled:true
         else:
             command.extend(['--filter', 'enabled:true'])

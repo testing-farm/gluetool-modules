@@ -36,7 +36,7 @@ image: "quay.io/testing-farm/python-ci-image:latest"
 container:
   extends: .merge-request
   stage: test
-  image: quay.io/buildah/stable:latest
+  image: quay.io/buildah/stable:v1.29.0
   variables:
     GOSS_PATH: /usr/bin/goss
     GOSS_DOWNLOAD_URL: https://github.com/aelsabbahy/goss/releases/latest/download
@@ -45,6 +45,7 @@ container:
     - curl -L $GOSS_DOWNLOAD_URL/goss-linux-amd64 -o /usr/bin/goss && chmod +rx /usr/bin/goss
     - curl -L $GOSS_DOWNLOAD_URL/dgoss -o /usr/bin/dgoss && chmod +rx /usr/bin/dgoss
     - buildah login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
+    - sleep 3600
     - IMAGE_TAG=$CI_PIPELINE_ID make build
     - IMAGE_TAG=$CI_PIPELINE_ID make test-image
     - IMAGE_TAG=$CI_PIPELINE_ID make push

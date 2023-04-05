@@ -10,8 +10,14 @@ import gluetool_modules_framework.libs.guest_setup
 from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleResult, TestScheduleEntryStage, \
     TestScheduleEntryState
 
+from gluetool_modules_framework.infrastructure.koji_fedora import KojiTask
+from gluetool_modules_framework.infrastructure.copr import CoprTask
+
+
+from gluetool_modules_framework.libs.results import Results, TestSuite, Log
+
 # Type annotations
-from typing import cast, TYPE_CHECKING, Any, Dict, List, Optional  # noqa
+from typing import cast, TYPE_CHECKING, Any, Dict, List, Optional, Union  # noqa
 
 import bs4  # noqa
 
@@ -37,8 +43,14 @@ class TestScheduleReport(gluetool.Module):
                 'default': [],
                 'metavar': 'FILE'
             },
+            'xunit-testing-farm-file': {
+                'help': 'File to save Testing Farm xunit results into (default: %(default)s).',
+                'action': 'store',
+                'default': None,
+                'metavar': 'FILE'
+            },
             'xunit-file': {
-                'help': 'File to save the results into, in an xUnit format (default: %(default)s).',
+                'help': 'File to save xunit results into (default: %(default)s).',
                 'action': 'store',
                 'default': None,
                 'metavar': 'FILE'
@@ -77,7 +89,7 @@ class TestScheduleReport(gluetool.Module):
 
         super(TestScheduleReport, self).__init__(*args, **kwargs)
 
-        self._result: bs4.element.Tag = None
+        self._results: Optional[Results] = None
 
     def sanity(self) -> None:
         required_polarion_options = [
@@ -195,101 +207,54 @@ class TestScheduleReport(gluetool.Module):
 
     def _serialize_results(self, schedule: TestSchedule) -> None:
 
-        test_suites = gluetool.utils.new_xml_element('testsuites')
-        test_suites['overall-result'] = self._overall_result(schedule).name.lower()
+        self._results = Results()
+        self._results.overall_result = self._overall_result(schedule).name.lower()
 
-        testsuites_properties = gluetool.utils.new_xml_element('properties', _parent=test_suites)
+        # TODO: More task types are possible, having a base class would be handy.
+        # using `# noqa` because flake8 and coala are confused by the walrus operator
+        # Ignore PEP8Bear
+        if primary_task := cast(Union[KojiTask, CoprTask], self.shared('primary_task')):  # noqa: E203 E231 E701
+            self._results.primary_task = primary_task
 
-        primary_task = self.shared('primary_task')
-        if primary_task:
-            gluetool.utils.new_xml_element(
-                'property', _parent=testsuites_properties,
-                name='baseosci.artifact-id', value=str(primary_task.id)
-            )
-
-            gluetool.utils.new_xml_element(
-                'property', _parent=testsuites_properties,
-                name='baseosci.artifact-namespace', value=primary_task.ARTIFACT_NAMESPACE
-            )
-
-        gluetool.utils.new_xml_element(
-            'property', _parent=testsuites_properties,
-            name='baseosci.overall-result', value=schedule.result.name.lower()
-        )
+        self._results.test_schedule_result = schedule.result.name.lower()
 
         if self.shared('thread_id'):
-            gluetool.utils.new_xml_element(
-                'property', _parent=testsuites_properties,
-                name='baseosci.id.testing-thread', value=self.shared('thread_id')
-            )
+            self._results.testing_thread = self.shared('thread_id')
 
         if self.option('enable-polarion'):
-            # we use custom lookup method with Test Case ID as test id in Polarion
-            gluetool.utils.new_xml_element(
-                'property', _parent=testsuites_properties,
-                name='polarion-lookup-method', value=self.option('polarion-lookup-method')
-            )
-            gluetool.utils.new_xml_element(
-                'property', _parent=testsuites_properties,
-                name='polarion-custom-lookup-method-field-id', value=self.option('polarion-lookup-method-field-id')
-            )
-
-            gluetool.utils.new_xml_element(
-                'property', _parent=testsuites_properties,
-                name='polarion-project-id', value=self.option('polarion-project-id')
-            )
-
-        sort_children(testsuites_properties, lambda child: child.attrs['name'])
+            self._results.polarion_lookup_method = self.option('polarion-lookup-method')
+            self._results.polarion_custom_lookup_method_field_id = self.option('polarion-lookup-method-field-id')
+            self._results.polarion_project_id = self.option('polarion-project-id')
 
         for schedule_entry in schedule:
-            test_suite = gluetool.utils.new_xml_element(
-                'testsuite',
-                _parent=test_suites,
+            test_suite = TestSuite(
                 name=schedule_entry.id,
-                tests='0'
+                result=schedule_entry.result.name.lower(),
+                properties={'baseosci.result': schedule_entry.result.name.lower()},
             )
-            test_suite['result'] = schedule_entry.result.name.lower()
-            test_suite['name'] = schedule_entry.id
-
-            testsuite_logs = gluetool.utils.new_xml_element('logs', _parent=test_suite)
-            testsuite_properties = gluetool.utils.new_xml_element('properties', _parent=test_suite)
 
             for stage in gluetool_modules_framework.libs.guest_setup.STAGES_ORDERED:
-                outputs = schedule_entry.guest_setup_outputs.get(stage, [])
+                for output in schedule_entry.guest_setup_outputs.get(stage, []):
+                    test_suite.logs.append(Log(
+                        name=output.label,
+                        href=artifacts_location(self, output.log_path, logger=schedule_entry.logger),
+                        schedule_stage='guest-setup',
+                        guest_setup_stage=stage.name.lower()
+                    ))
 
-                for output in outputs:
-                    new_xml_element(
-                        'log',
-                        _parent=testsuite_logs,
-                        **{
-                            'name': output.label,
-                            'href': artifacts_location(self, output.log_path, logger=schedule_entry.logger),
-                            'schedule-stage': 'guest-setup',
-                            'guest-setup-stage': stage.name.lower()
-                        }
-                    )
+            self.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
+            self._results.test_suites.append(test_suite)
 
-            gluetool.utils.new_xml_element(
-                'property', _parent=testsuite_properties,
-                name='baseosci.result', value=schedule_entry.result.name.lower()
-            )
+        self.info('serialized xunit_testing_farm results:\n{}'.format(
+            self._results.xunit_testing_farm.to_xml_string(pretty_print=True)
+        ))
+        self.info('serialized xunit results:\n{}'.format(self._results.xunit.to_xml_string(pretty_print=True)))
 
-            if hasattr(schedule_entry, 'result'):
-                self.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
+    def results(self) -> Optional[Results]:
+        return self._results
 
-            sort_children(testsuite_properties, lambda child: child.attrs['name'])
-
-        self._result = test_suites
-
-        gluetool.log.log_xml(self.debug, 'serialized results', self._result)
-
-    def results(self) -> bs4.element.Tag:
-
-        return self._result
-
-    def test_schedule_results(self) -> bs4.element.Tag:
-
-        return self._result
+    def test_schedule_results(self) -> Optional[Results]:
+        return self._results
 
     def _generate_results(self) -> None:
 
@@ -297,9 +262,18 @@ class TestScheduleReport(gluetool.Module):
 
         self._report_final_result(self._schedule)
 
+        assert self._results is not None
+
+        if self.option('xunit-testing-farm-file'):
+            with open(gluetool.utils.normalize_path(self.option('xunit-testing-farm-file')), 'w') as f:
+                f.write(self._results.xunit_testing_farm.to_xml_string(pretty_print=True))
+                f.flush()
+
+            self.info('results saved into {}'.format(self.option('xunit-testing-farm-file')))
+
         if self.option('xunit-file'):
             with open(gluetool.utils.normalize_path(self.option('xunit-file')), 'w') as f:
-                f.write(gluetool.log.format_xml(self._result))
+                f.write(self._results.xunit.to_xml_string(pretty_print=True))
                 f.flush()
 
             self.info('results saved into {}'.format(self.option('xunit-file')))

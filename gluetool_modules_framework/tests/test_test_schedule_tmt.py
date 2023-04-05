@@ -19,6 +19,7 @@ from gluetool_modules_framework.helpers.install_koji_build_execute import Instal
 from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
 from gluetool_modules_framework.libs.sut_installation import INSTALL_COMMANDS_FILE
 from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
+from gluetool_modules_framework.libs.results import TestSuite
 from gluetool_modules_framework.testing.test_schedule_tmt import gather_plan_results, TestScheduleEntry
 
 from . import create_module, check_loadable, patch_shared
@@ -153,31 +154,29 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
             gluetool_modules_framework.testing.test_schedule_tmt.gather_plan_results = orig_gather_plan_results
 
     # generate results.xml
-    test_suite = gluetool.utils.new_xml_element('testsuite')
+    test_suite = TestSuite(name='some-suite', result='some-result')
     module.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
 
-    assert test_suite['tests'] == 2
-    testcase_docs, testcase_dry = test_suite.contents
-    assert testcase_docs.name == 'testcase'
-    assert testcase_docs['name'] == '/tests/core/docs'
-    assert testcase_docs['result'] == 'passed'
+    assert test_suite.test_count == 2
+    testcase_docs, testcase_dry = test_suite.test_cases[0], test_suite.test_cases[1]
+    assert testcase_docs.name == '/tests/core/docs'
+    assert testcase_docs.result == 'passed'
     # expecting log_dir, testout.log, and journal.txt, in exactly that order
     assert len(testcase_docs.logs) == 3
-    assert testcase_docs.logs.contents[0].name == 'log'
-    assert testcase_docs.logs.contents[0]['name'] == 'log_dir'
-    assert testcase_docs.logs.contents[0]['href'].endswith('/passed/execute/logs/tests/core/docs')
-    assert testcase_docs.logs.contents[1]['name'] == 'testout.log'
-    assert testcase_docs.logs.contents[1]['href'].endswith('/passed/execute/logs/tests/core/docs/out.log')
-    assert testcase_docs.logs.contents[2]['name'] == 'journal.txt'
-    assert testcase_docs.logs.contents[2]['href'].endswith('/passed/execute/logs/tests/core/docs/journal.txt')
+    assert testcase_docs.logs[0].name == 'log_dir'
+    assert testcase_docs.logs[0].href.endswith('/passed/execute/logs/tests/core/docs')
+    assert testcase_docs.logs[1].name == 'testout.log'
+    assert testcase_docs.logs[1].href.endswith('/passed/execute/logs/tests/core/docs/out.log')
+    assert testcase_docs.logs[2].name == 'journal.txt'
+    assert testcase_docs.logs[2].href.endswith('/passed/execute/logs/tests/core/docs/journal.txt')
 
-    assert testcase_dry['name'] == '/tests/core/dry'
-    assert testcase_dry['result'] == 'passed'
+    assert testcase_dry.name == '/tests/core/dry'
+    assert testcase_dry.result == 'passed'
     assert len(testcase_dry.logs) == 2
-    assert testcase_dry.logs.contents[0]['name'] == 'log_dir'
-    assert testcase_dry.logs.contents[0]['href'].endswith('/passed/execute/logs/tests/core/dry')
-    assert testcase_dry.logs.contents[1]['name'] == 'testout.log'
-    assert testcase_dry.logs.contents[1]['href'].endswith('/passed/execute/logs/tests/core/dry/out.log')
+    assert testcase_dry.logs[0].name == 'log_dir'
+    assert testcase_dry.logs[0].href.endswith('/passed/execute/logs/tests/core/dry')
+    assert testcase_dry.logs[1].name == 'testout.log'
+    assert testcase_dry.logs[1].href.endswith('/passed/execute/logs/tests/core/dry/out.log')
 
     shutil.rmtree(schedule_entry.work_dirpath)
 

@@ -3,6 +3,7 @@
 
 import re
 import os
+import os.path
 import stat
 import sys
 import tempfile
@@ -33,6 +34,9 @@ from typing import cast, Any, Callable, Dict, List, Optional, Tuple  # noqa
 
 # Type annotations
 from typing import Any, Dict, List, NamedTuple, Optional  # noqa
+
+from gluetool_modules_framework.libs.results import (TestSuite, Log, TestCase,
+                                                     TestingEnvironment as ResultsTestingEnvironment)
 
 # TMT run log file
 TMT_LOG = 'tmt-run.log'
@@ -982,45 +986,7 @@ class TestScheduleTMT(Module):
         self.shared('trigger_event', 'test-schedule-runner-sti.schedule-entry.finished',
                     schedule_entry=schedule_entry)
 
-    def serialize_test_schedule_entry_results(self, schedule_entry: TestScheduleEntry, test_suite: Any) -> None:
-
-        def _add_property(properties: Any, name: str, value: str) -> Any:
-            return new_xml_element('property', _parent=properties, name='baseosci.{}'.format(name), value=value or '')
-
-        def _add_artifact(logs: Any,
-                          name: str,
-                          path: str,
-                          href: str,
-                          schedule_entry: Optional[TestScheduleEntry] = None) -> Any:
-
-            attrs = {
-                'name': name,
-                'href': href,
-                'schedule-stage': 'running'
-            }
-
-            if schedule_entry is not None:
-                attrs['schedule-entry'] = schedule_entry.id
-
-                schedule_entry.outputs.append(TestScheduleEntryOutput(
-                    stage=TestScheduleEntryStage.RUNNING,
-                    label=name,
-                    log_path=path,
-                    additional_data=None
-                ))
-
-            return new_xml_element(
-                'log',
-                _parent=logs,
-                **attrs
-            )
-
-        def _add_testing_environment(test_case: Any, name: str, arch: Any, compose: Any, snapshots: bool) -> Any:
-            parent_elem = new_xml_element('testing-environment', _parent=test_case, name=name)
-            new_xml_element('property', _parent=parent_elem, name='arch', value=arch)
-            if compose:
-                new_xml_element('property', _parent=parent_elem, name='compose', value=compose)
-            new_xml_element('property', _parent=parent_elem, name='snapshots', value=str(snapshots))
+    def serialize_test_schedule_entry_results(self, schedule_entry: TestScheduleEntry, test_suite: TestSuite) -> None:
 
         if schedule_entry.runner_capability != 'tmt':
             self.overloaded_shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
@@ -1029,82 +995,66 @@ class TestScheduleTMT(Module):
         if not schedule_entry.results:
             return
 
-        if schedule_entry.tmt_reproducer_filepath:
-            new_xml_element(
-                'log',
-                _parent=test_suite.logs,
-                **{
-                    'name': 'tmt-reproducer',
-                    'href': artifacts_location(
-                        self,
-                        schedule_entry.tmt_reproducer_filepath,
-                        logger=schedule_entry.logger
-                    )
-                }
-            )
-
         if schedule_entry.work_dirpath:
-            new_xml_element(
-                'log',
-                _parent=test_suite.logs,
-                **{
-                    'name': 'workdir',
-                    'href': artifacts_location(
-                        self,
-                        schedule_entry.work_dirpath,
-                        logger=schedule_entry.logger
-                    )
-                }
-            )
+            href = artifacts_location(self, schedule_entry.work_dirpath, logger=schedule_entry.logger)
+            test_suite.logs.append(Log(href=href, name='workdir'))
+
+        if schedule_entry.tmt_reproducer_filepath:
+            href = artifacts_location(self, schedule_entry.tmt_reproducer_filepath, logger=schedule_entry.logger)
+            test_suite.logs.append(Log(href=href, name='tmt-reproducer'))
 
         for task in schedule_entry.results:
-
-            test_case = new_xml_element('testcase', _parent=test_suite, name=task.name, result=task.result)
-            properties = new_xml_element('properties', _parent=test_case)
-            logs = new_xml_element('logs', _parent=test_case)
+            # artifacts
+            test_case = TestCase(
+                name=task.name,
+                result=task.result,
+            )
 
             if task.result == 'failed':
-                new_xml_element('failure', _parent=test_case)
+                test_case.failure = True
 
             if task.result == 'error':
-                new_xml_element('error', _parent=test_case)
+                test_case.error = True
 
             # test properties
             assert schedule_entry.guest is not None
             assert schedule_entry.guest.environment is not None
             assert schedule_entry.guest.hostname is not None
-            _add_property(properties, 'arch', str(schedule_entry.guest.environment.arch))
-            _add_property(properties, 'connectable_host', schedule_entry.guest.hostname)
-            _add_property(properties, 'distro', str(schedule_entry.guest.environment.compose))
-            _add_property(properties, 'status', schedule_entry.stage.value.capitalize())
-            _add_property(properties, 'testcase.source.url', self.shared('dist_git_repository').web_url)
-            _add_property(properties, 'variant', '')
 
-            # artifacts
+            test_case.properties.update({
+                'baseosci.arch': str(schedule_entry.guest.environment.arch),
+                'baseosci.connectable_host': schedule_entry.guest.hostname,
+                'baseosci.distro': str(schedule_entry.guest.environment.compose),
+                'baseosci.status': schedule_entry.stage.value.capitalize(),
+                'baseosci.testcase.source.url': self.shared('dist_git_repository').web_url or '',
+                'baseosci.variant': ''
+            })
+
             for artifact in task.artifacts:
-                _add_artifact(
-                    logs,
-                    name=artifact.name,
-                    path=artifact.path,
-                    href=artifacts_location(self, artifact.path, logger=schedule_entry.logger),
-                    schedule_entry=schedule_entry
+                path = artifacts_location(self, artifact.path, logger=schedule_entry.logger)
+
+                schedule_entry.outputs.append(
+                    TestScheduleEntryOutput(
+                        stage=TestScheduleEntryStage.RUNNING,
+                        label=artifact.name,
+                        log_path=path,
+                        additional_data=None
+                    )
                 )
 
+                test_case.logs.append(Log(
+                    href=path,
+                    name=artifact.name,
+                    schedule_stage='running',
+                    schedule_entry=schedule_entry.id
+                ))
+
+                if os.path.isfile(artifact.path):
+                    with open(artifact.path, 'r') as f:
+                        test_case.system_out.append(f.read())
+
             assert schedule_entry.testing_environment is not None
-            _add_testing_environment(
-                test_case, 'requested',
-                schedule_entry.testing_environment.arch,
-                schedule_entry.testing_environment.compose,
-                schedule_entry.testing_environment.snapshots
-            )
-            _add_testing_environment(
-                test_case, 'provisioned',
-                schedule_entry.guest.environment.arch,
-                schedule_entry.guest.environment.compose,
-                schedule_entry.guest.environment.snapshots
-            )
+            test_case.requested_environment = schedule_entry.testing_environment
+            test_case.provisioned_environment = schedule_entry.guest.environment
 
-            # sorting
-            sort_children(properties, lambda child: child.attrs['name'])
-
-        test_suite['tests'] = len(schedule_entry.results)
+            test_suite.test_cases.append(test_case)

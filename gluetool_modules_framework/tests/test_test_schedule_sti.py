@@ -20,6 +20,7 @@ from gluetool_modules_framework.testing.test_schedule_runner_sti import TaskRun,
 from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleResult, TestScheduleEntryOutput, TestScheduleEntryStage
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from gluetool_modules_framework.libs.guest import NetworkedGuest
+from gluetool_modules_framework.libs.results import TestSuite, Results
 
 from . import create_module
 from . import patch_shared
@@ -186,7 +187,7 @@ def test_run_test_schedule_entry(module_runner, monkeypatch, results_filename, r
                 additional_data=None
             )
         ],
-        bs4.BeautifulSoup(read_asset_file('results1.xml'), 'xml')
+        read_asset_file('results1.xml')
     ),
     (
         [TaskRun(name='foo', schedule_entry=None, result='error', logs=['log1', 'log2'])],
@@ -210,7 +211,7 @@ def test_run_test_schedule_entry(module_runner, monkeypatch, results_filename, r
                 additional_data=None
             )
         ],
-        bs4.BeautifulSoup(read_asset_file('results2.xml'), 'xml')
+        read_asset_file('results2.xml')
     )
 ])
 def test_serialize_test_schedule_entry_results(module_runner, schedule_entry_results,
@@ -223,20 +224,20 @@ def test_serialize_test_schedule_entry_results(module_runner, schedule_entry_res
     schedule_entry.artifact_dirpath = 'some/artifact-dirpath'
     schedule_entry.work_dirpath = 'some/work-dirpath'
     schedule_entry.guest = NetworkedGuest(module_runner, 'hostname', 'name')
-    schedule_entry.testing_environment = schedule_entry.guest.environment = TestingEnvironment(arch='x86_64', compose='rhel-9')  # noqa
+    schedule_entry.guest.environment = TestingEnvironment(arch='x86_64', compose='rhel-9')
+    schedule_entry.testing_environment = TestingEnvironment(arch='x86_64', compose='rhel-9')
     schedule_entry.results = schedule_entry_results
     schedule_entry.runner_capability = 'sti'
-    test_suite = gluetool.utils.new_xml_element('testsuite')
+    test_suite = TestSuite(name='some-suite', result='some-result')
+    results = Results(test_suites=[test_suite], test_schedule_result='some-schedule-result',
+                      overall_result='some-overall-result')
 
-    assert str(test_suite) == '<testsuite/>'
     module_runner.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
 
     assert schedule_entry.outputs == expected_schedule_entry_outputs
 
     if expected_xml:
-        # Remove the first line from the parsed assets file. BeautifulSoup adds '<?xml version="1.0" encoding="utf-8"?>'
-        # to the first line when parsing a file.
-        assert test_suite.prettify() == '\n'.join(expected_xml.prettify().splitlines()[1:])
+        assert results.xunit_testing_farm.to_xml_string(pretty_print=True) == expected_xml
 
 
 @pytest.mark.parametrize('workdir, expected_message, expected_results', [

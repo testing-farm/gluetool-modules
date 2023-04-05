@@ -33,17 +33,13 @@ class PrimaryTaskMock():
     id: int
     ARTIFACT_NAMESPACE: str
 
+    def __repr__(self):
+        return str(self.id)
+
 
 def read_asset_file(asset_filename: str):
     with open(os.path.join(ASSETS_DIR, 'test_schedule_report', asset_filename), 'r') as f:
         return f.read()
-
-
-def read_xml_asset_file(asset_filename: str):
-    xml = bs4.BeautifulSoup(read_asset_file(asset_filename), 'xml')
-    # Remove the first line from the parsed assets file. BeautifulSoup adds '<?xml version="1.0" encoding="utf-8"?>'
-    # to the first line when parsing a file.
-    return '\n'.join(xml.prettify().splitlines()[1:])
 
 
 @pytest.fixture(name='module')
@@ -149,15 +145,16 @@ def test_execute(module, monkeypatch):
             'thread_id': lambda: 'some thread id'
         })
         module._config.update({
-            'xunit-file': os.path.join(tmpdir, 'results.xml'),
+            'xunit-testing-farm-file': os.path.join(tmpdir, 'results.xml'),
             'enable-polarion': 1,
             'polarion-lookup-method': 'polarion lookup method',
             'polarion-lookup-method-field-id': 'polarion lookup method field id',
             'polarion-project-id': 'polarion project id',
         })
         module.execute()
-        assert module.results().prettify() == read_xml_asset_file('results_execute.xml')
-        assert module.test_schedule_results().prettify() == read_xml_asset_file('results_execute.xml')
+        expected = read_asset_file('results_execute.xml')
+        assert module.results().xunit_testing_farm.to_xml_string(pretty_print=True) == expected
+        assert module.test_schedule_results().xunit_testing_farm.to_xml_string(pretty_print=True) == expected
 
 
 def test_destroy(module, monkeypatch):
@@ -180,7 +177,7 @@ def test_destroy(module, monkeypatch):
             'thread_id': lambda: 'some thread id'
         })
         module._config.update({
-            'xunit-file': os.path.join(tmpdir, 'results.xml'),
+            'xunit-testing-farm-file': os.path.join(tmpdir, 'results.xml'),
             'enable-polarion': 1,
             'polarion-lookup-method': 'polarion lookup method',
             'polarion-lookup-method-field-id': 'polarion lookup method field id',
@@ -188,8 +185,9 @@ def test_destroy(module, monkeypatch):
         })
 
         module.destroy(failure=True)
-        assert module.results().prettify() == read_xml_asset_file('results_destroy.xml')
-        assert module.test_schedule_results().prettify() == read_xml_asset_file('results_destroy.xml')
+        expected = read_asset_file('results_destroy.xml')
+        assert module.results().xunit_testing_farm.to_xml_string(pretty_print=True) == expected
+        assert module.test_schedule_results().xunit_testing_farm.to_xml_string(pretty_print=True) == expected
 
 
 @pytest.mark.parametrize('enable_polarion, polarion_project_id, polarion_lookup_method, polarion_lookup_method_field_id, expected_output', [  # noqa

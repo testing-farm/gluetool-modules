@@ -39,17 +39,19 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "attrs"
-version = "21.4.0"
+version = "22.2.0"
 description = "Classes Without Boilerplate"
-category = "dev"
+category = "main"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+python-versions = ">=3.6"
 
 [package.extras]
-dev = ["cloudpickle", "coverage[toml] (>=5.0.2)", "furo", "hypothesis", "mypy", "pre-commit", "pympler", "pytest (>=4.3.0)", "pytest-mypy-plugins", "six", "sphinx", "sphinx-notfound-page", "zope.interface"]
-docs = ["furo", "sphinx", "sphinx-notfound-page", "zope.interface"]
-tests = ["cloudpickle", "coverage[toml] (>=5.0.2)", "hypothesis", "mypy", "pympler", "pytest (>=4.3.0)", "pytest-mypy-plugins", "six", "zope.interface"]
-tests_no_zope = ["cloudpickle", "coverage[toml] (>=5.0.2)", "hypothesis", "mypy", "pympler", "pytest (>=4.3.0)", "pytest-mypy-plugins", "six"]
+cov = ["attrs", "coverage-enable-subprocess", "coverage[toml] (>=5.3)"]
+dev = ["attrs"]
+docs = ["furo", "myst-parser", "sphinx", "sphinx-notfound-page", "sphinxcontrib-towncrier", "towncrier", "zope.interface"]
+tests = ["attrs", "zope.interface"]
+tests-no-zope = ["cloudpickle", "hypothesis", "mypy (>=0.971,<0.990)", "pympler", "pytest (>=4.3.0)", "pytest-mypy-plugins", "pytest-xdist"]
+tests_no_zope = ["cloudpickle", "hypothesis", "mypy (>=0.971,<0.990)", "pympler", "pytest (>=4.3.0)", "pytest-mypy-plugins", "pytest-xdist"]
 
 [[package]]
 name = "babel"
@@ -1625,6 +1627,40 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
+name = "xsdata"
+version = "22.12"
+description = "Python XML Binding"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.extras]
+cli = ["click (>=5.0)", "click-default-group (>=1.2)", "docformatter (==1.5.0)", "jinja2 (>=2.10)", "toposort (>=1.5)"]
+docs = ["furo", "sphinx", "sphinx-autobuild", "sphinx-autodoc-typehints", "sphinx-copybutton", "sphinx-inline-tabs"]
+lxml = ["lxml (>=4.4.1)"]
+soap = ["requests"]
+test = ["codecov", "pre-commit", "pytest", "pytest-benchmark", "pytest-cov", "tox"]
+
+[[package]]
+name = "xsdata-attrs"
+version = "21.11"
+description = "xsdata attrs plugin"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+attrs = ">=19.2.0"
+xsdata = ">=21.8"
+
+[package.extras]
+cli = ["xsdata[cli] (>=21.8)"]
+docs = ["furo", "sphinx", "sphinx-autobuild"]
+lxml = ["lxml (>=4.4.1)"]
+soap = ["requests"]
+test = ["codecov", "lxml", "pre-commit", "pytest", "pytest-cov", "tox"]
+
+[[package]]
 name = "yamllint"
 version = "1.16.0"
 description = "A linter for YAML files."
@@ -1654,7 +1690,7 @@ development = ["ipdb"]
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.9"
-content-hash = "4263d5ec092daba444ac32f278bb88456348356fc076bd8a0be4a4555b229363"
+content-hash = "4989c0311460092e411604eb1e65330ec139d86a29a995cafe1164d00b7dee15"
 
 [metadata.files]
 alabaster = [
@@ -1673,8 +1709,8 @@ atomicwrites = [
     {file = "atomicwrites-1.4.1.tar.gz", hash = "sha256:81b2c9071a49367a7f770170e5eec8cb66567cfbbc8c73d20ce5ca4a8d71cf11"},
 ]
 attrs = [
-    {file = "attrs-21.4.0-py2.py3-none-any.whl", hash = "sha256:2d27e3784d7a565d36ab851fe94887c5eccd6a463168875832a1be79c82828b4"},
-    {file = "attrs-21.4.0.tar.gz", hash = "sha256:626ba8234211db98e869df76230a137c4c40a12d72445c45d5f5b716f076e2fd"},
+    {file = "attrs-22.2.0-py3-none-any.whl", hash = "sha256:29e95c7f6778868dbd49170f98f8818f78f3dc5e0e37c0b1f474e3561b240836"},
+    {file = "attrs-22.2.0.tar.gz", hash = "sha256:c9227bfc2f01993c03f68db37d1d15c9690188323c067c641f1a35ca58185f99"},
 ]
 babel = [
     {file = "Babel-2.11.0-py3-none-any.whl", hash = "sha256:1ad3eca1c885218f6dce2ab67291178944f810a10a9b5f3cb8382a5a232b64fe"},
@@ -2814,6 +2850,14 @@ winkerberos = [
     {file = "winkerberos-0.9.1-cp39-cp39-win32.whl", hash = "sha256:484a23369cf461fdfa6d88d8c238e7129a469f7c961f257c8f5668536d9c2df9"},
     {file = "winkerberos-0.9.1-cp39-cp39-win_amd64.whl", hash = "sha256:9842854fa5527b72720e2911f1b6008736baacaf3df1a60bfe62a0aaf0f037ff"},
     {file = "winkerberos-0.9.1.zip", hash = "sha256:02ec925c2aa4fe4f7656792a76e346d8fab13e12ced2732354a21958adfe92c6"},
+]
+xsdata = [
+    {file = "xsdata-22.12-py3-none-any.whl", hash = "sha256:981755b69148fe954c46f4f6eb12f441e915df403ba86b21165e444667970cc1"},
+    {file = "xsdata-22.12.tar.gz", hash = "sha256:a3d5f1b7b6fff8c916f7825c836ea285a4e7d3f3a94dcbbed0e63ba15dc94466"},
+]
+xsdata-attrs = [
+    {file = "xsdata_attrs-21.11-py3-none-any.whl", hash = "sha256:f0a9140aaa347e2957ff0766f8b6c07742b8d862ed9e4dfcd651dbaae3481dce"},
+    {file = "xsdata_attrs-21.11.tar.gz", hash = "sha256:5409e14e17391ad33507e5997960638713107e9946d8f2c803fc885b339bac7a"},
 ]
 yamllint = [
     {file = "yamllint-1.16.0-py2.py3-none-any.whl", hash = "sha256:f97cd763fe7b588444a94cc44fd3764b832a613b5250baa2bfe8b84c91e4c330"},

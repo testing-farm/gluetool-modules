@@ -1,25 +1,33 @@
-<testsuite tests="1">
-   <testcase name="foo" result="error">
-      <properties>
-         <property name="baseosci.arch" value="x86_64" />
-         <property name="baseosci.connectable_host" value="hostname" />
-         <property name="baseosci.distro" value="rhel-9" />
-         <property name="baseosci.status" value="Created" />
-         <property name="baseosci.variant" value="" />
-      </properties>
-      <logs>
-         <log href="some/artifact-dirpath/log1" name="log1" schedule-entry="another/playbook2" schedule-stage="running" />
-         <log href="some/artifact-dirpath/log2" name="log2" schedule-entry="another/playbook2" schedule-stage="running" />
-         <log href="some/artifact-dirpath" name="log_dir" schedule-entry="another/playbook2" schedule-stage="running" />
-      </logs>
-      <error />
-      <testing-environment name="requested">
-         <property name="arch" value="x86_64" />
-         <property name="compose" value="rhel-9" />
-      </testing-environment>
-      <testing-environment name="provisioned">
-         <property name="arch" value="x86_64" />
-         <property name="compose" value="rhel-9" />
-      </testing-environment>
-   </testcase>
-</testsuite>
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites overall-result="some-overall-result">
+ <properties>
+  <property name="baseosci.overall-result" value="some-schedule-result"/>
+ </properties>
+ <testsuite name="some-suite" result="some-result" tests="1">
+  <testcase name="foo" result="error">
+   <properties>
+    <property name="baseosci.arch" value="x86_64"/>
+    <property name="baseosci.connectable_host" value="hostname"/>
+    <property name="baseosci.distro" value="rhel-9"/>
+    <property name="baseosci.status" value="Created"/>
+    <property name="baseosci.variant" value=""/>
+   </properties>
+   <logs>
+    <log href="some/artifact-dirpath/log1" name="log1" schedule-stage="running" schedule-entry="another/playbook2"/>
+    <log href="some/artifact-dirpath/log2" name="log2" schedule-stage="running" schedule-entry="another/playbook2"/>
+    <log href="some/artifact-dirpath" name="log_dir" schedule-stage="running" schedule-entry="another/playbook2"/>
+   </logs>
+   <testing-environment name="requested">
+    <property name="arch" value="x86_64"/>
+    <property name="compose" value="rhel-9"/>
+    <property name="snapshots" value="False"/>
+   </testing-environment>
+   <testing-environment name="provisioned">
+    <property name="arch" value="x86_64"/>
+    <property name="compose" value="rhel-9"/>
+    <property name="snapshots" value="False"/>
+   </testing-environment>
+   <error/>
+  </testcase>
+ </testsuite>
+</testsuites>

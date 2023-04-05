@@ -1,23 +1,31 @@
-<testsuite tests="1">
-   <testcase name="foo" result="fail">
-      <properties>
-         <property name="baseosci.arch" value="x86_64" />
-         <property name="baseosci.connectable_host" value="hostname" />
-         <property name="baseosci.distro" value="rhel-9" />
-         <property name="baseosci.status" value="Created" />
-         <property name="baseosci.variant" value="" />
-      </properties>
-      <logs>
-         <log href="some/work-dirpath/ansible-output.txt" name="ansible-output.txt" schedule-entry="another/playbook2" schedule-stage="running" />
-      </logs>
-      <failure />
-      <testing-environment name="requested">
-         <property name="arch" value="x86_64" />
-         <property name="compose" value="rhel-9" />
-      </testing-environment>
-      <testing-environment name="provisioned">
-         <property name="arch" value="x86_64" />
-         <property name="compose" value="rhel-9" />
-      </testing-environment>
-   </testcase>
-</testsuite>
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites overall-result="some-overall-result">
+ <properties>
+  <property name="baseosci.overall-result" value="some-schedule-result"/>
+ </properties>
+ <testsuite name="some-suite" result="some-result" tests="1">
+  <testcase name="foo" result="fail">
+   <properties>
+    <property name="baseosci.arch" value="x86_64"/>
+    <property name="baseosci.connectable_host" value="hostname"/>
+    <property name="baseosci.distro" value="rhel-9"/>
+    <property name="baseosci.status" value="Created"/>
+    <property name="baseosci.variant" value=""/>
+   </properties>
+   <logs>
+    <log href="some/work-dirpath/ansible-output.txt" name="ansible-output.txt" schedule-stage="running" schedule-entry="another/playbook2"/>
+   </logs>
+   <testing-environment name="requested">
+    <property name="arch" value="x86_64"/>
+    <property name="compose" value="rhel-9"/>
+    <property name="snapshots" value="False"/>
+   </testing-environment>
+   <testing-environment name="provisioned">
+    <property name="arch" value="x86_64"/>
+    <property name="compose" value="rhel-9"/>
+    <property name="snapshots" value="False"/>
+   </testing-environment>
+   <failure/>
+  </testcase>
+ </testsuite>
+</testsuites>

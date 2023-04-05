@@ -84,9 +84,9 @@ class TestingFarmRequestStateReporter(gluetool.Module):
         request.update(
             state=self._get_state(failure),
             overall_result=self._get_overall_result(
-                test_results['overall-result'] if test_results else 'unknown', failure),
+                test_results.overall_result if test_results else 'unknown', failure),
             summary=self._get_summary(failure),
-            xunit=str(test_results) if test_results else None,
+            xunit=test_results.xunit_testing_farm.to_xml_string() if test_results else None,
             artifacts_url=self.shared('coldstore_url')
         )
 

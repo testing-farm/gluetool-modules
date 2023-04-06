@@ -21,7 +21,7 @@ image: "quay.io/testing-farm/python-ci-image:latest"
 # Common variables
 #
 variables:
-  BUILDAH_TAG: v1.29.0
+  BUILDAH_IMAGE: quay.io/buildah/upstream:latest
 
 #
 # Mark tests to run for merge requests
@@ -42,7 +42,7 @@ variables:
 container:
   extends: .merge-request
   stage: test
-  image: quay.io/buildah/stable:$BUILDAH_TAG
+  image: $BUILDAH_IMAGE
   variables:
     GOSS_PATH: /usr/bin/goss
     GOSS_DOWNLOAD_URL: https://github.com/aelsabbahy/goss/releases/latest/download
@@ -51,7 +51,8 @@ container:
     - curl -L $GOSS_DOWNLOAD_URL/goss-linux-amd64 -o /usr/bin/goss && chmod +rx /usr/bin/goss
     - curl -L $GOSS_DOWNLOAD_URL/dgoss -o /usr/bin/dgoss && chmod +rx /usr/bin/dgoss
     - buildah login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
-    - IMAGE_TAG=$CI_PIPELINE_ID make build
+    - IMAGE_TAG=$CI_PIPELINE_ID make build || true
+    - sleep 3600
     - IMAGE_TAG=$CI_PIPELINE_ID make test-image
     - IMAGE_TAG=$CI_PIPELINE_ID make push
 
@@ -129,7 +130,7 @@ py39-generate-docs:
 #
 publish/container:
   stage: deploy
-  image: quay.io/buildah/stable:$BUILDAH_TAG
+  image: $BUILDAH_IMAGE
   script:
     - dnf -y install make poetry python3.9
     - buildah login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io

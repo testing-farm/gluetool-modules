@@ -43,6 +43,10 @@ def fixture_module(monkeypatch):
                     'type': 'repository'
                 },
                 {
+                    'id': 'https://example.com/repo3.repo',
+                    'type': 'repository-file'
+                },
+                {
                     'id': 'wrongid',
                     'packages': None,
                     'type': 'wongtype'
@@ -89,7 +93,8 @@ def test_guest_setup(module, environment_index, tmpdir):
 
     calls = [
         call('command -v dnf'),
-        call('mkdir -p dummy-path'),
+        call('curl --output-dir /etc/yum.repos.d -LO https://example.com/repo3.repo'),
+        call('mkdir -pv dummy-path'),
         call('cd dummy-path && dnf repoquery -q --queryformat "%{name}" --repofrompath artifacts-repo,https://example.com/repo1 --disablerepo="*" --enablerepo="artifacts-repo" --location | xargs -n1 curl -sO'),  # noqa
         call('cd dummy-path && dnf repoquery -q --queryformat "%{name}" --repofrompath artifacts-repo,https://example.com/repo2 --disablerepo="*" --enablerepo="artifacts-repo" --location | xargs -n1 curl -sO'),  # noqa
         call('dnf --allowerasing -y reinstall dummy-path/*[^.src].rpm'),

@@ -14,7 +14,8 @@ from gluetool_modules_framework.testing_farm.testing_farm_request import Testing
 from typing import Any, cast, List, Optional
 
 # accepted artifact types from testing farm request
-TESTING_FARM_ARTIFACT_TYPES = ['repository']
+REPOSITORY_ARTIFACT_TYPE = 'repository'
+REPOSITORY_FILE_ARTIFACT_TYPE = 'repository-file'
 
 # Default path to downloading the packages
 DEFAULT_DOWNLOAD_PATH = "/var/share/test-artifacts"
@@ -44,6 +45,43 @@ class InstallRepository(gluetool.Module):
 
     shared_functions = ['setup_guest']
 
+    def _install_repository_urls(self, sut_installation: SUTInstallation, repository_urls: List[str]) -> None:
+        download_path = self.option('download-path')
+
+        sut_installation.add_step('Create artifacts directory', 'mkdir -pv {}'.format(download_path),
+                                  ignore_exception=True)
+
+        for repo_url in repository_urls:
+            sut_installation.add_step(
+                'Download artifacts',
+                (
+                    'cd {} && '
+                    'dnf repoquery -q --queryformat "%{{name}}" --repofrompath artifacts-repo,{} '
+                    '--disablerepo="*" --enablerepo="artifacts-repo" --location | '
+                    'xargs -n1 curl -sO'
+                ).format(download_path, repo_url)
+            )
+
+        packages = '{}/*[^.src].rpm'.format(download_path)
+
+        # note: the `SUTInstallation` library does the magic of using DNF where it is needed \o/
+        sut_installation.add_step('Reinstall packages', 'yum -y reinstall {}'.format(packages), ignore_exception=True)
+        sut_installation.add_step('Downgrade packages', 'yum -y downgrade {}'.format(packages), ignore_exception=True)
+        sut_installation.add_step('Update packages', 'yum -y update {}'.format(packages), ignore_exception=True)
+        sut_installation.add_step('Install packages', 'yum -y install {}'.format(packages), ignore_exception=True)
+
+        sut_installation.add_step(
+            'Verify all packages installed',
+            'basename --suffix=.rpm {} | xargs rpm -q'.format(packages)
+        )
+
+    def _install_repository_files(self, sut_installation: SUTInstallation, repository_files: List[str]) -> None:
+        for repository_file in repository_files:
+            sut_installation.add_step(
+                'Download repository file',
+                'curl --output-dir /etc/yum.repos.d -LO {}'.format(repository_file)
+            )
+
     def setup_guest(
         self,
         guest: NetworkedGuest,
@@ -51,7 +89,6 @@ class InstallRepository(gluetool.Module):
         log_dirpath: Optional[str] = None,
         **kwargs: Any
     ) -> Any:
-        download_path = self.option('download-path')
 
         self.require_shared('evaluate_instructions', 'testing_farm_request')
         request = cast(TestingFarmRequest, self.shared('testing_farm_request'))
@@ -77,18 +114,27 @@ class InstallRepository(gluetool.Module):
 
         assert guest.environment
 
-        # If guest's TestingEnvironment contains any artifacts of acceptable types, extract their ids and use them
-        artifact_ids: List[str] = []
+        # Get `repository-file` artifacts from TestingEnvironment
+        repository_files: List[str] = []
         if guest.environment and guest.environment.artifacts:
-            artifact_ids = [
+            repository_files = [
                 artifact['id'] for artifact in guest.environment.artifacts
-                if artifact['type'] in TESTING_FARM_ARTIFACT_TYPES
+                if artifact['type'] == REPOSITORY_FILE_ARTIFACT_TYPE
             ]
 
-        # no artifact to install
-        if not artifact_ids:
+        # Get `repository` artifacts from TestingEnvironment
+        repository_urls: List[str] = []
+        if guest.environment and guest.environment.artifacts:
+            repository_urls = [
+                artifact['id'] for artifact in guest.environment.artifacts
+                if artifact['type'] == REPOSITORY_ARTIFACT_TYPE
+            ]
+
+        # no artifacts to install
+        if not (repository_urls or repository_files):
             return r_overloaded_guest_setup_output
 
+        # get setup from overloaded shared functions
         guest_setup_output = r_overloaded_guest_setup_output.unwrap() or []
 
         installation_log_dirpath = os.path.join(
@@ -97,35 +143,16 @@ class InstallRepository(gluetool.Module):
         )
 
         sut_installation = SUTInstallation(self, installation_log_dirpath, request, logger=guest.logger)
-        sut_installation.add_step('Create artifacts directory', 'mkdir -p {}'.format(download_path),
-                                  ignore_exception=True)
 
-        for repo_url in artifact_ids:
-            sut_installation.add_step(
-                'Download artifacts',
-                (
-                    'cd {} && '
-                    'dnf repoquery -q --queryformat "%{{name}}" --repofrompath artifacts-repo,{} '
-                    '--disablerepo="*" --enablerepo="artifacts-repo" --location | '
-                    'xargs -n1 curl -sO'
-                ).format(download_path, repo_url)
-            )
+        # the repository files need to be installed first, they are mainly used to include sidetag repositories
+        if repository_files:
+            self._install_repository_files(sut_installation, repository_files)
 
-        packages = '{}/*[^.src].rpm'.format(download_path)
-
-        # note: library does the magic in using DNF is needed \o/
-        sut_installation.add_step('Reinstall packages', 'yum -y reinstall {}'.format(packages), ignore_exception=True)
-        sut_installation.add_step('Downgrade packages', 'yum -y downgrade {}'.format(packages), ignore_exception=True)
-        sut_installation.add_step('Update packages', 'yum -y update {}'.format(packages), ignore_exception=True)
-        sut_installation.add_step('Install packages', 'yum -y install {}'.format(packages), ignore_exception=True)
-
-        sut_installation.add_step(
-            'Verify all packages installed',
-            'basename --suffix=.rpm {} | xargs rpm -q'.format(packages)
-        )
+        if repository_urls:
+            self._install_repository_urls(sut_installation, repository_urls)
 
         with Action(
-                'installing rpm artifacts',
+                'installing repositories',
                 parent=Action.current_action(),
                 logger=guest.logger,
                 tags={
@@ -141,7 +168,7 @@ class InstallRepository(gluetool.Module):
         guest_setup_output += [
             GuestSetupOutput(
                 stage=stage,
-                label='build installation',
+                label='repository installation',
                 log_path=installation_log_dirpath,
                 additional_data=sut_installation
             )

@@ -67,58 +67,31 @@ def fixture_module(monkeypatch):
     return module
 
 
-@pytest.fixture(name='local_guest')
-def fixture_local_guest(module):
-    guest = guest_module.NetworkedGuest(module, '127.0.0.1', key=MagicMock())
-    guest.execute = MagicMock(return_value=MagicMock(stdout='', stderr=''))
-    guest.environment = TestingEnvironment(
-        arch='x86_64',
-        compose='dummy-compose'
-    )
-
-    return guest
-
-
 def test_sanity_shared(module):
     assert module.glue.has_shared('setup_guest') is True
 
 
-def test_setup_guest(module, local_guest):
-    pass
-
-
-def test_execute(module, local_guest, monkeypatch):
-    module.execute()
-
-    assert module.request_artifacts == [
-        {
-            'id': 'https://example.com/repo1',
-            'packages': None,
-            'type': 'repository'
-        },
-        {
-            'id': 'https://example.com/repo2',
-            'packages': None,
-            'type': 'repository'
-        }
-    ]
-
-
-def test_guest_setup(module, local_guest, tmpdir):
+@pytest.mark.parametrize('environment_index', [0, 1], ids=['multiple-repositories', 'no-repositories'])
+def test_guest_setup(module, environment_index, tmpdir):
     module.execute()
 
     stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
 
     execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
     guest = mock_guest(execute_mock)
+    guest.environment = module.shared('testing_farm_request').environments_requested[environment_index]
 
     module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir))
+
+    if environment_index == 1:
+        execute_mock.assert_has_calls([])
+        return
 
     calls = [
         call('command -v dnf'),
         call('mkdir -p dummy-path'),
-        call('cd dummy-path && dnf repoquery -q --queryformat "%{name}" --repofrompath artifacts-repo,https://example.com/repo1               --disablerepo="*" --enablerepo="artifacts-repo" --location | xargs -n1 curl -sO'),  # noqa
-        call('cd dummy-path && dnf repoquery -q --queryformat "%{name}" --repofrompath artifacts-repo,https://example.com/repo2               --disablerepo="*" --enablerepo="artifacts-repo" --location | xargs -n1 curl -sO'),  # noqa
+        call('cd dummy-path && dnf repoquery -q --queryformat "%{name}" --repofrompath artifacts-repo,https://example.com/repo1 --disablerepo="*" --enablerepo="artifacts-repo" --location | xargs -n1 curl -sO'),  # noqa
+        call('cd dummy-path && dnf repoquery -q --queryformat "%{name}" --repofrompath artifacts-repo,https://example.com/repo2 --disablerepo="*" --enablerepo="artifacts-repo" --location | xargs -n1 curl -sO'),  # noqa
         call('dnf --allowerasing -y reinstall dummy-path/*[^.src].rpm'),
         call('dnf --allowerasing -y downgrade dummy-path/*[^.src].rpm'),
         call('dnf --allowerasing -y update dummy-path/*[^.src].rpm'),

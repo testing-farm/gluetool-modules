@@ -9,9 +9,9 @@ from gluetool.result import Ok, Error
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
 from gluetool_modules_framework.libs.guest import NetworkedGuest
+from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
 
-from typing import Optional
-from typing import Any
+from typing import Any, cast, List, Optional
 
 # accepted artifact types from testing farm request
 TESTING_FARM_ARTIFACT_TYPES = ['repository']
@@ -44,11 +44,6 @@ class InstallRepository(gluetool.Module):
 
     shared_functions = ['setup_guest']
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super(InstallRepository, self).__init__(*args, **kwargs)
-        self.request = None
-        self.request_artifacts = None
-
     def setup_guest(
         self,
         guest: NetworkedGuest,
@@ -58,7 +53,8 @@ class InstallRepository(gluetool.Module):
     ) -> Any:
         download_path = self.option('download-path')
 
-        self.require_shared('evaluate_instructions')
+        self.require_shared('evaluate_instructions', 'testing_farm_request')
+        request = cast(TestingFarmRequest, self.shared('testing_farm_request'))
 
         log_dirpath = guest_setup_log_dirpath(guest, log_dirpath)
 
@@ -79,8 +75,18 @@ class InstallRepository(gluetool.Module):
         if stage != GuestSetupStage.ARTIFACT_INSTALLATION:
             return r_overloaded_guest_setup_output
 
-        # no artifacts to test
-        if not self.request_artifacts:
+        assert guest.environment
+
+        # If guest's TestingEnvironment contains any artifacts of acceptable types, extract their ids and use them
+        artifact_ids: List[str] = []
+        if guest.environment and guest.environment.artifacts:
+            artifact_ids = [
+                artifact['id'] for artifact in guest.environment.artifacts
+                if artifact['type'] in TESTING_FARM_ARTIFACT_TYPES
+            ]
+
+        # no artifact to install
+        if not artifact_ids:
             return r_overloaded_guest_setup_output
 
         guest_setup_output = r_overloaded_guest_setup_output.unwrap() or []
@@ -90,19 +96,19 @@ class InstallRepository(gluetool.Module):
             '{}-{}'.format(self.option('log-dir-name'), guest.name)
         )
 
-        sut_installation = SUTInstallation(self, installation_log_dirpath, self.request, logger=guest)
+        sut_installation = SUTInstallation(self, installation_log_dirpath, request, logger=guest.logger)
         sut_installation.add_step('Create artifacts directory', 'mkdir -p {}'.format(download_path),
                                   ignore_exception=True)
-        for repository_url in self.request_artifacts:
-            repo_id = repository_url['id']
+
+        for repo_url in artifact_ids:
             sut_installation.add_step(
                 'Download artifacts',
                 (
                     'cd {} && '
                     'dnf repoquery -q --queryformat "%{{name}}" --repofrompath artifacts-repo,{} '
-                    '              --disablerepo="*" --enablerepo="artifacts-repo" --location | '
+                    '--disablerepo="*" --enablerepo="artifacts-repo" --location | '
                     'xargs -n1 curl -sO'
-                ).format(download_path, repo_id)
+                ).format(download_path, repo_url)
             )
 
         packages = '{}/*[^.src].rpm'.format(download_path)
@@ -127,8 +133,7 @@ class InstallRepository(gluetool.Module):
                         'hostname': guest.hostname,
                         'environment': guest.environment.serialize_to_json()
                     },
-                    'artifact-id': self.request.id,
-                    'artifact-type': self.request.ARTIFACT_NAMESPACE
+                    'request-id': request.id,
                 }
         ):
             sut_result = sut_installation.run(guest)
@@ -151,21 +156,3 @@ class InstallRepository(gluetool.Module):
             ))
 
         return Ok(guest_setup_output)
-
-    def execute(self) -> None:
-        if not self.has_shared('testing_farm_request'):
-            return
-
-        # extract ids from the request
-        self.request = self.shared('testing_farm_request')
-
-        assert self.request is not None
-        if not self.request.environments_requested[0].artifacts:
-            self.info("No repository artifacts found, skipping")
-            return
-
-        # TODO: environment should be coming from test scheduler later
-        self.request_artifacts = [
-            artifact for artifact in self.request.environments_requested[0].artifacts
-            if artifact['type'] in TESTING_FARM_ARTIFACT_TYPES
-        ]

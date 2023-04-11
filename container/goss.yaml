@@ -15,6 +15,9 @@ packages:
   python3.9:
     installed: true
 
+  python3-pylero:
+    installed: true
+
   # TFT-1734
   # The rpm-build command is required for standard-test-source role
   # https://pagure.io/standard-test-roles/blob/master/f/roles/standard-test-source
@@ -65,13 +68,6 @@ file:
       - SendEnv -LC_* -LANG_*
       - ServerAliveInterval 60
       - ServerAliveCountMax 5
-
-  /usr/lib/python3.9/site-packages/pylero:
-    exists: true
-    mode: "0755"
-    owner: root
-    group: root
-    filetype: directory
 
 command:
   ansible-galaxy collection list:

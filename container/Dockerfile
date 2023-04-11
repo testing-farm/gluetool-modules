@@ -32,7 +32,7 @@ RUN    ln -s /CONFIG /etc/citool.d \
     && dnf -y install ansible-core autoconf automake crun gcc git krb5-devel libcurl-devel \
                       libpq-devel libtool libxml2-devel make openssl-devel popt-devel \
                       postgresql-devel python39 python39-devel python39-pip python3-libselinux \
-                      redhat-rpm-config koji python3-virtualenv \
+                      redhat-rpm-config koji python3-virtualenv python3-pylero \
                       rsync beakerlib-libraries rpm-build rpm-devel \
                       tmt-provision-container tmt-provision-virtual tmt-report-polarion tmt-report-html \
     # workaround for https://pagure.io/standard-test-roles/pull-request/410
@@ -42,8 +42,6 @@ RUN    ln -s /CONFIG /etc/citool.d \
     && dnf -y update --enablerepo=epel-testing tmt-provision-container tmt-provision-virtual tmt \
                                                tmt-report-polarion tmt-report-html \
     && dnf clean all \
-    # TFT-1503 - install pylero from PyPI, not yet available as a package
-    && pip3.9 install -t /usr/lib/python3.9/site-packages pylero \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \

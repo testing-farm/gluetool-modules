@@ -11,7 +11,7 @@ from six.moves.configparser import ConfigParser
 import gluetool
 from gluetool.utils import Command
 
-from gluetool_modules_framework.libs.results import TestResult, publish_result
+from gluetool_modules_framework.libs.results.test_result import TestResult, publish_result
 
 # Type annotations
 from typing import Any, Iterator, List, NoReturn, Optional, TYPE_CHECKING, Dict  # noqa

@@ -6,7 +6,7 @@ import sys
 import six
 
 import gluetool
-import gluetool_modules_framework.libs.results
+import gluetool_modules_framework.libs.results.test_result
 
 # Type annotations
 from typing import cast, Any, List, Tuple, Optional, Union  # noqa
@@ -17,7 +17,7 @@ class TestingResults(gluetool.Module):
     Provides support for gathering and exporting testing results.
 
     Keeps internal ``list`` of produced results
-    (instances of :py:class:`gluetool_modules_framework.libs.results.TestResult`),
+    (instances of :py:class:`gluetool_modules_framework.libs.results.test_result.TestResult`),
     and provides it to callers via its shared function :py:meth:`results`. Users can then modify the
     list and results it carries.
 
@@ -48,15 +48,15 @@ class TestingResults(gluetool.Module):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(TestingResults, self).__init__(*args, **kwargs)
 
-        self._results: List[gluetool_modules_framework.libs.results.TestResult] = []
+        self._results: List[gluetool_modules_framework.libs.results.test_result.TestResult] = []
 
-    def results(self) -> List[gluetool_modules_framework.libs.results.TestResult]:
+    def results(self) -> List[gluetool_modules_framework.libs.results.test_result.TestResult]:
         """
         Return list of gathered results.
 
         :rtype: list
         :returns: list of gathered results
-                  (instances of :py:class:`gluetool_modules_framework.libs.results.TestResult`).
+                  (instances of :py:class:`gluetool_modules_framework.libs.results.test_result.TestResult`).
         """
 
         return self._results
@@ -89,11 +89,11 @@ class TestingResults(gluetool.Module):
         return parsed
 
     @staticmethod
-    def _serialize_to_json(results: List[gluetool_modules_framework.libs.results.TestResult]) -> List[Any]:
+    def _serialize_to_json(results: List[gluetool_modules_framework.libs.results.test_result.TestResult]) -> List[Any]:
         return [result.serialize('json') for result in results]
 
     @staticmethod
-    def _serialize_to_xunit(results: List[gluetool_modules_framework.libs.results.TestResult]) -> List[Any]:
+    def _serialize_to_xunit(results: List[gluetool_modules_framework.libs.results.test_result.TestResult]) -> List[Any]:
         test_suites: List[Any] = gluetool.utils.new_xml_element('testsuites')
 
         for result in results:
@@ -109,7 +109,7 @@ class TestingResults(gluetool.Module):
     def serialize_results(
         self,
         output_format: str,
-        results: Optional[List[gluetool_modules_framework.libs.results.TestResult]] = None
+        results: Optional[List[gluetool_modules_framework.libs.results.test_result.TestResult]] = None
     ) -> List[Any]:
         if results is None:
             results = self._results
@@ -134,8 +134,8 @@ class TestingResults(gluetool.Module):
 
         self.info("loading results from '{}', in format '{}'".format(input_file, input_format))
 
-        def _default_unserialize(result: Any) -> gluetool_modules_framework.libs.results.TestResult:
-            return gluetool_modules_framework.libs.results.TestResult.unserialize(self.glue, 'json', result)
+        def _default_unserialize(result: Any) -> gluetool_modules_framework.libs.results.test_result.TestResult:
+            return gluetool_modules_framework.libs.results.test_result.TestResult.unserialize(self.glue, 'json', result)
 
         # load results from init file
         try:

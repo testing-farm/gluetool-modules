@@ -9,7 +9,7 @@ import gluetool
 from gluetool.utils import normalize_multistring_option, normalize_path, Command
 from gluetool_modules_framework.libs import run_and_log
 from gluetool_modules_framework.libs.brew_build_fail import BrewBuildFailedError, run_command
-from gluetool_modules_framework.libs.results import TestResult, publish_result
+from gluetool_modules_framework.libs.results.test_result import TestResult, publish_result
 from gluetool_modules_framework.libs.artifacts import artifacts_location
 
 from typing import Dict, Any, Optional, List, cast # noqa

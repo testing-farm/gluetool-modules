@@ -155,12 +155,9 @@ def test_run_test_schedule_entry(module_runner, monkeypatch, results_filename, r
 
         # Run the module - it creates new directories from the current working directory, temporarily change it to
         # the tmpdir so it gets cleaned up later
-        original_cwd = os.getcwd()
-        os.chdir(tmpdir)
-        try:
+        with monkeypatch.context() as m:
+            m.chdir(tmpdir)
             module_runner.shared('run_test_schedule_entry', schedule_entry)
-        finally:
-            os.chdir(original_cwd)
 
         # Check the results
         assert re.match(r'^work-playbook1.yaml[a-z0-9_]+$', schedule_entry.work_dirpath)

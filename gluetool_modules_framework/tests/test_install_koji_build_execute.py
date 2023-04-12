@@ -196,7 +196,7 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
         assert f.read() == '\n'.join(koji_commands + copr_commands) + '\n'
 
 
-def test_guest_setup_yum(module, local_guest):
+def test_guest_setup_yum(module, local_guest, tmpdir):
     module.execute()
 
     stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
@@ -209,8 +209,7 @@ def test_guest_setup_yum(module, local_guest):
     execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
     execute_mock.side_effect = execute_mock_side_effect
     guest = mock_guest(execute_mock)
-
-    module.setup_guest(guest, stage=stage)
+    module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir))
 
     calls = [
         call('command -v dnf'),

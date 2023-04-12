@@ -215,7 +215,7 @@ dummytmt run --all --verbose provision plan --name ^plan1$ plan --name ^plan1$''
                 secrets={'secret_variable1': 'secret_value1', 'secret_variable2': 'secret_value2'}
             ),
             """# tmt reproducer
-curl -LO {tmpdir_relpath}/tmt-environment-lan1.yaml
+curl -LO tmt-environment-lan1.yaml
 dummytmt run --all --verbose -e @tmt-environment-lan1.yaml provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
             """user_variable1: user_value1
 user_variable2: user_value2
@@ -288,32 +288,34 @@ def test_tmt_output_dir(
         # tmt run
         _set_run_outputs(m, 'dummy test done')
 
-        if exception:
-            with pytest.raises(exception[0], match=exception[1]):
+        with monkeypatch.context() as m:
+            m.chdir(tmpdir)
+            if exception:
+                with pytest.raises(exception[0], match=exception[1]):
+                    module.run_test_schedule_entry(schedule_entry)
+            else:
                 module.run_test_schedule_entry(schedule_entry)
-        else:
-            module.run_test_schedule_entry(schedule_entry)
 
     # do not continue if test schedule entry fails in an exception
     if exception:
         return
 
-    with open(os.path.join(schedule_entry.work_dirpath, 'tmt-run.log')) as f:
+    with open(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-run.log')) as f:
         assert 'dummy test done\n' in f.read()
 
-    with open(os.path.join(schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
+    with open(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
         c = f.read()
         print(c)
-        print(expected_reproducer.format(tmpdir_relpath=os.path.relpath(tmpdir)))
-        assert c == expected_reproducer.format(tmpdir_relpath=os.path.relpath(tmpdir))
+        print(expected_reproducer)
+        assert c == expected_reproducer
 
-    with open(os.path.join(schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
+    with open(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
         c = f.read()
         print(c)
-        print(expected_reproducer.format(tmpdir_relpath=os.path.relpath(tmpdir)))
-        assert c == expected_reproducer.format(tmpdir_relpath=os.path.relpath(tmpdir))
+        print(expected_reproducer)
+        assert c == expected_reproducer
 
-    tmt_environment_file = os.path.join(schedule_entry.repodir, 'tmt-environment-lan1.yaml')
+    tmt_environment_file = os.path.join(tmpdir, schedule_entry.repodir, 'tmt-environment-lan1.yaml')
     if expected_environment:
         with open(tmt_environment_file) as f:
             c = f.read()
@@ -322,8 +324,6 @@ def test_tmt_output_dir(
             assert c == expected_environment
     else:
         assert not os.path.exists(tmt_environment_file)
-
-    shutil.rmtree(schedule_entry.work_dirpath)
 
 
 @pytest.mark.parametrize('additional_options, additional_shared, expected_tmt_reproducer_regex', [
@@ -359,33 +359,30 @@ def test_tmt_output_distgit(module, guest, monkeypatch, additional_options, addi
     module.glue.add_shared('dist_git_repository', module_dist_git)
 
     #  The module generates some files in CWD, so change it to one that will be cleaned up
-    original_cwd = os.getcwd()
-    os.chdir(tmpdir)
-    try:
-        with monkeypatch.context() as m:
-            _set_run_outputs(m,
-                             '',       # git clone
-                             'myfix',  # git show-ref
-                             # '',       # git checkout  # TODO: somehow one of the `git` calls is skipped
-                             'plan1',  # tmt plan ls
-                             '[{"name": "plan_name", "prepare": [{"how": "foo"}, {"how": "install", "exclude": ["exclude1", "exclude2"]}]}]')     # tmt plan export  # noqa
-            schedule_entry = module.create_test_schedule([guest.environment])[0]
+    with monkeypatch.context() as m:
+        m.chdir(tmpdir)
+        _set_run_outputs(m,
+                        '',       # git clone
+                        'myfix',  # git show-ref
+                        # '',     # git checkout  # TODO: somehow one of the `git` calls is skipped
+                        'plan1',  # tmt plan ls
+                        '[{"name": "plan_name", "prepare": [{"how": "foo"}, {"how": "install", "exclude": ["exclude1", "exclude2"]}]}]')     # tmt plan export  # noqa
+        schedule_entry = module.create_test_schedule([guest.environment])[0]
 
-        schedule_entry.guest = guest
+    schedule_entry.guest = guest
 
-        with monkeypatch.context() as m:
-            # tmt run
-            _set_run_outputs(m, 'dummy test done')
+    with monkeypatch.context() as m:
+        m.chdir(tmpdir)
+        # tmt run
+        _set_run_outputs(m, 'dummy test done')
 
-            module.run_test_schedule_entry(schedule_entry)
-    finally:
-        os.chdir(original_cwd)
+        module.run_test_schedule_entry(schedule_entry)
 
-        print(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-reproducer.sh'))
-        with open(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-run.log')) as f:
-            assert 'dummy test done\n' in f.read()
-        with open(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
-            assert re.match(expected_tmt_reproducer_regex, f.read())
+    print(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-reproducer.sh'))
+    with open(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-run.log')) as f:
+        assert 'dummy test done\n' in f.read()
+    with open(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
+        assert re.match(expected_tmt_reproducer_regex, f.read())
 
     shutil.rmtree(os.path.join(tmpdir, schedule_entry.work_dirpath))
 
@@ -409,7 +406,7 @@ def test_tmt_output_distgit(module, guest, monkeypatch, additional_options, addi
         )
     ]
 )
-def test_create_schedule(module, monkeypatch, log, tec, expected_schedule, expected_logs):
+def test_create_schedule(module, monkeypatch, log, tec, expected_schedule, expected_logs, tmpdir):
     module_dist_git = create_module(DistGit)[1]
     module_dist_git._repository = DistGitRepository(
         module_dist_git, 'some-package',
@@ -418,12 +415,14 @@ def test_create_schedule(module, monkeypatch, log, tec, expected_schedule, expec
     module.glue.add_shared('dist_git_repository', module_dist_git)
 
     with monkeypatch.context() as m:
+        m.chdir(tmpdir)
         _set_run_outputs(m,
                          '',       # git clone
                          'myfix',  # git show-ref
                          '',       # git checkout
                          'plan1',  # tmt plan ls
                          '[]')     # tmt plan export
+
         schedule = module.create_test_schedule(tec)
 
     for entry, expected_entry in zip(schedule, expected_schedule):
@@ -606,6 +605,7 @@ def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir):
     module.glue.add_shared('dist_git_repository', module_dist_git)
 
     with monkeypatch.context() as m:
+        m.chdir(tmpdir)
         _set_run_outputs(m,
                          '',       # git clone
                          'myfix',  # git show-ref
@@ -623,11 +623,12 @@ def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir):
     schedule_entry.guest_setup_outputs = {GuestSetupStage.ARTIFACT_INSTALLATION: guest_setup_output.unwrap()}
 
     with monkeypatch.context() as m:
+        m.chdir(tmpdir)
         # tmt run
         _set_run_outputs(m, 'dummy test done')
         module.run_test_schedule_entry(schedule_entry)
 
-    with open(os.path.join(schedule_entry.work_dirpath, 'tmt-run.log')) as f:
+    with open(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-run.log')) as f:
         assert 'dummy test done\n' in f.read()
 
     # COPR installation actually happened
@@ -646,7 +647,7 @@ rpm -q two
 '''
 
     # ... and is pulled into the reproducer
-    with open(os.path.join(schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
+    with open(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
         assert f.read() == f'''# tmt reproducer
 git clone http://example.com/git/myproject testcode
 git -C testcode checkout -b testbranch myfix
@@ -682,6 +683,7 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir):
     module.glue.add_shared('dist_git_repository', module_dist_git)
 
     with monkeypatch.context() as m:
+        m.chdir(tmpdir)
         _set_run_outputs(m,
                          '',       # git clone
                          'myfix',  # git show-ref
@@ -699,11 +701,13 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir):
     schedule_entry.guest_setup_outputs = {GuestSetupStage.ARTIFACT_INSTALLATION: guest_setup_output.unwrap()}
 
     with monkeypatch.context() as m:
+        m.chdir(tmpdir)
         # tmt run
         _set_run_outputs(m, 'dummy test done')
+
         module.run_test_schedule_entry(schedule_entry)
 
-    with open(os.path.join(schedule_entry.work_dirpath, 'tmt-run.log')) as f:
+    with open(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-run.log')) as f:
         assert 'dummy test done\n' in f.read()
 
     # koji installation actually happened
@@ -719,7 +723,7 @@ sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\n' | xargs -d'\n' rpm -
 '''
 
     # ... and is pulled into the reproducer
-    with open(os.path.join(schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
+    with open(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
         assert f.read() == f'''# tmt reproducer
 git clone http://example.com/git/myproject testcode
 git -C testcode checkout -b testbranch myfix

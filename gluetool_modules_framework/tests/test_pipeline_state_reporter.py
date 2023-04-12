@@ -3,6 +3,7 @@
 
 import logging
 import pytest
+import os
 
 from mock import MagicMock
 
@@ -257,9 +258,9 @@ def fixture_publish_old_messages(module):
 
 
 @pytest.fixture(name='publish_new_messages')
-def fixture_publish_new_messages(module):
+def fixture_publish_new_messages(module, tmpdir):
     published = {}
-
+    message_filepath = os.path.join(tmpdir, 'message.json')
     module._config.update({
         'label':  'some-label',
         'note': 'some-note',
@@ -267,7 +268,7 @@ def fixture_publish_new_messages(module):
         'test-type': 'some-type',
         'thread-id': 'some-thread-id',
         'version': '1.1.6',
-        'final-message-file': 'message.json'
+        'final-message-file': message_filepath
     })
 
     def mock_publish_bus_messages(message, topic):
@@ -280,7 +281,7 @@ def fixture_publish_new_messages(module):
     module.publish_bus_messages = mock_publish_bus_messages
     module.glue.add_shared('publish_bus_messages', module)
 
-    return published
+    return published, message_filepath
 
 
 def test_get_final_state_error(module, evaluate, monkeypatch):
@@ -403,6 +404,8 @@ def test_execute_old_message(ci_info, evaluate, monkeypatch, module, mock_namesp
 
 
 def test_execute_new_message(ci_info, evaluate, monkeypatch, module, mock_namespace, publish_new_messages):
+    message_content, message_path = publish_new_messages
+
     module._config.update({
         'label': 'some-label',
         'note': 'some-note',
@@ -414,11 +417,11 @@ def test_execute_new_message(ci_info, evaluate, monkeypatch, module, mock_namesp
 
     module.execute()
 
-    assert publish_new_messages['message'].headers == VERSION_1_ARTIFACT
+    assert message_content['message'].headers == VERSION_1_ARTIFACT
 
-    generated_at = publish_new_messages['message'].body.pop('generated_at')
+    generated_at = message_content['message'].body.pop('generated_at')
 
-    assert publish_new_messages['message'].body == {
+    assert message_content['message'].body == {
         'artifact': VERSION_1_ARTIFACT,
         'contact': VERSION_1_CONTACT,
         'run': RUN,
@@ -492,6 +495,8 @@ def test_execute_reason_in_note_new_message(
     mock_namespace,
     publish_new_messages
 ):
+    message_content, message_path = publish_new_messages
+
     module._config.update({
         'pipeline': {
             'id': 'some-id'
@@ -507,11 +512,11 @@ def test_execute_reason_in_note_new_message(
 
     module.execute()
 
-    assert publish_new_messages['message'].headers == VERSION_1_ARTIFACT
+    assert message_content['message'].headers == VERSION_1_ARTIFACT
 
-    generated_at = publish_new_messages['message'].body.pop('generated_at')
+    generated_at = message_content['message'].body.pop('generated_at')
 
-    assert publish_new_messages['message'].body == {
+    assert message_content['message'].body == {
         'artifact': VERSION_1_ARTIFACT,
         'contact': VERSION_1_CONTACT,
         'run': RUN,
@@ -550,16 +555,18 @@ def test_destroy_old_messages(module, evaluate, publish_old_messages, mock_names
 
 
 def test_destroy_new_messages(module, evaluate, publish_new_messages, mock_namespace):
+    message_content, message_path = publish_new_messages
+
     # test with failure
     module.destroy(failure=MagicMock(sentry_event_url='sentry-url'))
 
     # test with failure and publish_bus_messages
     module.destroy(failure=MagicMock(sentry_event_url='sentry-url'))
-    assert publish_new_messages['message'].body['test']['result'] == 'unknown'
-    assert publish_new_messages['message'].body['error']['issue_url'] == 'sentry-url'
+    assert message_content['message'].body['test']['result'] == 'unknown'
+    assert message_content['message'].body['error']['issue_url'] == 'sentry-url'
 
     # test `--final-message-file` option saving the message to a file
-    message = gluetool.utils.load_json('message.json')
+    message = gluetool.utils.load_json(message_path)
     assert message['body']['test']['result'] == 'unknown'
     assert message['body']['error']['issue_url'] == 'sentry-url'
     assert message['topic'] == 'topic'
@@ -581,6 +588,8 @@ def test_destroy_with_results_and_recipients_old_messages(module, evaluate, mock
 
 
 def test_destroy_with_results_and_recipients_new_messages(module, evaluate, mock_namespace, publish_new_messages):
+    message_content, message_path = publish_new_messages
+
     module.results = lambda: [MagicMock(overall_result='passed')]
     module.glue.add_shared('results', module)
 
@@ -590,8 +599,8 @@ def test_destroy_with_results_and_recipients_new_messages(module, evaluate, mock
     # test without failure
     module.destroy()
 
-    assert publish_new_messages['message'].body['test']['result'] == 'passed'
-    assert publish_new_messages['message'].body['notification']['recipients'] == 'batman'
+    assert message_content['message'].body['test']['result'] == 'passed'
+    assert message_content['message'].body['notification']['recipients'] == 'batman'
 
 
 @pytest.mark.parametrize('expected,results', [

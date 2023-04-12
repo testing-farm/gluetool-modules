@@ -104,7 +104,7 @@ def test_execute(module, local_guest, monkeypatch):
     ]
 
 
-def test_guest_setup(module, local_guest):
+def test_guest_setup(module, local_guest, tmpdir):
     module.execute()
 
     stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
@@ -112,7 +112,7 @@ def test_guest_setup(module, local_guest):
     execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
     guest = mock_guest(execute_mock)
 
-    module.setup_guest(guest, stage=stage)
+    module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir))
 
     calls = [
         call('command -v dnf'),

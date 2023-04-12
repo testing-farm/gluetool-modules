@@ -92,7 +92,7 @@ def fixture_module():
 
 
 @pytest.fixture(name='scenario')
-def fixture_scenario(module, monkeypatch, request):
+def fixture_scenario(module, monkeypatch, request, tmpdir):
     asset = testing_asset('artemis', '{}.yaml'.format(request.param))
     scenario = load_yaml(asset)
 
@@ -112,7 +112,10 @@ def fixture_scenario(module, monkeypatch, request):
         'setup_guest': None
     })
 
-    module.execute()
+    # Save guest events yaml file to a tmp directory
+    with monkeypatch.context() as m:
+        m.chdir(tmpdir)
+        module.execute()
 
     if 'environment' in scenario:
         environment = TestingEnvironment(
@@ -353,32 +356,35 @@ def test_provisioner_capabilities(module):
     'ip_not_ready',
     'snapshot_error'
 ], indirect=True)
-def test_provision(module, scenario):
+def test_provision(monkeypatch, module, scenario, tmpdir):
     environment, guest, snapshot, exception = scenario
 
-    # exception cases, without snapshots
-    if exception and not snapshot:
-        with pytest.raises(GlueError, match=exception):
+    # Save guest events yaml file to a tmp directory
+    with monkeypatch.context() as m:
+        m.chdir(tmpdir)
+        # exception cases, without snapshots
+        if exception and not snapshot:
+            with pytest.raises(GlueError, match=exception):
+                module.provision(environment)
+            return
+
+        if environment:
             module.provision(environment)
-        return
 
-    if environment:
-        module.provision(environment)
+        for key in guest.keys():
+            assert getattr(module.guests[0], key) == guest[key]
 
-    for key in guest.keys():
-        assert getattr(module.guests[0], key) == guest[key]
+        # exception cases, with snapshots
+        if exception:
+            with pytest.raises(GlueError, match=exception):
+                module.guests[0].create_snapshot()
+            return
 
-    # exception cases, with snapshots
-    if exception:
-        with pytest.raises(GlueError, match=exception):
+        if snapshot:
             module.guests[0].create_snapshot()
-        return
+            module.guests[0].restore_snapshot(module.guests[0]._snapshots[0])
 
-    if snapshot:
-        module.guests[0].create_snapshot()
-        module.guests[0].restore_snapshot(module.guests[0]._snapshots[0])
-
-    module.destroy()
+        module.destroy()
 
 
 def test_api_url_option(module, monkeypatch):

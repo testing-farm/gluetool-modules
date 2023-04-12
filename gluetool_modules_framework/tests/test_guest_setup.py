@@ -114,7 +114,7 @@ def test_missing_required_shared(module, monkeypatch):
     assert_shared('evaluate_rules', module.execute)
 
 
-def test_setup(log, module, local_guest, monkeypatch):
+def test_setup(log, module, local_guest, monkeypatch, tmpdir):
     playbooks = ['dummy-playbook-1.yml', 'dummy-playbook-2.yml']
 
     def dummy_run_playbook(_playbook, _guest, variables=None, **kwargs):
@@ -133,7 +133,7 @@ def test_setup(log, module, local_guest, monkeypatch):
             'dummy_option': 17,
             'json_output': False,
             'logger': mock.ANY,
-            'log_filepath': 'guest-setup-{}/guest-setup-output-pre-artifact-installation.txt'.format(local_guest.name),
+            'log_filepath': '{}/guest-setup-output-pre-artifact-installation.txt'.format(tmpdir),
             'extra_vars_filename_prefix': 'extra-vars-pre-artifact-installation-'
         }
 
@@ -148,10 +148,10 @@ def test_setup(log, module, local_guest, monkeypatch):
         'run_playbook': dummy_run_playbook
     })
 
-    module.shared('setup_guest', local_guest, variables={'key1': 'val1'}, dummy_option=17)
+    module.shared('setup_guest', local_guest, variables={'key1': 'val1'}, dummy_option=17, log_dirpath=str(tmpdir))
 
 
-def test_playbook_map_guest_setup(module, monkeypatch):
+def test_playbook_map_guest_setup(module, monkeypatch, tmpdir):
     module._config['playbooks-map'] = 'map.yml'
 
     patch_shared(monkeypatch, module, {
@@ -160,7 +160,7 @@ def test_playbook_map_guest_setup(module, monkeypatch):
 
     monkeypatch.setattr(module, "_get_details_from_map", lambda guest, stage: ([], {}))
 
-    module.shared('setup_guest', MagicMock())
+    module.shared('setup_guest', MagicMock(), log_dirpath=str(tmpdir))
 
 
 def test_playbook_map(module, monkeypatch):

@@ -35,14 +35,35 @@ class HideSecrets(gluetool.Module):
             if environment.secrets:
                 secret_values += [secret_value for secret_value in environment.secrets.values() if secret_value]
 
-        # TODO: this would really need shlex.quote or something to be safe, all input data
-        #       must be sanitized!
-        # TFT-1339 - the value can be empty, make sure to skip it, nothing to hide there
-        sed_expr = ';'.join('s|{}|*****|g'.format(re.escape(value)) for value in secret_values)
+        # POSIX.2 Basic Regular Expressions (BREs) have a specific set of characters
+        # that you need to escape to use them as literals.
+        #
+        # Here's a list of special characters in POSIX.2 BREs:
+        # * Backslash '\'
+        # * Dot '.'
+        # * Asterisk '*'
+        # * Square brackets '[' and ']'
+        # * Caret '^'
+        # * Dollar sign '$'
+        #
+        # Note that backslash needs to be escaped with 4 backslashes for sed
+        #
+        # We need to also escape:
+        # * Pipe '|' - because we use sed with '|' character
+        # * Single quote ' - because we use it in the command
+        def _posix_bre_escaped(value: str) -> str:
+            value = value.replace('\\', '\\\\\\\\')
+            for escape in r".*[]^$|'":
+                value = value.replace(escape, r'\{}'.format(escape))
+            return value
 
+        # TFT-1339 - the value can be empty, make sure to skip it, nothing to hide there
+        sed_expr = ';'.join('s|{}|*****|g'.format(_posix_bre_escaped(value)) for value in secret_values)
+
+        # NOTE: We will deprecate this crazy module once TFT-1813
         if sed_expr:
             self.info("Hiding secrets from all files under '{}' path".format(self.option('search-path')))
-            os.system("find '{}' -type f | xargs -n1 -I{{}} sed -i '{}' '{{}}'".format(
+            os.system("find '{}' -type f | xargs -I##### sed -i $'{}' '#####'".format(
                 self.option('search-path'), sed_expr)
             )
         else:

@@ -284,6 +284,9 @@ def test_tmt_output_dir(
     if module._config.get('how') == 'local':
         schedule_entry.guest = StaticLocalhostGuest(module, 'localhost')
 
+    # make a copy of variables
+    variables = testing_environment.variables.copy() if testing_environment.variables else None
+
     with monkeypatch.context() as m:
         # tmt run
         _set_run_outputs(m, 'dummy test done')
@@ -295,6 +298,9 @@ def test_tmt_output_dir(
                     module.run_test_schedule_entry(schedule_entry)
             else:
                 module.run_test_schedule_entry(schedule_entry)
+
+    # make sure testing environment variables do not change
+    assert schedule_entry.testing_environment.variables == variables
 
     # do not continue if test schedule entry fails in an exception
     if exception:

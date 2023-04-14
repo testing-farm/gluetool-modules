@@ -769,7 +769,10 @@ class TestScheduleTMT(Module):
         ])
 
         # variables from testing-farm environment
-        variables = schedule_entry.testing_environment.variables or {}
+        variables: Dict[str, str] = {}
+
+        if schedule_entry.testing_environment.variables:
+            variables.update(schedule_entry.testing_environment.variables)
 
         # update eval context with guest name
         eval_context = dict_update(

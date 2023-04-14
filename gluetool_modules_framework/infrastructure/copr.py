@@ -124,7 +124,7 @@ class CoprApi(object):
     def get_srpm_names(self, build_id: int, chroot_name: str) -> List[str]:
         return self._find_in_log(r'Wrote: /builddir/build/SRPMS/(.*)\.src\.rpm', build_id, chroot_name)
 
-    def add_result_url(self, build_id: int, chroot_name: str, file_names: str) -> List[str]:
+    def add_result_url(self, build_id: int, chroot_name: str, file_names: List[str]) -> List[str]:
         result_url = self._result_url(build_id, chroot_name)
         return ['{}{}.rpm'.format(result_url, file_name) for file_name in file_names]
 
@@ -374,7 +374,7 @@ class Copr(gluetool.Module):
         return CoprApi(self.option('copr-url'), self)
 
     def copr_api(self) -> CoprApi:
-        return cast(CoprApi, self._copr_api)
+        return self._copr_api
 
     def execute(self) -> None:
         if not self.option('task-id'):

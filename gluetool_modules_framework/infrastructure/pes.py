@@ -204,7 +204,7 @@ class PES(gluetool.Module):
         """
         Returns PESApi instance.
         """
-        return cast(PESApi, self._pes_api)
+        return self._pes_api
 
     def ancestor_components(self, component: str, target_release: str) -> List[str]:
         """
@@ -213,7 +213,7 @@ class PES(gluetool.Module):
         :param str component: Component to find ancestors for.
         :param str target_release: Target release in a 'RHEL X' format. Anything after that substring is ignored.
         """
-        ancestors = cast(List[str], self._pes_api.get_ancestor_components(component, target_release))
+        ancestors = self._pes_api.get_ancestor_components(component, target_release)
         ancestors.sort()
 
         log_dict(self.info,
@@ -231,7 +231,7 @@ class PES(gluetool.Module):
         :param List[str] architectures: Allowed architectures of the rpms.
         """
 
-        rpms = cast(List[str], self._pes_api.get_component_rpms(component, release, architectures))
+        rpms = self._pes_api.get_component_rpms(component, release, architectures)
         rpms.sort()
 
         log_dict(self.info,
@@ -251,7 +251,7 @@ class PES(gluetool.Module):
         :param str initial_release: Version of source system in a RHEL-X.Y format.
         :param str release: Version of targeted system in a RHEL-X.Y format.
         """
-        successors = cast(List[str], self._pes_api.get_successor_components(component, initial_release, release))
+        successors = self._pes_api.get_successor_components(component, initial_release, release)
         successors.sort()
 
         log_dict(self.info,

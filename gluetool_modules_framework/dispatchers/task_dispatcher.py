@@ -86,7 +86,7 @@ class TaskDispatcher(gluetool.Module):
         def _find_test_property(module: str,
                                 args: List[str],
                                 test_property: str,
-                                mapping: gluetool.utils.SimplePatternMap) -> str:
+                                mapping: Optional[gluetool.utils.SimplePatternMap]) -> str:
 
             joined_args = ' '.join(args)
 

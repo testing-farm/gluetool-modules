@@ -213,7 +213,7 @@ class GuestSetup(gluetool.Module):
         )
 
     @gluetool.utils.cached_property
-    def _extra_vars(self) -> ConfigFileMapType:
+    def _extra_vars(self) -> ConfigVarsMapType:
 
         def _to_keyval_pair(stages: ConfigMapType, stage: str, keyval_pair: str) -> None:
 
@@ -225,7 +225,7 @@ class GuestSetup(gluetool.Module):
             )[stage][key.strip()] = value.strip()
 
         return cast(
-            ConfigFileMapType,
+            ConfigVarsMapType,
             self._parse_staged_option(
                 'extra-vars',
                 _to_keyval_pair,
@@ -234,7 +234,7 @@ class GuestSetup(gluetool.Module):
         )
 
     @gluetool.utils.cached_property
-    def _playbooks(self) -> ConfigVarsMapType:
+    def _playbooks(self) -> ConfigFileMapType:
 
         def _add_playbook_path(stages: ConfigMapType, stage: str, filepath: str) -> None:
 
@@ -246,7 +246,7 @@ class GuestSetup(gluetool.Module):
             )
 
         return cast(
-            ConfigVarsMapType,
+            ConfigFileMapType,
             self._parse_staged_option(
                 'playbooks',
                 _add_playbook_path
@@ -339,8 +339,8 @@ class GuestSetup(gluetool.Module):
         playbooks_from_map, variables_from_map = self._get_details_from_map(guest, stage)
 
         # ... and command-line/config file options.
-        playbooks_from_config = self._playbooks.get(stage.value, [])
-        variables_from_config = self._extra_vars.get(stage.value, {})
+        playbooks_from_config: List[str] = self._playbooks.get(stage.value, [])
+        variables_from_config: Dict[str, str] = self._extra_vars.get(stage.value, {})
 
         # For the final list of playbooks, command-line/configuration has higher priority.
         playbooks = playbooks_from_config or playbooks_from_map

@@ -640,7 +640,7 @@ class GitHub(gluetool.Module):
         Return GitHubAPI instance.
         """
 
-        return cast(GitHubAPI, self._github_api)
+        return self._github_api
 
     def primary_task(self) -> Optional[GitHubPullRequest]:
         """

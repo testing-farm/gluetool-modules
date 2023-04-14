@@ -39,7 +39,9 @@ qui officia deserunt mollit anim id est laborum.
     (MagicMock(environments_requested=[TestingEnvironment(secrets={'secret': 'hello+world'})])),
     (MagicMock(environments_requested=[TestingEnvironment(secrets={'secret': 'he[llo+wo]rld'})])),
     (MagicMock(environments_requested=[TestingEnvironment(secrets={'secret': '|bar|'})])),
-    (MagicMock(environments_requested=[TestingEnvironment(secrets={'secret': r'\'\'\a\b\c\d!##$%^&**(a)=?`=":._-[0-9]+/'})])),
+    (MagicMock(environments_requested=[TestingEnvironment(
+        secrets={'secret': r'\'\'\a\b\c\d!##$%^&**(a)=?`=":._-[0-9]+/'}
+    )])),
     (MagicMock(environments_requested=[TestingEnvironment(secrets={'secret': r"''''"})])),
     (MagicMock(environments_requested=[TestingEnvironment(secrets={'secret': r'\a\b\c\d\n'})])),
     (MagicMock(environments_requested=[TestingEnvironment(secrets={})]))

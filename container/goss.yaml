@@ -66,7 +66,7 @@ file:
       - ServerAliveInterval 60
       - ServerAliveCountMax 5
 
-  /usr/lib/python3.9/site-packages/pylero:
+  /usr/lib/python3.6/site-packages/pylero:
     exists: true
     mode: "0755"
     owner: root

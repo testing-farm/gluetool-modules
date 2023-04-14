@@ -42,8 +42,8 @@ RUN    ln -s /CONFIG /etc/citool.d \
     && dnf -y update --enablerepo=epel-testing tmt-provision-container tmt-provision-virtual tmt \
                                                tmt-report-polarion tmt-report-html \
     && dnf clean all \
-    # TFT-1503 - install pylero from PyPI, not yet available as a package
-    && pip3.9 install -t /usr/lib/python3.9/site-packages pylero \
+    # Install pylero from PyPI, it is broken in CentOS 8
+    && pip3.6 install -t /lib/python3.6/site-packages pylero \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \

@@ -58,6 +58,9 @@ COPY dist/gluetool_modules_framework*.whl .
 # install gluetool-modules-framework with citool and required ansible collections
 RUN    virtualenv -p python3.9 /opt/gluetool \
     && source /opt/gluetool/bin/activate \
+    # We are stuck with older pip because rpm-py-installer cannot be installed with later pip
+    # We cannot update to newer rpm-py-installer because https://github.com/rpm-software-management/rpm/discussions/2361
+    && pip3.9 install -U 'pip<23.1' \
     && pip3.9 install gluetool_modules_framework*.whl \
     && ansible-galaxy install --timeout 120 -r /etc/ansible/requirements.yml \
     && rm -f gluetool_modules_framework*.whl \

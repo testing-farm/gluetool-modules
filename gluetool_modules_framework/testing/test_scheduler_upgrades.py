@@ -45,6 +45,18 @@ class TestSchedulerUpgrades(gluetool.Module):
         'destination': {
             'help': 'Version of targeted system in a RHEL-X.Y format.',
             'type': str
+        },
+        'repos': {
+            'help': 'Repos to look for binary rpms. If not specified, all repos will be searched.',
+            'action': 'append',
+            'type': str,
+            'default': []
+        },
+        'exclude-repos': {
+            'help': 'Repos to exclude from the binary rpms search. Mutually exclusive with repos option.',
+            'action': 'append',
+            'type': str,
+            'default': []
         }
     }
 
@@ -55,6 +67,8 @@ class TestSchedulerUpgrades(gluetool.Module):
     def sanity(self) -> None:
         if self.option('variant') == 'from' and not self.option('destination'):
             raise gluetool.GlueError('Option `destination` is required when `variant` is set to `from`.')
+        if self.option('repos') and self.option('exclude-repos'):
+            raise gluetool.GlueError('Options `repos` and `exclude-repos` are mutually exclusive.')
 
     def binary_rpms_list(self, compose_url: str, components: List[str]) -> List[str]:
 
@@ -73,7 +87,15 @@ class TestSchedulerUpgrades(gluetool.Module):
 
         binary_rpms_set = set()
 
-        for repo_name in metadata_rpms_json['payload']['rpms']:
+        repos = metadata_rpms_json['payload']['rpms'].keys()
+        if self.option('repos'):
+            repos = gluetool.utils.normalize_multistring_option(self.option('repos'))
+        elif self.option('exclude-repos'):
+            repos = [
+                repo for repo in repos
+                if repo not in gluetool.utils.normalize_multistring_option(self.option('exclude-repos'))]
+
+        for repo_name in repos:
             for srpm_name in metadata_rpms_json['payload']['rpms'][repo_name]['x86_64']:
                 if splitFilename(srpm_name)[0] in components:
                     binary_rpms_set.update(

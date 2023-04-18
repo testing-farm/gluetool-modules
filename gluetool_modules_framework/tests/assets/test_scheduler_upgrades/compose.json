@@ -1,0 +1,67 @@
+{
+    "header": {
+        "type": "productmd.rpms",
+        "version": "1.2"
+    },
+    "payload": {
+        "compose": {
+            "date": "20230220",
+            "id": "RHEL-9.3.0-20230220.0",
+            "respin": 0,
+            "type": "production"
+        },
+        "rpms": {
+            "AppStream": {
+                "aarch64": {
+                    "Box2D-0:2.4.1-7.el9.src": {
+                        "Box2D-0:2.4.1-7.el9.aarch64": {
+                            "category": "binary",
+                            "path": "AppStream/aarch64/os/Packages/Box2D-2.4.1-7.el9.aarch64.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "Box2D-0:2.4.1-7.el9.src": {
+                            "category": "source",
+                            "path": "AppStream/source/tree/Packages/Box2D-2.4.1-7.el9.src.rpm",
+                            "sigkey": "fd431d51"
+                        }
+                    }
+                },
+                "x86_64": {
+                    "Box2D-0:2.4.1-7.el9.src": {
+                        "Box2D-0:2.4.1-7.el9.x86_64": {
+                            "category": "binary",
+                            "path": "AppStream/aarch64/os/Packages/Box2D-2.4.1-7.el9.x86_64.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "Box2D-0:2.4.1-7.el9.src": {
+                            "category": "source",
+                            "path": "AppStream/source/tree/Packages/Box2D-2.4.1-7.el9.src.rpm",
+                            "sigkey": "fd431d51"
+                        }
+                    }
+                }
+            },
+            "BaseOS": {
+                "ppc64le": {
+                    "ModemManager-0:1.20.2-1.el9.src": {
+                        "ModemManager-0:1.20.2-1.el9.ppc64le": {},
+                        "ModemManager-debuginfo-0:1.20.2-1.el9.ppc64le": {}
+                    }
+                },
+                "x86_64": {}
+            },
+            "CRB": {
+                "x86_64": {
+                    "CUnit-0:2.1.3-25.el9.src": {
+                        "CUnit-devel-0:2.1.3-25.el9.i686": {},
+                        "CUnit-devel-0:2.1.3-25.el9.x86_64": {}
+                    },
+                    "gcc-0:11.3.1-4.3.el9.src": {
+                        "gcc-plugin-devel-0:11.3.1-4.3.el9.i686": {},
+                        "gcc-plugin-devel-debuginfo-0:11.3.1-4.3.el9.x86_64": {}
+                    }
+                }
+            }
+        }
+    }
+}

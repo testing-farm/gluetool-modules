@@ -230,19 +230,17 @@ def gather_plan_results(schedule_entry: TestScheduleEntry,
         return TestScheduleResult.ERROR, test_results
 
     # iterate through all the test results and create TestResult for each
-    for name, data in six.iteritems(results):
+    for result in results:
+        name: str = result['name']
 
         # translate result outcome
         try:
-            outcome = RESULT_OUTCOME[data['result']]
+            outcome = RESULT_OUTCOME[result['result']]
         except KeyError:
-            schedule_entry.warn("Encountered invalid result '{}' in runner results".format(data['result']))
+            schedule_entry.warn("Encountered invalid result '{}' in runner results".format(result['result']))
             return TestScheduleResult.ERROR, results
 
-        # log can be a string or a list
-        logs = data['log']
-        if not isinstance(data['log'], list):
-            logs = [logs]
+        logs: List[str] = result['log']
 
         artifacts_dir = os.path.join(work_dir, plan_path, 'execute')
         artifacts = []
@@ -267,7 +265,7 @@ def gather_plan_results(schedule_entry: TestScheduleEntry,
         test_results.append(TestResult(name, outcome, artifacts))
 
     # count the maximum result weight encountered, i.e. the overall result
-    max_weight = max(RESULT_WEIGHT[data['result']] for _, data in six.iteritems(results))
+    max_weight = max(RESULT_WEIGHT[result['result']] for result in results)
 
     if recognize_errors:
         return PLAN_OUTCOME_WITH_ERROR[max_weight], results

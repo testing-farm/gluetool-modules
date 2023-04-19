@@ -1184,14 +1184,6 @@ release = ["build", "towncrier", "twine"]
 test = ["commentjson", "packaging", "pytest"]
 
 [[package]]
-name = "rpm-py-installer"
-version = "0.7.1"
-description = "RPM Python binding Installer"
-category = "main"
-optional = false
-python-versions = "*"
-
-[[package]]
 name = "ruamel.yaml"
 version = "0.16.13"
 description = "ruamel.yaml is a YAML parser/emitter that supports roundtrip preservation of comments, seq/map flow style, and map key order"
@@ -1579,6 +1571,14 @@ chardet = "*"
 six = "*"
 
 [[package]]
+name = "version-utils"
+version = "0.3.2"
+description = "Library for parsing system package strings and comparing package versions"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "virtualenv"
 version = "20.17.1"
 description = "Virtual Python Environment builder"
@@ -1654,7 +1654,7 @@ development = ["ipdb"]
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.9"
-content-hash = "80ec61a025e1100beb81d23291534cb9efcfd09921c1b06fc4630b406dbb34c7"
+content-hash = "4263d5ec092daba444ac32f278bb88456348356fc076bd8a0be4a4555b229363"
 
 [metadata.files]
 alabaster = [
@@ -2554,9 +2554,6 @@ resolvelib = [
     {file = "resolvelib-0.8.1-py2.py3-none-any.whl", hash = "sha256:d9b7907f055c3b3a2cfc56c914ffd940122915826ff5fb5b1de0c99778f4de98"},
     {file = "resolvelib-0.8.1.tar.gz", hash = "sha256:c6ea56732e9fb6fca1b2acc2ccc68a0b6b8c566d8f3e78e0443310ede61dbd37"},
 ]
-rpm-py-installer = [
-    {file = "rpm-py-installer-0.7.1.tar.gz", hash = "sha256:a8a203cc0555980088607cb5a37fb75ba15cc9bbefc6d9a3e9147812a16fd4a9"},
-]
 "ruamel.yaml" = [
     {file = "ruamel.yaml-0.16.13-py2.py3-none-any.whl", hash = "sha256:64b06e7873eb8e1125525ecef7345447d786368cadca92a7cd9b59eae62e95a3"},
     {file = "ruamel.yaml-0.16.13.tar.gz", hash = "sha256:bb48c514222702878759a05af96f4b7ecdba9b33cd4efcf25c86b882cef3a942"},
@@ -2782,6 +2779,10 @@ urllib3 = [
 urlnormalizer = [
     {file = "urlnormalizer-1.2.5-py2.py3-none-any.whl", hash = "sha256:ee7bcaa8eb6ef2eb353770d7ea9323db35a14d658794236768cc763ccb09a688"},
     {file = "urlnormalizer-1.2.5.tar.gz", hash = "sha256:7254eb9dfbf0c3983c3d78241a74ce6f6e61b2b1df09e9f25f711eec98582771"},
+]
+version-utils = [
+    {file = "version_utils-0.3.2-py2.py3-none-any.whl", hash = "sha256:4e0f3dff669d7a081dd66d8b616752dc309e7246a7b2c5ac800dde5ec0d9a555"},
+    {file = "version_utils-0.3.2.tar.gz", hash = "sha256:308191f111395ac19ec5ef4650764af29962a6415d8391785027ae5328579299"},
 ]
 virtualenv = [
     {file = "virtualenv-20.17.1-py3-none-any.whl", hash = "sha256:ce3b1684d6e1a20a3e5ed36795a97dfc6af29bc3970ca8dab93e11ac6094b3c4"},

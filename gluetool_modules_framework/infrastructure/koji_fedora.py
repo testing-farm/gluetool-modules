@@ -10,7 +10,7 @@ import requests.exceptions
 
 from bs4 import BeautifulSoup
 from gluetool_modules_framework.libs.artifacts import splitFilename
-from rpm import labelCompare
+from version_utils.rpm import labelCompare
 
 import gluetool
 from gluetool import GlueError, SoftGlueError

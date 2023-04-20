@@ -39,7 +39,8 @@ API_FEATURE_VERSIONS: Dict[str, str] = {
     'hw-constraints-cpu-extra': 'v0.0.46',
     'hw-constraints-cpu-processors': 'v0.0.47',
     'hw-constraints-compatible-distro': 'v0.0.48',
-    'hw-constraints-kickstart': 'v0.0.53'
+    'hw-constraints-kickstart': 'v0.0.53',
+    'fixed-hw-validation': 'v0.0.55'
 }
 
 SUPPORTED_API_VERSIONS: Set[str] = set(API_FEATURE_VERSIONS.values())

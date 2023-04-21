@@ -75,7 +75,8 @@ class ComposeUrl(gluetool.Module):
 
         hostname = self.option('hostname')
 
-        assert self.directory_path is not None
+        if self.directory_path is None:
+            raise gluetool.GlueError('unable to generate compose url, `self.directory` path must be set')
         compose_regex = re.compile(r'{}\/{}'.format(re.escape(self.directory_path), self.name_regex))
 
         try:

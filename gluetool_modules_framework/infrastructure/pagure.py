@@ -199,7 +199,7 @@ class Pagure(gluetool.Module):
         """
         Returns PagureApi instance.
         """
-        return cast(PagureApi, self._pagure_api)
+        return self._pagure_api
 
     def primary_task(self) -> Optional[PagurePullRequest]:
         """

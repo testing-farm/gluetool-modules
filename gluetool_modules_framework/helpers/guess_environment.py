@@ -276,7 +276,7 @@ class GuessEnvironment(gluetool.Module):
         )
 
         try:
-            compose = cast(str, pattern_map.match(possibly_symbolic_compose))
+            compose = pattern_map.match(possibly_symbolic_compose)
             self.logger.debug("symbolic compose '{}' was mapped to '{}'".format(possibly_symbolic_compose, compose))
         except GlueError as e:
             self.logger.debug("could not match compose '{}' using the pattern map: {}".format(

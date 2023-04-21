@@ -314,7 +314,7 @@ class DistGit(gluetool.Module):
 
         elif self.option('branch-map'):
             assert self.option('branch-map') is not None
-            return cast(str, self.branch_map.match(task.target))
+            return self.branch_map.match(task.target)
 
         return None
 
@@ -323,13 +323,13 @@ class DistGit(gluetool.Module):
         if self.option('branch'):
             return None
 
-        return self.option('ref') or cast(Optional[str], task.distgit_ref)
+        return self.option('ref') or task.distgit_ref
 
     def _artifact_clone_url(self, task: KojiTask) -> str:
-        return self.option('clone-url') or cast(str, self.clone_url_map.match(task.ARTIFACT_NAMESPACE))
+        return self.option('clone-url') or self.clone_url_map.match(task.ARTIFACT_NAMESPACE)
 
     def _artifact_web_url(self, task: KojiTask) -> str:
-        return self.option('web-url') or cast(str, self.web_url_map.match(task.ARTIFACT_NAMESPACE))
+        return self.option('web-url') or self.web_url_map.match(task.ARTIFACT_NAMESPACE)
 
     def _artifact_clone_args(self, task: KojiTask) -> List[str]:
         return normalize_shell_option(self.option('clone-args'))

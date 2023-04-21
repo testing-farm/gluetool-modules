@@ -75,6 +75,8 @@ class ComposeUrl(gluetool.Module):
 
         hostname = self.option('hostname')
 
+        if self.directory_path is None:
+            raise gluetool.GlueError("Unable to generate compose url, '--directory-path-template' option must be set")
         compose_regex = re.compile(r'{}\/{}'.format(re.escape(self.directory_path), self.name_regex))
 
         try:
@@ -140,4 +142,4 @@ class ComposeUrl(gluetool.Module):
             self.info('Using static compose url: {}'.format(static_compose_url))
             return static_compose_url
 
-        return cast(str, self.osci_compose_url)
+        return self.osci_compose_url

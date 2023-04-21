@@ -760,7 +760,7 @@ class MBS(gluetool.Module):
         """
         Returns MBSApi instance.
         """
-        return cast(MBSApi, self._mbs_api)
+        return self._mbs_api
 
     def execute(self) -> None:
         self.info(

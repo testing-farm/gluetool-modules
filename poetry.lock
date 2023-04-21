@@ -96,6 +96,18 @@ html5lib = ["html5lib"]
 lxml = ["lxml"]
 
 [[package]]
+name = "cattrs"
+version = "22.2.0"
+description = "Composable complex class support for attrs and dataclasses."
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+attrs = ">=20"
+exceptiongroup = {version = "*", markers = "python_version < \"3.11\""}
+
+[[package]]
 name = "certifi"
 version = "2022.12.7"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -271,6 +283,17 @@ optional = false
 python-versions = ">=2.7"
 
 [[package]]
+name = "exceptiongroup"
+version = "1.1.1"
+description = "Backport of PEP 654 (exception groups)"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.extras]
+test = ["pytest (>=6)"]
+
+[[package]]
 name = "filelock"
 version = "3.8.2"
 description = "A platform independent file lock."
@@ -339,14 +362,16 @@ gitdb2 = ">=2,<3"
 
 [[package]]
 name = "gluetool"
-version = "2.3"
+version = "2.4"
 description = "Python framework for constructing command-line pipelines."
 category = "main"
 optional = false
 python-versions = ">=3.7.2,<3.10"
 
 [package.dependencies]
+attrs = ">=22.2.0,<23.0.0"
 beautifulsoup4 = "*"
+cattrs = ">=22.2.0,<23.0.0"
 colorama = "*"
 configparser = "*"
 docutils = "*"
@@ -1690,7 +1715,7 @@ development = ["ipdb"]
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.9"
-content-hash = "4989c0311460092e411604eb1e65330ec139d86a29a995cafe1164d00b7dee15"
+content-hash = "14834533a5b03e64475b38860b9ac8438692bbb22c815bd7234787bb65b4c9cf"
 
 [metadata.files]
 alabaster = [
@@ -1727,6 +1752,10 @@ backports-abc = [
 beautifulsoup4 = [
     {file = "beautifulsoup4-4.11.1-py3-none-any.whl", hash = "sha256:58d5c3d29f5a36ffeb94f02f0d786cd53014cf9b3b3951d42e0080d8a9498d30"},
     {file = "beautifulsoup4-4.11.1.tar.gz", hash = "sha256:ad9aa55b65ef2808eb405f46cf74df7fcb7044d5cbc26487f96eb2ef2e436693"},
+]
+cattrs = [
+    {file = "cattrs-22.2.0-py3-none-any.whl", hash = "sha256:bc12b1f0d000b9f9bee83335887d532a1d3e99a833d1bf0882151c97d3e68c21"},
+    {file = "cattrs-22.2.0.tar.gz", hash = "sha256:f0eed5642399423cf656e7b66ce92cdc5b963ecafd041d1b24d136fdde7acf6d"},
 ]
 certifi = [
     {file = "certifi-2022.12.7-py3-none-any.whl", hash = "sha256:4ad3232f5e926d6718ec31cfc1fcadfde020920e278684144551c91769c7bc18"},
@@ -1927,6 +1956,10 @@ entrypoints = [
     {file = "entrypoints-0.3-py2.py3-none-any.whl", hash = "sha256:589f874b313739ad35be6e0cd7efde2a4e9b6fea91edcc34e58ecbb8dbe56d19"},
     {file = "entrypoints-0.3.tar.gz", hash = "sha256:c70dd71abe5a8c85e55e12c19bd91ccfeec11a6e99044204511f9ed547d48451"},
 ]
+exceptiongroup = [
+    {file = "exceptiongroup-1.1.1-py3-none-any.whl", hash = "sha256:232c37c63e4f682982c8b6459f33a8981039e5fb8756b2074364e5055c498c9e"},
+    {file = "exceptiongroup-1.1.1.tar.gz", hash = "sha256:d484c3090ba2889ae2928419117447a14daf3c1231d5e30d0aae34f354f01785"},
+]
 filelock = [
     {file = "filelock-3.8.2-py3-none-any.whl", hash = "sha256:8df285554452285f79c035efb0c861eb33a4bcfa5b7a137016e32e6a90f9792c"},
     {file = "filelock-3.8.2.tar.gz", hash = "sha256:7565f628ea56bfcd8e54e42bdc55da899c85c1abfe1b5bcfd147e9188cebb3b2"},
@@ -1951,8 +1984,8 @@ gitpython = [
     {file = "GitPython-2.1.15.tar.gz", hash = "sha256:838c38d882a97b2fd146dbd4eb9baaf857cb65ebaa64e4c06fca48aaa491e1c6"},
 ]
 gluetool = [
-    {file = "gluetool-2.3-py3-none-any.whl", hash = "sha256:ec182e62a0d2c7bf7fb008a15bf048928baebfb971ed04dc4b68df4483875ed0"},
-    {file = "gluetool-2.3.tar.gz", hash = "sha256:3caa8164c1492a6f70b62e37e5aee011b72c31a5ed3631814620217ea5b2821f"},
+    {file = "gluetool-2.4-py3-none-any.whl", hash = "sha256:ccd1e9c24218400dc0a0c6cf512a2a2230665fb34b280aa32acf3a1e53616369"},
+    {file = "gluetool-2.4.tar.gz", hash = "sha256:976a7299839245429ed383ec9526e77da347ebbf918763e11149f9c14ce9ae96"},
 ]
 gssapi = [
     {file = "gssapi-1.8.2-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:7c14cf97d61073d8211abfded77066af791356868022acda10224a8212639cf5"},

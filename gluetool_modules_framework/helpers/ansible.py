@@ -133,7 +133,7 @@ class Ansible(gluetool.Module):
             )
             try:
                 compose = cast(str, guest.environment.compose)
-                ansible_playbook_filepath = cast(str, pattern_map.match(compose))
+                ansible_playbook_filepath = pattern_map.match(compose)
                 self.logger.debug("compose '{}' was mapped to '{}' ansible-playbook filepath".format(
                     guest.environment.compose,
                     ansible_playbook_filepath,

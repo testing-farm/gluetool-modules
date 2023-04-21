@@ -76,7 +76,7 @@ class ComposeUrl(gluetool.Module):
         hostname = self.option('hostname')
 
         if self.directory_path is None:
-            raise gluetool.GlueError("Unable to generate compose url, '--directory-path-template' option must be set')
+            raise gluetool.GlueError("Unable to generate compose url, '--directory-path-template' option must be set")
         compose_regex = re.compile(r'{}\/{}'.format(re.escape(self.directory_path), self.name_regex))
 
         try:

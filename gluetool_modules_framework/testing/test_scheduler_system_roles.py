@@ -13,7 +13,7 @@ from gluetool_modules_framework.libs.test_schedule import TestSchedule
 from gluetool_modules_framework.testing.test_scheduler_sti import TestScheduleEntry
 
 # Type annotations
-from typing import Optional, List, Any, Tuple, Set, cast  # noqa
+from typing import Optional, List, Any, Tuple, Set, cast, Dict  # noqa
 
 
 class TestSchedulerSystemRoles(gluetool.Module):
@@ -78,7 +78,7 @@ class TestSchedulerSystemRoles(gluetool.Module):
 
     shared_functions = ['create_test_schedule']
 
-    def _convert_to_collection(self) -> None:
+    def _convert_to_collection(self, ansible_environment: Dict[str, str]) -> None:
         """
         Convert the role to collection format.
         """
@@ -163,13 +163,13 @@ class TestSchedulerSystemRoles(gluetool.Module):
             # Move the converted tests
             os.rename(os.path.join(coll_path, 'ansible_collections', coll_namespace, coll_name, 'tests', role),
                       os.path.join(repo_path, 'tests'))
-            os.environ['ANSIBLE_COLLECTIONS_PATHS'] = coll_path
+            ansible_environment['ANSIBLE_COLLECTIONS_PATHS'] = coll_path
         except Exception as exc:
             if lsr_coll_tmp:
                 shutil.rmtree(lsr_coll_tmp)
             raise gluetool.GlueError('Converting of role to collection failed with {}'.format(exc))
 
-    def _install_requirements(self) -> None:
+    def _install_requirements(self, ansible_environment: Dict[str, str]) -> None:
         """
         If collection-requirements.yml contains the collections, install reqs
         from meta/collection-requirements.yml at repo_path/.collection.
@@ -226,7 +226,7 @@ class TestSchedulerSystemRoles(gluetool.Module):
                         raise gluetool.GlueError("{} is not installed at {}".format(collection_name, collection_dir))
 
                 # Set collection_path to ANSIBLE_COLLECTIONS_PATHS
-                os.environ['ANSIBLE_COLLECTIONS_PATHS'] = collection_path
+                ansible_environment['ANSIBLE_COLLECTIONS_PATHS'] = collection_path
 
     # Returns a Set of the basenames of test playbooks that we do not want
     # to provide vault variables for
@@ -240,7 +240,7 @@ class TestSchedulerSystemRoles(gluetool.Module):
             no_vault_tests = set()
         return no_vault_tests
 
-    def _setup_for_vault(self) -> Tuple[bool, Set[str], str]:
+    def _setup_for_vault(self, ansible_environment: Dict[str, str]) -> Tuple[bool, Set[str], str]:
         repo_path = self.shared('dist_git_repository').path
         vault_pwd_file = self.option('vault-pwd-file')
         if not os.path.isabs(vault_pwd_file):
@@ -249,7 +249,7 @@ class TestSchedulerSystemRoles(gluetool.Module):
         if not os.path.isabs(vault_variables_file):
             vault_variables_file = os.path.join(repo_path, 'tests', vault_variables_file)
         if os.path.exists(vault_pwd_file) and os.path.exists(vault_variables_file):
-            os.environ['ANSIBLE_VAULT_PASSWORD_FILE'] = vault_pwd_file
+            ansible_environment['ANSIBLE_VAULT_PASSWORD_FILE'] = vault_pwd_file
             uses_vault = True
             no_vault_tests = self.get_no_vault_tests(repo_path)
         else:
@@ -285,7 +285,8 @@ class TestSchedulerSystemRoles(gluetool.Module):
             'create_test_schedule', testing_environment_constraints=testing_environment_constraints
         )
 
-        uses_vault, no_vault_tests, vault_variables_file = self._setup_for_vault()
+        ansible_environment: Dict[str, str] = {}
+        uses_vault, no_vault_tests, vault_variables_file = self._setup_for_vault(ansible_environment)
         if self.option('ansible-playbook-filepath') or uses_vault:
             for entry in schedule:
 
@@ -302,11 +303,21 @@ class TestSchedulerSystemRoles(gluetool.Module):
 
             # Install collections from ansible-galaxy if specified in collection-requirements.yml
             if self.option('ansible-playbook-filepath'):
-                self._install_requirements()
+                self._install_requirements(ansible_environment)
 
         # If linux_system_roles collection is already installed from ansible-galaxy,
         # the being-tested role is overwritten by this conversion.
         if self.option('collection'):
-            self._convert_to_collection()
+            self._convert_to_collection(ansible_environment)
+
+        # update schedule entry with ansible_environment
+        if ansible_environment:
+            for entry in schedule:
+
+                if entry.runner_capability != 'sti':
+                    continue
+
+                assert isinstance(entry, TestScheduleEntry)
+                entry.ansible_environment = ansible_environment
 
         return schedule

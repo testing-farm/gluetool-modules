@@ -285,3 +285,17 @@ def test_repr_clonedir_prefix(clone_url, branch, ref, repr, prefix, remote_git_r
 
     assert str(remote_git_repository) == repr
     assert remote_git_repository.clonedir_prefix == prefix
+
+
+def test_merge(remote_git_repository, monkeypatch):
+    mock_command_instance = MagicMock()
+    mock_command_instance.run = lambda: MagicMock(stdout='some-ref')
+    mock_command_class = MagicMock(return_value=mock_command_instance)
+
+    monkeypatch.setattr(gluetool.utils, 'Command', mock_command_class)
+
+    logger = Logging.get_logger()
+
+    remote_git_repository._merge('someref', 'some/path', logger)
+
+    mock_command_class.assert_any_call(['git', '-C', 'some/path', 'merge', '--no-edit', 'someref'], logger=logger)

@@ -289,6 +289,7 @@ def test_eval_context(module, request1):
         'TESTING_FARM_REQUEST_TEST_URL': 'testurl',
         'TESTING_FARM_REQUEST_TEST_REF': 'testref',
         'TESTING_FARM_REQUEST_USERNAME': 'testuser',
+        'TESTING_FARM_REQUEST_MERGE': None
     }
 
 

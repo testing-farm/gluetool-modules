@@ -229,7 +229,23 @@ class TestingFarmRequest(LoggerMixin, object):
         test = (self.tmt or self.sti)
         assert test
         self.url = test.url
-        self.ref = test.ref
+
+        # In the context of this class, `self.ref` is a git reference which will be checked out by the
+        # RemoteGitRepository library class, `self.merge` is a git reference to be merged into `self.ref`.
+        #
+        # The TF API contains two fields with similar names but require different handling:
+        # `ref` - the git reference to be tested,
+        # `merge_sha` - the target git referene to which `ref` should be merged into.
+        #
+        # If just `ref` is specified in the TF API, it can just be checked out and nothing more has to be done.
+        # If both `ref` and `merge_sha` are specified, `merge_sha` has to be checked out and `ref` will then be merged
+        # into `merge_sha`.
+        if test.merge_sha is None:
+            self.ref = test.ref
+            self.merge = test.merge_sha
+        else:
+            self.ref = test.merge_sha
+            self.merge = test.ref
 
         environments_requested: List[TestingEnvironment] = []
         for environment_raw in request['environments_requested']:
@@ -417,7 +433,7 @@ class TestingFarmRequestModule(gluetool.Module):
         return render_template(option, **self.shared('eval_context'))
 
     @property
-    def eval_context(self) -> Dict[str, str]:
+    def eval_context(self) -> Dict[str, Optional[str]]:
         if not self._tf_request:
             return {}
         return {
@@ -427,6 +443,7 @@ class TestingFarmRequestModule(gluetool.Module):
             'TESTING_FARM_REQUEST_TEST_URL': self._tf_request.url,
             'TESTING_FARM_REQUEST_TEST_REF': self._tf_request.ref,
             'TESTING_FARM_REQUEST_USERNAME': self._tf_request.request_username,
+            'TESTING_FARM_REQUEST_MERGE': self._tf_request.merge
         }
 
     def testing_farm_request(self) -> Optional[TestingFarmRequest]:

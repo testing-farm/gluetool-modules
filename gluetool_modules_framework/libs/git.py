@@ -43,6 +43,10 @@ class FailedToCheckoutRef(RemoteGitRepositoryError):
     pass
 
 
+class FailedToMerge(RemoteGitRepositoryError):
+    pass
+
+
 class RemoteGitRepository(gluetool.log.LoggerMixin):
     """
     A remote Git repository representation.
@@ -53,6 +57,8 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
     :param path str: Initialize :py:class:`git.Git` instance from given path.
     :param str ref: if set, it it is the default point in repo history to manipulate.
     :param str web_url: if set, it is the URL of web frontend of the repository.
+    :param list(str) clone_args: Additional arguments to pass to `git clone`.
+    :param str merge: Git reference to merge into the currently checked out ref.
     """
 
     def __init__(
@@ -63,7 +69,8 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         path: Optional[str] = None,
         ref: Optional[str] = None,
         web_url: Optional[str] = None,
-        clone_args: Optional[List[str]] = None
+        clone_args: Optional[List[str]] = None,
+        merge: Optional[str] = None
     ) -> None:
 
         super(RemoteGitRepository, self).__init__(logger)
@@ -74,6 +81,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         self.web_url = web_url
         self.path = path
         self.clone_args = clone_args or []
+        self.merge = merge
 
         # holds git.Git instance, GitPython has no typing support
         self._instance: Any = None
@@ -133,6 +141,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         path: Optional[str] = None,
         prefix: Optional[str] = None,
         clone_args: Optional[List[str]] = None,
+        merge: Optional[str] = None,
         clone_timeout: int = 120,
         clone_tick: int = 20
     ) -> str:
@@ -150,6 +159,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         :param str prefix: if specified and `path` wasn't set, it is used as a prefix of directory created
             to hold the clone.
         :param list(str) clone_args: Additional arguments to pass to `git clone`.
+        :param str merge: Git reference to merge into the currently checked out ref
         :param int clone_timeout: Timeout for `git clone` retries.
         :param int clone_tick: Delay in seconds before retrying `git clone`.
         :returns: path to the cloned repository. If `path` was given explicitly, it is returned as-is. Otherwise,
@@ -169,6 +179,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         branch = branch or self.branch
         clone_url = clone_url or self.clone_url
         ref = ref or self.ref
+        merge = merge or self.merge
 
         if branch and ref:
             raise gluetool.GlueError('Both ref and branch specified, misunderstood arguments?')
@@ -201,6 +212,10 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         # Otherwise fallback to checkout a general git ref.
         if ref:
             self._checkout_ref(actual_path, ref)
+
+        # If specified, merge ref into the currently checked out ref
+        if merge:
+            self._merge(merge, actual_path, logger)
 
         self.commands.append('cd {}'.format(TESTCODE_DIR))
 
@@ -424,6 +439,23 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
         except gluetool.GlueCommandError as exc:
             raise FailedToCheckoutRef('Failed to checkout ref {}: {}'.format(ref, exc.output.stderr))
+
+    def _merge(self, ref: str, actual_path: str, logger: gluetool.log.ContextAdapter) -> None:
+        """
+        Merge specified ref into currently checked out ref.
+
+        :param str ref: Git reference to merge into the currently checked out ref.
+        :param str actual_path: path to git repository which should be used for checkout
+        :param gluetool.log.ContextAdapter logger: Logger to use.
+        """
+
+        logger.info('merging {}'.format(ref))
+        command = gluetool.utils.Command(['git', '-C', actual_path, 'merge', '--no-edit', ref], logger=logger)
+        try:
+            command.run()
+        except gluetool.GlueCommandError as exc:
+            raise FailedToMerge('Failed to merge {}: {}'.format(ref, exc.output.stderr)) from exc
+        self.commands.append(' '.join(command.executable))
 
     def initialize_from_path(self, path: str) -> Any:
         """

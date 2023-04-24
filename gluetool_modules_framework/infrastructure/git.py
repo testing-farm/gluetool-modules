@@ -38,6 +38,12 @@ class Git(gluetool.Module):
                 'action': 'append',
                 'default': []
             },
+            'merge': {
+                'help': """
+                        Optional ref to merge into the checked out ref. Accepts also Jinja templates which will be
+                        rendered using `eval_context` shared method.
+                        """
+            }
         })
     ]
 
@@ -63,6 +69,13 @@ class Git(gluetool.Module):
     @property
     def clone_args(self) -> List[str]:
         return normalize_shell_option(self.option('clone-args'))
+
+    @property
+    def merge(self) -> Optional[str]:
+        option = self.option('merge')
+        if option is None:
+            return option
+        return render_template(option, **self.shared('eval_context'))
 
     @property
     def eval_context(self) -> Dict[str, RemoteGitRepository]:
@@ -98,6 +111,5 @@ class Git(gluetool.Module):
 
     def execute(self) -> None:
         self._repository = RemoteGitRepository(self.logger, clone_url=self.clone_url, ref=self.ref,
-                                               clone_args=self.clone_args)
-
+                                               clone_args=self.clone_args, merge=self.option('merge'))
         self.info(str(self._repository))

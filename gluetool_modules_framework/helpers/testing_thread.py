@@ -6,7 +6,6 @@ import json
 import time
 import six
 
-import bs4
 import gluetool
 from gluetool.utils import render_template
 
@@ -14,6 +13,7 @@ import gluetool_modules_framework.libs
 
 # Type annotations
 from typing import Any, Optional, Dict  # noqa
+from gluetool_modules_framework.libs.results import Results
 
 
 DEFAULT_ID_FILE = 'testing-thread-id.json'
@@ -136,10 +136,10 @@ class TestingThread(gluetool.Module):
                 f.write(json.dumps(self._thread_id))
                 f.flush()
 
-        results = self.shared('results') or []
+        results = self.shared('results')
 
         if results:
-            if isinstance(results, bs4.element.Tag):
+            if isinstance(results, Results):
                 # Already serialized in test-scheduler-baseosci workflow.
                 pass
 

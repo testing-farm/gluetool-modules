@@ -22,10 +22,19 @@ class Log:
     schedule_entry: Optional[str] = None
 
 
+# Used in BaseOS CI results
+@attrs.define
+class Phase:
+    name: str
+    result: str
+    time: Optional[str]
+    logs: List[Log] = attrs.field(factory=list)
+
+
 @attrs.define
 class TestCase:
     name: str
-    result: str
+    result: Optional[str] = None
     properties: Dict[str, str] = attrs.field(factory=dict)
     logs: List[Log] = attrs.field(factory=list)
     requested_environment: Optional[TestingEnvironment] = None
@@ -33,6 +42,14 @@ class TestCase:
     failure: bool = False
     error: bool = False
     system_out: List[str] = attrs.field(factory=list)
+
+    # Properties used in BaseOS CI results.xml
+    # TODO: float would be a more suitable type, fix this when we add time property also to Testing Farm results, str
+    # should be only on the next level - classes representing the XML layer
+    time: Optional[str] = None
+    parameters: List[str] = attrs.field(factory=list)
+    phases: List[Phase] = attrs.field(factory=list)
+    packages: Optional[List[str]] = None
 
 
 @attrs.define
@@ -69,7 +86,7 @@ class Results:
     into various resulting structures.
     """
 
-    overall_result: Optional[str] = None
+    overall_result: str
     test_suites: List[TestSuite] = attrs.field(factory=list)
 
     primary_task: Optional[Union[KojiTask, CoprTask]] = None

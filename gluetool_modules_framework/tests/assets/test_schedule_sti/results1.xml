@@ -13,8 +13,9 @@
     <property name="baseosci.variant" value=""/>
    </properties>
    <logs>
-    <log href="some/work-dirpath/ansible-output.txt" name="ansible-output.txt" schedule-stage="running" schedule-entry="another/playbook2"/>
+    <log href="some/work-dirpath/ansible-output.txt" name="ansible-output.txt" schedule-entry="another/playbook2" schedule-stage="running"/>
    </logs>
+   <failure/>
    <testing-environment name="requested">
     <property name="arch" value="x86_64"/>
     <property name="compose" value="rhel-9"/>
@@ -25,7 +26,6 @@
     <property name="compose" value="rhel-9"/>
     <property name="snapshots" value="False"/>
    </testing-environment>
-   <failure/>
   </testcase>
  </testsuite>
 </testsuites>

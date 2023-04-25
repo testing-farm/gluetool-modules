@@ -23,6 +23,9 @@ import gluetool_modules_framework.libs
 
 from typing import Any, List, Optional, Dict, Tuple, Union, cast  # noqa
 
+from gluetool_modules_framework.libs.results import Results
+from gluetool_modules_framework.libs.results.test_result import TestResult
+
 
 STATE_QUEUED = 'queued'
 STATE_RUNNING = 'running'
@@ -550,16 +553,18 @@ class PipelineStateReporter(gluetool.Module):
             **self.shared('eval_context')
         )
 
-    def _get_overall_result_xunit(self, test_results: bs4.element.Tag) -> str:
+    def _get_overall_result_xunit(self, test_results: Optional[Results]) -> str:
         """
         Decide what the overall result should be, based on xUnit representation of test results.
 
         It is quite simple - xUnit representation already carries necessary value.
         """
+        if not test_results:
+            return 'unknown'
 
-        return cast(str, test_results['overall-result'])
+        return test_results.overall_result
 
-    def _get_overall_result_legacy(self, results: bs4.element.Tag) -> str:
+    def _get_overall_result_legacy(self, results: Optional[List[TestResult]]) -> str:
         """
         Decide what the overall result should be, based on internal representation of test results.
         """
@@ -575,7 +580,8 @@ class PipelineStateReporter(gluetool.Module):
 
         return 'failed'
 
-    def _get_final_overall_result(self, results: str, failure: Optional[gluetool.Failure]) -> str:
+    def _get_final_overall_result(self, results: Union[Optional[Results], List[TestResult]],
+                                  failure: Optional[gluetool.Failure]) -> str:
         """
         Read instructions from a file, and find out what the final overall result of the current pipeline
         should be. If the instructions yield no decision, use default simple scheme to decide.
@@ -604,7 +610,7 @@ class PipelineStateReporter(gluetool.Module):
             return cast(str, overall_result.result)
 
         # No instruction applied, therefore fall back to default behavior.
-        if isinstance(results, bs4.element.Tag):
+        if isinstance(results, Results):
             return self._get_overall_result_xunit(results)
 
         return self._get_overall_result_legacy(results)
@@ -703,7 +709,7 @@ class PipelineStateReporter(gluetool.Module):
 
         self.info('reporting pipeline final state')
 
-        test_results = self.shared('results')
+        test_results = cast(Union[Optional[Results], List[TestResult]], self.shared('results'))
         overall_result = self._get_final_overall_result(test_results, failure)
 
         kwargs: Dict[str, Any] = {
@@ -711,10 +717,10 @@ class PipelineStateReporter(gluetool.Module):
             'test_overall_result': overall_result
         }
 
-        # If the result is already an XML tree, therefore serialized, do nothing.
-        if isinstance(test_results, bs4.element.Tag):
+        # If the result is already an XML tree, therefore serialized, do nothing.  # TODO inaccurate comment
+        if isinstance(test_results, Results):
             kwargs.update({
-                'test_results': test_results
+                'test_results': test_results  # TODO: What structure is actually wanted here? dict?
             })
 
         else:

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from gluetool_modules_framework.libs.results import Results, TestSuite, TestCase
 
 
-@attrs.define
+@attrs.define(kw_only=True)
 class XUnitFailure:
     type: str = attrs.field(metadata={'type': 'Attribute'})
     message: str = attrs.field(metadata={'type': 'Attribute'})
@@ -24,7 +24,7 @@ class XUnitFailure:
         return XUnitFailure(type='FAIL', message='Test "{}" failed.'.format(test_case.name))
 
 
-@attrs.define
+@attrs.define(kw_only=True)
 class XUnitTestCase:
     name: str = attrs.field(metadata={'type': 'Attribute'})
     system_out: List[str] = attrs.field(metadata={'name': 'system-out'})
@@ -41,7 +41,7 @@ class XUnitTestCase:
         )
 
 
-@attrs.define
+@attrs.define(kw_only=True)
 class XUnitTestSuite:
     name: str = attrs.field(metadata={'type': 'Attribute'})
     tests: str = attrs.field(metadata={'type': 'Attribute'})
@@ -62,7 +62,7 @@ class XUnitTestSuite:
         )
 
 
-@attrs.define
+@attrs.define(kw_only=True)
 class XUnitTestSuites:
     """
     Root element of xunit tree - data model representing the resulting xunit XML structure with ability to serialize

@@ -207,8 +207,7 @@ class TestScheduleReport(gluetool.Module):
 
     def _serialize_results(self, schedule: TestSchedule) -> None:
 
-        self._results = Results()
-        self._results.overall_result = self._overall_result(schedule).name.lower()
+        self._results = Results(overall_result=self._overall_result(schedule).name.lower())
 
         # TODO: More task types are possible, having a base class would be handy.
         # using `# noqa` because flake8 and coala are confused by the walrus operator

@@ -3,19 +3,19 @@
  <properties>
   <property name="baseosci.artifact-id" value="123456"/>
   <property name="baseosci.artifact-namespace" value="SOME NAMESPACE"/>
-  <property name="baseosci.overall-result" value="passed"/>
   <property name="baseosci.id.testing-thread" value="some thread id"/>
-  <property name="polarion-lookup-method" value="polarion lookup method"/>
+  <property name="baseosci.overall-result" value="passed"/>
   <property name="polarion-custom-lookup-method-field-id" value="polarion lookup method field id"/>
+  <property name="polarion-lookup-method" value="polarion lookup method"/>
   <property name="polarion-project-id" value="polarion project id"/>
  </properties>
  <testsuite name="Fedora37:x86_64:plan" result="passed" tests="0">
   <logs>
-   <log href="logpath" name="schedule entry #0: PRE_ARTIFACT_INSTALLATION" schedule-stage="guest-setup" guest-setup-stage="pre_artifact_installation"/>
-   <log href="logpath" name="schedule entry #0: PRE_ARTIFACT_INSTALLATION_WORKAROUNDS" schedule-stage="guest-setup" guest-setup-stage="pre_artifact_installation_workarounds"/>
-   <log href="logpath" name="schedule entry #0: ARTIFACT_INSTALLATION" schedule-stage="guest-setup" guest-setup-stage="artifact_installation"/>
-   <log href="logpath" name="schedule entry #0: POST_ARTIFACT_INSTALLATION_WORKAROUNDS" schedule-stage="guest-setup" guest-setup-stage="post_artifact_installation_workarounds"/>
-   <log href="logpath" name="schedule entry #0: POST_ARTIFACT_INSTALLATION" schedule-stage="guest-setup" guest-setup-stage="post_artifact_installation"/>
+   <log guest-setup-stage="artifact_installation" href="logpath" name="schedule entry #0: ARTIFACT_INSTALLATION" schedule-stage="guest-setup"/>
+   <log guest-setup-stage="post_artifact_installation" href="logpath" name="schedule entry #0: POST_ARTIFACT_INSTALLATION" schedule-stage="guest-setup"/>
+   <log guest-setup-stage="post_artifact_installation_workarounds" href="logpath" name="schedule entry #0: POST_ARTIFACT_INSTALLATION_WORKAROUNDS" schedule-stage="guest-setup"/>
+   <log guest-setup-stage="pre_artifact_installation" href="logpath" name="schedule entry #0: PRE_ARTIFACT_INSTALLATION" schedule-stage="guest-setup"/>
+   <log guest-setup-stage="pre_artifact_installation_workarounds" href="logpath" name="schedule entry #0: PRE_ARTIFACT_INSTALLATION_WORKAROUNDS" schedule-stage="guest-setup"/>
   </logs>
   <properties>
    <property name="baseosci.result" value="passed"/>
@@ -23,11 +23,11 @@
  </testsuite>
  <testsuite name="Fedora37:x86_64:plan" result="passed" tests="0">
   <logs>
-   <log href="logpath" name="schedule entry #1: PRE_ARTIFACT_INSTALLATION" schedule-stage="guest-setup" guest-setup-stage="pre_artifact_installation"/>
-   <log href="logpath" name="schedule entry #1: PRE_ARTIFACT_INSTALLATION_WORKAROUNDS" schedule-stage="guest-setup" guest-setup-stage="pre_artifact_installation_workarounds"/>
-   <log href="logpath" name="schedule entry #1: ARTIFACT_INSTALLATION" schedule-stage="guest-setup" guest-setup-stage="artifact_installation"/>
-   <log href="logpath" name="schedule entry #1: POST_ARTIFACT_INSTALLATION_WORKAROUNDS" schedule-stage="guest-setup" guest-setup-stage="post_artifact_installation_workarounds"/>
-   <log href="logpath" name="schedule entry #1: POST_ARTIFACT_INSTALLATION" schedule-stage="guest-setup" guest-setup-stage="post_artifact_installation"/>
+   <log guest-setup-stage="artifact_installation" href="logpath" name="schedule entry #1: ARTIFACT_INSTALLATION" schedule-stage="guest-setup"/>
+   <log guest-setup-stage="post_artifact_installation" href="logpath" name="schedule entry #1: POST_ARTIFACT_INSTALLATION" schedule-stage="guest-setup"/>
+   <log guest-setup-stage="post_artifact_installation_workarounds" href="logpath" name="schedule entry #1: POST_ARTIFACT_INSTALLATION_WORKAROUNDS" schedule-stage="guest-setup"/>
+   <log guest-setup-stage="pre_artifact_installation" href="logpath" name="schedule entry #1: PRE_ARTIFACT_INSTALLATION" schedule-stage="guest-setup"/>
+   <log guest-setup-stage="pre_artifact_installation_workarounds" href="logpath" name="schedule entry #1: PRE_ARTIFACT_INSTALLATION_WORKAROUNDS" schedule-stage="guest-setup"/>
   </logs>
   <properties>
    <property name="baseosci.result" value="passed"/>
@@ -35,11 +35,11 @@
  </testsuite>
  <testsuite name="Fedora37:x86_64:plan" result="passed" tests="0">
   <logs>
-   <log href="logpath" name="schedule entry #2: PRE_ARTIFACT_INSTALLATION" schedule-stage="guest-setup" guest-setup-stage="pre_artifact_installation"/>
-   <log href="logpath" name="schedule entry #2: PRE_ARTIFACT_INSTALLATION_WORKAROUNDS" schedule-stage="guest-setup" guest-setup-stage="pre_artifact_installation_workarounds"/>
-   <log href="logpath" name="schedule entry #2: ARTIFACT_INSTALLATION" schedule-stage="guest-setup" guest-setup-stage="artifact_installation"/>
-   <log href="logpath" name="schedule entry #2: POST_ARTIFACT_INSTALLATION_WORKAROUNDS" schedule-stage="guest-setup" guest-setup-stage="post_artifact_installation_workarounds"/>
-   <log href="logpath" name="schedule entry #2: POST_ARTIFACT_INSTALLATION" schedule-stage="guest-setup" guest-setup-stage="post_artifact_installation"/>
+   <log guest-setup-stage="artifact_installation" href="logpath" name="schedule entry #2: ARTIFACT_INSTALLATION" schedule-stage="guest-setup"/>
+   <log guest-setup-stage="post_artifact_installation" href="logpath" name="schedule entry #2: POST_ARTIFACT_INSTALLATION" schedule-stage="guest-setup"/>
+   <log guest-setup-stage="post_artifact_installation_workarounds" href="logpath" name="schedule entry #2: POST_ARTIFACT_INSTALLATION_WORKAROUNDS" schedule-stage="guest-setup"/>
+   <log guest-setup-stage="pre_artifact_installation" href="logpath" name="schedule entry #2: PRE_ARTIFACT_INSTALLATION" schedule-stage="guest-setup"/>
+   <log guest-setup-stage="pre_artifact_installation_workarounds" href="logpath" name="schedule entry #2: PRE_ARTIFACT_INSTALLATION_WORKAROUNDS" schedule-stage="guest-setup"/>
   </logs>
   <properties>
    <property name="baseosci.result" value="passed"/>

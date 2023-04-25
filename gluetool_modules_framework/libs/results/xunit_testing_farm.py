@@ -13,39 +13,71 @@ from gluetool_modules_framework.libs.testing_environment import TestingEnvironme
 from gluetool_modules_framework.libs.results.xml import XmlWriter
 
 if TYPE_CHECKING:
-    from gluetool_modules_framework.libs.results import Results, TestSuite, TestCase, Log  # noqa
+    from gluetool_modules_framework.libs.results import Results, TestSuite, TestCase, Log, Phase  # noqa
 
 
-@attrs.define
+# Used in BaseOS CI results
+@attrs.define(kw_only=True)
+class XUnitTFPackage:
+    nvr: str = attrs.field(metadata={'type': 'Attribute'})
+
+
+# Used in BaseOS CI results
+@attrs.define(kw_only=True)
+class XUnitTFPackages:
+    package: List[XUnitTFPackage]
+
+    @classmethod
+    def construct(cls, packages: List[str]) -> 'XUnitTFPackages':
+        return XUnitTFPackages(package=[XUnitTFPackage(nvr=nvr) for nvr in sorted(packages)])
+
+
+# Used in BaseOS CI results
+@attrs.define(kw_only=True)
+class XUnitTFParameter:
+    value: str = attrs.field(metadata={'type': 'Attribute'})
+
+
+# Used in BaseOS CI results
+@attrs.define(kw_only=True)
+class XUnitTFParameters:
+    parameter: List[XUnitTFParameter]
+
+    @classmethod
+    def construct(cls, parameters: List[str]) -> 'XUnitTFParameters':
+        return XUnitTFParameters(parameter=[XUnitTFParameter(value=value) for value in sorted(parameters)])
+
+
+@attrs.define(kw_only=True)
 class XUnitTFProperty:
     name: str = attrs.field(metadata={'type': 'Attribute'})
     value: str = attrs.field(metadata={'type': 'Attribute'})
 
 
-@attrs.define
+@attrs.define(kw_only=True)
 class XUnitTFProperties:
     property: List[XUnitTFProperty]
 
     @classmethod
     def construct(cls, properties: Dict[str, str]) -> 'XUnitTFProperties':
         return XUnitTFProperties(
-            property=[XUnitTFProperty(name=name, value=value) for name, value in properties.items()]
+            property=[XUnitTFProperty(name=name, value=value) for name, value in sorted(properties.items())]
         )
 
 
-@attrs.define
+@attrs.define(kw_only=True)
 class XUnitTFLog:
-    href: str = attrs.field(metadata={'type': 'Attribute'})
-    name: str = attrs.field(metadata={'type': 'Attribute'})
-    schedule_stage: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute', 'name': 'schedule-stage'})
-    schedule_entry: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute', 'name': 'schedule-entry'})
     guest_setup_stage: Optional[str] = attrs.field(
         default=None,
         metadata={'type': 'Attribute', 'name': 'guest-setup-stage'}
     )
+    href: str = attrs.field(metadata={'type': 'Attribute'})
+    name: str = attrs.field(metadata={'type': 'Attribute'})
+    schedule_entry: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute', 'name': 'schedule-entry'})
+    schedule_stage: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute', 'name': 'schedule-stage'})
 
 
-@attrs.define
+@attrs.define(kw_only=True)
 class XUnitTFLogs:
     log: List[XUnitTFLog]
 
@@ -57,10 +89,34 @@ class XUnitTFLogs:
             guest_setup_stage=log.guest_setup_stage,
             schedule_stage=log.schedule_stage,
             schedule_entry=log.schedule_entry
-        ) for log in logs])
+        ) for log in sorted(logs, key=lambda log: log.name)])
 
 
-@attrs.define
+# Used in BaseOS CI results
+@attrs.define(kw_only=True)
+class XUnitTFPhase:
+    logs: XUnitTFLogs
+    name: str = attrs.field(metadata={'type': 'Attribute'})
+    result: str = attrs.field(metadata={'type': 'Attribute'})
+    time: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
+
+
+# Used in BaseOS CI results
+@attrs.define(kw_only=True)
+class XUnitTFPhases:
+    phase: List[XUnitTFPhase]
+
+    @classmethod
+    def construct(cls, phases: List['Phase']) -> 'XUnitTFPhases':
+        return XUnitTFPhases(phase=[XUnitTFPhase(
+            logs=XUnitTFLogs.construct(phase.logs),
+            name=phase.name,
+            result=phase.result,
+            time=phase.time
+        ) for phase in phases])
+
+
+@attrs.define(kw_only=True)
 class XUnitTFTestingEnvironment:
     name: str = attrs.field(metadata={'type': 'Attribute'})
     property: List[XUnitTFProperty]
@@ -78,18 +134,23 @@ class XUnitTFTestingEnvironment:
         return XUnitTFTestingEnvironment(name=name, property=properties)
 
 
-@attrs.define
+@attrs.define(kw_only=True)
 class XUnitTFTestCase:
     name: str = attrs.field(metadata={'type': 'Attribute'})
-    result: str = attrs.field(metadata={'type': 'Attribute'})
+    result: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
+    time: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})  # Property used in BaseOS CI result
+
     properties: XUnitTFProperties
+    parameters: Optional[XUnitTFParameters] = None  # Property used in BaseOS CI results.xml
     logs: XUnitTFLogs
+    phases: Optional[XUnitTFPhases] = None  # Property used in BaseOS CI results.xml
+    packages: Optional[XUnitTFPackages] = None  # Property used in BaseOS CI results.xml
+    failure: Optional[str] = None
+    error: Optional[str] = None
     testing_environment: List[XUnitTFTestingEnvironment] = attrs.field(
         factory=list,
         metadata={'name': 'testing-environment'}
     )
-    failure: Optional[str] = None
-    error: Optional[str] = None
 
     @classmethod
     def construct(cls, test_case: 'TestCase') -> 'XUnitTFTestCase':
@@ -106,13 +167,18 @@ class XUnitTFTestCase:
             logs=XUnitTFLogs.construct(test_case.logs),
             testing_environment=environments,
             # When the value is `None`, the XML element is not created at all, but when the value
-            # is '', it gets created as an empty element.
+            # is '', it gets created as an empty element (<failure/>).
             failure='' if test_case.failure else None,
             error='' if test_case.error else None,
+            time=test_case.time,
+            parameters=XUnitTFParameters.construct(test_case.parameters) if test_case.parameters else None,
+            phases=XUnitTFPhases.construct(test_case.phases) if test_case.phases else None,
+            # When `test_case.packages` is `None`, do not display the element, when it is `[]`, display <packages/>.
+            packages=XUnitTFPackages.construct(test_case.packages) if test_case.packages is not None else None
         )
 
 
-@attrs.define
+@attrs.define(kw_only=True)
 class XUnitTFTestSuite:
     name: str = attrs.field(metadata={'type': 'Attribute'})
     result: str = attrs.field(metadata={'type': 'Attribute'})
@@ -136,7 +202,7 @@ class XUnitTFTestSuite:
         return XmlSerializer(config=SerializerConfig(pretty_print=pretty_print)).render(self)
 
 
-@attrs.define
+@attrs.define(kw_only=True)
 class XUnitTFTestSuites:
     """
     Root element of Testing Farm xunit tree - data model representing the resulting xunit XML structure with ability to
@@ -155,7 +221,7 @@ class XUnitTFTestSuites:
         properties: Dict[str, str] = {}
         if results.primary_task:
             properties.update({
-                'baseosci.artifact-id': str(results.primary_task),
+                'baseosci.artifact-id': str(results.primary_task.id),
                 'baseosci.artifact-namespace': results.primary_task.ARTIFACT_NAMESPACE
             })
 

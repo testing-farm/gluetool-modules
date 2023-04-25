@@ -42,6 +42,7 @@ class TestScheduleEntry(BaseTestScheduleEntry):
         self.inventory_filepath: Optional[str] = None
         self.results: Any = None
         self.ansible_playbook_filepath: Optional[str] = None
+        self.ansible_environment: Optional[Dict[str, str]] = {}
 
     def log_entry(self, log_fn: Optional[gluetool.log.LoggingFunctionType] = None) -> None:
 

@@ -268,6 +268,11 @@ sut     ansible_host={} ansible_user=root {}
             else:
                 ansible_playbook_filepath = None
 
+            ansible_environment: Dict[str, str] = {}
+            ansible_environment.update(os.environ)
+            if schedule_entry.ansible_environment:
+                ansible_environment.update(schedule_entry.ansible_environment)
+
             # `run_playbook` and log the output to the working directory
             self.shared(
                 'run_playbook',
@@ -275,6 +280,7 @@ sut     ansible_host={} ansible_user=root {}
                 schedule_entry.guest,
                 inventory=inventory_filepath,
                 cwd=artifact_dirpath,
+                env=ansible_environment,
                 json_output=False,
                 log_filepath=os.path.join(work_dirpath, STI_ANSIBLE_LOG_FILENAME),
                 variables=variables,

@@ -130,7 +130,10 @@ def test_run_test_schedule_entry(module_runner, monkeypatch, results_filename, r
     with tempfile.TemporaryDirectory(prefix='test-schedule-runner-sti') as tmpdir:
         # Prepare the module
         def run_playbook_mock(playbook_filepath, guest, inventory, cwd=None, json_output=False, log_filepath=None,
-                              variables=None, ansible_playbook_filepath=None, extra_options=None):
+                              variables=None, ansible_playbook_filepath=None, extra_options=None, env=None):
+            assert env["_TESTSE1"] == "_TESTVAL11"  # overridden
+            assert env["_TESTSE2"] == "_TESTVAL2"  # kept from os.environ
+            assert env["_TESTSE3"] == "_TESTVAL3"  # passed in ansible_environment
             with open(os.path.join(cwd, results_filename), 'w') as file:
                 file.write(results_content)
 
@@ -154,6 +157,10 @@ def test_run_test_schedule_entry(module_runner, monkeypatch, results_filename, r
         # Expected values in the output
         expected_task_name, expected_task_result, expected_schedule_entry_result = expected_results
 
+        # Test ansible_environment functionality
+        monkeypatch.setenv("_TESTSE1", "_TESTVAL1")
+        monkeypatch.setenv("_TESTSE2", "_TESTVAL2")
+        schedule_entry.ansible_environment = {"_TESTSE1": "_TESTVAL11", "_TESTSE3": "_TESTVAL3"}
         # Run the module - it creates new directories from the current working directory, temporarily change it to
         # the tmpdir so it gets cleaned up later
         with monkeypatch.context() as m:

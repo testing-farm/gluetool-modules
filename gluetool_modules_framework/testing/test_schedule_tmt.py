@@ -11,6 +11,7 @@ import tempfile
 import enum
 import six
 import attrs
+import cattrs
 
 import gluetool
 from gluetool import GlueError, GlueCommandError, Module
@@ -35,6 +36,8 @@ from typing import cast, Any, Callable, Dict, List, Optional, Tuple, Union  # no
 
 from gluetool_modules_framework.libs.results import (TestSuite, Log, TestCase,
                                                      TestingEnvironment as ResultsTestingEnvironment)
+
+from cattrs.gen import make_dict_unstructure_fn, make_dict_structure_fn, override
 
 # TMT run log file
 TMT_LOG = 'tmt-run.log'
@@ -166,6 +169,30 @@ class TMTPlanProvision:
             mapping_validator=attrs.validators.instance_of(dict)
         ))
     )
+    watchdog_dispatch_delay: Optional[int] = attrs.field(
+        default=None,
+        validator=attrs.validators.optional(attrs.validators.instance_of(int))
+    )
+    watchdog_period_delay: Optional[int] = attrs.field(
+        default=None,
+        validator=attrs.validators.optional(attrs.validators.instance_of(int))
+    )
+
+    # We need to map the yaml attributes containing dashes to Python variables
+    @classmethod
+    def register_hooks(cls, converter: cattrs.Converter) -> None:
+        converter.register_structure_hook(TMTPlanProvision, make_dict_structure_fn(
+            TMTPlanProvision,
+            converter,
+            watchdog_dispatch_delay=override(rename='watchdog-dispatch-delay'),
+            watchdog_period_delay=override(rename='watchdog-period-delay')
+        ))
+        converter.register_unstructure_hook(TMTPlanProvision, make_dict_unstructure_fn(
+            TMTPlanProvision,
+            converter,
+            watchdog_dispatch_delay=override(rename='watchdog-dispatch-delay'),
+            watchdog_period_delay=override(rename='watchdog-period-delay')
+        ))
 
 
 @attrs.define
@@ -651,6 +678,7 @@ class TestScheduleTMT(Module):
 
         try:
             converter = create_cattrs_converter(prefer_attrib_converters=True)
+            TMTPlanProvision.register_hooks(converter)
             exported_plans = converter.structure(from_yaml(output), List[TMTPlan])
             log_dict(self.debug, "loaded exported plan yaml", exported_plans)
 
@@ -721,10 +749,12 @@ class TestScheduleTMT(Module):
             for plan in plans:
                 exported_plan = self.export_plan(repodir, plan, context_files)
 
-                hardware = kickstart = None
+                hardware = kickstart = watchdog_dispatch_delay = watchdog_period_delay = None
                 if exported_plan and exported_plan.provision:
                     hardware = exported_plan.provision.hardware
                     kickstart = exported_plan.provision.kickstart
+                    watchdog_dispatch_delay = exported_plan.provision.watchdog_dispatch_delay
+                    watchdog_period_delay = exported_plan.provision.watchdog_period_delay
 
                 schedule_entry = TestScheduleEntry(
                     root_logger,
@@ -733,6 +763,24 @@ class TestScheduleTMT(Module):
                     repodir,
                     exported_plan.excludes(logger=self.logger) if exported_plan else []
                 )
+
+                # Create `settings` dictionary if it doesn't exist and the watchdog specification exists in TMT plan
+                if watchdog_dispatch_delay is not None or watchdog_period_delay is not None:
+                    if tec.settings is None:
+                        tec.settings = {}
+                    # Watchdogs are part of the `provisioning` key
+                    if 'provisioning' not in tec.settings:
+                        tec.settings['provisioning'] = {}
+
+                    # Assign the `watchdog-dispatch-delay` value from TMT plan if the value was not specified
+                    # in the API request
+                    if watchdog_dispatch_delay and tec.settings['provisioning'].get('watchdog_dispatch_delay') is None:
+                        tec.settings['provisioning']['watchdog_dispatch_delay'] = watchdog_dispatch_delay
+
+                    # Assign the `watchdog-period-delay` value from TMT plan if the value was not specified
+                    # in the API request
+                    if watchdog_period_delay and tec.settings['provisioning'].get('watchdog_period_delay') is None:
+                        tec.settings['provisioning']['watchdog_period_delay'] = watchdog_period_delay
 
                 schedule_entry.testing_environment = TestingEnvironment(
                     arch=tec.arch,

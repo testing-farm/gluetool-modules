@@ -40,7 +40,8 @@ API_FEATURE_VERSIONS: Dict[str, str] = {
     'hw-constraints-cpu-processors': 'v0.0.47',
     'hw-constraints-compatible-distro': 'v0.0.48',
     'hw-constraints-kickstart': 'v0.0.53',
-    'fixed-hw-validation': 'v0.0.55'
+    'fixed-hw-validation': 'v0.0.55',
+    'user-defined-watchdog-delay': 'v0.0.56'
 }
 
 SUPPORTED_API_VERSIONS: Set[str] = set(API_FEATURE_VERSIONS.values())
@@ -200,7 +201,9 @@ class ArtemisAPI(object):
                      keyname: Optional[str] = None,
                      priority: Optional[str] = None,
                      user_data: Optional[Dict[str, Any]] = None,
-                     post_install_script: Optional[str] = None
+                     post_install_script: Optional[str] = None,
+                     watchdog_dispatch_delay: Optional[int] = None,
+                     watchdog_period_delay: Optional[int] = None
                      ) -> Any:
         '''
         Submits a guest request to Artemis API.
@@ -214,6 +217,10 @@ class ArtemisAPI(object):
 
         :param str priority: Priority group of the guest request.
             See Artemis API docs for more.
+
+        :param int watchdog_dispatch_delay: How long (seconds) before the guest "is-alive" watchdog is dispatched.
+
+        :param int watchdog_period_delay: How often (seconds) check that the guest "is-alive".
 
         :rtype: dict
         :returns: Artemis API response serialized as dictionary or ``None`` in case of failure.
@@ -290,6 +297,14 @@ class ArtemisAPI(object):
 
         if self.version >= API_FEATURE_VERSIONS['hw-constraints-kickstart']:
             data['environment']['kickstart'] = kickstart or {}
+
+        if self.version >= API_FEATURE_VERSIONS['user-defined-watchdog-delay']:
+            if watchdog_dispatch_delay is not None:
+                data['watchdog_dispatch_delay'] = watchdog_dispatch_delay
+            if watchdog_period_delay is not None:
+                data['watchdog_period_delay'] = watchdog_period_delay
+        elif watchdog_dispatch_delay is not None or watchdog_period_delay is not None:
+            raise GlueError('User defined watchdog is unsupported in current API version {}'.format(self.version))
 
         log_dict(self.module.debug, 'guest data', data)
 
@@ -887,6 +902,16 @@ class ArtemisProvisioner(gluetool.Module):
                 'metavar': 'SNAPSHOT_READY_TICK',
                 'type': int,
                 'default': DEFAULT_SNAPSHOT_READY_TICK
+            },
+            'watchdog-dispatch-delay': {
+                'help': 'How long (seconds) before the guest\'s "is-alive" watchdog is dispatched',
+                'metavar': 'WATCHDOG_DISPATCH_DELAY',
+                'type': int
+            },
+            'watchdog-period-delay': {
+                'help': 'How often (seconds) check that the guest "is-alive"',
+                'metavar': 'WATCHDOG_PERIOD_DELAY',
+                'type': int
             }
         })
     ]
@@ -996,6 +1021,8 @@ class ArtemisProvisioner(gluetool.Module):
                         options: Optional[List[str]] = None,
                         post_install_script: Optional[str] = None,
                         user_data: Optional[Dict[str, str]] = None,
+                        watchdog_dispatch_delay: Optional[int] = None,
+                        watchdog_period_delay: Optional[int] = None
                        ) -> ArtemisGuest:  # noqa
         '''
         Provision Artemis guest by submitting a request to Artemis API.
@@ -1015,6 +1042,10 @@ class ArtemisProvisioner(gluetool.Module):
 
         :param list option: SSH options that would be used when securely connecting to a provisioned guest via SSH.
 
+        :param int watchdog_dispatch_delay: How long (seconds) before the guest "is-alive" watchdog is dispatched.
+
+        :param int watchdog_period_delay: How often (seconds) check that the guest "is-alive".
+
         :rtype: ArtemisGuest
         :returns: ArtemisGuest instance or ``None`` if it wasn't possible to grab the guest.
         '''
@@ -1024,7 +1055,9 @@ class ArtemisProvisioner(gluetool.Module):
                                          keyname=key,
                                          priority=priority,
                                          user_data=user_data,
-                                         post_install_script=post_install_script)
+                                         post_install_script=post_install_script,
+                                         watchdog_dispatch_delay=watchdog_dispatch_delay,
+                                         watchdog_period_delay=watchdog_period_delay)
 
         guestname = response.get('guestname')
         hostname = six.ensure_str(response['address']) if response['address'] is not None else None
@@ -1081,8 +1114,8 @@ class ArtemisProvisioner(gluetool.Module):
         options = normalize_multistring_option(self.option('ssh-options'))
         # NOTE(ivasilev) Use artemis module requested post-install-script or the one from the environment
         post_install_script = self.option('post-install-script')
+        provisioning = (environment.settings or {}).get('provisioning', {})
         if not post_install_script:
-            provisioning = (environment.settings or {}).get('provisioning', {}) or {}
             post_install_script = provisioning.get('post_install_script')
 
         if self.option('snapshots'):
@@ -1091,9 +1124,19 @@ class ArtemisProvisioner(gluetool.Module):
         user_data = self.user_data
 
         # Add tags from environment settings if exists
-        tags = ((environment.settings or {}).get('provisioning') or {}).get('tags', {})
+        tags = provisioning.get('tags', {})
         if tags:
             user_data.update(tags)
+
+        watchdog_dispatch_delay = self.option('watchdog-dispatch-delay')
+        # Get watchdog-dispatch-delay from environment settings if exists
+        if watchdog_dispatch_delay is None:
+            watchdog_dispatch_delay = provisioning.get('watchdog_dispatch_delay')
+
+        watchdog_period_delay = self.option('watchdog-period-delay')
+        # Get watchdog-period-delay from environment settings if exists
+        if watchdog_period_delay is None:
+            watchdog_period_delay = provisioning.get('watchdog_period_delay')
 
         guest = self.provision_guest(environment,
                                      pool=pool,
@@ -1102,7 +1145,9 @@ class ArtemisProvisioner(gluetool.Module):
                                      ssh_key=ssh_key,
                                      options=options,
                                      post_install_script=post_install_script,
-                                     user_data=user_data)
+                                     user_data=user_data,
+                                     watchdog_dispatch_delay=watchdog_dispatch_delay,
+                                     watchdog_period_delay=watchdog_period_delay)
 
         guest.info('Guest provisioned')
         self.guests.append(guest)

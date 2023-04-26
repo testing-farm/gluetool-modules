@@ -392,8 +392,9 @@ class Copr(gluetool.Module):
             )
 
         if not self.task.rpm_urls:
-            raise gluetool.GlueError(
-                'Error looking up rpm urls for {}:{}, expired build?'.format(build_id, chroot_name)
+            # Soft error because we don't want to see this in errored builds
+            raise gluetool.SoftGlueError(
+                'Error looking up rpm urls for {}:{}, failed or expired build?'.format(build_id, chroot_name)
             )
 
         self._tasks = [self.task]

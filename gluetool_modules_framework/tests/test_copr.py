@@ -382,5 +382,5 @@ def test_expired(module, monkeypatch):
 
     monkeypatch.setattr(gluetool_modules_framework.infrastructure.copr.requests, 'get', mocked_get)
 
-    with pytest.raises(gluetool.GlueError, match=r"Error looking up rpm urls for 802020:fedora-28-x86_64, expired build?"):
+    with pytest.raises(gluetool.SoftGlueError, match=r"Error looking up rpm urls for 802020:fedora-28-x86_64, failed or expired build?"):
         module.execute()

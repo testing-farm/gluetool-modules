@@ -7,7 +7,5 @@ provision+:
 prepare:
   how: shell
   script:
-    - dnf install -y ansible autoconf automake gcc git krb5-devel libcurl-devel
-    - dnf install -y libpq-devel libtool libxml2-devel make openssl-devel
-    - dnf install -y popt-devel postgresql-devel python3-libselinux
-    - dnf install -y redhat-rpm-config python3-rpm python3.9
+    - dnf install -y make
+    - make install-fedora

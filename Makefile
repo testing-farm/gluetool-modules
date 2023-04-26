@@ -6,6 +6,8 @@
 IMAGE := quay.io/testing-farm/worker
 IMAGE_TAG ?= ${USER}
 
+##@ Image
+
 build:  ## Build worker container image
 	poetry build
 	buildah bud --layers -t $(IMAGE):$(IMAGE_TAG) -f container/Dockerfile .
@@ -13,14 +15,28 @@ build:  ## Build worker container image
 push:  ## Push worker container image to quay.io
 	buildah push $(IMAGE):$(IMAGE_TAG)
 
+##@ Test
+
+test-image:  ## Test container image via dgoss
+	cd container && dgoss run -t --entrypoint bash $(IMAGE):$(IMAGE_TAG)
+
+##@ Utility
+
 clean:  ## Remove worker container image
 	buildah rmi quay.io/testing-farm/cli:$(IMAGE_TAG)
 
 edit-image-test:  ## Edit goss file via dgoss
 	cd container && dgoss edit -t --entrypoint bash $(IMAGE):$(IMAGE_TAG)
 
-test-image:  ## Test container image via dgoss
-	cd container && dgoss run -t --entrypoint bash $(IMAGE):$(IMAGE_TAG)
+install-cs9:  ## Install required system dependencies in CentOS Stream 9
+	sudo dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
+		ansible autoconf automake gcc git krb5-devel libcurl-devel libtool \
+		libxml2-devel openssl-devel popt-devel postgresql-devel python3-devel
+
+install-fedora:  ## Install required system dependencies in Fedora
+	sudo dnf -y install ansible autoconf automake gcc git krb5-devel libcurl-devel \
+		libpq-devel libtool libxml2-devel openssl-devel popt-devel postgresql-devel \
+		python3-libselinux redhat-rpm-config python3-rpm python3.9
 
 # See https://www.thapaliya.com/en/writings/well-documented-makefiles/ for details.
 help:  ## Show this help

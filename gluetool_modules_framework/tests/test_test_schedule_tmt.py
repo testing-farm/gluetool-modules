@@ -181,6 +181,51 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     shutil.rmtree(schedule_entry.work_dirpath)
 
 
+def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest, monkeypatch):
+    # this doesn't appear anywhere in results.xml, but _run_plan() needs it
+    module.glue.add_shared('dist_git_repository', module_dist_git)
+
+    test_env = TestingEnvironment('x86_64', 'rhel-9')
+    schedule_entry = TestScheduleEntry(
+        gluetool.log.Logging().get_logger(),
+        test_env,
+        '/passed',
+        'some-repo-dir',
+        ['exclude1', 'exclude2']
+    )
+    schedule_entry.guest = guest
+    schedule_entry.testing_environment = test_env
+
+    # gather_plan_results() is called in _run_plan() right after calling tmt; we need to inject
+    # writing results.yaml in between, which we can't do with a mock
+    orig_gather_plan_results = gluetool_modules_framework.testing.test_schedule_tmt.gather_plan_results
+
+    def inject_gather_plan_results(schedule_entry, work_dir, recognize_errors=False):
+        shutil.copytree(os.path.join(ASSETS_DIR, 'passed'), os.path.join(work_dir, 'passed'))
+        return orig_gather_plan_results(schedule_entry, work_dir, recognize_errors=recognize_errors)
+
+    # run tmt with the mock plan
+    with monkeypatch.context() as m:
+        _set_run_outputs(m, 'dummy test done')
+        try:
+            gluetool_modules_framework.testing.test_schedule_tmt.gather_plan_results = inject_gather_plan_results
+            module.run_test_schedule_entry(schedule_entry)
+        finally:
+            gluetool_modules_framework.testing.test_schedule_tmt.gather_plan_results = orig_gather_plan_results
+
+    schedule_entry.results = None
+    # generate results.xml
+    test_suite = TestSuite(name='some-suite', result='some-result')
+    module.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
+
+    assert len(test_suite.logs) == 3
+    assert test_suite.logs[0].name == 'workdir'
+    assert test_suite.logs[1].name == 'tmt-log'
+    assert test_suite.logs[2].name == 'tmt-reproducer'
+
+    shutil.rmtree(schedule_entry.work_dirpath)
+
+
 @pytest.mark.parametrize(
         'additional_options, additional_shared, testing_environment, expected_reproducer, expected_environment, exception', [
         (  # virtual provision

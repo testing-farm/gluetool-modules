@@ -992,16 +992,20 @@ class TestScheduleTMT(Module):
             self.overloaded_shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
             return
 
-        if not schedule_entry.results:
-            return
-
         if schedule_entry.work_dirpath:
-            href = artifacts_location(self, schedule_entry.work_dirpath, logger=schedule_entry.logger)
-            test_suite.logs.append(Log(href=href, name='workdir'))
+            workdir_href = artifacts_location(self, schedule_entry.work_dirpath, logger=schedule_entry.logger)
+            test_suite.logs.append(Log(href=workdir_href, name='workdir'))
+
+            tmt_log_filepath = os.path.join(schedule_entry.work_dirpath, TMT_LOG)
+            tmt_log_href = artifacts_location(self, tmt_log_filepath, logger=schedule_entry.logger)
+            test_suite.logs.append(Log(href=tmt_log_href, name='tmt-log'))
 
         if schedule_entry.tmt_reproducer_filepath:
             href = artifacts_location(self, schedule_entry.tmt_reproducer_filepath, logger=schedule_entry.logger)
             test_suite.logs.append(Log(href=href, name='tmt-reproducer'))
+
+        if not schedule_entry.results:
+            return
 
         for task in schedule_entry.results:
             # artifacts

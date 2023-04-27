@@ -45,9 +45,16 @@ def fixture_module(monkeypatch):
     module = create_module(gluetool_modules_framework.testing.test_schedule_tmt.TestScheduleTMT)[1]
     module._config['command'] = 'dummytmt'
     module._config['reproducer-comment'] = '# tmt reproducer'
-    patch_shared(monkeypatch,
-                 module,
-                 {'testing_farm_request': MagicMock(environments_requested=[{}], tmt=MagicMock(plan=None, plan_filter=None), plans=None)})
+    patch_shared(
+        monkeypatch,
+        module,
+        {
+            'testing_farm_request': MagicMock(
+                environments_requested=[{}],
+                tmt=MagicMock(plan=None, plan_filter=None, path="some-tmt-root"),
+                plans=None)
+        }
+    )
     return module
 
 
@@ -233,7 +240,7 @@ def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest
             {},
             TestingEnvironment('x86_64', 'rhel-9'),
             '''# tmt reproducer
-dummytmt run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$''',
+dummytmt --root some-tmt-root run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$''',
             None,
             None
         ),
@@ -242,7 +249,7 @@ dummytmt run --all --verbose provision --how virtual --image guest-compose plan 
             {},
             TestingEnvironment('x86_64', 'rhel-9'),
             '''# tmt reproducer
-dummytmt run --all --verbose provision plan --name ^plan1$ plan --name ^plan1$''',
+dummytmt --root some-tmt-root run --all --verbose provision plan --name ^plan1$ plan --name ^plan1$''',
             None,
             None
         ),
@@ -260,7 +267,7 @@ dummytmt run --all --verbose provision plan --name ^plan1$ plan --name ^plan1$''
             ),
             """# tmt reproducer
 curl -LO tmt-environment-lan1.yaml
-dummytmt run --all --verbose -e @tmt-environment-lan1.yaml provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+dummytmt --root some-tmt-root run --all --verbose -e @tmt-environment-lan1.yaml provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
             """user_variable1: user_value1
 user_variable2: user_value2
 user_variable3: user_value3
@@ -274,7 +281,7 @@ secret_variable2: secret_value2
             {},
             TestingEnvironment('x86_64', 'rhel-9', tmt={'context': {'distro': 'rhel', 'trigger': 'push'}}),
             """# tmt reproducer
-dummytmt -c distro=rhel -c trigger=push run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+dummytmt --root some-tmt-root -c distro=rhel -c trigger=push run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
             None,
             None
         ),
@@ -286,7 +293,7 @@ dummytmt -c distro=rhel -c trigger=push run --all --verbose provision --how virt
             TestingEnvironment('x86_64', 'rhel-9', tmt={'environment': {'VARIABLE1': 'VALUE1', 'VARIABLE2': 'VALUE2'}}),
             """# tmt reproducer
 export VARIABLE1=***** VARIABLE2=*****
-dummytmt run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+dummytmt --root some-tmt-root run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
             None,
             None
         ),
@@ -298,7 +305,7 @@ dummytmt run --all --verbose provision --how virtual --image guest-compose plan 
             TestingEnvironment('x86_64', 'rhel-9', tmt={'environment': {'VARIABLE1': 'VALUE1', 'VARIABLE2': 'VALUE2'}}),
             """# tmt reproducer
 export VARIABLE1=***** VARIABLE2=*****
-dummytmt run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+dummytmt --root some-tmt-root run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
             None,
             (gluetool.glue.GlueError, "Environment variable 'VARIABLE2' is not allowed to be exposed to the tmt process")
         ),
@@ -383,7 +390,7 @@ def test_tmt_output_dir(
             r'''\# tmt reproducer
 git clone --depth 1 -b myfix http://example.com/git/myproject testcode
 cd testcode
-dummytmt run --all --verbose provision --how virtual --image guest-compose plan --name \^myfix\$'''  # noqa
+dummytmt --root some-tmt-root run --all --verbose provision --how virtual --image guest-compose plan --name \^myfix\$'''  # noqa
         ),
         (  # Test case no. 2
             {'context-template-file': [os.path.abspath(os.path.join(ASSETS_DIR, 'context-template.yaml'))]},
@@ -391,7 +398,7 @@ dummytmt run --all --verbose provision --how virtual --image guest-compose plan 
             r'''\# tmt reproducer
 git clone --depth 1 -b myfix http://example.com/git/myproject testcode
 cd testcode
-dummytmt --context=@[a-zA-Z0-9\/\._-]+ run --all --verbose provision --how virtual --image guest-compose plan --name \^myfix\$'''  # noqa
+dummytmt --root some-tmt-root --context=@[a-zA-Z0-9\/\._-]+ run --all --verbose provision --how virtual --image guest-compose plan --name \^myfix\$'''  # noqa
         ),
     ]
 )
@@ -509,7 +516,10 @@ TEST_PLANS_FROM_GIT_LOG_MESSAGES = [
         (
             '',
             [],
-            (gluetool.GlueError, "Did not find any plans. Command used 'dummytmt plan ls --filter enabled:true'")
+            (
+                gluetool.GlueError,
+                "Did not find any plans. Command used 'dummytmt --root some-tmt-root plan ls --filter enabled:true'"
+            )
         ),
         (
             'warning: foo',
@@ -550,7 +560,7 @@ def test_plans_from_git_filter(module, monkeypatch):
 
     module._plans_from_git(repodir, context_files, testing_environment, filter)
 
-    mock_command.assert_called_once_with(['dummytmt', 'plan', 'ls', '--filter', 'filter1'])
+    mock_command.assert_called_once_with(['dummytmt', '--root', 'some-tmt-root', 'plan', 'ls', '--filter', 'filter1'])
 
 
 def test_plans_from_git_filter_from_request(module, monkeypatch):
@@ -578,7 +588,7 @@ def test_plans_from_git_filter_from_request(module, monkeypatch):
 
     module._plans_from_git(repodir, context_files, testing_environment, filter)
 
-    mock_command.assert_called_once_with(['dummytmt', 'plan', 'ls', '--filter', 'filter1'])
+    mock_command.assert_called_once_with(['dummytmt', '--root', 'some-tmt-root', 'plan', 'ls', '--filter', 'filter1'])
 
 
 @pytest.mark.parametrize('plan, expected', [
@@ -711,9 +721,9 @@ git clone http://example.com/git/myproject testcode
 git -C testcode checkout -b testbranch myfix
 cd testcode
 curl -o guest-setup-0.sh -L {tmpdir}/artifact-installation-guest0/{INSTALL_COMMANDS_FILE}
-dummytmt run --until provision --verbose provision --how virtual --image guest-compose plan --name ^plan1$
-dummytmt run --last login < guest-setup-0.sh
-dummytmt run --last --since prepare'''
+dummytmt --root some-tmt-root run --until provision --verbose provision --how virtual --image guest-compose plan --name ^plan1$
+dummytmt --root some-tmt-root run --last login < guest-setup-0.sh
+dummytmt --root some-tmt-root run --last --since prepare'''
 
 
 def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir):
@@ -787,6 +797,6 @@ git clone http://example.com/git/myproject testcode
 git -C testcode checkout -b testbranch myfix
 cd testcode
 curl -o guest-setup-0.sh -L {tmpdir}/artifact-installation-guest0/{INSTALL_COMMANDS_FILE}
-dummytmt run --until provision --verbose provision --how virtual --image guest-compose plan --name ^plan1$
-dummytmt run --last login < guest-setup-0.sh
-dummytmt run --last --since prepare'''
+dummytmt --root some-tmt-root run --until provision --verbose provision --how virtual --image guest-compose plan --name ^plan1$
+dummytmt --root some-tmt-root run --last login < guest-setup-0.sh
+dummytmt --root some-tmt-root run --last --since prepare'''

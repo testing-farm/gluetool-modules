@@ -755,6 +755,16 @@ class TestScheduleTMT(Module):
         if tf_request and tf_request.tmt and tf_request.tmt.path:  # noqa: E203 E231 E501
             command.extend(['--root', tf_request.tmt.path])
 
+        # create guest setup reproducer command, this needs to include `--root`, `--context` is not needed
+        # used later when constructing the reproducer commands
+        guest_setup_reproducer = []
+        if guest_setups:
+            for guest_setup in guest_setups:
+                joined_command = ' '.join(command)
+                guest_setup_reproducer.append('{} run --last login < {}'.format(joined_command, guest_setup))
+                # and finally run the test plan
+                guest_setup_reproducer.append('{} run --last --since prepare'.format(joined_command))
+
         # add context from options
         command += [
             '--context=@{}'.format(filepath)
@@ -898,12 +908,9 @@ class TestScheduleTMT(Module):
         schedule_entry.tmt_reproducer.append(' '.join(reproducer))
 
         # now run all guest setups in the local reproducer; if we don't have any, then we already did `run --all` above
+        # the reproducer was constructed earlier, as it needs to include `--root` if test.tmt.path specified in the API
         if guest_setups:
-            for guest_setup in guest_setups:
-                schedule_entry.tmt_reproducer.append('{} run --last login < {}'.format(
-                    self.option('command'), guest_setup))
-                # and finally run the test plan
-                schedule_entry.tmt_reproducer.append('{} run --last --since prepare'.format(self.option('command')))
+            schedule_entry.tmt_reproducer.extend(guest_setup_reproducer)
 
         def _save_output(output: gluetool.utils.ProcessOutput) -> None:
 

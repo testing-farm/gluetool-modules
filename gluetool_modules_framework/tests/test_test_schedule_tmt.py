@@ -559,9 +559,17 @@ def test_plans_from_git_filter_from_request(module, monkeypatch):
     testing_environment = TestingEnvironment('x86_64')
     filter = None
 
-    patch_shared(monkeypatch,
-                 module,
-                 {'testing_farm_request': MagicMock(environments_requested=[{}], tmt=MagicMock(plan=None, plan_filter='filter1'), plans=None)})
+    patch_shared(
+        monkeypatch,
+        module,
+        {
+            'testing_farm_request': MagicMock(
+                environments_requested=[{}],
+                tmt=MagicMock(plan=None, plan_filter='filter1', path="some-tmt-root"),
+                plans=None
+            )
+        }
+    )
 
     mock_output = MagicMock(exit_code=0, stdout='plan1', stderr='')
     mock_command_run = MagicMock(return_value=mock_output)

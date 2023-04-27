@@ -27,6 +27,7 @@ from gluetool_modules_framework.libs.testing_environment import TestingEnvironme
 from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleResult, TestScheduleEntryOutput, \
     TestScheduleEntryStage, TestScheduleEntryAdapter
 from gluetool_modules_framework.libs.test_schedule import TestScheduleEntry as BaseTestScheduleEntry
+from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
 
 
 # Type annotations
@@ -446,6 +447,12 @@ class TestScheduleTMT(Module):
                 for filepath in context_files
             ])
 
+        tf_request = cast(TestingFarmRequest, self.shared('testing_farm_request'))
+
+        # add metadata root
+        if tf_request and tf_request.tmt and tf_request.tmt.path:
+            command.extend(['--root', tf_request.tmt.path])
+
         # using `# noqa` because flake8 and coala are confused by the walrus operator
         # Ignore PEP8Bear
         if (tmt := testing_environment.tmt) and 'context' in tmt:  # noqa: E203 E231
@@ -458,7 +465,7 @@ class TestScheduleTMT(Module):
 
         # using `# noqa` because flake8 and coala are confused by the walrus operator
         # Ignore PEP8Bear
-        elif (tf_request := self.shared('testing_farm_request')) and tf_request.tmt and tf_request.tmt.plan_filter:  # noqa: E203 E231 E501
+        elif tf_request and tf_request.tmt and tf_request.tmt.plan_filter:  # noqa: E203 E231 E501
             command.extend(['--filter', tf_request.tmt.plan_filter])
 
         # by default we add enabled:true
@@ -467,7 +474,7 @@ class TestScheduleTMT(Module):
 
         # using `# noqa` because flake8 and coala are confused by the walrus operator
         # Ignore PEP8Bear
-        if (tf_request := self.shared('testing_farm_request')) and tf_request.tmt and (plan := tf_request.tmt.plan):  # noqa: E203 E231 E501
+        if tf_request and tf_request.tmt and (plan := tf_request.tmt.plan):  # noqa: E203 E231 E501
             command.extend([plan])
 
         try:
@@ -742,6 +749,13 @@ class TestScheduleTMT(Module):
             self.option('command')
         ]
 
+        tf_request = cast(TestingFarmRequest, self.shared('testing_farm_request'))
+
+        # add metadata root from request
+        if tf_request and tf_request.tmt and tf_request.tmt.path:  # noqa: E203 E231 E501
+            command.extend(['--root', tf_request.tmt.path])
+
+        # add context from options
         command += [
             '--context=@{}'.format(filepath)
             for filepath in schedule_entry.context_files
@@ -749,6 +763,7 @@ class TestScheduleTMT(Module):
 
         assert schedule_entry.testing_environment
 
+        # add context from request
         if schedule_entry.testing_environment.tmt and 'context' in schedule_entry.testing_environment.tmt:
             tmt_context = self._tmt_context_to_options(schedule_entry.testing_environment.tmt['context'])
             command.extend(tmt_context)

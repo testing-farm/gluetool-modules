@@ -3,10 +3,10 @@
 
 import json
 import sys
-import six
 
 import gluetool
 import gluetool_modules_framework.libs.results.test_result
+from gluetool_modules_framework.libs.results import Results
 
 # Type annotations
 from typing import cast, Any, List, Tuple, Optional, Union  # noqa
@@ -89,40 +89,43 @@ class TestingResults(gluetool.Module):
         return parsed
 
     @staticmethod
-    def _serialize_to_json(results: List[gluetool_modules_framework.libs.results.test_result.TestResult]) -> List[Any]:
-        return [result.serialize('json') for result in results]
-
-    @staticmethod
-    def _serialize_to_xunit(results: List[gluetool_modules_framework.libs.results.test_result.TestResult]) -> List[Any]:
-        test_suites: List[Any] = gluetool.utils.new_xml_element('testsuites')
+    def _serialize_to_results(results: List[gluetool_modules_framework.libs.results.test_result.TestResult]) -> Results:
+        """
+        Converts the legacy format (list of TestResult) into the new gluetool_modules_framework.libs.results.Results.
+        """
+        output_results = Results()
 
         for result in results:
-            test_suites.append(result.serialize('xunit'))
+            output_results.test_suites.append(result.convert_to_results())
 
-        return test_suites
+        return output_results
 
     writers = {
-        'json': lambda stream, results: stream.write(gluetool.log.format_dict([result for result in results])),
-        'xunit': lambda stream, results: stream.write(results.prettify(encoding='utf-8' if six.PY2 else None))
+        'xunit_testing_farm': lambda stream, results: stream.write(results.xunit_testing_farm.to_xml_string(
+            pretty_print=True
+        )),
+        'xunit': lambda stream, results: stream.write(results.xunit.to_xml_string(pretty_print=True))
     }
 
     def serialize_results(
         self,
         output_format: str,
         results: Optional[List[gluetool_modules_framework.libs.results.test_result.TestResult]] = None
-    ) -> List[Any]:
+    ) -> Union[List[Any], Results]:
         if results is None:
             results = self._results
 
+        # NOTE: "Serializing" is not a correct name for this action anymore. It does not consist of "serializing to
+        # string" anymore, it's just a conversion to the new ``gluetool_modules_framework/libs/results.Results`` format.
         serializer = {
-            'json': TestingResults._serialize_to_json,
-            'xunit': TestingResults._serialize_to_xunit
+            'xunit_testing_farm': TestingResults._serialize_to_results,
+            'xunit': TestingResults._serialize_to_results,
         }.get(output_format, None)
 
         if serializer is None:
             raise gluetool.GlueError("Output format '{}' is not supported".format(output_format))
 
-        return serializer(results)
+        return cast(Union[List[Any], Results], serializer(results))
 
     def execute(self) -> None:
         initfile = self.option('init-file')

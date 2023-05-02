@@ -559,7 +559,7 @@ class PipelineStateReporter(gluetool.Module):
 
         It is quite simple - xUnit representation already carries necessary value.
         """
-        if not test_results:
+        if not test_results or not test_results.overall_result:
             return 'unknown'
 
         return test_results.overall_result
@@ -724,9 +724,12 @@ class PipelineStateReporter(gluetool.Module):
             })
 
         else:
-            kwargs.update({
-                'test_results': self.shared('serialize_results', 'xunit', test_results)
-            })
+            test_results = self.shared('serialize_results', 'xunit_testing_farm', test_results)
+
+            if isinstance(test_results, Results):
+                kwargs.update({'test_results': test_results.xunit_testing_farm.to_xml_string(pretty_print=True)})
+            else:
+                kwargs.update({'test_results': test_results})
 
         if failure:
             assert failure.exc_info[1] is not None

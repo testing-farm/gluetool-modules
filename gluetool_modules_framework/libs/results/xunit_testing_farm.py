@@ -116,6 +116,22 @@ class XUnitTFPhases:
         ) for phase in phases])
 
 
+# Used in BaseOS CI results
+@attrs.define(kw_only=True)
+class XUnitTFTestOutput:
+    message: str = attrs.field(metadata={'type': 'Attribute'})
+
+
+# Used in BaseOS CI results
+@attrs.define(kw_only=True)
+class XUnitTFTestOutputs:
+    test_output: List[XUnitTFTestOutput] = attrs.field(factory=list, metadata={'name': 'test-output'})
+
+    @classmethod
+    def construct(self, test_outputs: List[str]) -> 'XUnitTFTestOutputs':
+        return XUnitTFTestOutputs(test_output=[XUnitTFTestOutput(message=message) for message in test_outputs])
+
+
 @attrs.define(kw_only=True)
 class XUnitTFTestingEnvironment:
     name: str = attrs.field(metadata={'type': 'Attribute'})
@@ -140,9 +156,9 @@ class XUnitTFTestCase:
     result: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
     time: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})  # Property used in BaseOS CI result
 
-    properties: XUnitTFProperties
+    properties: Optional[XUnitTFProperties]
     parameters: Optional[XUnitTFParameters] = None  # Property used in BaseOS CI results.xml
-    logs: XUnitTFLogs
+    logs: Optional[XUnitTFLogs]
     phases: Optional[XUnitTFPhases] = None  # Property used in BaseOS CI results.xml
     packages: Optional[XUnitTFPackages] = None  # Property used in BaseOS CI results.xml
     failure: Optional[str] = None
@@ -151,6 +167,7 @@ class XUnitTFTestCase:
         factory=list,
         metadata={'name': 'testing-environment'}
     )
+    test_outputs: Optional[XUnitTFTestOutputs] = attrs.field(default=None, metadata={'name': 'test-outputs'})
 
     @classmethod
     def construct(cls, test_case: 'TestCase') -> 'XUnitTFTestCase':
@@ -163,8 +180,8 @@ class XUnitTFTestCase:
         return XUnitTFTestCase(
             name=test_case.name,
             result=test_case.result,
-            properties=XUnitTFProperties.construct(test_case.properties),
-            logs=XUnitTFLogs.construct(test_case.logs),
+            properties=XUnitTFProperties.construct(test_case.properties) if test_case.properties else None,
+            logs=XUnitTFLogs.construct(test_case.logs) if test_case.logs else None,
             testing_environment=environments,
             # When the value is `None`, the XML element is not created at all, but when the value
             # is '', it gets created as an empty element (<failure/>).
@@ -174,14 +191,16 @@ class XUnitTFTestCase:
             parameters=XUnitTFParameters.construct(test_case.parameters) if test_case.parameters else None,
             phases=XUnitTFPhases.construct(test_case.phases) if test_case.phases else None,
             # When `test_case.packages` is `None`, do not display the element, when it is `[]`, display <packages/>.
-            packages=XUnitTFPackages.construct(test_case.packages) if test_case.packages is not None else None
+            packages=XUnitTFPackages.construct(test_case.packages) if test_case.packages is not None else None,
+            test_outputs=XUnitTFTestOutputs.construct(test_case.test_outputs)
+            if test_case.test_outputs is not None else None
         )
 
 
 @attrs.define(kw_only=True)
 class XUnitTFTestSuite:
     name: str = attrs.field(metadata={'type': 'Attribute'})
-    result: str = attrs.field(metadata={'type': 'Attribute'})
+    result: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
     tests: str = attrs.field(metadata={'type': 'Attribute'})
     logs: Optional[XUnitTFLogs] = None
     properties: Optional[XUnitTFProperties] = None
@@ -212,8 +231,8 @@ class XUnitTFTestSuites:
     class Meta:
         name = 'testsuites'
 
-    overall_result: str = attrs.field(metadata={'type': 'Attribute', 'name': 'overall-result'})
-    properties: XUnitTFProperties
+    overall_result: Optional[str] = attrs.field(metadata={'type': 'Attribute', 'name': 'overall-result'})
+    properties: Optional[XUnitTFProperties]
     testsuite: List[XUnitTFTestSuite]
 
     @classmethod
@@ -225,8 +244,8 @@ class XUnitTFTestSuites:
                 'baseosci.artifact-namespace': results.primary_task.ARTIFACT_NAMESPACE
             })
 
-        assert results.test_schedule_result is not None
-        properties.update({'baseosci.overall-result': results.test_schedule_result})
+        if results.test_schedule_result:
+            properties.update({'baseosci.overall-result': results.test_schedule_result})
 
         if results.testing_thread:
             properties.update({'baseosci.id.testing-thread': results.testing_thread})
@@ -240,11 +259,9 @@ class XUnitTFTestSuites:
                 'polarion-project-id': results.polarion_project_id
             })
 
-        assert results.overall_result
-
         return XUnitTFTestSuites(
             overall_result=results.overall_result,
-            properties=XUnitTFProperties.construct(properties),
+            properties=XUnitTFProperties.construct(properties) if properties else None,
             testsuite=[XUnitTFTestSuite.construct(test_suite) for test_suite in results.test_suites]
         )
 

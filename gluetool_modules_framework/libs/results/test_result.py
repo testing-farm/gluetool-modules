@@ -6,6 +6,7 @@ import six
 
 import gluetool
 from gluetool.utils import new_xml_element
+from gluetool_modules_framework.libs.results import TestSuite
 
 # Type annotations
 # pylint: disable=unused-import,wrong-import-order
@@ -139,6 +140,33 @@ class TestResult(object):
         self._serialize_to_xunit_property_dict(test_suite_properties, self.urls.copy(), {
             'jenkins_build': 'baseosci.url.jenkins-build'
         })
+
+        return test_suite
+
+    def convert_to_results(self) -> TestSuite:
+        """
+        Converts self to the new results format specified in gluetool_modules_framework.libs.results.
+        """
+        test_suite = TestSuite(name=self.test_type)
+
+        primary_task = self.glue.shared('primary_task')
+        if primary_task:
+            test_suite.properties.update({
+                'baseosci.artifact-id': str(primary_task.id),
+                'baseosci.artifact-namespace': primary_task.ARTIFACT_NAMESPACE
+            })
+
+        test_suite.properties.update({
+            'baseosci.test-type': self.test_type,
+            'baseosci.result-class': self.result_class,
+            'baseosci.overall-result': self.overall_result
+        })
+
+        if 'testing-thread-id' in self.ids:
+            test_suite.properties.update({'baseosci.id.testing-thread': self.ids['testing-thread-id']})
+
+        if 'jenkins_build' in self.urls:
+            test_suite.properties.update({'baseosci.url.jenkins-build': self.urls['jenkins_build']})
 
         return test_suite
 

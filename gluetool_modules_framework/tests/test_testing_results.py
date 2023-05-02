@@ -61,18 +61,6 @@ def test_parse_formats(module, input_data, expected):
     assert module._parse_formats('foo') == expected
 
 
-def test_serialize_json(tmpdir, module, result):
-    output_file = tmpdir.join('out.json')
-
-    module._results.append(result)
-
-    with open(str(output_file), 'w') as f:
-        module.writers['json'](f, module._serialize_to_json(module._results))
-        f.flush()
-
-    assert result.serialize('json') == gluetool.utils.load_json(str(output_file))[0]
-
-
 def test_unknown_serializer(module):
     module._config['results-file'] = ['foo:bar']
 
@@ -106,23 +94,20 @@ def test_store(log, module, result, tmpdir):
     Store test result into a file.
     """
 
-    json_file = tmpdir.join('out.json')
-    xunit_file = tmpdir.join('out.xml')
+    xunit_testing_farm_file = tmpdir.join('xunit_testing_farm.xml')
+    xunit_file = tmpdir.join('xunit.xml')
 
     module._results.append(result)
 
-    module._config['results-file'] = ['json:{}'.format(str(json_file)), 'xunit:{}'.format(str(xunit_file))]
+    module._config['results-file'] = ['xunit_testing_farm:{}'.format(str(xunit_testing_farm_file)),
+                                      'xunit:{}'.format(str(xunit_file))]
 
     module.destroy()
 
-    assert log.match(message="Results in format 'json' saved into '{}'".format(str(json_file)))
+    assert log.match(
+        message="Results in format 'xunit_testing_farm' saved into '{}'".format(str(xunit_testing_farm_file))
+    )
     assert log.match(message="Results in format 'xunit' saved into '{}'".format(str(xunit_file)))
-
-    written_results = gluetool.utils.load_json(str(json_file))
-
-    assert isinstance(written_results, list)
-    assert len(written_results) == 1
-    assert written_results[0] == result.serialize('json')
 
 
 def test_init_file_not_set(module):

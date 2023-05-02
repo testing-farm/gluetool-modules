@@ -50,12 +50,13 @@ class TestCase:
     parameters: List[str] = attrs.field(factory=list)
     phases: List[Phase] = attrs.field(factory=list)
     packages: Optional[List[str]] = None
+    test_outputs: Optional[List[str]] = None
 
 
 @attrs.define
 class TestSuite:
     name: str
-    result: str
+    result: Optional[str] = None
     logs: List[Log] = attrs.field(factory=list)
     properties: Dict[str, str] = attrs.field(factory=dict)
     test_cases: List[TestCase] = attrs.field(factory=list)
@@ -86,7 +87,7 @@ class Results:
     into various resulting structures.
     """
 
-    overall_result: str
+    overall_result: Optional[str] = None
     test_suites: List[TestSuite] = attrs.field(factory=list)
 
     primary_task: Optional[Union[KojiTask, CoprTask]] = None

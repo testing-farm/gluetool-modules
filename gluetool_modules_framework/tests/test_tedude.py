@@ -10,8 +10,7 @@ import gluetool_modules_framework.testing.tedude  # importing of a module that w
 import gluetool_modules_framework.testing.testing_results
 import gluetool_modules_framework.helpers.rules_engine
 from . import create_module, check_loadable, patch_shared, testing_asset  # helper function to easy creating of a module
-from gluetool.utils import new_xml_element
-
+from gluetool_modules_framework.libs.results import TestSuite
 
 BZ_QUERY_RESULTS = {
     111111: {
@@ -194,11 +193,8 @@ def test_execute(module_with_results, monkeypatch, rules_engine, log):
 
 def test_tedude_xunit_serialize(module_with_results, result):
     result.payload = GATING_TEST_STATUSES[1]
-    testsuite = new_xml_element('testsuite')
+    testsuite = TestSuite('some-suite')
     testsuite = module_with_results.tedude_xunit_serialize(testsuite, result)
-    assert testsuite.find('testcase', attrs={'name': 'BZ#111111'})
-    assert testsuite.find('testcase', attrs={'name': 'BZ#222222'})
-    assert testsuite.find('testcase', attrs={'name': 'BZ#333333'})
-    assert testsuite.find('testcase', attrs={'name': 'BZ#444444'})
-    assert testsuite.find('testcase', attrs={'name': 'BZ#555555'})
-    assert testsuite.find('testcase', attrs={'name': 'BZ#666666'})
+    for test_case, expected_name in zip(testsuite.test_cases, ['BZ#111111', 'BZ#222222', 'BZ#333333', 'BZ#444444',
+                                                               'BZ#555555', 'BZ#666666']):
+        assert test_case.name == expected_name

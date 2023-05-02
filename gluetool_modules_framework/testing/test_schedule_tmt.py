@@ -242,7 +242,7 @@ class TMTPlan:
     name: str = attrs.field(validator=attrs.validators.instance_of(str))
     provision: Optional[TMTPlanProvision] = attrs.field(
         default=None,
-        validator=attrs.validators.instance_of(TMTPlanProvision)
+        validator=attrs.validators.optional(attrs.validators.instance_of(TMTPlanProvision))
     )
     prepare: List[TMTPlanPrepare] = attrs.field(
         factory=list,

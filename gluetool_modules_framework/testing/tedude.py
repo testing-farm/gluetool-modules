@@ -3,11 +3,12 @@
 
 import gluetool
 from gluetool.log import log_dict
-from gluetool.utils import cached_property, new_xml_element
+from gluetool.utils import cached_property
 from gluetool_modules_framework.libs.results.test_result import TestResult, publish_result
+from gluetool_modules_framework.libs.results import TestSuite, TestCase
 
 # Type annotations
-from typing import Any, Dict, List, Optional, Tuple  # noqa
+from typing import Any, Dict, List, Optional, Tuple, cast  # noqa
 
 
 class TeDuDeTestResult(TestResult):
@@ -18,9 +19,9 @@ class TeDuDeTestResult(TestResult):
     def __init__(self, glue: gluetool.glue.Glue, overall_result: str, **kwargs: Any) -> None:
         super(TeDuDeTestResult, self).__init__(glue, 'tedude', overall_result, **kwargs)
 
-    def _serialize_to_xunit(self) -> Any:
-        test_suite = super(TeDuDeTestResult, self)._serialize_to_xunit()
-        test_suite = self.glue.shared('tedude_xunit_serialize', test_suite, self)
+    def convert_to_results(self) -> TestSuite:
+        test_suite = super(TeDuDeTestResult, self).convert_to_results()
+        test_suite = cast(TestSuite, self.glue.shared('tedude_xunit_serialize', test_suite, self))
         return test_suite
 
 
@@ -172,7 +173,7 @@ class TeDuDe(gluetool.Module):
         overall_result, statuses = self._tedude_test_statuses
         publish_result(self, TeDuDeTestResult, overall_result, payload=statuses)
 
-    def tedude_xunit_serialize(self: Any, test_suite: Any, result: Any) -> Any:
+    def tedude_xunit_serialize(self, test_suite: TestSuite, result: Any) -> TestSuite:
 
         if not result.payload:
             return test_suite
@@ -181,29 +182,17 @@ class TeDuDe(gluetool.Module):
 
             outcome = data["result"]
 
-            test_case = new_xml_element(
-                'testcase',
-                _parent=test_suite,
-                name=key
-            )
+            test_case = TestCase(name=key)
 
-            # properties = new_xml_element('properties', _parent=test_case)
-            # @new_xml_element('property', _parent=properties, name='outcome', value=data["result"])
             if outcome == 'failed':
-                new_xml_element('failure', _parent=test_case, message=data["message"])
+                test_case.failure = True
 
             elif outcome != 'passed':
                 self.warn('Unknown outcome {} in test {}'.format(outcome, key), sentry=True)
 
-            test_outputs = new_xml_element(
-                'test-outputs',
-                _parent=test_case
-            )
+            if data["message"] is not None:
+                test_case.test_outputs = [data["message"]]
 
-            new_xml_element(
-                'test-output',
-                _parent=test_outputs,
-                message=data["message"]
-            )
+            test_suite.test_cases.append(test_case)
 
         return test_suite

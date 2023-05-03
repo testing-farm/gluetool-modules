@@ -17,6 +17,9 @@ from typing import cast, Any, List, Optional  # noqa
 # accepted artifact types from testing farm request
 TESTING_FARM_ARTIFACT_TYPES = ['fedora-copr-build']
 
+# Default path to downloading the packages
+DEFAULT_DOWNLOAD_PATH = "/var/share/test-artifacts"
+
 
 class InstallCoprBuild(gluetool.Module):
     """
@@ -31,16 +34,25 @@ class InstallCoprBuild(gluetool.Module):
             'help': 'Name of directory where outputs of installation commands will be stored (default: %(default)s).',
             'type': str,
             'default': 'artifact-installation'
+        },
+        'download-path': {
+            'help': 'Path of the directory where all the packages will be downloaded to (default: %(default)s).',
+            'type': str,
+            'default': DEFAULT_DOWNLOAD_PATH
         }
     }
 
     shared_functions = ['setup_guest']
 
-    def setup_guest(self,
-                    guest: NetworkedGuest,
-                    stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
-                    log_dirpath: Optional[str] = None,
-                    **kwargs: Any) -> SetupGuestReturnType:
+    def setup_guest(
+        self,
+        guest: NetworkedGuest,
+        stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
+        log_dirpath: Optional[str] = None,
+        **kwargs: Any
+    ) -> SetupGuestReturnType:
+
+        download_path = cast(str, self.option('download-path'))
 
         self.require_shared('tasks')
 
@@ -88,6 +100,14 @@ class InstallCoprBuild(gluetool.Module):
         # though the object is used to process all artifacts. This shouldn't affect the functionality, the single passed
         # artifact is used only for logging purposes.
         sut_installation = SUTInstallation(self, installation_log_dirpath, builds[0], logger=guest.logger)
+
+        # create artifacts directory
+        sut_installation.add_step(
+            'Create artifacts directory',
+            'mkdir -pv {}'.format(download_path),
+            ignore_exception=True
+        )
+
         rpm_urls: List[str] = []
 
         try:
@@ -103,6 +123,14 @@ class InstallCoprBuild(gluetool.Module):
                     build.project.replace('/', '_'), number
                 ),
                 items=build.repo_url
+            )
+
+            # download all artifacts
+            sut_installation.add_step(
+                'Download rpms from copr',
+                (
+                    'curl -sL --retry 5 --output-dir {} --remote-name-all -w "Downloaded: %{{url_effective}}\\n" {}'
+                ).format(download_path, ' '.join(build.rpm_urls + build.srpm_urls))
             )
 
             # reinstall command has to be called for each rpm separately, hence list of rpms is used

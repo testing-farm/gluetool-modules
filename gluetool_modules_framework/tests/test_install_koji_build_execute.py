@@ -143,10 +143,12 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
     # and don't overwrite each other
     copr_module = create_module(InstallCoprBuild)[1]
     copr_module._config['log-dir-name'] = 'log-dir-example'
+    copr_module._config['download-path'] = 'some-download-path'
 
     primary_task_mock = MagicMock()
     primary_task_mock.repo_url = 'dummy_repo_url'
     primary_task_mock.rpm_urls = ['dummy_rpm_url1', 'dummy_rpm_url2']
+    primary_task_mock.srpm_urls = ['dummy_srpm_url1', 'dummy_srpm_url2']
     primary_task_mock.rpm_names = ['dummy_rpm_names1', 'dummy_rpm_names2']
     primary_task_mock.project = 'dummy_project'
 
@@ -179,7 +181,9 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
     ]
 
     copr_commands = [
+        'mkdir -pv some-download-path',
         'curl -v dummy_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-dummy_project-1.repo',
+        'curl -sL --retry 5 --output-dir some-download-path --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy_rpm_url1 dummy_rpm_url2 dummy_srpm_url1 dummy_srpm_url2',
         'dnf --allowerasing -y reinstall dummy_rpm_url1 || true',
         'dnf --allowerasing -y reinstall dummy_rpm_url2 || true',
         'dnf --allowerasing -y install dummy_rpm_url1 dummy_rpm_url2',

@@ -658,9 +658,11 @@ def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir):
     # install-copr-build module
     module_copr = create_module(InstallCoprBuild)[1]
     module_copr._config['log-dir-name'] = 'artifact-installation'
+    module_copr._config['download-path'] = 'some-download-path'
     primary_task_mock = MagicMock()
     primary_task_mock.repo_url = 'http://copr/project.repo'
     primary_task_mock.rpm_urls = ['http://copr/project/one.rpm', 'http://copr/project/two.rpm']
+    primary_task_mock.srpm_urls = ['http://copr/project/one.src.rpm', 'http://copr/project/two.src.rpm']
     primary_task_mock.rpm_names = ['one', 'two']
     primary_task_mock.project = 'owner/project'
 
@@ -706,7 +708,9 @@ def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir):
     # ... and is shown in sut_install_commands.sh
     with open(os.path.join(tmpdir, 'artifact-installation-guest0', INSTALL_COMMANDS_FILE)) as f:
         assert f.read() == '''\
+mkdir -pv some-download-path
 curl -v http://copr/project.repo --retry 5 --output /etc/yum.repos.d/copr_build-owner_project-1.repo
+curl -sL --retry 5 --output-dir some-download-path --remote-name-all -w "Downloaded: %{url_effective}\\n" http://copr/project/one.rpm http://copr/project/two.rpm http://copr/project/one.src.rpm http://copr/project/two.src.rpm
 dnf --allowerasing -y reinstall http://copr/project/one.rpm || true
 dnf --allowerasing -y reinstall http://copr/project/two.rpm || true
 dnf --allowerasing -y install http://copr/project/one.rpm http://copr/project/two.rpm

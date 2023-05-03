@@ -5,6 +5,7 @@ import os
 import shutil
 import re
 from mock import MagicMock
+from typing import List
 
 import pytest
 import logging
@@ -20,7 +21,7 @@ from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
 from gluetool_modules_framework.libs.sut_installation import INSTALL_COMMANDS_FILE
 from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 from gluetool_modules_framework.libs.results import TestSuite
-from gluetool_modules_framework.testing.test_schedule_tmt import gather_plan_results, TestScheduleEntry
+from gluetool_modules_framework.testing.test_schedule_tmt import gather_plan_results, TestScheduleEntry, TMTPlan, TMTPlanProvision  # noqa
 
 from . import create_module, check_loadable, patch_shared
 
@@ -422,8 +423,7 @@ def test_tmt_output_distgit(module, guest, monkeypatch, additional_options, addi
                         '',       # git clone
                         'myfix',  # git show-ref
                         # '',     # git checkout  # TODO: somehow one of the `git` calls is skipped
-                        'plan1',  # tmt plan ls
-                        '[{"name": "plan_name", "prepare": [{"how": "foo"}, {"how": "install", "exclude": ["exclude1", "exclude2"]}]}]')     # tmt plan export  # noqa
+                        r'[{"name": "plan_name", "prepare": [{"how": "foo"}, {"how": "install", "exclude": ["exclude1", "exclude2"]}], "provision": {}}]')     # tmt plan export  # noqa
         schedule_entry = module.create_test_schedule([guest.environment])[0]
 
     schedule_entry.guest = guest
@@ -650,8 +650,10 @@ def test_plans_from_git_filter_from_request(module, monkeypatch):
     ],
     ids=['no_excludes', 'excludes', 'prepare_list', 'multiple_steps']
 )
-def test_excludes_from_tmt(module, plan, expected):
-    assert module.excludes_from_tmt(plan) == expected
+def test_excludes(module, plan, expected):
+    plan.update({'provision': {'hardware': None}})
+    plan = gluetool.utils.create_cattrs_converter(prefer_attrib_converters=True).structure(plan, TMTPlan)
+    assert plan.excludes() == expected
 
 
 def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir):
@@ -681,8 +683,7 @@ def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir):
                          'myfix',  # git show-ref
                          '',       # git checkout
                          'plan1',  # tmt plan ls
-                         'pl1',    # tmt plan show
-                         '{}')     # tmt plan export
+                         '[]')     # tmt plan export
         schedule_entry = module.create_test_schedule([guest.environment])[0]
 
     # these are normally done by TestScheduleRunner, but running that is too involved for a unit test
@@ -761,8 +762,12 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir):
                          'myfix',  # git show-ref
                          '',       # git checkout
                          'plan1',  # tmt plan ls
-                         'pl1',    # tmt plan show
-                         '{}')     # tmt plan export
+                         ' - name: plan1\n'  # tmt plan export
+                         '   provision:\n'
+                         '     how: null\n'
+                         '   prepare:\n'
+                         '     how: somehow'
+                         )
         schedule_entry = module.create_test_schedule([guest.environment])[0]
 
     # these are normally done by TestScheduleRunner, but running that is too involved for a unit test
@@ -806,22 +811,35 @@ dummytmt --root some-tmt-root run --last login < guest-setup-0.sh
 dummytmt --root some-tmt-root run --last --since prepare'''
 
 
-@pytest.mark.parametrize('tf_request, mock_output, context_files, expected_command', [
-    (None, MagicMock(stdout='- name: some-plan'), [],
-     ['dummytmt', 'plan', 'export', '^some\\-plan$']),
-    (MagicMock(tmt=MagicMock(path='some-tmt-root')), MagicMock(stdout='- name: some-plan'), [],
-     ['dummytmt', '--root', 'some-tmt-root', 'plan', 'export', '^some\\-plan$']),
-    (None, MagicMock(stdout='- name: some-plan'), ['file1', 'file 2'],
-     ['dummytmt', '--context=@file1', '--context=@file 2', 'plan', 'export', '^some\\-plan$']),
+TMT_PLANS = '''
+- name: some-plan
+  provision:
+    hardware: null
+  prepare: []
+'''
+
+
+@pytest.mark.parametrize('tf_request, mock_output, context_files, expected_command, expected_plan', [
+    (None, MagicMock(stdout=TMT_PLANS), [],
+     ['dummytmt', 'plan', 'export', '^some\\-plan$'],
+     TMTPlan(name='some-plan', provision=TMTPlanProvision(), prepare=[])),
+    (MagicMock(tmt=MagicMock(path='some-tmt-root')), MagicMock(stdout=TMT_PLANS), [],
+     ['dummytmt', '--root', 'some-tmt-root', 'plan', 'export', '^some\\-plan$'],
+     TMTPlan(name='some-plan', provision=TMTPlanProvision(), prepare=[])),
+    (None, MagicMock(stdout=TMT_PLANS), ['file1', 'file 2'],
+     ['dummytmt', '--context=@file1', '--context=@file 2', 'plan', 'export', '^some\\-plan$'],
+     TMTPlan(name='some-plan', provision=TMTPlanProvision(), prepare=[])),
+    (None, MagicMock(stdout='[]'), [],
+     ['dummytmt', 'plan', 'export', '^some\\-plan$'],
+     None),
 ])
-def test_export(monkeypatch, module, tf_request, mock_output, context_files, expected_command):
+def test_export(monkeypatch, module, tf_request, mock_output, context_files, expected_command, expected_plan):
     patch_shared(monkeypatch, module, {'testing_farm_request': tf_request})
     mock_command_run = MagicMock(return_value=mock_output)
     mock_command = MagicMock(return_value=MagicMock(run=mock_command_run))
     monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt, 'Command', mock_command)
 
-    module.export_plan('some-repo', 'some-plan', context_files)
-    print(module._root_option)
-    print(module.shared('testing_farm_request'))
+    plan = module.export_plan('some-repo', 'some-plan', context_files)
+    assert plan == expected_plan
 
     mock_command.assert_called_once_with(expected_command)

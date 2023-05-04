@@ -3,7 +3,8 @@
         "fmf": {
             "url": "testurl",
             "ref": "testref",
-            "name": "testname"
+            "name": "testname",
+            "some-non-existent-property": "something"
         },
         "sti": null
     },

@@ -3,7 +3,7 @@
 
 from functools import partial
 from posixpath import join as urljoin
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 
 import gluetool
 from gluetool.log import LoggerMixin
@@ -222,8 +222,12 @@ class TestingFarmRequest(LoggerMixin, object):
 
         # In the TF API v0.1, one of the types is called `test.fmf`, the name is expected to change to `test.tmt`
         # in v0.2, therefore this class and variable are named as `TMT`.
-        self.tmt = TestingFarmRequestTMT(**request_test) if type == 'fmf' else None
-        self.sti = TestingFarmRequestSTI(**request_test) if type == 'sti' else None
+        self.tmt = TestingFarmRequestTMT(**{field.name: request_test[field.name]
+                                            for field in fields(TestingFarmRequestTMT)
+                                            if field.name in request_test}) if type == 'fmf' else None
+        self.sti = TestingFarmRequestSTI(**{field.name: request_test[field.name]
+                                            for field in fields(TestingFarmRequestSTI)
+                                            if field.name in request_test}) if type == 'sti' else None
 
         # Create a shortcut for the common TMT/STI properties
         test = (self.tmt or self.sti)

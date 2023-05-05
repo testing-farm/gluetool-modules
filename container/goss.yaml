@@ -1,5 +1,5 @@
 ---
-packages:
+package:
   ansible-core:
     installed: true
 
@@ -11,9 +11,6 @@ packages:
 
   python2.7:
     installed: false
-
-  python3.9:
-    installed: true
 
   # TFT-1734
   # The rpm-build command is required for standard-test-source role
@@ -99,6 +96,11 @@ command:
   koji version:
     exit-status: 0
     timeout: 100000
+
+  python3.9 --version:
+    exit-status: 0
+    stdout:
+      - Python 3.9
 
   tmt --version:
     exit-status: 0

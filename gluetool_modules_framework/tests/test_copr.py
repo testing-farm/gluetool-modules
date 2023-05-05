@@ -58,6 +58,7 @@ BUILDER_LIVE_LOG = '''
 ...
 Checking for unpackaged file(s): /usr/lib/rpm/check-files /builddir/build/BUILDROOT/pycho-0.84-1.fc28.x86_64
 Wrote: /builddir/build/RPMS/pycho-0.84-1.fc28.x86_64.rpm
+Wrote: /builddir/build/SRPMS/pycho-0.84-1.fc28.x86_64.src.rpm
 Executing(%clean): /bin/sh -e /var/tmp/rpm-tmp.esjg1H
 + umask 022
 + cd /builddir/build/BUILD
@@ -205,6 +206,8 @@ def test_execute(module, monkeypatch):
     assert primary_task.rpm_names == ['pycho-0.84-1.fc28.x86_64']
     assert primary_task.rpm_urls == [
         'https://copr-be.cloud.fedoraproject.org/results/mkluson/pycho/fedora-28-x86_64/00802020-pycho/pycho-0.84-1.fc28.x86_64.rpm']
+    assert primary_task.srpm_urls == [
+        'https://copr-be.cloud.fedoraproject.org/results/mkluson/pycho/fedora-28-x86_64/00802020-pycho/pycho-0.84-1.fc28.x86_64.src.rpm']
 
     assert primary_task.task_arches == TaskArches(['x86_64'])
     assert primary_task.full_name == "package 'pycho' build '802020' target 'fedora-28-x86_64'"

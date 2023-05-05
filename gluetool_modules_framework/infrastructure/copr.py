@@ -122,7 +122,7 @@ class CoprApi(object):
         return self._find_in_log(r'Wrote: /builddir/build/RPMS/(.*)\.rpm', build_id, chroot_name)
 
     def get_srpm_names(self, build_id: int, chroot_name: str) -> List[str]:
-        return self._find_in_log(r'Wrote: /builddir/build/SRPMS/(.*)\.src\.rpm', build_id, chroot_name)
+        return self._find_in_log(r'Wrote: /builddir/build/SRPMS/(.*\.src)\.rpm', build_id, chroot_name)
 
     def add_result_url(self, build_id: int, chroot_name: str, file_names: List[str]) -> List[str]:
         result_url = self._result_url(build_id, chroot_name)

@@ -18,7 +18,7 @@ Requirements
 
 To begin digging into sources, there are few requirements to mention:
 
-- ``poetry``, installed as described on the `installation page <https://python-poetry.org/docs/#installation>`__ - preferred version is **1.1.15**.
+- ``poetry``, installed as described on the `installation page <https://python-poetry.org/docs/#installation>`__ - preferred version is **1.4.2**.
 
 - ``ansible-playbook`` installed on your localhost
 
@@ -55,7 +55,7 @@ Run all commands listed in the TMT test plan's ``prepare`` section. Test plan is
 
 .. code-block:: bash
 
-    curl -sSL https://install.python-poetry.org | python3 - --version 1.1.15
+    curl -sSL https://install.python-poetry.org | python3 - --version 1.4.2
 
 .. note::
     You might need to open a new shell to have ``poetry`` command available.

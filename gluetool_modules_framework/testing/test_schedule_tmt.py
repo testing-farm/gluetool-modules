@@ -310,9 +310,8 @@ class TestScheduleTMT(Module):
             'plan-filter': {
                 'help': """
                         Use the given filter passed to 'tmt plan ls --filter'. See pydoc fmf.filter for details.
-                        (default: %(default)s).
+                        (default: 'enabled:true').
                         """,
-                'default': 'enabled:true',
                 'metavar': 'FILTER'
             },
             'context-template-file': {

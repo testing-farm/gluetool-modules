@@ -28,6 +28,8 @@ COPY container/requirements.yml /etc/ansible/requirements.yml
 # install all required dependencies
 RUN    ln -s /CONFIG /etc/citool.d \
     && rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
+    # provide curl > 7.73.0, until we migrate to a newer base image
+    && dnf copr enable -y @osci/curl \
     && dnf -y update \
     && dnf -y install ansible-core autoconf automake crun gcc git krb5-devel libcurl-devel \
                       libpq-devel libtool libxml2-devel make openssl-devel popt-devel \

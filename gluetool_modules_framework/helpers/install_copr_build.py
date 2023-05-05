@@ -129,7 +129,8 @@ class InstallCoprBuild(gluetool.Module):
             sut_installation.add_step(
                 'Download rpms from copr',
                 (
-                    'curl -sL --retry 5 --output-dir {} --remote-name-all -w "Downloaded: %{{url_effective}}\\n" {}'
+                    'cd {} && '
+                    'curl -sL --retry 5 --remote-name-all -w "Downloaded: %{{url_effective}}\\n" {}'
                 ).format(download_path, ' '.join(build.rpm_urls + build.srpm_urls))
             )
 

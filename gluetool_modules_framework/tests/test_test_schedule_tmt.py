@@ -710,7 +710,7 @@ def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir):
         assert f.read() == '''\
 mkdir -pv some-download-path
 curl -v http://copr/project.repo --retry 5 --output /etc/yum.repos.d/copr_build-owner_project-1.repo
-curl -sL --retry 5 --output-dir some-download-path --remote-name-all -w "Downloaded: %{url_effective}\\n" http://copr/project/one.rpm http://copr/project/two.rpm http://copr/project/one.src.rpm http://copr/project/two.src.rpm
+cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" http://copr/project/one.rpm http://copr/project/two.rpm http://copr/project/one.src.rpm http://copr/project/two.src.rpm
 dnf --allowerasing -y reinstall http://copr/project/one.rpm || true
 dnf --allowerasing -y reinstall http://copr/project/two.rpm || true
 dnf --allowerasing -y install http://copr/project/one.rpm http://copr/project/two.rpm

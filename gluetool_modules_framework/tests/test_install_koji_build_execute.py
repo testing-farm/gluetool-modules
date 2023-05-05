@@ -183,7 +183,7 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
     copr_commands = [
         'mkdir -pv some-download-path',
         'curl -v dummy_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-dummy_project-1.repo',
-        'curl -sL --retry 5 --output-dir some-download-path --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy_rpm_url1 dummy_rpm_url2 dummy_srpm_url1 dummy_srpm_url2',
+        'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy_rpm_url1 dummy_rpm_url2 dummy_srpm_url1 dummy_srpm_url2',  # noqa
         'dnf --allowerasing -y reinstall dummy_rpm_url1 || true',
         'dnf --allowerasing -y reinstall dummy_rpm_url2 || true',
         'dnf --allowerasing -y install dummy_rpm_url1 dummy_rpm_url2',

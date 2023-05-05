@@ -18,7 +18,6 @@ from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
 from . import create_module, patch_shared, check_loadable
 
 LOG_DIR_NAME = 'artifact-installation'
-DOWNLOAD_PATH = 'some-download-path'
 
 
 def mock_guest(execute_mock, artifacts=None):
@@ -60,7 +59,7 @@ def fixture_module():
     module = create_module(InstallCoprBuild)[1]
 
     module._config['log-dir-name'] = LOG_DIR_NAME
-    module._config['download-path'] = DOWNLOAD_PATH
+    module._config['download-path'] = 'some-download-path'
 
     return module
 
@@ -125,7 +124,7 @@ def test_loadable(module):
         [  # Expected install commands
             'mkdir -pv some-download-path',
             'curl -v dummy_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project-1.repo',
-            'curl -sL --retry 5 --output-dir {} --remote-name-all -w "Downloaded: %{{url_effective}}\\n" dummy_rpm_url1 dummy_rpm_url2 dummy_srpm_url1 dummy_srpm_url2'.format(DOWNLOAD_PATH),  # noqa
+            'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy_rpm_url1 dummy_rpm_url2 dummy_srpm_url1 dummy_srpm_url2',  # noqa
             'dnf --allowerasing -y reinstall dummy_rpm_url1 || true',
             'dnf --allowerasing -y reinstall dummy_rpm_url2 || true',
             'dnf --allowerasing -y install dummy_rpm_url1 dummy_rpm_url2',
@@ -146,15 +145,15 @@ def test_loadable(module):
         [  # Expected install commands
             'mkdir -pv some-download-path',
             'curl -v dummy_repo_url_artifact1 --retry 5 --output /etc/yum.repos.d/copr_build-copr_project_artifact1-1.repo',
-            'curl -sL --retry 5 --output-dir some-download-path --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy_rpm_url1_artifact1 dummy_rpm_url2_artifact1 dummy_srpm_url1_artifact1 dummy_srpm_url2_artifact1',
+            'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy_rpm_url1_artifact1 dummy_rpm_url2_artifact1 dummy_srpm_url1_artifact1 dummy_srpm_url2_artifact1',
             'dnf --allowerasing -y reinstall dummy_rpm_url1_artifact1 || true',
             'dnf --allowerasing -y reinstall dummy_rpm_url2_artifact1 || true',
             'curl -v dummy_repo_url_artifact2 --retry 5 --output /etc/yum.repos.d/copr_build-copr_project_artifact2-2.repo',
-            'curl -sL --retry 5 --output-dir some-download-path --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy_rpm_url1_artifact2 dummy_rpm_url2_artifact2 dummy_srpm_url1_artifact2 dummy_srpm_url2_artifact2',
+            'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy_rpm_url1_artifact2 dummy_rpm_url2_artifact2 dummy_srpm_url1_artifact2 dummy_srpm_url2_artifact2',
             'dnf --allowerasing -y reinstall dummy_rpm_url1_artifact2 || true',
             'dnf --allowerasing -y reinstall dummy_rpm_url2_artifact2 || true',
             'curl -v dummy_repo_url_artifact3 --retry 5 --output /etc/yum.repos.d/copr_build-copr_project_artifact3-3.repo',
-            'curl -sL --retry 5 --output-dir some-download-path --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy_rpm_url1_artifact3 dummy_rpm_url2_artifact3 dummy_srpm_url1_artifact3 dummy_srpm_url2_artifact3',
+            'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy_rpm_url1_artifact3 dummy_rpm_url2_artifact3 dummy_srpm_url1_artifact3 dummy_srpm_url2_artifact3',
             'dnf --allowerasing -y reinstall dummy_rpm_url1_artifact3 || true',
             'dnf --allowerasing -y reinstall dummy_rpm_url2_artifact3 || true',
             'dnf --allowerasing -y install dummy_rpm_url1_artifact1 dummy_rpm_url2_artifact1 dummy_rpm_url1_artifact2 dummy_rpm_url2_artifact2 dummy_rpm_url1_artifact3 dummy_rpm_url2_artifact3',
@@ -218,7 +217,7 @@ def test_no_dnf(module_shared_patched, tmpdir):
         call('command -v dnf'),
         call('mkdir -pv some-download-path'),
         call('curl -v dummy_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project-1.repo'),
-        call('curl -sL --retry 5 --output-dir {} --remote-name-all -w "Downloaded: %{{url_effective}}\\n" dummy_rpm_url1 dummy_rpm_url2 dummy_srpm_url1 dummy_srpm_url2'.format(DOWNLOAD_PATH)),
+        call('cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy_rpm_url1 dummy_rpm_url2 dummy_srpm_url1 dummy_srpm_url2'),  # noqa
         call('yum -y reinstall dummy_rpm_url1'),
         call('yum -y reinstall dummy_rpm_url2'),
         call('yum -y downgrade dummy_rpm_url1 dummy_rpm_url2'),

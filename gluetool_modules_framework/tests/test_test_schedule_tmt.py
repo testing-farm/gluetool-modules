@@ -804,3 +804,24 @@ curl -o guest-setup-0.sh -L {tmpdir}/artifact-installation-guest0/{INSTALL_COMMA
 dummytmt --root some-tmt-root run --until provision --verbose provision --how virtual --image guest-compose plan --name ^plan1$
 dummytmt --root some-tmt-root run --last login < guest-setup-0.sh
 dummytmt --root some-tmt-root run --last --since prepare'''
+
+
+@pytest.mark.parametrize('tf_request, mock_output, context_files, expected_command', [
+    (None, MagicMock(stdout='- name: some-plan'), [],
+     ['dummytmt', 'plan', 'export', '^some\\-plan$']),
+    (MagicMock(tmt=MagicMock(path='some-tmt-root')), MagicMock(stdout='- name: some-plan'), [],
+     ['dummytmt', '--root', 'some-tmt-root', 'plan', 'export', '^some\\-plan$']),
+    (None, MagicMock(stdout='- name: some-plan'), ['file1', 'file 2'],
+     ['dummytmt', '--context=@file1', '--context=@file 2', 'plan', 'export', '^some\\-plan$']),
+])
+def test_export(monkeypatch, module, tf_request, mock_output, context_files, expected_command):
+    patch_shared(monkeypatch, module, {'testing_farm_request': tf_request})
+    mock_command_run = MagicMock(return_value=mock_output)
+    mock_command = MagicMock(return_value=MagicMock(run=mock_command_run))
+    monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt, 'Command', mock_command)
+
+    module.export_plan('some-repo', 'some-plan', context_files)
+    print(module._root_option)
+    print(module.shared('testing_farm_request'))
+
+    mock_command.assert_called_once_with(expected_command)

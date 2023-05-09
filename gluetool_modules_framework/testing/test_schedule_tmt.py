@@ -433,6 +433,16 @@ class TestScheduleTMT(Module):
 
         return options
 
+    @gluetool.utils.cached_property
+    def _root_option(self) -> List[str]:
+        """
+        Returns metadata ``--root PATH`` option for use in tmt commands. The path is fetched from Testing Farm request.
+        """
+        tf_request = cast(Optional[TestingFarmRequest], self.shared('testing_farm_request'))
+        if tf_request and tf_request.tmt and tf_request.tmt.path:
+            return ['--root', tf_request.tmt.path]
+        return []
+
     def _plans_from_git(self,
                         repodir: str,
                         context_files: List[str],
@@ -455,35 +465,27 @@ class TestScheduleTMT(Module):
                 for filepath in context_files
             ])
 
-        tf_request = cast(TestingFarmRequest, self.shared('testing_farm_request'))
+        tf_request = cast(Optional[TestingFarmRequest], self.shared('testing_farm_request'))
 
-        # add metadata root
-        if tf_request and tf_request.tmt and tf_request.tmt.path:
-            command.extend(['--root', tf_request.tmt.path])
+        command.extend(self._root_option)
 
-        # using `# noqa` because flake8 and coala are confused by the walrus operator
-        # Ignore PEP8Bear
-        if (tmt := testing_environment.tmt) and 'context' in tmt:  # noqa: E203 E231
-            command.extend(self._tmt_context_to_options(tmt['context']))
+        if testing_environment.tmt and 'context' in testing_environment.tmt:
+            command.extend(self._tmt_context_to_options(testing_environment.tmt['context']))
 
         command.extend(['plan', 'ls'])
 
         if filter:
             command.extend(['--filter', filter])
 
-        # using `# noqa` because flake8 and coala are confused by the walrus operator
-        # Ignore PEP8Bear
-        elif tf_request and tf_request.tmt and tf_request.tmt.plan_filter:  # noqa: E203 E231 E501
+        elif tf_request and tf_request.tmt and tf_request.tmt.plan_filter:
             command.extend(['--filter', tf_request.tmt.plan_filter])
 
         # by default we add enabled:true
         else:
             command.extend(['--filter', 'enabled:true'])
 
-        # using `# noqa` because flake8 and coala are confused by the walrus operator
-        # Ignore PEP8Bear
-        if tf_request and tf_request.tmt and (plan := tf_request.tmt.plan):  # noqa: E203 E231 E501
-            command.extend([plan])
+        if tf_request and tf_request.tmt and tf_request.tmt.plan:
+            command.extend([tf_request.tmt.plan])
 
         try:
             tmt_output = Command(command).run(cwd=repodir)
@@ -554,11 +556,10 @@ class TestScheduleTMT(Module):
         return excludes
 
     def export_plan(self, repodir: str, plan: str, context_files: List[str]) -> Dict[str, Any]:
-
-        command = [self.option('command')] + [
-            '--context=@{}'.format(filepath)
-            for filepath in context_files
-        ] + ['plan', 'export', '^{}$'.format(re.escape(plan))]
+        command: List[str] = [self.option('command')]
+        command.extend(self._root_option)
+        command.extend(['--context=@{}'.format(filepath) for filepath in context_files])
+        command.extend(['plan', 'export', '^{}$'.format(re.escape(plan))])
 
         try:
             tmt_output = Command(command).run(cwd=repodir)
@@ -759,9 +760,7 @@ class TestScheduleTMT(Module):
 
         tf_request = cast(TestingFarmRequest, self.shared('testing_farm_request'))
 
-        # add metadata root from request
-        if tf_request and tf_request.tmt and tf_request.tmt.path:  # noqa: E203 E231 E501
-            command.extend(['--root', tf_request.tmt.path])
+        command.extend(self._root_option)
 
         # create guest setup reproducer command, this needs to include `--root`, `--context` is not needed
         # used later when constructing the reproducer commands

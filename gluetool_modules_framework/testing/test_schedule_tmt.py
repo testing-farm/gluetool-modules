@@ -17,7 +17,7 @@ from gluetool import GlueError, GlueCommandError, Module
 from gluetool.action import Action
 from gluetool.log import Logging, format_blob, log_blob, log_dict
 from gluetool.log import ContextAdapter, LoggingFunctionType  # Ignore PyUnusedCodeBear
-from gluetool.utils import Command, dict_update, from_yaml, load_yaml, new_xml_element
+from gluetool.utils import Command, dict_update, from_yaml, load_yaml, new_xml_element, create_cattrs_converter
 
 from gluetool_modules_framework.infrastructure.static_guest import StaticLocalhostGuest
 from gluetool_modules_framework.libs import create_inspect_callback, sort_children
@@ -143,6 +143,105 @@ class TMTResult:
         member_validator=attrs.validators.instance_of(str),
         iterable_validator=attrs.validators.instance_of(list)
     ))
+
+
+@attrs.define
+class TMTPlanProvision:
+    """
+    Represents the "provision" step of a TMT plan. See :py:class:`TMTPlan` for more information.
+    """
+    hardware: Optional[Dict[str, Any]] = attrs.field(
+        default=None,
+        validator=attrs.validators.optional(attrs.validators.deep_mapping(
+            key_validator=attrs.validators.instance_of(str),
+            value_validator=attrs.validators.instance_of(object),  # Anything should pass
+            mapping_validator=attrs.validators.instance_of(dict)
+        ))
+    )
+    kickstart: Optional[Dict[str, str]] = attrs.field(
+        default=None,
+        validator=attrs.validators.optional(attrs.validators.deep_mapping(
+            key_validator=attrs.validators.instance_of(str),
+            value_validator=attrs.validators.instance_of(str),
+            mapping_validator=attrs.validators.instance_of(dict)
+        ))
+    )
+
+
+@attrs.define
+class TMTPlanPrepare:
+    """
+    Represents the "prepare" step of a TMT plan. See :py:class:`TMTPlan` for more information.
+    """
+    how: str = attrs.field(validator=attrs.validators.instance_of(str))
+    exclude: Optional[List[str]] = attrs.field(
+        default=None,
+        validator=attrs.validators.optional(attrs.validators.deep_iterable(
+            member_validator=attrs.validators.instance_of(str),
+            iterable_validator=attrs.validators.instance_of(list)
+        ))
+    )
+
+    def converter(prepare_step: Any) -> List['TMTPlanPrepare']:
+        """
+        In a TMT plan, the "prepare" step can be defined either as a single "prepare" element or a list of "prepare"
+        elements. This converter does the job of converting both possible shapes into a single one - list of
+        :py:class:`TMTPlanPrepare` instances.
+
+        See the docs for more information about the "prepare" step:
+        * https://tmt.readthedocs.io/en/stable/spec/plans.html#prepare
+        """
+        prepare_steps = prepare_step if isinstance(prepare_step, list) else [prepare_step]
+        return [TMTPlanPrepare(**{field.name: prepare_step.get(field.name)
+                                  for field in attrs.fields(TMTPlanPrepare)})
+                for prepare_step in prepare_steps]
+
+
+@attrs.define
+class TMTPlan:
+    """
+    Represents a single TMT plan. The actual plan may contain more items, this class lists only those that are used in
+    the gluetool module.
+
+    For the complete definition of the TMT plans format, see:
+      * https://tmt.readthedocs.io/en/stable/spec/plans.html
+      * https://github.com/teemtee/tmt/blob/main/tmt/schemas/plan.yaml
+    """
+    name: str = attrs.field(validator=attrs.validators.instance_of(str))
+    provision: TMTPlanProvision = attrs.field(validator=attrs.validators.instance_of(TMTPlanProvision))
+    prepare: List[TMTPlanPrepare] = attrs.field(
+        validator=attrs.validators.deep_iterable(
+            member_validator=attrs.validators.instance_of(TMTPlanPrepare),
+            iterable_validator=attrs.validators.instance_of(list)
+        ),
+        converter=TMTPlanPrepare.converter  # type: ignore[misc]  # mypy wrongly complains about unsupported converter
+    )
+
+    def excludes(self, logger: Optional[ContextAdapter] = None) -> List[str]:
+        """
+        Gathers all ``exclude`` fields from all ``prepare`` steps into a single flattened list.
+        """
+        logger = logger or Logging.get_logger()
+        excludes: List[str] = []
+
+        for step in self.prepare:
+            # we are interesed only on `how: install` step
+            if step.how != 'install':
+                continue
+
+            # no exclude in the step
+            if step.exclude is None:
+                return []
+
+            gluetool.utils.log_dict(
+                logger.info,
+                "Excluded packages from installation for '{}' plan".format(self.name),
+                step.exclude
+            )
+
+            excludes.extend(step.exclude)
+
+        return excludes
 
 
 # https://tmt.readthedocs.io/en/latest/overview.html#exit-codes
@@ -521,41 +620,7 @@ class TestScheduleTMT(Module):
 
         return plans
 
-    def hardware_from_tmt(self, exported_plan: Dict[str, Any]) -> Dict[str, Any]:
-        return cast(Dict[str, Any], exported_plan.get('provision', {}).get('hardware', {}))
-
-    def kickstart_from_tmt(self, exported_plan: Dict[str, Any]) -> Dict[str, str]:
-        return cast(Dict[str, str], exported_plan.get('provision', {}).get('kickstart', {}))
-
-    def excludes_from_tmt(self, exported_plan: Dict[str, Any]) -> List[str]:
-        if 'prepare' not in exported_plan:
-            return []
-
-        prepare = exported_plan['prepare']
-        prepare_steps = prepare if isinstance(exported_plan['prepare'], list) else [prepare]
-
-        excludes: List[str] = []
-
-        for step in prepare_steps:
-            # we are interesed only on `how: install` step
-            if step.get('how') != 'install':
-                continue
-
-            # no exclude in the step
-            if 'exclude' not in step:
-                return []
-
-            gluetool.utils.log_dict(
-                self.info,
-                "Excluded packages from installation for '{}' plan".format(exported_plan['name']),
-                step['exclude']
-            )
-
-            excludes.extend(cast(List[str], step['exclude']))
-
-        return excludes
-
-    def export_plan(self, repodir: str, plan: str, context_files: List[str]) -> Dict[str, Any]:
+    def export_plan(self, repodir: str, plan: str, context_files: List[str]) -> Optional[TMTPlan]:
         command: List[str] = [self.option('command')]
         command.extend(self._root_option)
         command.extend(['--context=@{}'.format(filepath) for filepath in context_files])
@@ -576,7 +641,8 @@ class TestScheduleTMT(Module):
         assert output
 
         try:
-            exported_plans = from_yaml(output)
+            converter = create_cattrs_converter(prefer_attrib_converters=True)
+            exported_plans = converter.structure(from_yaml(output), List[TMTPlan])
             log_dict(self.debug, "loaded exported plan yaml", exported_plans)
 
         except GlueError as error:
@@ -584,9 +650,9 @@ class TestScheduleTMT(Module):
 
         if not exported_plans or len(exported_plans) != 1:
             self.warn('exported plan is not a single item, cowardly skipping extracting hardware')
-            return {}
+            return None
 
-        return cast(Dict[str, Any], exported_plans[0])
+        return exported_plans[0]
 
     def create_test_schedule(
         self,
@@ -646,12 +712,17 @@ class TestScheduleTMT(Module):
             for plan in plans:
                 exported_plan = self.export_plan(repodir, plan, context_files)
 
+                hardware = kickstart = None
+                if exported_plan:
+                    hardware = exported_plan.provision.hardware
+                    kickstart = exported_plan.provision.kickstart
+
                 schedule_entry = TestScheduleEntry(
                     root_logger,
                     tec,
                     plan,
                     repodir,
-                    self.excludes_from_tmt(exported_plan)
+                    exported_plan.excludes(logger=self.logger) if exported_plan else []
                 )
 
                 schedule_entry.testing_environment = TestingEnvironment(
@@ -662,8 +733,8 @@ class TestScheduleTMT(Module):
                     variables=tec.variables,
                     secrets=tec.secrets,
                     artifacts=tec.artifacts,
-                    hardware=tec.hardware or self.hardware_from_tmt(exported_plan),
-                    kickstart=tec.kickstart or self.kickstart_from_tmt(exported_plan),
+                    hardware=tec.hardware or hardware,
+                    kickstart=tec.kickstart or kickstart,
                     settings=tec.settings,
                     tmt=tec.tmt
                 )

@@ -646,7 +646,7 @@ class TestScheduleTMT(Module):
             log_dict(self.debug, "loaded exported plan yaml", exported_plans)
 
         except GlueError as error:
-            raise GlueError('Could not load exported plan yaml: {}'.format(error)) from error
+            raise GlueError('Could not load exported plan yaml: {}'.format(error))
 
         if not exported_plans or len(exported_plans) != 1:
             self.warn('exported plan is not a single item, cowardly skipping extracting hardware')

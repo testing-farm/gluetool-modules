@@ -475,7 +475,9 @@ def test_create_schedule(module, monkeypatch, log, tec, expected_schedule, expec
         m.chdir(tmpdir)
         _set_run_outputs(m,
                          '',       # git clone
-                         'myfix',  # git show-ref
+                         '',       # git config #1
+                         '',       # git config #2
+                         '',       # git fetch
                          '',       # git checkout
                          'plan1',  # tmt plan ls
                          '[]')     # tmt plan export
@@ -680,7 +682,9 @@ def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir):
         m.chdir(tmpdir)
         _set_run_outputs(m,
                          '',       # git clone
-                         'myfix',  # git show-ref
+                         '',       # git config #1
+                         '',       # git config #2
+                         '',       # git fetch
                          '',       # git checkout
                          'plan1',  # tmt plan ls
                          '[]')     # tmt plan export
@@ -723,7 +727,10 @@ rpm -q two
     with open(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
         assert f.read() == f'''# tmt reproducer
 git clone http://example.com/git/myproject testcode
-git -C testcode checkout -b testbranch myfix
+git -C testcode config --add remote.origin.fetch +refs/merge-requests/*:refs/remotes/origin/merge-requests/*
+git -C testcode config --add remote.origin.fetch +refs/pull/*:refs/remotes/origin/pull/*
+git -C testcode fetch http://example.com/git/myproject myfix:gluetool/myfix
+git -C testcode checkout gluetool/myfix
 cd testcode
 curl -o guest-setup-0.sh -L {tmpdir}/artifact-installation-guest0/{INSTALL_COMMANDS_FILE}
 dummytmt --root some-tmt-root run --until provision --verbose provision --how virtual --image guest-compose plan --name ^plan1$
@@ -759,7 +766,9 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir):
         m.chdir(tmpdir)
         _set_run_outputs(m,
                          '',       # git clone
-                         'myfix',  # git show-ref
+                         '',       # git config #1
+                         '',       # git config #2
+                         '',       # git fetch
                          '',       # git checkout
                          'plan1',  # tmt plan ls
                          ' - name: plan1\n'  # tmt plan export
@@ -803,7 +812,10 @@ sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\n' | xargs -d'\n' rpm -
     with open(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
         assert f.read() == f'''# tmt reproducer
 git clone http://example.com/git/myproject testcode
-git -C testcode checkout -b testbranch myfix
+git -C testcode config --add remote.origin.fetch +refs/merge-requests/*:refs/remotes/origin/merge-requests/*
+git -C testcode config --add remote.origin.fetch +refs/pull/*:refs/remotes/origin/pull/*
+git -C testcode fetch http://example.com/git/myproject myfix:gluetool/myfix
+git -C testcode checkout gluetool/myfix
 cd testcode
 curl -o guest-setup-0.sh -L {tmpdir}/artifact-installation-guest0/{INSTALL_COMMANDS_FILE}
 dummytmt --root some-tmt-root run --until provision --verbose provision --how virtual --image guest-compose plan --name ^plan1$

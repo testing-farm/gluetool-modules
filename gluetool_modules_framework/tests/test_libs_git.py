@@ -199,7 +199,10 @@ def test_clone_invalid_ref(remote_git_repository, monkeypatch):
     mock_get_clone_options = MagicMock()
     monkeypatch.setattr(remote_git_repository, '_get_clone_options', mock_get_clone_options)
 
-    with pytest.raises(gluetool.GlueError, match="Failed to checkout ref some-ref: some cloning error"):
+    with pytest.raises(
+        gluetool.GlueError,
+        match="Failed to configure git remote fetching on some-ref: some cloning error"
+    ):
         remote_git_repository.clone(clone_timeout=1, clone_tick=1)
 
 
@@ -207,24 +210,41 @@ def test_clone_invalid_ref(remote_git_repository, monkeypatch):
     (
         'some-path', 'some-ref',
         [
-            ['git', '-C', 'some-path', 'show-ref', '-s', 'some-ref'],
-            ['git', '-C', 'some-path', 'checkout', '-b', 'some-ref-testing-farm-checkout', 'some-ref']
+            [
+                'git', '-C', 'some-path', 'config', '--add', 'remote.origin.fetch',
+                '+refs/merge-requests/*:refs/remotes/origin/merge-requests/*'
+            ],
+            [
+                'git', '-C', 'some-path', 'config', '--add', 'remote.origin.fetch',
+                '+refs/pull/*:refs/remotes/origin/pull/*'
+            ],
+            [
+                'git', '-C', 'some-path', 'fetch', 'some-url',
+                'some-ref:gluetool/some-ref'
+            ],
+            [
+                'git', '-C', 'some-path', 'checkout', 'gluetool/some-ref'
+            ]
         ]
     ),
     (
         'some-path', 'refs/remotes/origin/merge-requests/1/head',
         [
             [
-                'git', '-C', 'some-path', 'config', 'remote.origin.fetch',
+                'git', '-C', 'some-path', 'config', '--add', 'remote.origin.fetch',
                 '+refs/merge-requests/*:refs/remotes/origin/merge-requests/*'
             ],
             [
-                'git', '-C', 'some-path', 'fetch', 'some-url',
-                'refs/remotes/origin/merge-requests/1/head:refs/remotes/origin/merge-requests/1/head'
+                'git', '-C', 'some-path', 'config', '--add', 'remote.origin.fetch',
+                '+refs/pull/*:refs/remotes/origin/pull/*'
             ],
             [
-                'git', '-C', 'some-path', 'checkout', 'refs/remotes/origin/merge-requests/1/head'
+                'git', '-C', 'some-path', 'fetch', 'some-url',
+                'refs/remotes/origin/merge-requests/1/head:gluetool/refs/remotes/origin/merge-requests/1/head'
             ],
+            [
+                'git', '-C', 'some-path', 'checkout', 'gluetool/refs/remotes/origin/merge-requests/1/head'
+            ]
         ]
     )
 ])
@@ -235,8 +255,7 @@ def test_checkout_ref(remote_git_repository, monkeypatch, path, ref, calls):
 
     monkeypatch.setattr(gluetool.utils, 'Command', mock_command_class)
 
-    remote_git_repository.clone_url = 'some-url'
-    remote_git_repository._checkout_ref(path, ref)
+    remote_git_repository._checkout_ref('some-url', path, ref)
 
     for call in calls:
         mock_command_class.assert_any_call(call)
@@ -258,7 +277,7 @@ def test_clone_obeys_ref(self_ref, ref, expected, remote_git_repository, monkeyp
 
     remote_git_repository.clone(ref=ref)
 
-    remote_git_repository._checkout_ref.assert_called_with('some-path', expected)
+    remote_git_repository._checkout_ref.assert_called_with('foo', 'some-path', expected)
 
 
 @pytest.mark.parametrize('clone_url, branch, ref, repr, prefix', [

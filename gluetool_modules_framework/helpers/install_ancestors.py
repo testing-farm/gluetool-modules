@@ -144,7 +144,7 @@ class InstallAncestors(gluetool.Module):
 
         def decorator(func: FuncType) -> FuncType:
             @functools.wraps(func)
-            def wrapper(self: InstallAncestors) -> List[str]:
+            def wrapper(self: 'InstallAncestors') -> List[str]:
                 lst = func(self)
                 lst = self.filter_list(lst, option_name)
                 return lst

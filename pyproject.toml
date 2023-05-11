@@ -71,6 +71,7 @@ guess-environment = "gluetool_modules_framework.helpers.guess_environment:GuessE
 guest-setup = "gluetool_modules_framework.helpers.guest_setup:GuestSetup"
 hide-secrets = "gluetool_modules_framework.helpers.hide_secrets:HideSecrets"
 openstack-job = "gluetool_modules_framework.testing.openstack.openstack_job:OpenStackJob"
+install-ancestors = "gluetool_modules_framework.helpers.install_ancestors:InstallAncestors"
 install-copr-build = "gluetool_modules_framework.helpers.install_copr_build:InstallCoprBuild"
 install-koji-build-execute = "gluetool_modules_framework.helpers.install_koji_build_execute:InstallKojiBuildExecute"
 install-mbs-build-execute = "gluetool_modules_framework.helpers.install_mbs_build_execute:InstallMBSBuild"

@@ -192,9 +192,14 @@ class TMTPlanPrepare:
         * https://tmt.readthedocs.io/en/stable/spec/plans.html#prepare
         """
         prepare_steps = prepare_step if isinstance(prepare_step, list) else [prepare_step]
-        return [TMTPlanPrepare(**{field.name: prepare_step.get(field.name)
-                                  for field in attrs.fields(TMTPlanPrepare)})
-                for prepare_step in prepare_steps]
+        try:
+            # Try to convert a list of dicts into a list of `TMTPlanPrepare` objects
+            return [TMTPlanPrepare(**{field.name: prepare_step.get(field.name)
+                                      for field in attrs.fields(TMTPlanPrepare)})
+                    for prepare_step in prepare_steps]
+        except AttributeError:
+            # Assume that `prepare_steps` is already a list of `TMTPlanPrepare` objects, so don't do anything
+            return prepare_steps
 
 
 @attrs.define
@@ -208,8 +213,12 @@ class TMTPlan:
       * https://github.com/teemtee/tmt/blob/main/tmt/schemas/plan.yaml
     """
     name: str = attrs.field(validator=attrs.validators.instance_of(str))
-    provision: TMTPlanProvision = attrs.field(validator=attrs.validators.instance_of(TMTPlanProvision))
+    provision: Optional[TMTPlanProvision] = attrs.field(
+        default=None,
+        validator=attrs.validators.instance_of(TMTPlanProvision)
+    )
     prepare: List[TMTPlanPrepare] = attrs.field(
+        factory=list,
         validator=attrs.validators.deep_iterable(
             member_validator=attrs.validators.instance_of(TMTPlanPrepare),
             iterable_validator=attrs.validators.instance_of(list)
@@ -713,7 +722,7 @@ class TestScheduleTMT(Module):
                 exported_plan = self.export_plan(repodir, plan, context_files)
 
                 hardware = kickstart = None
-                if exported_plan:
+                if exported_plan and exported_plan.provision:
                     hardware = exported_plan.provision.hardware
                     kickstart = exported_plan.provision.kickstart
 

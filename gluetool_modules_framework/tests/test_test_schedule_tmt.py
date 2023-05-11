@@ -21,7 +21,8 @@ from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
 from gluetool_modules_framework.libs.sut_installation import INSTALL_COMMANDS_FILE
 from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 from gluetool_modules_framework.libs.results import TestSuite
-from gluetool_modules_framework.testing.test_schedule_tmt import gather_plan_results, TestScheduleEntry, TMTPlan, TMTPlanProvision  # noqa
+from gluetool_modules_framework.testing.test_schedule_tmt import (gather_plan_results, TestScheduleEntry, TMTPlan,
+                                                                  TMTPlanProvision, TMTPlanPrepare)
 
 from . import create_module, check_loadable, patch_shared
 
@@ -823,24 +824,51 @@ dummytmt --root some-tmt-root run --last login < guest-setup-0.sh
 dummytmt --root some-tmt-root run --last --since prepare'''
 
 
-TMT_PLANS = '''
+TMT_PLANS = ['''
 - name: some-plan
   provision:
     hardware: null
-  prepare: []
-'''
+''', '''
+- name: some-plan
+  provision:
+    hardware: null
+  prepare:
+    how: somehow
+    exclude:
+      - exclude1
+      - exclude2
+''', '''
+- name: some-plan
+  provision:
+    hardware: null
+  prepare:
+    - how: somehow1
+      exclude:
+        - prep1_exclude1
+        - prep1_exclude2
+    - how: somehow2
+      exclude:
+        - prep2_exclude1
+        - prep2_exclude2
+''']
 
 
 @pytest.mark.parametrize('tf_request, mock_output, context_files, expected_command, expected_plan', [
-    (None, MagicMock(stdout=TMT_PLANS), [],
+    (None, MagicMock(stdout=TMT_PLANS[0]), [],
      ['dummytmt', 'plan', 'export', '^some\\-plan$'],
      TMTPlan(name='some-plan', provision=TMTPlanProvision(), prepare=[])),
-    (MagicMock(tmt=MagicMock(path='some-tmt-root')), MagicMock(stdout=TMT_PLANS), [],
+    (MagicMock(tmt=MagicMock(path='some-tmt-root')), MagicMock(stdout=TMT_PLANS[0]), [],
      ['dummytmt', '--root', 'some-tmt-root', 'plan', 'export', '^some\\-plan$'],
      TMTPlan(name='some-plan', provision=TMTPlanProvision(), prepare=[])),
-    (None, MagicMock(stdout=TMT_PLANS), ['file1', 'file 2'],
+    (None, MagicMock(stdout=TMT_PLANS[1]), ['file1', 'file 2'],
      ['dummytmt', '--context=@file1', '--context=@file 2', 'plan', 'export', '^some\\-plan$'],
-     TMTPlan(name='some-plan', provision=TMTPlanProvision(), prepare=[])),
+     TMTPlan(name='some-plan', provision=TMTPlanProvision(),
+             prepare=[TMTPlanPrepare(how='somehow', exclude=['exclude1', 'exclude2'])])),
+    (None, MagicMock(stdout=TMT_PLANS[2]), [],
+     ['dummytmt', 'plan', 'export', '^some\\-plan$'],
+     TMTPlan(name='some-plan', provision=TMTPlanProvision(),
+             prepare=[TMTPlanPrepare(how='somehow1', exclude=['prep1_exclude1', 'prep1_exclude2']),
+                      TMTPlanPrepare(how='somehow2', exclude=['prep2_exclude1', 'prep2_exclude2'])])),
     (None, MagicMock(stdout='[]'), [],
      ['dummytmt', 'plan', 'export', '^some\\-plan$'],
      None),

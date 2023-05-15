@@ -437,8 +437,10 @@ sut     ansible_host={} ansible_user=root {}
                         schedule_entry=schedule_entry.id,
                         schedule_stage='running'
                     ))
+
+                    # test output can contain invalid utf characters, make sure to replace them
                     if os.path.isfile(log_path):
-                        with open(log_path, 'r') as f:
+                        with open(log_path, 'r', errors='replace') as f:
                             test_case.system_out.append(f.read())
 
                 # TODO: remove repeated code in this section

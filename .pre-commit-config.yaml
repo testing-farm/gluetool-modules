@@ -25,12 +25,14 @@ repos:
       - id: check-symlinks
       - id: check-yaml
       - id: end-of-file-fixer
+        exclude: gluetool_modules_framework/tests/assets/test_schedule_tmt/passed/execute/logs/tests/core/docs/out\.log
       - id: mixed-line-ending
       - id: no-commit-to-branch
         args:
           - "--branch"
           - "main"
       - id: trailing-whitespace
+        exclude: gluetool_modules_framework/tests/assets/test_schedule_tmt/passed/execute/logs/tests/core/docs/out\.log
 
   - repo: https://github.com/Lucas-C/pre-commit-hooks
     rev: v1.1.10

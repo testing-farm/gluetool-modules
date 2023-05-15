@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import attrs
+import unicodedata
 
 from typing import List, Optional, TYPE_CHECKING
 
@@ -12,6 +13,18 @@ from gluetool_modules_framework.libs.results.xml import XmlWriter
 
 if TYPE_CHECKING:
     from gluetool_modules_framework.libs.results import Results, TestSuite, TestCase
+
+
+def _remove_control_chars(system_out: List[str]) -> List[str]:
+    """
+    Remove all control characters except LF and CR
+    """
+    formatted_out = []
+    for line in system_out:
+        formatted_out.append(''.join(
+            char for char in line if unicodedata.category(char) != 'Cc' or char in ['\r', '\n']
+        ))
+    return formatted_out
 
 
 @attrs.define(kw_only=True)
@@ -36,7 +49,7 @@ class XUnitTestCase:
     def construct(cls, test_case: 'TestCase') -> 'XUnitTestCase':
         return XUnitTestCase(
             name=test_case.name,
-            system_out=test_case.system_out,
+            system_out=_remove_control_chars(test_case.system_out),
             failure=XUnitFailure.construct(test_case) if test_case.failure or test_case.error else None
         )
 

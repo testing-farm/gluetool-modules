@@ -205,7 +205,16 @@ class TestSchedulerSTI(gluetool.Module):
                 schedule_entry.testing_environment = TestingEnvironment(
                     compose=tec.compose,
                     arch=tec.arch,
-                    snapshots=tec.snapshots
+                    snapshots=tec.snapshots,
+                    pool=tec.pool,
+                    artifacts=tec.artifacts,
+                    hardware=tec.hardware,
+                    settings=tec.settings
+                    # the following TestingFarmRequest attributes are not supported, support only in tmt
+                    # * tec.kickstart
+                    # * tec.secrets
+                    # * tec.tmt
+                    # * tec.variables
                 )
 
                 schedule.append(schedule_entry)

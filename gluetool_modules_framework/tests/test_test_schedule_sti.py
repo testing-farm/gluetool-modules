@@ -60,7 +60,24 @@ def test_create_test_schedule_playbook(module_scheduler, monkeypatch):
     # Prepare the module
     option_playbook = ['path/to/playbook1', 'another/playbook2']
     option_playbook_variables = ['key1=value1#key 2=value 2']
-    testing_environment_constraints = [TestingEnvironment(arch='x86_64', compose='Fedora37')]
+    testing_environment_constraints = [
+        TestingEnvironment(
+            arch='x86_64',
+            compose='Fedora37',
+            pool='some-pool',
+            artifacts=[{
+                'type': 'koji-build',
+                'id': 123456
+            }],
+            hardware={
+                'memory': '>4GiB'
+            },
+            settings={
+                'some-setting': 'some-setting-value'
+            }
+        )
+    ]
+
     module_scheduler._config.update({
         'playbook': option_playbook,
         'playbook-variables': option_playbook_variables
@@ -78,7 +95,21 @@ def test_create_test_schedule_playbook(module_scheduler, monkeypatch):
                 gluetool.utils.normalize_path(playbook),
                 {'key1': 'value1', 'key 2': 'value 2'}
             )
-            entry.testing_environment = TestingEnvironment(arch='x86_64', compose='Fedora37')
+            entry.testing_environment = TestingEnvironment(
+                arch='x86_64',
+                compose='Fedora37',
+                pool='some-pool',
+                artifacts=[{
+                    'type': 'koji-build',
+                    'id': 123456
+                }],
+                hardware={
+                    'memory': '>4GiB'
+                },
+                settings={
+                    'some-setting': 'some-setting-value'
+                }
+            )
             expected_test_schedule.append(entry)
 
     # Run the module

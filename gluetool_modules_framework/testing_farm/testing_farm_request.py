@@ -171,6 +171,7 @@ class TestingFarmRequestTMT():
     name: Optional[str] = None
     settings: Optional[Dict[str, Any]] = None
     plan_filter: Optional[str] = None
+    test_filter: Optional[str] = None
 
     @property
     def plan(self) -> Optional[str]:
@@ -472,6 +473,7 @@ class TestingFarmRequestModule(gluetool.Module):
             'type': request.type,
             'plan': request.tmt.plan if request.tmt and request.tmt.plan else '<not applicable>',
             'plan_filter': request.tmt.plan_filter if request.tmt and request.tmt.plan_filter else '<not applicable>',
+            'test_filter': request.tmt.test_filter if request.tmt and request.tmt.test_filter else '<not applicable>',
             'url': request.url,
             'ref': request.ref,
             'environments_requested': [env.serialize_to_json() for env in request.environments_requested],

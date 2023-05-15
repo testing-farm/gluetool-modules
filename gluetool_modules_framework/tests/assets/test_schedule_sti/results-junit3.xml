@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+ <testsuite name="some-suite" tests="1" failures="0" errors="0" skipped="0">
+  <testcase name="foo" classname="tests">
+   <system-out>output-line1
+output-line2</system-out>
+  </testcase>
+ </testsuite>
+</testsuites>

@@ -7,6 +7,7 @@ import tempfile
 import bs4
 import logging
 from mock import MagicMock
+from six.moves import builtins
 
 import pytest
 
@@ -182,8 +183,8 @@ def test_run_test_schedule_entry(module_runner, monkeypatch, results_filename, r
         assert schedule_entry.result == expected_schedule_entry_result
 
 
-@pytest.mark.parametrize('schedule_entry_results, expected_schedule_entry_outputs, expected_xml', [
-    ([], [], None),
+@pytest.mark.parametrize('schedule_entry_results, expected_schedule_entry_outputs, expected_xml, expected_junit', [
+    ([], [], None, None),
     (
         [TaskRun(name='foo', schedule_entry=None, result='fail', logs=None)],
         [
@@ -194,7 +195,8 @@ def test_run_test_schedule_entry(module_runner, monkeypatch, results_filename, r
                 additional_data=None
             )
         ],
-        read_asset_file('results1.xml')
+        read_asset_file('results1.xml'),
+        read_asset_file('results-junit1.xml')
     ),
     (
         [TaskRun(name='foo', schedule_entry=None, result='error', logs=['log1', 'log2'])],
@@ -218,11 +220,12 @@ def test_run_test_schedule_entry(module_runner, monkeypatch, results_filename, r
                 additional_data=None
             )
         ],
-        read_asset_file('results2.xml')
+        read_asset_file('results2.xml'),
+        read_asset_file('results-junit2.xml')
     )
 ])
 def test_serialize_test_schedule_entry_results(module_runner, schedule_entry_results,
-                                               expected_schedule_entry_outputs, expected_xml):
+                                               expected_schedule_entry_outputs, expected_xml, expected_junit):
     schedule_entry = TestScheduleEntry(
         gluetool.log.Logging().get_logger(),
         gluetool.utils.normalize_path('another/playbook2'),
@@ -245,6 +248,48 @@ def test_serialize_test_schedule_entry_results(module_runner, schedule_entry_res
 
     if expected_xml:
         assert results.xunit_testing_farm.to_xml_string(pretty_print=True) == expected_xml
+        assert results.xunit.to_xml_string(pretty_print=True) == expected_junit
+
+
+def test_serialize_to_junit_non_printable_characters(monkeypatch, module_runner):
+    schedule_entry = TestScheduleEntry(
+        gluetool.log.Logging().get_logger(),
+        gluetool.utils.normalize_path('another/playbook2'),
+        {}
+    )
+    schedule_entry.artifact_dirpath = 'some/artifact-dirpath'
+    schedule_entry.work_dirpath = 'some/work-dirpath'
+    schedule_entry.guest = NetworkedGuest(module_runner, 'hostname', 'name')
+    schedule_entry.guest.environment = TestingEnvironment(arch='x86_64', compose='rhel-9')
+    schedule_entry.testing_environment = TestingEnvironment(arch='x86_64', compose='rhel-9')
+    schedule_entry.results = [TaskRun(name='foo', schedule_entry=None, result='pass', logs=['log1'])]
+    schedule_entry.runner_capability = 'sti'
+    test_suite = TestSuite(name='some-suite', result='some-result')
+    results = Results(test_suites=[test_suite], test_schedule_result='some-schedule-result',
+                      overall_result='some-overall-result')
+
+    expected_junit = read_asset_file('results-junit3.xml')
+
+    # mock for
+    # with open('filename', 'r') as f:
+    #     f.read()
+    class FileMock(MagicMock):
+        def read(self, *args, **kwargs):
+            # put some non-printable character, they should not be in the xml file
+            return 'output-line1\noutput-line2\x08\x03\t\x1f'
+    class OpenMock(MagicMock):
+        def __enter__(self):
+            return FileMock()
+
+        def __exit__(self, *args, **kwargs):
+            pass
+
+    monkeypatch.setattr(builtins, 'open', OpenMock)
+    monkeypatch.setattr(os.path, 'isfile', MagicMock(return_value=True))
+
+    module_runner.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
+
+    assert results.xunit.to_xml_string(pretty_print=True) == expected_junit
 
 
 @pytest.mark.parametrize('workdir, expected_message, expected_results', [

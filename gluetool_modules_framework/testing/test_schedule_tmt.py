@@ -1153,8 +1153,9 @@ class TestScheduleTMT(Module):
                     schedule_entry=schedule_entry.id
                 ))
 
+                # test output can contain invalid utf characters, make sure to replace them
                 if os.path.isfile(artifact.path):
-                    with open(artifact.path, 'r') as f:
+                    with open(artifact.path, 'r', errors='replace') as f:
                         test_case.system_out.append(f.read())
 
             assert schedule_entry.testing_environment is not None

@@ -3,6 +3,7 @@
 
 import gluetool
 from gluetool.utils import new_xml_element
+from gluetool.log import log_blob
 
 from gluetool_modules_framework.libs import sort_children
 from gluetool_modules_framework.libs.artifacts import artifacts_location
@@ -12,8 +13,6 @@ from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestSche
 
 from gluetool_modules_framework.infrastructure.koji_fedora import KojiTask
 from gluetool_modules_framework.infrastructure.copr import CoprTask
-
-
 from gluetool_modules_framework.libs.results import Results, TestSuite, Log
 
 # Type annotations
@@ -244,10 +243,12 @@ class TestScheduleReport(gluetool.Module):
             self.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
             self._results.test_suites.append(test_suite)
 
-        self.info('serialized xunit_testing_farm results:\n{}'.format(
+        log_blob(
+            self.debug,
+            'serialized xunit_testing_farm results',
             self._results.xunit_testing_farm.to_xml_string(pretty_print=True)
-        ))
-        self.info('serialized xunit results:\n{}'.format(self._results.xunit.to_xml_string(pretty_print=True)))
+        )
+        log_blob(self.debug, 'serialized xunit results', self._results.xunit.to_xml_string(pretty_print=True))
 
     def results(self) -> Optional[Results]:
         return self._results

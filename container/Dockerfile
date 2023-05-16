@@ -34,15 +34,16 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       postgresql-devel python39 python39-devel python39-pip python3-libselinux \
                       redhat-rpm-config koji python3-virtualenv \
                       rsync beakerlib-libraries rpm-build rpm-devel \
-                      tmt-provision-container tmt-provision-virtual tmt-report-polarion tmt-report-html \
+                      tmt tmt-provision-container tmt-provision-virtual tmt-report-polarion tmt-report-html \
     # workaround for https://pagure.io/standard-test-roles/pull-request/410
     && dnf copr enable -y @osci/standard-test-roles \
     && dnf -y install standard-test-roles \
     # install tmt from updates-testing, an agreement with tmt folks to be able to test tmt releases sooner.
-    && dnf -y update --enablerepo=epel-testing tmt-provision-container tmt-provision-virtual tmt \
-                                               tmt-report-polarion tmt-report-html \
+    # && dnf -y update --enablerepo=epel-testing tmt-provision-container tmt-provision-virtual tmt \
+    #                                           tmt-report-polarion tmt-report-html \
     && dnf clean all \
     # Install pylero from PyPI, it is broken in CentOS 8
+    && rpm -e --nodeps python3-suds \
     && pip3.6 install -t /lib/python3.6/site-packages pylero \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \

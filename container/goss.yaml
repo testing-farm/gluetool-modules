@@ -102,4 +102,12 @@ command:
 
   tmt --version:
     exit-status: 0
+    stdout:
+      - "tmt version: 1.22"
     timeout: 100000
+
+  tmt run report -h polarion:
+    exit-status: 2
+    stderr:
+      - "how: polarion"
+      - "Failed to login with pylero"

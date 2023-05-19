@@ -1065,8 +1065,8 @@ dev = ["pre-commit", "tox"]
 
 [[package]]
 name = "python-bugzilla"
-version = "2.3.0"
-description = "Bugzilla XMLRPC access module"
+version = "3.2.0"
+description = "Library and command line tool for interacting with Bugzilla"
 category = "main"
 optional = false
 python-versions = "*"
@@ -1727,7 +1727,7 @@ development = ["ipdb"]
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.9"
-content-hash = "0b7c7eeee63805a9124fae070c78aef73c87cf9e3ccb70592351b975b26a9d8a"
+content-hash = "325c9152565e6fc29b784ad194afa8cc45ad75ed2560d59d64fbb0ebc7dbf2c9"
 
 [metadata.files]
 alabaster = [
@@ -2549,7 +2549,7 @@ pytest-mock = [
     {file = "pytest_mock-1.10.4-py2.py3-none-any.whl", hash = "sha256:43ce4e9dd5074993e7c021bb1c22cbb5363e612a2b5a76bc6d956775b10758b7"},
 ]
 python-bugzilla = [
-    {file = "python-bugzilla-2.3.0.tar.gz", hash = "sha256:85c5c6a16f32cafe5cb25f54915d07bd9891d4469799a2c50ba1d936c11c0c61"},
+    {file = "python-bugzilla-3.2.0.tar.gz", hash = "sha256:4efc8cfa297837c9e4eab220e197176715bd61ee33cec2c1b0f2790f07860387"},
 ]
 python-dateutil = [
     {file = "python-dateutil-2.7.1.tar.gz", hash = "sha256:14eb44faa298942c6385636bfd76bd5c21361632cf8ebc9c20d63fd00f6a069f"},

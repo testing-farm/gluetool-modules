@@ -41,7 +41,8 @@ API_FEATURE_VERSIONS: Dict[str, str] = {
     'hw-constraints-compatible-distro': 'v0.0.48',
     'hw-constraints-kickstart': 'v0.0.53',
     'fixed-hw-validation': 'v0.0.55',
-    'user-defined-watchdog-delay': 'v0.0.56'
+    'user-defined-watchdog-delay': 'v0.0.56',
+    'shelving': 'v0.0.56'
 }
 
 SUPPORTED_API_VERSIONS: Set[str] = set(API_FEATURE_VERSIONS.values())
@@ -271,6 +272,9 @@ class ArtemisAPI(object):
 
             if self.version >= API_FEATURE_VERSIONS['skip-prepare-verify-ssh']:
                 data['skip_prepare_verify_ssh'] = normalize_bool_option(self.module.option('skip-prepare-verify-ssh'))
+
+            if self.version >= API_FEATURE_VERSIONS['shelving']:
+                data['shelfname'] = self.module.option('shelfname')
 
         elif self.version >= API_FEATURE_VERSIONS['supported-baseline']:
             data = {
@@ -804,6 +808,11 @@ class ArtemisProvisioner(gluetool.Module):
                 'help': 'Desired pool',
                 'metavar': 'POOL',
                 'type': str
+            },
+            'shelfname': {
+                'help': 'Name of the shelf to obtain the guest from, and/or return the guest to.',
+                'type': str,
+                'default': None
             },
             'setup-provisioned': {
                 'help': "Setup guests after provisioning them. See 'guest-setup' module",

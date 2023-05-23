@@ -150,6 +150,12 @@ class XUnitTFTestingEnvironment:
         return XUnitTFTestingEnvironment(name=name, property=properties)
 
 
+# Used in BaseOS CI results
+@attrs.define(kw_only=True)
+class XUnitTFFailure:
+    message: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
+
+
 @attrs.define(kw_only=True)
 class XUnitTFTestCase:
     name: str = attrs.field(metadata={'type': 'Attribute'})
@@ -161,13 +167,21 @@ class XUnitTFTestCase:
     logs: Optional[XUnitTFLogs]
     phases: Optional[XUnitTFPhases] = None  # Property used in BaseOS CI results.xml
     packages: Optional[XUnitTFPackages] = None  # Property used in BaseOS CI results.xml
-    failure: Optional[str] = None
+    failure: Optional[XUnitTFFailure] = None
     error: Optional[str] = None
     testing_environment: List[XUnitTFTestingEnvironment] = attrs.field(
         factory=list,
         metadata={'name': 'testing-environment'}
     )
     test_outputs: Optional[XUnitTFTestOutputs] = attrs.field(default=None, metadata={'name': 'test-outputs'})
+
+    # Properties used in BaseOS CI covscan module
+    added: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
+    fixed: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
+    baseline: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
+    result_class: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
+    test_type: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
+    defects: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
 
     @classmethod
     def construct(cls, test_case: 'TestCase') -> 'XUnitTFTestCase':
@@ -183,9 +197,8 @@ class XUnitTFTestCase:
             properties=XUnitTFProperties.construct(test_case.properties) if test_case.properties else None,
             logs=XUnitTFLogs.construct(test_case.logs) if test_case.logs else None,
             testing_environment=environments,
-            # When the value is `None`, the XML element is not created at all, but when the value
-            # is '', it gets created as an empty element (<failure/>).
-            failure='' if test_case.failure else None,
+            failure=XUnitTFFailure(message=test_case.failure if isinstance(test_case.failure, str) else None)
+            if test_case.failure is not False else None,
             error='' if test_case.error else None,
             time=test_case.time,
             parameters=XUnitTFParameters.construct(test_case.parameters) if test_case.parameters else None,
@@ -193,7 +206,13 @@ class XUnitTFTestCase:
             # When `test_case.packages` is `None`, do not display the element, when it is `[]`, display <packages/>.
             packages=XUnitTFPackages.construct(test_case.packages) if test_case.packages is not None else None,
             test_outputs=XUnitTFTestOutputs.construct(test_case.test_outputs)
-            if test_case.test_outputs is not None else None
+            if test_case.test_outputs is not None else None,
+            added=test_case.added,
+            fixed=test_case.fixed,
+            baseline=test_case.baseline,
+            result_class=test_case.result_class,
+            test_type=test_case.test_type,
+            defects=test_case.defects
         )
 
 

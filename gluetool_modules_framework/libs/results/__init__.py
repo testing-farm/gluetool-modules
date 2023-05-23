@@ -39,7 +39,8 @@ class TestCase:
     logs: List[Log] = attrs.field(factory=list)
     requested_environment: Optional[TestingEnvironment] = None
     provisioned_environment: Optional[TestingEnvironment] = None
-    failure: bool = False
+    # True can be used just to display a blank failure element, string can be specified as a failure message
+    failure: Union[bool, str] = False
     error: bool = False
     system_out: List[str] = attrs.field(factory=list)
 
@@ -51,6 +52,14 @@ class TestCase:
     phases: List[Phase] = attrs.field(factory=list)
     packages: Optional[List[str]] = None
     test_outputs: Optional[List[str]] = None
+
+    # Properties used in BaseOS CI covscan module
+    added: Optional[str] = None
+    fixed: Optional[str] = None
+    baseline: Optional[str] = None
+    result_class: Optional[str] = None
+    test_type: Optional[str] = None
+    defects: Optional[str] = None
 
 
 @attrs.define

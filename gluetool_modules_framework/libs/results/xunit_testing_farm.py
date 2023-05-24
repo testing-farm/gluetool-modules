@@ -5,12 +5,11 @@ import attrs
 
 from xsdata_attrs.bindings import XmlSerializer
 from xsdata.formats.dataclass.serializers.config import SerializerConfig
+from xsdata.formats.dataclass.serializers.writers import XmlEventWriter
 
 from typing import List, Optional, Dict, TYPE_CHECKING, cast
 
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
-
-from gluetool_modules_framework.libs.results.xml import XmlWriter
 
 if TYPE_CHECKING:
     from gluetool_modules_framework.libs.results import Results, TestSuite, TestCase, Log, Phase  # noqa
@@ -297,4 +296,7 @@ class XUnitTFTestSuites:
         )
 
     def to_xml_string(self, pretty_print: bool = False) -> str:
-        return XmlSerializer(config=SerializerConfig(pretty_print=pretty_print), writer=XmlWriter).render(self)
+        return XmlSerializer(
+            config=SerializerConfig(pretty_print=pretty_print, pretty_print_indent=' '),
+            writer=XmlEventWriter
+        ).render(self)

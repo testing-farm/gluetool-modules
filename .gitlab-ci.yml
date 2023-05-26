@@ -5,7 +5,7 @@ stages:
   - deploy
 
 # Use our custom image. See https://gitlab.com/testing-farm/images/-/tree/master/python-ci-image
-image: "quay.io/testing-farm/python-ci-image:latest"
+image: "quay.io/testing-farm/python-ci-image:2023-05-23-73a71064"
 
 #
 # Poetry and MyPy colors

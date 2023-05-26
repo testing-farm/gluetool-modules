@@ -27,5 +27,15 @@
     <property name="snapshots" value="False"/>
    </testing-environment>
   </testcase>
+  <testing-environment name="requested">
+   <property name="arch" value="x86_64"/>
+   <property name="compose" value="rhel-9"/>
+   <property name="snapshots" value="False"/>
+  </testing-environment>
+  <testing-environment name="provisioned">
+   <property name="arch" value="x86_64"/>
+   <property name="compose" value="rhel-9"/>
+   <property name="snapshots" value="False"/>
+  </testing-environment>
  </testsuite>
 </testsuites>

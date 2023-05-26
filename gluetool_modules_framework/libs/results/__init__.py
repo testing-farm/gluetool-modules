@@ -69,6 +69,8 @@ class TestSuite:
     logs: List[Log] = attrs.field(factory=list)
     properties: Dict[str, str] = attrs.field(factory=dict)
     test_cases: List[TestCase] = attrs.field(factory=list)
+    requested_environment: Optional[TestingEnvironment] = None
+    provisioned_environment: Optional[TestingEnvironment] = None
 
     @property
     def test_count(self) -> int:

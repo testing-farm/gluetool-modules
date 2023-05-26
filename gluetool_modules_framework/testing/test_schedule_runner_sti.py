@@ -482,4 +482,10 @@ sut     ansible_host={} ansible_user=root {}
             test_case.requested_environment = schedule_entry.testing_environment
             test_case.provisioned_environment = schedule_entry.guest.environment
 
+            if test_suite.requested_environment is None:
+                test_suite.requested_environment = schedule_entry.testing_environment
+
+            if test_suite.provisioned_environment is None:
+                test_suite.provisioned_environment = schedule_entry.guest.environment
+
             test_suite.test_cases.append(test_case)

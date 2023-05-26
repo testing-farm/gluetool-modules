@@ -226,7 +226,7 @@ class TestScheduleReport(gluetool.Module):
 
         for schedule_entry in schedule:
             test_suite = TestSuite(
-                name=schedule_entry.id,
+                name=schedule_entry.testsuite_name or schedule_entry.id,
                 result=schedule_entry.result.name.lower(),
                 properties={'baseosci.result': schedule_entry.result.name.lower()},
             )

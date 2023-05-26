@@ -320,7 +320,7 @@ class TestScheduleEntry(BaseTestScheduleEntry):
         )
 
         self.testing_environment = tec
-        self.plan = plan
+        self.testsuite_name = self.plan = plan
         self.work_dirpath: Optional[str] = None
         self.results: Any = None
         self.repodir: str = repodir
@@ -1305,5 +1305,11 @@ class TestScheduleTMT(Module):
             assert schedule_entry.testing_environment is not None
             test_case.requested_environment = schedule_entry.testing_environment
             test_case.provisioned_environment = schedule_entry.guest.environment
+
+            if test_suite.requested_environment is None:
+                test_suite.requested_environment = schedule_entry.testing_environment
+
+            if test_suite.provisioned_environment is None:
+                test_suite.provisioned_environment = schedule_entry.guest.environment
 
             test_suite.test_cases.append(test_case)

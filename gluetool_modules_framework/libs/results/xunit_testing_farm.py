@@ -224,9 +224,19 @@ class XUnitTFTestSuite:
     logs: Optional[XUnitTFLogs] = None
     properties: Optional[XUnitTFProperties] = None
     testcase: List[XUnitTFTestCase] = attrs.field(factory=list)
+    testing_environment: List[XUnitTFTestingEnvironment] = attrs.field(
+        factory=list,
+        metadata={'name': 'testing-environment'}
+    )
 
     @classmethod
     def construct(cls, test_suite: 'TestSuite') -> 'XUnitTFTestSuite':
+        environments: List[XUnitTFTestingEnvironment] = []
+        if test_suite.requested_environment:
+            environments.append(XUnitTFTestingEnvironment.construct(test_suite.requested_environment, 'requested'))
+        if test_suite.provisioned_environment:
+            environments.append(XUnitTFTestingEnvironment.construct(test_suite.provisioned_environment, 'provisioned'))
+
         return XUnitTFTestSuite(
             name=test_suite.name,
             result=test_suite.result,
@@ -234,6 +244,7 @@ class XUnitTFTestSuite:
             logs=XUnitTFLogs.construct(test_suite.logs) if test_suite.logs else None,
             properties=XUnitTFProperties.construct(test_suite.properties) if test_suite.properties else None,
             testcase=[XUnitTFTestCase.construct(test_case) for test_case in test_suite.test_cases],
+            testing_environment=environments
         )
 
     def to_xml_string(self, pretty_print: bool = False) -> str:

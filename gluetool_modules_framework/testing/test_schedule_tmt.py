@@ -708,8 +708,6 @@ class TestScheduleTMT(Module):
                 tmt_output = Command(command).run(cwd=repodir)
 
             except GlueCommandError as exc:
-                # TODO: remove once tmt-1.21 is out
-                # workaround until tmt prints errors properly to stderr
                 log_blob(
                     self.error,
                     "Failed to discover tests",

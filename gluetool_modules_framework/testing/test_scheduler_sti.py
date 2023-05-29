@@ -5,7 +5,7 @@ import glob
 import os.path
 
 import gluetool
-from gluetool import GlueError, utils
+from gluetool import GlueError, SoftGlueError, utils
 
 import gluetool_modules_framework
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
@@ -161,7 +161,8 @@ class TestSchedulerSTI(gluetool.Module):
                 )
 
             except GlueError:
-                raise GlueError('Could not clone {} branch of {} repository'.format(
+                # Soft error because we don't want to see this in errored builds
+                raise SoftGlueError('Could not clone {} branch of {} repository'.format(
                     repository.branch, repository.clone_url))
 
             request: Optional[TestingFarmRequest] = self.shared('testing_farm_request')

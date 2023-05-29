@@ -679,7 +679,7 @@ class TestScheduleTMT(Module):
                            repodir: str,
                            context_files: List[str],
                            testing_environment: TestingEnvironment,
-                           test_filter: Optional[str] = None,) -> List[str]:
+                           test_filter: Optional[str] = None) -> List[str]:
         """
         Return list of plans which still have tests after applying test filter.
         """

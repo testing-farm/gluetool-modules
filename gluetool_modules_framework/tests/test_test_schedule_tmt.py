@@ -38,7 +38,7 @@ def _load_assets(name):
 
 def _set_run_outputs(monkeypatch, *outputs):
     '''Monkey-patch gluetools.utils.Command.run to return given output'''
-    returns = map(lambda o: MagicMock(exit_code=0, stdout=o, stderr='', return_value=o), outputs)
+    returns = map(lambda o: MagicMock(exit_code=0, stdout=o, stderr=o, return_value=o), outputs)
     monkeypatch.setattr(gluetool.utils.Command, 'run', MagicMock(side_effect=returns))
 
 
@@ -53,7 +53,7 @@ def fixture_module(monkeypatch):
         {
             'testing_farm_request': MagicMock(
                 environments_requested=[{}],
-                tmt=MagicMock(plan=None, plan_filter=None, path="some-tmt-root"),
+                tmt=MagicMock(plan=None, plan_filter=None, path="some-tmt-root", test_filter=None),
                 plans=None)
         }
     )
@@ -471,6 +471,7 @@ def test_create_schedule(module, monkeypatch, log, tec, expected_schedule, expec
         clone_url='http://example.com/git/myproject', ref='myfix'
     )
     module.glue.add_shared('dist_git_repository', module_dist_git)
+    module._config['test-filter'] = 'filter1'
 
     with monkeypatch.context() as m:
         m.chdir(tmpdir)
@@ -481,6 +482,7 @@ def test_create_schedule(module, monkeypatch, log, tec, expected_schedule, expec
                          '',       # git fetch
                          '',       # git checkout
                          'plan1',  # tmt plan ls
+                         'plan1',   # tmt run discover plan --name plan1 test --filter filter1
                          '[]')     # tmt plan export
 
         schedule = module.create_test_schedule(tec)
@@ -564,6 +566,34 @@ def test_plans_from_git_filter(module, monkeypatch):
     module._plans_from_git(repodir, context_files, testing_environment, filter)
 
     mock_command.assert_called_once_with(['dummytmt', '--root', 'some-tmt-root', 'plan', 'ls', '--filter', 'filter1'])
+
+
+def test_apply_test_filter(module, monkeypatch):
+    repodir = 'foo'
+    context_files = []
+    testing_environment = TestingEnvironment('x86_64')
+    test_filter = 'filter1'
+
+    mock_output = MagicMock(exit_code=0, stdout='', stderr='plan1')
+    mock_command_run = MagicMock(return_value=mock_output)
+    mock_command = MagicMock(return_value=MagicMock(run=mock_command_run))
+    monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt, 'Command', mock_command)
+
+    module._apply_test_filter(['plan1'], repodir, context_files, testing_environment, test_filter=test_filter)
+
+    mock_command.assert_called_once_with([
+        'dummytmt',
+        '--root',
+        'some-tmt-root',
+        'run',
+        'discover',
+        'plan',
+        '--name',
+        'plan1',
+        'test',
+        '--filter',
+        'filter1'
+    ])
 
 
 def test_plans_from_git_filter_from_request(module, monkeypatch):

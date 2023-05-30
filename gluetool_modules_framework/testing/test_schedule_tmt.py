@@ -449,6 +449,13 @@ class TestScheduleTMT(Module):
                         """,
                 'metavar': 'FILTER'
             },
+            'test-filter': {
+                'help': """
+                        Use the given filter passed to 'tmt run discover plan test --filter'.
+                        See pydoc fmf.filter for details. (default: none).
+                        """,
+                'metavar': 'FILTER'
+            },
             'context-template-file': {
                 'help': """
                         If specified, files are treated as templates for YAML mappings which, when rendered,
@@ -492,6 +499,17 @@ class TestScheduleTMT(Module):
     @gluetool.utils.cached_property
     def accepted_environment_variables(self) -> List[str]:
         return gluetool.utils.normalize_multistring_option(self.option('accepted-environment-variables'))
+
+    @gluetool.utils.cached_property
+    def test_filter(self) -> Optional[str]:
+        if self.option('test-filter'):
+            return str(self.option('test-filter'))
+
+        tf_request = cast(Optional[TestingFarmRequest], self.shared('testing_farm_request'))
+        if tf_request and tf_request.tmt and tf_request.tmt.test_filter:
+            return tf_request.tmt.test_filter
+
+        return None
 
     def _context_templates(self, filepaths: List[str]) -> List[str]:
 
@@ -656,6 +674,60 @@ class TestScheduleTMT(Module):
 
         return plans
 
+    def _apply_test_filter(self,
+                           plans: List[str],
+                           repodir: str,
+                           context_files: List[str],
+                           testing_environment: TestingEnvironment,
+                           test_filter: Optional[str] = None) -> List[str]:
+        """
+        Return list of plans which still have tests after applying test filter.
+        """
+
+        test_filter = test_filter or self.test_filter
+
+        for plan in plans:
+            command = [
+                self.option('command')
+            ]
+
+            if context_files:
+                command.extend([
+                    '--context=@{}'.format(filepath)
+                    for filepath in context_files
+                ])
+
+            command.extend(self._root_option)
+
+            if testing_environment.tmt and 'context' in testing_environment.tmt:
+                command.extend(self._tmt_context_to_options(testing_environment.tmt['context']))
+
+            command.extend(['run', 'discover', 'plan', '--name', plan, 'test', '--filter', test_filter])
+
+            try:
+                tmt_output = Command(command).run(cwd=repodir)
+
+            except GlueCommandError as exc:
+                log_blob(
+                    self.error,
+                    "Failed to discover tests",
+                    exc.output.stderr or exc.output.stdout or '<no output>'
+                )
+                raise GlueError('Failed to discover tests, TMT metadata are absent or corrupted.')
+
+            if not tmt_output.stderr:
+                raise GlueError("Did not find any plans. Command used '{}'.".format(' '.join(command)))
+
+            output_lines = [line.strip() for line in tmt_output.stderr.splitlines()]
+
+            if any(['No tests found' in line for line in output_lines]):
+                plans.remove(plan)
+
+        if not plans:
+            raise GlueError('No plans to execute after applying test/plan filters. Cowardly refusing to continue.')
+
+        return plans
+
     def export_plan(self, repodir: str, plan: str, context_files: List[str]) -> Optional[TMTPlan]:
         command: List[str] = [self.option('command')]
         command.extend(self._root_option)
@@ -745,6 +817,9 @@ class TestScheduleTMT(Module):
             context_files = self.render_context_templates(logger, context)
 
             plans = self._plans_from_git(repodir, context_files, tec, self.option('plan-filter'))
+
+            if self.test_filter:
+                plans = self._apply_test_filter(plans, repodir, context_files, tec)
 
             for plan in plans:
                 exported_plan = self.export_plan(repodir, plan, context_files)
@@ -1012,6 +1087,18 @@ class TestScheduleTMT(Module):
             'plan',
             '--name', r'^{}$'.format(re.escape(schedule_entry.plan))
         ])
+
+        if self.test_filter:
+            command.extend([
+                'tests',
+                '--filter',
+                self.test_filter
+            ])
+            reproducer.extend([
+                'tests',
+                '--filter',
+                self.test_filter
+            ])
 
         # create environment variables for the tmt process
         tmt_process_environment: Dict[str, str] = {}

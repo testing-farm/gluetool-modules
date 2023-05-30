@@ -2,7 +2,7 @@
     "test": {
         "fmf": null,
         "sti": {
-            "url": "testurl",
+            "url": "https://username:secret@gitlab.com/namespace/repo",
             "ref": "testref",
             "merge_sha": "sha",
             "playbooks": ["playbook1", "playbook2"],

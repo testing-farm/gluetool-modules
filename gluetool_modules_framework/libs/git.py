@@ -9,6 +9,7 @@ import os
 import os.path
 import stat
 import tempfile
+import re
 
 import git
 
@@ -21,6 +22,9 @@ from typing import cast, Any, Optional, List  # cast, Callable, Dict, List, Name
 
 # Clone directory for reproducer commands
 TESTCODE_DIR = 'testcode'
+
+# Regex for matching git clone url containing username and token
+GIT_URL_REGEX = r"(https?:\/\/)(.+:.+)@(.+)"
 
 
 class RemoteGitRepositoryError(gluetool.GlueError):
@@ -86,7 +90,8 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         # holds git.Git instance, GitPython has no typing support
         self._instance: Any = None
 
-        # list of commands use to clone the repository
+        # list of commands use to clone the repository, note that `self.commands` may contain git credentials, for
+        # logging purposes, use `self.commands_no_secrets` property
         self.commands: List[str] = []
 
         # initialize from given path if given
@@ -94,10 +99,20 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
             self.initialize_from_path(self.path)
 
     def __repr__(self) -> str:
-        clone_url = self.clone_url
+        clone_url = self.clone_url_hide_secrets(self.clone_url) if self.clone_url else self.clone_url
         branch = self.branch or 'not specified'
         ref = self.ref or 'not specified'
         return '<RemoteGitRepository(clone_url={}, branch={}, ref={})>'.format(clone_url, branch, ref)
+
+    def clone_url_hide_secrets(self, clone_url: str) -> str:
+        return re.sub(GIT_URL_REGEX, r"\1*****@\3", clone_url)
+
+    @property
+    def commands_no_secrets(self) -> List[str]:
+        """
+        Returns `self.commands` with hidden secrets.
+        """
+        return [self.clone_url_hide_secrets(command) for command in self.commands]
 
     @property
     def is_cloned(self) -> bool:
@@ -240,11 +255,12 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         ref: Optional[str] = None,
         clone_args: Optional[List[str]] = None
     ) -> None:
+        clone_url_no_secrets = self.clone_url_hide_secrets(clone_url)
 
         # TODO: it would be nice to be able to use the `self.__repr__` method but it is actually not correct using it
         # here, values such `branch` and `ref` can be different than the ones printed in `self.__repr__`
         logger.info('cloning repo {} (branch {}, ref {})'.format(
-            clone_url,
+            clone_url_no_secrets,
             branch or 'not specified',
             ref or 'not specified'
         ))
@@ -255,13 +271,15 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
             branch=branch, clone_url=clone_url, path=actual_path, ref=ref, clone_args=clone_args
         )
 
-        reproducer_command = ['git', 'clone'] + cmd.options
+        reproducer_command = ['git', 'clone'] + self._get_clone_options(
+            branch=branch, clone_url=clone_url_no_secrets, path=actual_path, ref=ref, clone_args=clone_args
+        )
         self.commands.append(' '.join(reproducer_command).replace(actual_path, TESTCODE_DIR))
 
         def _clone() -> Result[None, str]:
 
             # Log the 'git clone' command that's about to run. This log is used for unit tests too.
-            logger.debug("{}".format(cmd.executable + cmd.options))
+            logger.debug("{}".format(reproducer_command))
 
             try:
                 cmd.run()

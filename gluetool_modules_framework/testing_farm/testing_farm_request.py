@@ -4,12 +4,14 @@
 from functools import partial
 from posixpath import join as urljoin
 from dataclasses import dataclass, fields
+import re
 
 import gluetool
 from gluetool.log import LoggerMixin
 from gluetool.result import Result
 from gluetool.utils import log_dict, requests, render_template
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
+from gluetool_modules_framework.libs.git import GIT_URL_REGEX
 
 from requests.exceptions import ConnectionError, HTTPError, Timeout
 
@@ -234,6 +236,11 @@ class TestingFarmRequest(LoggerMixin, object):
         test = (self.tmt or self.sti)
         assert test
         self.url = test.url
+
+        # Check whether the git url contains any secrets, if so, store them in hide-secrets module
+        match = re.match(GIT_URL_REGEX, self.url)
+        if match and self._module.has_shared('add_additional_secrets'):
+            self._module.shared('add_additional_secrets', match.group(2))
 
         # In the context of this class, `self.ref` is a git reference which will be checked out by the
         # RemoteGitRepository library class, `self.merge` is a git reference to be merged into `self.ref`.

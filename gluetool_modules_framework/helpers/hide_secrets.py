@@ -23,13 +23,21 @@ class HideSecrets(gluetool.Module):
             'default': '.'
         }
     }
+    shared_functions = ['add_additional_secrets']
+
+    def add_additional_secrets(self, secret: str) -> None:
+        self.additional_secrets.append(secret)
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super(HideSecrets, self).__init__(*args, **kwargs)
+        self.additional_secrets: List[str] = []
 
     def destroy(self, failure: Optional[Any] = None) -> None:
         testing_farm_request = cast(TestingFarmRequest, self.shared('testing_farm_request'))
         if not testing_farm_request:
             return
 
-        secret_values: List[str] = []
+        secret_values = self.additional_secrets
         for environment in testing_farm_request.environments_requested:
             if environment.secrets:
                 secret_values += [secret_value for secret_value in environment.secrets.values() if secret_value]

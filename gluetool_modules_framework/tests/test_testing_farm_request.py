@@ -6,6 +6,7 @@ import gluetool_modules_framework.testing_farm.testing_farm_request
 import os
 import gluetool
 import contextlib
+from mock import MagicMock
 
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 
@@ -344,13 +345,17 @@ def test_execute_request2(module):
     assert request.environments_requested == []
 
 
-def test_execute_request3(module):
+def test_execute_request3(module, monkeypatch):
     module._config.update({'request-id': '3', 'arch': 'forced-arch'})
+
+    add_additional_secrets = MagicMock(return_value=None)
+
+    patch_shared(monkeypatch, module, {}, callables={'add_additional_secrets': add_additional_secrets})
     module.execute()
     request = module.testing_farm_request()
 
     assert request.type == 'sti'
-    assert request.sti.url == 'testurl'
+    assert request.sti.url == 'https://username:secret@gitlab.com/namespace/repo'
     assert request.sti.playbooks == ['playbook1', 'playbook2']
     assert request.webhook_token == None
     assert len(request.environments_requested) == 1
@@ -365,6 +370,7 @@ def test_execute_request3(module):
         pool=None,
         settings=None
     )
+    add_additional_secrets.assert_called_once_with('username:secret')
 
 
 def test_api_url_option(module, monkeypatch):

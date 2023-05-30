@@ -385,10 +385,11 @@ def test_tmt_output_dir(
         assert not os.path.exists(tmt_environment_file)
 
 
-@pytest.mark.parametrize('additional_options, additional_shared, expected_tmt_reproducer_regex', [
+@pytest.mark.parametrize('additional_options, additional_shared, clone_url, expected_tmt_reproducer_regex', [
         (  # Test case no. 1
             {},
             {},
+            'http://example.com/git/myproject',
             r'''\# tmt reproducer
 git clone --depth 1 -b myfix http://example.com/git/myproject testcode
 cd testcode
@@ -397,14 +398,24 @@ dummytmt --root some-tmt-root run --all --verbose provision --how virtual --imag
         (  # Test case no. 2
             {'context-template-file': [os.path.abspath(os.path.join(ASSETS_DIR, 'context-template.yaml'))]},
             {},
+            'http://example.com/git/myproject',
             r'''\# tmt reproducer
 git clone --depth 1 -b myfix http://example.com/git/myproject testcode
 cd testcode
 dummytmt --root some-tmt-root --context=@[a-zA-Z0-9\/\._-]+ run --all --verbose provision --how virtual --image guest-compose plan --name \^myfix\$'''  # noqa
         ),
+        (  # Test case no. 3
+            {},
+            {},
+            'http://username:secret@example.com/git/myproject',
+            r'''\# tmt reproducer
+git clone --depth 1 -b myfix http://\*\*\*\*\*@example.com/git/myproject testcode
+cd testcode
+dummytmt --root some-tmt-root run --all --verbose provision --how virtual --image guest-compose plan --name \^myfix\$'''  # noqa
+        ),
     ]
 )
-def test_tmt_output_distgit(module, guest, monkeypatch, additional_options, additional_shared,
+def test_tmt_output_distgit(module, guest, monkeypatch, additional_options, additional_shared, clone_url,
                             expected_tmt_reproducer_regex, tmpdir):
     module._config = {**module._config, **additional_options}
     patch_shared(monkeypatch, module, additional_shared)
@@ -413,7 +424,7 @@ def test_tmt_output_distgit(module, guest, monkeypatch, additional_options, addi
     module_dist_git = create_module(DistGit)[1]
     module_dist_git._repository = DistGitRepository(
         module_dist_git, 'some-package',
-        clone_url='http://example.com/git/myproject', branch='myfix'
+        clone_url=clone_url, branch='myfix'
     )
     module.glue.add_shared('dist_git_repository', module_dist_git)
 
@@ -689,7 +700,11 @@ def test_excludes(module, plan, expected):
     assert plan.excludes() == expected
 
 
-def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir):
+@pytest.mark.parametrize('clone_url, expected_clone_url', [
+    ('http://example.com/git/myproject', 'http://example.com/git/myproject'),
+    ('http://username:secret@example.com/git/myproject', 'http://*****@example.com/git/myproject')
+])
+def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir, clone_url, expected_clone_url):
     # install-copr-build module
     module_copr = create_module(InstallCoprBuild)[1]
     module_copr._config['log-dir-name'] = 'artifact-installation'
@@ -707,6 +722,7 @@ def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir):
     })
 
     # main test-schedule-tmt module
+    module_dist_git._repository.clone_url = clone_url
     module.glue.add_shared('dist_git_repository', module_dist_git)
 
     with monkeypatch.context() as m:
@@ -757,10 +773,10 @@ rpm -q two
     # ... and is pulled into the reproducer
     with open(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
         assert f.read() == f'''# tmt reproducer
-git clone http://example.com/git/myproject testcode
+git clone {expected_clone_url} testcode
 git -C testcode config --add remote.origin.fetch +refs/merge-requests/*:refs/remotes/origin/merge-requests/*
 git -C testcode config --add remote.origin.fetch +refs/pull/*:refs/remotes/origin/pull/*
-git -C testcode fetch http://example.com/git/myproject myfix:gluetool/myfix
+git -C testcode fetch {expected_clone_url} myfix:gluetool/myfix
 git -C testcode checkout gluetool/myfix
 cd testcode
 curl -o guest-setup-0.sh -L {tmpdir}/artifact-installation-guest0/{INSTALL_COMMANDS_FILE}
@@ -769,7 +785,11 @@ dummytmt --root some-tmt-root run --last login < guest-setup-0.sh
 dummytmt --root some-tmt-root run --last --since prepare'''
 
 
-def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir):
+@pytest.mark.parametrize('clone_url, expected_clone_url', [
+    ('http://example.com/git/myproject', 'http://example.com/git/myproject'),
+    ('http://username:secret@example.com/git/myproject', 'http://*****@example.com/git/myproject')
+])
+def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir, clone_url, expected_clone_url):
     # install-koji-build-execute module
     module_koji = create_module(InstallKojiBuildExecute)[1]
     module_koji._config['log-dir-name'] = 'artifact-installation'
@@ -791,6 +811,7 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir):
     module_koji.execute()
 
     # main test-schedule-tmt module
+    module_dist_git._repository.clone_url = clone_url
     module.glue.add_shared('dist_git_repository', module_dist_git)
 
     with monkeypatch.context() as m:
@@ -842,10 +863,10 @@ sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\n' | xargs -d'\n' rpm -
     # ... and is pulled into the reproducer
     with open(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
         assert f.read() == f'''# tmt reproducer
-git clone http://example.com/git/myproject testcode
+git clone {expected_clone_url} testcode
 git -C testcode config --add remote.origin.fetch +refs/merge-requests/*:refs/remotes/origin/merge-requests/*
 git -C testcode config --add remote.origin.fetch +refs/pull/*:refs/remotes/origin/pull/*
-git -C testcode fetch http://example.com/git/myproject myfix:gluetool/myfix
+git -C testcode fetch {expected_clone_url} myfix:gluetool/myfix
 git -C testcode checkout gluetool/myfix
 cd testcode
 curl -o guest-setup-0.sh -L {tmpdir}/artifact-installation-guest0/{INSTALL_COMMANDS_FILE}

@@ -30,6 +30,7 @@ from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestSche
     TestScheduleEntryStage, TestScheduleEntryAdapter
 from gluetool_modules_framework.libs.test_schedule import TestScheduleEntry as BaseTestScheduleEntry
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
+from gluetool_modules_framework.libs.git import RemoteGitRepository
 
 # Type annotations
 from typing import cast, Any, Callable, Dict, List, Optional, Tuple, Union  # noqa
@@ -783,7 +784,7 @@ class TestScheduleTMT(Module):
             return TestSchedule()
 
         self.require_shared('dist_git_repository')
-        repository = self.shared('dist_git_repository')
+        repository = cast(RemoteGitRepository, self.shared('dist_git_repository'))
 
         repodir = repository.clone(
             logger=self.logger,
@@ -871,7 +872,7 @@ class TestScheduleTMT(Module):
                     tmt=tec.tmt
                 )
 
-                schedule_entry.tmt_reproducer.extend(repository.commands)
+                schedule_entry.tmt_reproducer.extend(repository.commands_no_secrets)
 
                 schedule_entry.context_files = context_files
 

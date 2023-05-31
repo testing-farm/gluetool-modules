@@ -265,8 +265,10 @@ class Ansible(gluetool.Module):
             '--private-key', guest.key,
             '--module-name', 'raw',
             '--args', 'command -v ' + ' '.join(ansible_python_interpreters),
-            '--ssh-common-args',
-            ' '.join(['-o ' + option for option in guest.options])
+            # There has to be `=` between the option name and the actual options or hyphens need to be escaped,
+            # otherwise ansible will fail with error: argument --ssh-common-args: expected one argument
+            # and interpreter detection will fail, see https://github.com/ansible/ansible/issues/64897
+            '--ssh-common-args=' + ' '.join(['-o ' + option for option in guest.options])
         ]
 
         if guest.username:

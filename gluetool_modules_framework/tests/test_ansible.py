@@ -382,7 +382,7 @@ def test_detect_ansible_interpreter(module, local_guest, monkeypatch):
         '--private-key', local_guest.key,
         '--module-name', 'raw',
         '--args', 'command -v ' + ' '.join(DEFAULT_ANSIBLE_PYTHON_INTERPRETERS),
-        '--ssh-common-args', ' '.join(['-o ' + option for option in local_guest.options]),
+        '--ssh-common-args=' + ' '.join(['-o ' + option for option in local_guest.options]),
         '--user', local_guest.username,
         local_guest.hostname,
     ], logger=local_guest.logger)

@@ -57,10 +57,14 @@ class TestSchedulerUpgrades(gluetool.Module):
             'action': 'append',
             'type': str,
             'default': []
+        },
+        'compose-url': {
+            'help': 'Url of compose.',
+            'type': str
         }
     }
 
-    required_options = ('variant',)
+    required_options = ('variant', 'compose-url')
 
     shared_functions = ['create_test_schedule']
 
@@ -125,10 +129,10 @@ class TestSchedulerUpgrades(gluetool.Module):
         artifact and list of binary package names, which belongs to the artifact.
         """
 
-        self.require_shared('primary_task', 'get_compose_url', 'product')
+        self.require_shared('primary_task', 'product')
 
         component = self.shared('primary_task').component
-        compose_url = self.shared('get_compose_url')
+        compose_url = self.option('compose-url')
         product = self.shared('product')
 
         variant = self.option('variant')

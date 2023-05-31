@@ -165,7 +165,7 @@ def test_api_call(monkeypatch, module, log):
         GlueError,
         match="Artemis API call failed: Condition 'api_call' failed to pass within given time"
     ):
-        module.api.api_call('guests/', expected_status_code=400)
+        module.api.api_call('guests/', expected_status_codes=[400])
 
     assert log.match(
         levelno=logging.DEBUG,

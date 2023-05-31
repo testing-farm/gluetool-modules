@@ -132,7 +132,7 @@ class ArtemisAPI(object):
     def api_call(self,
                  endpoint: str,
                  method: str = 'GET',
-                 expected_status_code: int = 200,
+                 expected_status_codes: List[int] = [200],
                  data: Optional[Dict[str, Any]] = None) -> requests.Response:
 
         def _api_call() -> Result[Optional[requests.Response], str]:
@@ -163,7 +163,7 @@ class ArtemisAPI(object):
                     return Result.Error(error_string)
                 six.reraise(*sys.exc_info())
 
-            if response.status_code == expected_status_code:
+            if response.status_code in expected_status_codes:
                 return Result.Ok(response)
 
             return Result.Error('Artemis API error: {}'.format(ArtemisAPIError(response)))
@@ -308,7 +308,7 @@ class ArtemisAPI(object):
 
         log_dict(self.module.debug, 'guest data', data)
 
-        return self.api_call('guests/', method='POST', expected_status_code=201, data=data).json()
+        return self.api_call('guests/', method='POST', expected_status_codes=[201], data=data).json()
 
     def inspect_guest(self, guest_id: str) -> Any:
         '''
@@ -386,7 +386,7 @@ class ArtemisAPI(object):
         :returns: Artemis API response or ``None`` in case of failure.
         '''
 
-        return self.api_call('guests/{}'.format(guest_id), method='DELETE', expected_status_code=204)
+        return self.api_call('guests/{}'.format(guest_id), method='DELETE', expected_status_codes=[204, 404])
 
     def create_snapshot(self, guest_id: str, start_again: bool = True) -> Any:
         '''
@@ -406,7 +406,7 @@ class ArtemisAPI(object):
         return self.api_call('guests/{}/snapshots'.format(guest_id),
                              method='POST',
                              data=data,
-                             expected_status_code=201
+                             expected_status_codes=[201]
                              ).json()
 
     def inspect_snapshot(self, guest_id: str, snapshot_id: str) -> Any:
@@ -437,7 +437,7 @@ class ArtemisAPI(object):
 
         return self.api_call('guests/{}/snapshots/{}/restore'.format(guest_id, snapshot_id),
                              method='POST',
-                             expected_status_code=201
+                             expected_status_codes=[201]
                              ).json()
 
     def cancel_snapshot(self, guest_id: str, snapshot_id: str) -> Any:
@@ -455,7 +455,7 @@ class ArtemisAPI(object):
 
         return self.api_call('guests/{}/snapshots/{}'.format(guest_id, snapshot_id),
                              method='DELETE',
-                             expected_status_code=204)
+                             expected_status_codes=[204, 404])
 
 
 class ArtemisSnapshot(LoggerMixin):

@@ -56,6 +56,9 @@ repos:
     rev: v5.4.0
     hooks:
       - id: ansible-lint
+        # New Ansible breaks older ansible-lint, stick to the old version for now
+        additional_dependencies:
+          - 'ansible-core<2.15'
 
   - repo: local
     hooks:

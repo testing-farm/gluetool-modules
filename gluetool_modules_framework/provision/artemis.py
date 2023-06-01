@@ -166,6 +166,7 @@ class ArtemisAPI(object):
                     return Result.Error(error_string)
                 six.reraise(*sys.exc_info())
 
+            assert expected_status_codes is not None
             if response.status_code in expected_status_codes:
                 return Result.Ok(response)
 

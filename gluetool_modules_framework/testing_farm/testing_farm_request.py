@@ -259,13 +259,21 @@ class TestingFarmRequest(LoggerMixin, object):
             self.ref = test.merge_sha
             self.merge = test.ref
 
+        # Additional environment variables are set at the provisioned system
+        testing_farm_env_vars = {
+            "TESTING_FARM_REQUEST_ID": self.id,
+            "TESTING_FARM_TEST_TYPE": self.type,
+            "TESTING_FARM_GIT_URL": test.url,
+            "TESTING_FARM_GIT_REF": test.ref
+        }
+
         environments_requested: List[TestingEnvironment] = []
         for environment_raw in request['environments_requested']:
             environments_requested.append(TestingEnvironment(
                 arch=environment_raw['arch'],
                 compose=(environment_raw.get('os') or {}).get('compose'),
                 pool=environment_raw.get('pool'),
-                variables=environment_raw.get('variables'),
+                variables=(environment_raw.get('variables') or {}).update(testing_farm_env_vars),
                 secrets=environment_raw.get('secrets'),
                 artifacts=cast(Optional[List[Dict[str, Any]]], environment_raw.get('artifacts')),
                 hardware=environment_raw.get('hardware'),

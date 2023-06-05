@@ -722,12 +722,13 @@ class PipelineStateReporter(gluetool.Module):
             'test_overall_result': overall_result
         }
 
-        # If the result is already an XML tree, therefore serialized, do nothing.  # TODO inaccurate comment
+        # Results are already in gluetool_modules_framework/libs/results.Results format
         if isinstance(test_results, Results):
             kwargs.update({
-                'test_results': test_results  # TODO: What structure is actually wanted here? dict?
+                'test_results': test_results.xunit_testing_farm.to_xml_string(pretty_print=True)
             })
 
+        # Convert of list of tests results to gluetool_modules_framework/libs/results.Results
         else:
             test_results = self.shared('serialize_results', 'xunit_testing_farm', test_results)
 

@@ -144,9 +144,6 @@ class ArtemisAPI(object):
             if _request is None:
                 return Result.Error('Unknown HTTP method {}'.format(method))
 
-            if self.module.pipeline_cancelled:
-                return Result.Ok(None)
-
             try:
                 response = _request('{}{}'.format(self.url, endpoint), json=data)
 
@@ -165,6 +162,10 @@ class ArtemisAPI(object):
                 if 'Connection aborted' in error_string:
                     return Result.Error(error_string)
                 six.reraise(*sys.exc_info())
+
+            finally:
+                if self.module.pipeline_cancelled:
+                    return Result.Ok(None)
 
             assert expected_status_codes is not None
             if response.status_code in expected_status_codes:

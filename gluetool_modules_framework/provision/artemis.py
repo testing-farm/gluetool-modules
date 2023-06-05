@@ -132,8 +132,11 @@ class ArtemisAPI(object):
     def api_call(self,
                  endpoint: str,
                  method: str = 'GET',
-                 expected_status_codes: List[int] = [200],
+                 expected_status_codes: Optional[List[int]] = None,
                  data: Optional[Dict[str, Any]] = None) -> requests.Response:
+
+        # default expected status code is 200
+        expected_status_codes = expected_status_codes or [200]
 
         def _api_call() -> Result[Optional[requests.Response], str]:
 
@@ -163,6 +166,7 @@ class ArtemisAPI(object):
                     return Result.Error(error_string)
                 six.reraise(*sys.exc_info())
 
+            assert expected_status_codes is not None
             if response.status_code in expected_status_codes:
                 return Result.Ok(response)
 

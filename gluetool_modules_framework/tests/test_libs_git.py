@@ -320,6 +320,11 @@ def test_merge(remote_git_repository, monkeypatch):
 
     logger = Logging.get_logger()
 
-    remote_git_repository._merge('someref', 'some/path', logger)
+    remote_git_repository._merge('some-url', 'some-ref', 'some/path', logger)
 
-    mock_command_class.assert_any_call(['git', '-C', 'some/path', 'merge', '--no-edit', 'someref'], logger=logger)
+    mock_command_class.assert_any_call(
+        ['git', '-C', 'some/path', 'fetch', 'some-url', 'some-ref:gluetool/some-ref']
+    )
+    mock_command_class.assert_any_call(
+        ['git', '-C', 'some/path', 'merge', '--no-edit', 'gluetool/some-ref'], logger=logger
+    )

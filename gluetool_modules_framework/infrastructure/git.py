@@ -111,5 +111,5 @@ class Git(gluetool.Module):
 
     def execute(self) -> None:
         self._repository = RemoteGitRepository(self.logger, clone_url=self.clone_url, ref=self.ref,
-                                               clone_args=self.clone_args, merge=self.option('merge'))
+                                               clone_args=self.clone_args, merge=self.merge)
         self.info(str(self._repository))

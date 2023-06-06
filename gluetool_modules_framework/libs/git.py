@@ -215,7 +215,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
         # If specified, merge ref into the currently checked out ref
         if merge:
-            self._merge(merge, actual_path, logger)
+            self._merge(clone_url, merge, actual_path, logger)
 
         self.commands.append('cd {}'.format(TESTCODE_DIR))
 
@@ -295,6 +295,37 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
             tick=clone_tick
         )
 
+    def _fetch_ref(self, clone_url: str, actual_path: str, ref: str) -> str:
+        """
+        Fetches specified `ref` into the repo at `actual_path`.
+
+        :param str clone_url: remote URL to use for cloning the repository
+        :param str actual_path: path to git repository which should be used for checkout
+        :param str ref: git reference to fetch
+        :returns: local git reference to which we checked out the requested ref
+        :raises gluetool.GlueCommandError: if failed to fetch the reference
+        """
+        # we need to create a dedicated checkout ref, to mitigate collisions with existing refs
+        checkout_ref = 'gluetool/{}'.format(ref)
+
+        # Fetch the pull/merge request
+        try:
+            command = [
+                'git',
+                '-C', actual_path,
+                'fetch',
+                clone_url,
+                '{}:{}'.format(ref, checkout_ref)
+            ]
+
+            self.commands.append(' '.join(command).replace(actual_path, TESTCODE_DIR))
+            gluetool.utils.Command(command).run()
+
+        except gluetool.GlueCommandError as exc:
+            raise FailedToFetchRef('Failed to fetch ref {}: {}'.format(ref, exc.output.stderr))
+
+        return checkout_ref
+
     def _set_clone_directory_permissions(
         self,
         actual_path: str
@@ -356,24 +387,8 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
                 'Failed to configure git remote fetching on {}: {}'.format(ref, exc.output.stderr)
             )
 
-        # we need to create a dedicated checkout ref, to mitigate collisions with existing refs
-        checkout_ref = 'gluetool/{}'.format(ref)
-
-        # Fetch the pull/merge request
-        try:
-            command = [
-                'git',
-                '-C', actual_path,
-                'fetch',
-                clone_url,
-                '{}:{}'.format(ref, checkout_ref)
-            ]
-
-            self.commands.append(' '.join(command).replace(actual_path, TESTCODE_DIR))
-            gluetool.utils.Command(command).run()
-
-        except gluetool.GlueCommandError as exc:
-            raise FailedToFetchRef('Failed to fetch ref {}: {}'.format(ref, exc.output.stderr))
+        # Fetch the commit, in case it is from a merge/pull request ref
+        checkout_ref = self._fetch_ref(clone_url, actual_path, ref)
 
         # Checkout the ref of the merge request
         try:
@@ -389,19 +404,24 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         except gluetool.GlueCommandError as exc:
             raise FailedToCheckoutRef('Failed to checkout ref {}: {}'.format(ref, exc.output.stderr))
 
-    def _merge(self, ref: str, actual_path: str, logger: gluetool.log.ContextAdapter) -> None:
+    def _merge(self, clone_url: str, ref: str, actual_path: str, logger: gluetool.log.ContextAdapter) -> None:
         """
         Merge specified ref into currently checked out ref.
 
+        :param str clone_url: remote URL to use for cloning the repository
         :param str ref: Git reference to merge into the currently checked out ref.
         :param str actual_path: path to git repository which should be used for checkout
         :param gluetool.log.ContextAdapter logger: Logger to use.
         """
 
+        # Fetch the commit, in case it is from a merge/pull request ref
+        merge_ref = self._fetch_ref(clone_url, actual_path, ref)
+
         logger.info('merging {}'.format(ref))
-        command = gluetool.utils.Command(['git', '-C', actual_path, 'merge', '--no-edit', ref], logger=logger)
+        command = gluetool.utils.Command(['git', '-C', actual_path, 'merge', '--no-edit', merge_ref], logger=logger)
         try:
             command.run()
+
         except gluetool.GlueCommandError as exc:
             raise FailedToMerge('Failed to merge {}: {}'.format(ref, exc.output.stderr)) from exc
         self.commands.append(' '.join(command.executable))

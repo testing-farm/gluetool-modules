@@ -313,7 +313,15 @@ class ArtemisAPI(object):
 
         log_dict(self.module.debug, 'guest data', data)
 
-        return self.api_call('guests/', method='POST', expected_status_codes=[201], data=data).json()
+        response = self.api_call('guests/', method='POST', expected_status_codes=[201, 400], data=data)
+
+        if response.status_code == 400:
+            raise GlueError('Guest creation failed, HTTP {}: {}'.format(
+                response.status_code,
+                response.json()
+            ))
+
+        return response.json()
 
     def inspect_guest(self, guest_id: str) -> Any:
         '''

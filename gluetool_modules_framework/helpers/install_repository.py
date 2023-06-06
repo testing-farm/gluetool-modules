@@ -2,8 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from dataclasses import dataclass
+
 import gluetool
 from gluetool.action import Action
+from gluetool.log import log_dict
 from gluetool.result import Ok, Error
 
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage
@@ -19,6 +22,12 @@ REPOSITORY_FILE_ARTIFACT_TYPE = 'repository-file'
 
 # Default path to downloading the packages
 DEFAULT_DOWNLOAD_PATH = "/var/share/test-artifacts"
+
+
+@dataclass
+class RepositoryArtifact:
+    url: str
+    packages: Optional[List[str]]
 
 
 class InstallRepository(gluetool.Module):
@@ -45,21 +54,44 @@ class InstallRepository(gluetool.Module):
 
     shared_functions = ['setup_guest']
 
-    def _install_repository_urls(self, sut_installation: SUTInstallation, repository_urls: List[str]) -> None:
+    def _install_repository_artifacts(
+        self,
+        sut_installation: SUTInstallation,
+        artifacts: List[RepositoryArtifact]
+    ) -> None:
+
         download_path = self.option('download-path')
 
         sut_installation.add_step('Create artifacts directory', 'mkdir -pv {}'.format(download_path),
                                   ignore_exception=True)
 
-        for repo_url in repository_urls:
+        for artifact in artifacts:
+
+            # We pass this regexp to egrep, and it is expected to match part of the downloadable URL,
+            # e.g. https://some-repo/@oamg/leapp/epel-7-x86_64/repository/package-1.0-1.el7.src.rpm
+            packages_regexp = '|'.join(['/{}'.format(package) for package in artifact.packages or []])
+
+            if artifact.packages:
+                log_dict(
+                    self.info,
+                    "installing only following packages from repository '{}'".format(artifact.url),
+                    artifact.packages
+                )
+
             sut_installation.add_step(
                 'Download artifacts',
                 (
                     'cd {} && '
-                    'dnf repoquery -q --queryformat "%{{name}}" --repofrompath artifacts-repo,{} '
+                    # the repo url needs to be quoted, as it can contain yum variables, e.g. $basearch
+                    'dnf repoquery -q --queryformat "%{{name}}" --repofrompath \'artifacts-repo,{}\' '
                     '--disablerepo="*" --enablerepo="artifacts-repo" --location | '
+                    '{}'
                     'xargs -n1 curl -sO'
-                ).format(download_path, repo_url)
+                ).format(
+                    download_path,
+                    artifact.url,
+                    'egrep "({})" | '.format(packages_regexp) if packages_regexp else ''
+                )
             )
 
         packages = '{}/*[^.src].rpm'.format(download_path)
@@ -75,8 +107,13 @@ class InstallRepository(gluetool.Module):
             'basename --suffix=.rpm {} | xargs rpm -q'.format(packages)
         )
 
-    def _install_repository_files(self, sut_installation: SUTInstallation, repository_files: List[str]) -> None:
-        for repository_file in repository_files:
+    def _install_repository_file_artifacts(
+        self,
+        sut_installation: SUTInstallation,
+        repository_file_artifacts: List[str]
+    ) -> None:
+
+        for repository_file in repository_file_artifacts:
             sut_installation.add_step(
                 'Download repository file',
                 'curl --output-dir /etc/yum.repos.d -LO {}'.format(repository_file)
@@ -115,23 +152,24 @@ class InstallRepository(gluetool.Module):
         assert guest.environment
 
         # Get `repository-file` artifacts from TestingEnvironment
-        repository_files: List[str] = []
+        repository_file_artifacts: List[str] = []
         if guest.environment and guest.environment.artifacts:
-            repository_files = [
+            repository_file_artifacts = [
                 artifact['id'] for artifact in guest.environment.artifacts
                 if artifact['type'] == REPOSITORY_FILE_ARTIFACT_TYPE
             ]
 
         # Get `repository` artifacts from TestingEnvironment
-        repository_urls: List[str] = []
+        repository_artifacts: List[RepositoryArtifact] = []
         if guest.environment and guest.environment.artifacts:
-            repository_urls = [
-                artifact['id'] for artifact in guest.environment.artifacts
+            repository_artifacts = [
+                RepositoryArtifact(artifact['id'], artifact.get('packages'))
+                for artifact in guest.environment.artifacts
                 if artifact['type'] == REPOSITORY_ARTIFACT_TYPE
             ]
 
         # no artifacts to install
-        if not (repository_urls or repository_files):
+        if not (repository_artifacts or repository_file_artifacts):
             return r_overloaded_guest_setup_output
 
         # get setup from overloaded shared functions
@@ -145,11 +183,11 @@ class InstallRepository(gluetool.Module):
         sut_installation = SUTInstallation(self, installation_log_dirpath, request, logger=guest.logger)
 
         # the repository files need to be installed first, they are mainly used to include sidetag repositories
-        if repository_files:
-            self._install_repository_files(sut_installation, repository_files)
+        if repository_file_artifacts:
+            self._install_repository_file_artifacts(sut_installation, repository_file_artifacts)
 
-        if repository_urls:
-            self._install_repository_urls(sut_installation, repository_urls)
+        if repository_artifacts:
+            self._install_repository_artifacts(sut_installation, repository_artifacts)
 
         with Action(
                 'installing repositories',

@@ -43,7 +43,15 @@ def fixture_module(monkeypatch):
                     'type': 'repository'
                 },
                 {
-                    'id': 'https://example.com/repo3.repo',
+                    'id': 'https://example.com/repo3',
+                    'packages': [
+                        'package1',
+                        'package2'
+                    ],
+                    'type': 'repository'
+                },
+                {
+                    'id': 'https://example.com/repo4.repo',
                     'type': 'repository-file'
                 },
                 {
@@ -93,10 +101,15 @@ def test_guest_setup(module, environment_index, tmpdir):
 
     calls = [
         call('command -v dnf'),
-        call('curl --output-dir /etc/yum.repos.d -LO https://example.com/repo3.repo'),
+        call('curl --output-dir /etc/yum.repos.d -LO https://example.com/repo4.repo'),
         call('mkdir -pv dummy-path'),
-        call('cd dummy-path && dnf repoquery -q --queryformat "%{name}" --repofrompath artifacts-repo,https://example.com/repo1 --disablerepo="*" --enablerepo="artifacts-repo" --location | xargs -n1 curl -sO'),  # noqa
-        call('cd dummy-path && dnf repoquery -q --queryformat "%{name}" --repofrompath artifacts-repo,https://example.com/repo2 --disablerepo="*" --enablerepo="artifacts-repo" --location | xargs -n1 curl -sO'),  # noqa
+        call('cd dummy-path && dnf repoquery -q --queryformat "%{name}" --repofrompath \'artifacts-repo,https://example.com/repo1\' --disablerepo="*" --enablerepo="artifacts-repo" --location | xargs -n1 curl -sO'),  # noqa
+        call('cd dummy-path && dnf repoquery -q --queryformat "%{name}" --repofrompath \'artifacts-repo,https://example.com/repo2\' --disablerepo="*" --enablerepo="artifacts-repo" --location | xargs -n1 curl -sO'),  # noqa
+        call(
+            'cd dummy-path && dnf repoquery -q --queryformat "%{name}" --repofrompath \'artifacts-repo,https://example.com/repo3\' --disablerepo="*" --enablerepo="artifacts-repo" --location '  # noqa
+            '| egrep "(/package1|/package2)" '
+            '| xargs -n1 curl -sO'
+        ),
         call('dnf --allowerasing -y reinstall dummy-path/*[^.src].rpm'),
         call('dnf --allowerasing -y downgrade dummy-path/*[^.src].rpm'),
         call('dnf --allowerasing -y update dummy-path/*[^.src].rpm'),

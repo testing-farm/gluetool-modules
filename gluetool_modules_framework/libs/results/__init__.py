@@ -41,7 +41,7 @@ class TestCase:
     provisioned_environment: Optional[TestingEnvironment] = None
     # True can be used just to display a blank failure element, string can be specified as a failure message
     failure: Union[bool, str] = False
-    error: bool = False
+    error: Union[bool, str] = False
     system_out: List[str] = attrs.field(factory=list)
 
     # Properties used in BaseOS CI results.xml

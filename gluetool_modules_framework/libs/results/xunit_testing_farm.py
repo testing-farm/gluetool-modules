@@ -168,7 +168,7 @@ class XUnitTFTestCase:
     phases: Optional[XUnitTFPhases] = None  # Property used in BaseOS CI results.xml
     packages: Optional[XUnitTFPackages] = None  # Property used in BaseOS CI results.xml
     failure: Optional[XUnitTFFailure] = None
-    error: Optional[str] = None
+    error: Optional[XUnitTFFailure] = None
     testing_environment: List[XUnitTFTestingEnvironment] = attrs.field(
         factory=list,
         metadata={'name': 'testing-environment'}
@@ -199,7 +199,8 @@ class XUnitTFTestCase:
             testing_environment=environments,
             failure=XUnitTFFailure(message=test_case.failure if isinstance(test_case.failure, str) else None)
             if test_case.failure is not False else None,
-            error='' if test_case.error else None,
+            error=XUnitTFFailure(message=test_case.error if isinstance(test_case.error, str) else None)
+            if test_case.error is not False else None,
             time=test_case.time,
             parameters=XUnitTFParameters.construct(test_case.parameters) if test_case.parameters else None,
             phases=XUnitTFPhases.construct(test_case.phases) if test_case.phases else None,

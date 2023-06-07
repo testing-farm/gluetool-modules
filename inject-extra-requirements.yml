@@ -103,7 +103,7 @@
         line: 'export PYCURL_SSL_LIBRARY={{ pycurl_ssl_library }}'
 
     - name: "Check if pycurl is installed"
-      command: pip list --format=freeze | grep pycurl == 0
+      shell: pip list --format=freeze | grep pycurl
       register: pycurl_installed
 
     - name: "Reinstall pycurl with correct backend"

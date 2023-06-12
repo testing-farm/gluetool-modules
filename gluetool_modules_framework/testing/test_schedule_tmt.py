@@ -687,7 +687,9 @@ class TestScheduleTMT(Module):
 
         test_filter = test_filter or self.test_filter
 
-        for plan in plans:
+        # As the loop will remove the items in the list, the copy of the
+        # list needs to be created, otherwise a single element would be always skipped after each removed one.
+        for plan in plans[:]:
             command = [
                 self.option('command')
             ]

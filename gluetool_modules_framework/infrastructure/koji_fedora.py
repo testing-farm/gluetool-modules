@@ -730,7 +730,9 @@ class KojiTask(LoggerMixin, object):
         if not self._module.option('baseline-method'):
             return None
 
-        assert self.baseline_task is not None
+        if self.baseline_task is None:
+            return None
+
         return self.baseline_task.nvr
 
     @cached_property

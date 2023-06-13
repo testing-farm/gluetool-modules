@@ -424,7 +424,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
         except gluetool.GlueCommandError as exc:
             raise FailedToMerge('Failed to merge {}: {}'.format(ref, exc.output.stderr)) from exc
-        self.commands.append(' '.join(command.executable))
+        self.commands.append(' '.join(command.executable).replace(actual_path, TESTCODE_DIR))
 
     def initialize_from_path(self, path: str) -> Any:
         """

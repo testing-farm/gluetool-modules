@@ -285,12 +285,23 @@ class TestScheduleRunner(gluetool.Module):
         schedule_entry: TestScheduleEntry
     ) -> Optional[gluetool_modules_framework.libs.guest.NetworkedGuest]:
 
+        suitable_guest = None
         with self._guest_cache_lock:
             for guest in self._guests_cache:
                 if schedule_entry.testing_environment == guest.environment:
                     self._guests_cache.remove(guest)
-                    return guest
-        return None
+                    suitable_guest = guest
+
+        # Check if suitable_guest is alive, destroy if not
+        if suitable_guest:
+            try:
+                suitable_guest._wait_alive()
+            except GlueError:
+                self.warning('The guest is unavailable, destroy it and create a new one')
+                suitable_guest.destroy()
+                return None
+
+        return suitable_guest
 
     def _destroy_cached_guests(self) -> None:
         for guest in self._guests_cache:

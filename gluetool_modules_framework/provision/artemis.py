@@ -609,20 +609,26 @@ class ArtemisGuest(NetworkedGuest):
 
     def _wait_alive(
         self,
-        connect_socket_timeout: int,
-        connect_timeout: int, connect_tick: int,
-        echo_timeout: int, echo_tick: int,
-        boot_timeout: int, boot_tick: int
+        connect_socket_timeout: Optional[int] = None,
+        connect_timeout: Optional[int] = None,
+        connect_tick: Optional[int] = None,
+        echo_timeout: Optional[int] = None,
+        echo_tick: Optional[int] = None,
+        boot_timeout: Optional[int] = None,
+        boot_tick: Optional[int] = None
     ) -> None:
         '''
         Wait till the guest is alive. That covers several checks.
         '''
 
         try:
-            self.wait_alive(connect_socket_timeout=connect_socket_timeout,
-                            connect_timeout=connect_timeout, connect_tick=connect_tick,
-                            echo_timeout=echo_timeout, echo_tick=echo_tick,
-                            boot_timeout=boot_timeout, boot_tick=boot_tick)
+            self.wait_alive(connect_socket_timeout=connect_socket_timeout or self.module.option('connection-timeout'),
+                            connect_timeout=connect_timeout or self.module.option('activation-timeout'),
+                            connect_tick=connect_tick or self.module.option('activation-tick'),
+                            echo_timeout=echo_timeout or self.module.option('echo-timeout'),
+                            echo_tick=echo_tick or self.module.option('echo-tick'),
+                            boot_timeout=boot_timeout or self.module.option('boot-timeout'),
+                            boot_tick=boot_tick or self.module.option('boot-tick'))
 
         except GlueError as exc:
             raise GlueError('Guest failed to become alive: {}'.format(exc))

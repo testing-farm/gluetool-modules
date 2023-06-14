@@ -530,6 +530,12 @@ class NetworkedGuest(Guest):
 
         self.wait('boot finished', check_boot, timeout=boot_timeout, tick=boot_tick)
 
+    def _wait_alive(self, *args: Any, **kwargs: Any) -> None:
+        """
+        Wait till the guest is alive. That covers several checks. The implementation is provisioner specific
+        """
+        raise NotImplementedError
+
     def copy_to(self, src: str, dst: str, recursive: bool = False, **kwargs: Any) -> gluetool.utils.ProcessOutput:
 
         self.debug("copy to the guest: '{}' => '{}'".format(src, dst))

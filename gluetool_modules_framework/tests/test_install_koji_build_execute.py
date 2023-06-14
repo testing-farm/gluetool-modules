@@ -19,10 +19,13 @@ import gluetool_modules_framework.helpers.rules_engine
 from . import create_module, patch_shared
 
 
-def mock_guest(execute_mock):
+def mock_guest(execute_mock, artifacts=None, environment=None):
     guest_mock = MagicMock()
     guest_mock.name = 'guest0'
     guest_mock.execute = execute_mock
+    guest_mock.environment = environment or TestingEnvironment()
+    if artifacts:
+        guest_mock.environment.artifacts = artifacts
 
     return guest_mock
 
@@ -166,7 +169,9 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
     stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
 
     execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
-    guest = mock_guest(execute_mock)
+    guest = mock_guest(execute_mock, artifacts=[
+        {'type': 'fedora-copr-build', 'id': 'artifact1'},
+    ])
 
     module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir))
     copr_module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir))

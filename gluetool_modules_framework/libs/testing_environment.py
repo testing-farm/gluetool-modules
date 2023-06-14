@@ -51,6 +51,7 @@ class TestingEnvironment(object):
     :param dict settings: Various environment settings or tweaks.
     :param dict tmt: Special environment settings for tmt tool.
     :param dict kickstart: Kickstart specification for provisioning.
+    :param list excluded_packages: Packages excluded from installation during ``artifact-installation`` phase.
     """
 
     arch: Optional[ArchType] = None
@@ -64,6 +65,7 @@ class TestingEnvironment(object):
     settings: Optional[Dict[str, Any]] = None
     tmt: Optional[Dict[str, Any]] = None
     kickstart: Optional[Dict[str, str]] = None
+    excluded_packages: Optional[List[str]] = None
 
     # Make special values available to templates, they are now reachable as class variables
     # of each instance.

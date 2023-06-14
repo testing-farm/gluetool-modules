@@ -51,13 +51,12 @@ def fixture_module():
 def create_test_schedule(entry_properties):
     schedule = TestSchedule()
     for stage, state, result in entry_properties:
-        tec = TestingEnvironment(arch='x86_64', compose='Fedora37')
+        tec = TestingEnvironment(arch='x86_64', compose='Fedora37', excluded_packages=['excludes'])
         entry = TestScheduleEntry(
             gluetool.log.Logging.get_logger(),
             tec,
             'plan',
-            'repodir',
-            ['excludes']
+            'repodir'
         )
         entry.stage = stage
         entry.state = state
@@ -126,11 +125,11 @@ def test_execute_reuse_guests(module, monkeypatch):
     provision_mock.assert_called_once_with(TestingEnvironment(arch='x86_64', compose='Fedora37'))
     # The guest setup should be called only for the first schedule entry
     guest_mock.setup.assert_has_calls([
-        call(stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION, schedule_entry=test_schedule[0]),
-        call(stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION_WORKAROUNDS, schedule_entry=test_schedule[0]),
-        call(stage=GuestSetupStage.ARTIFACT_INSTALLATION, schedule_entry=test_schedule[0]),
-        call(stage=GuestSetupStage.POST_ARTIFACT_INSTALLATION_WORKAROUNDS, schedule_entry=test_schedule[0]),
-        call(stage=GuestSetupStage.POST_ARTIFACT_INSTALLATION, schedule_entry=test_schedule[0]),
+        call(stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION),
+        call(stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION_WORKAROUNDS),
+        call(stage=GuestSetupStage.ARTIFACT_INSTALLATION),
+        call(stage=GuestSetupStage.POST_ARTIFACT_INSTALLATION_WORKAROUNDS),
+        call(stage=GuestSetupStage.POST_ARTIFACT_INSTALLATION),
     ])
     guest_mock.destroy.assert_called_once_with()
     assert len(test_schedule) == 3

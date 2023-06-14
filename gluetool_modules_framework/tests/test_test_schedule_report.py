@@ -52,10 +52,9 @@ def create_test_schedule(entry_properties):
     for stage, state, result in entry_properties:
         entry = TestScheduleEntry(
             gluetool.log.Logging.get_logger(),
-            TestingEnvironment(arch='x86_64', compose='Fedora37'),
+            TestingEnvironment(arch='x86_64', compose='Fedora37', excluded_packages=['exclude1']),
             'plan',
             'repodir',
-            ['exclude1']
         )
         entry.stage = stage
         entry.state = state

@@ -10,9 +10,8 @@ from gluetool.result import Ok, Error
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
 from gluetool_modules_framework.libs.guest import NetworkedGuest
-from gluetool_modules_framework.libs.test_schedule import TestScheduleEntry
 
-from typing import Any, Optional  # noqa
+from typing import Any, List, Optional  # noqa
 
 # accepted artifact types from testing farm request
 TESTING_FARM_ARTIFACT_TYPES = ['fedora-koji-build', 'redhat-brew-build']
@@ -45,7 +44,6 @@ class InstallKojiBuildExecute(gluetool.Module):
     def setup_guest(
         self,
         guest: NetworkedGuest,
-        schedule_entry: Optional[TestScheduleEntry] = None,
         stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
         log_dirpath: Optional[str] = None,
         **kwargs: Any
@@ -58,7 +56,6 @@ class InstallKojiBuildExecute(gluetool.Module):
         r_overloaded_guest_setup_output = self.overloaded_shared(
             'setup_guest',
             guest,
-            schedule_entry=schedule_entry,
             stage=stage,
             log_dirpath=log_dirpath,
             **kwargs
@@ -77,11 +74,13 @@ class InstallKojiBuildExecute(gluetool.Module):
         if not self.request_artifacts:
             return r_overloaded_guest_setup_output
 
-        excluded_packages = schedule_entry.excludes if schedule_entry and hasattr(schedule_entry, 'excludes') else []
+        # excluded packages
+        excluded_packages: List[str] = []
+        if guest.environment:
+            excluded_packages = guest.environment.excluded_packages or []
 
         if excluded_packages:
-            assert schedule_entry
-            log_dict(schedule_entry.logger.info, 'excluded_packages', excluded_packages)
+            log_dict(self.info, 'Excluded packages', excluded_packages)
 
         guest_setup_output = r_overloaded_guest_setup_output.unwrap() or []
 

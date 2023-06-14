@@ -117,11 +117,10 @@ def test_gather_results(module, asset, monkeypatch):
 
     schedule_entry = TestScheduleEntry(
         gluetool.log.Logging().get_logger(),
-        TestingEnvironment('x86_64', 'rhel-9'),
+        TestingEnvironment('x86_64', 'rhel-9', excluded_packages=['exclude1', 'exclude2']),
         # a plan always starts with slash
         '/{}'.format(name),
-        'some-repo-dir',
-        ['exclude1', 'exclude2']
+        'some-repo-dir'
     )
 
     outcome, results = gather_plan_results(schedule_entry, ASSETS_DIR)
@@ -134,13 +133,12 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     # this doesn't appear anywhere in results.xml, but _run_plan() needs it
     module.glue.add_shared('dist_git_repository', module_dist_git)
 
-    test_env = TestingEnvironment('x86_64', 'rhel-9')
+    test_env = TestingEnvironment('x86_64', 'rhel-9', excluded_packages=['exclude1', 'exclude2'])
     schedule_entry = TestScheduleEntry(
         gluetool.log.Logging().get_logger(),
         test_env,
         '/passed',
-        'some-repo-dir',
-        ['exclude1', 'exclude2']
+        'some-repo-dir'
     )
     schedule_entry.guest = guest
     schedule_entry.testing_environment = test_env
@@ -194,13 +192,12 @@ def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest
     # this doesn't appear anywhere in results.xml, but _run_plan() needs it
     module.glue.add_shared('dist_git_repository', module_dist_git)
 
-    test_env = TestingEnvironment('x86_64', 'rhel-9')
+    test_env = TestingEnvironment('x86_64', 'rhel-9', excluded_packages=['exclude1', 'exclude2'])
     schedule_entry = TestScheduleEntry(
         gluetool.log.Logging().get_logger(),
         test_env,
         '/passed',
-        'some-repo-dir',
-        ['exclude1', 'exclude2']
+        'some-repo-dir'
     )
     schedule_entry.guest = guest
     schedule_entry.testing_environment = test_env
@@ -328,8 +325,7 @@ def test_tmt_output_dir(
         gluetool.log.Logging().get_logger(),
         testing_environment,
         'plan1',
-        tmpdir,
-        []
+        tmpdir
     )
 
     schedule_entry.guest = guest

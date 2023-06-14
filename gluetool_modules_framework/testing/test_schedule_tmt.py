@@ -300,12 +300,13 @@ class TestScheduleEntry(BaseTestScheduleEntry):
 
         return '{}:{}'.format(entry_id, plan)
 
-    def __init__(self,
-                 logger: ContextAdapter,
-                 tec: TestingEnvironment,
-                 plan: str,
-                 repodir: str,
-                 excludes: List[str]) -> None:
+    def __init__(
+        self,
+        logger: ContextAdapter,
+        tec: TestingEnvironment,
+        plan: str,
+        repodir: str
+    ) -> None:
         """
         Test schedule entry, suited for use with TMT runners.
 
@@ -325,7 +326,6 @@ class TestScheduleEntry(BaseTestScheduleEntry):
         self.work_dirpath: Optional[str] = None
         self.results: Any = None
         self.repodir: str = repodir
-        self.excludes: List[str] = excludes
         self.tmt_reproducer: List[str] = []
         self.tmt_reproducer_filepath: Optional[str] = None
 
@@ -839,7 +839,6 @@ class TestScheduleTMT(Module):
                     tec,
                     plan,
                     repodir,
-                    exported_plan.excludes(logger=self.logger) if exported_plan else []
                 )
 
                 # Create `settings` dictionary if it doesn't exist and the watchdog specification exists in TMT plan
@@ -871,7 +870,8 @@ class TestScheduleTMT(Module):
                     hardware=tec.hardware or hardware,
                     kickstart=tec.kickstart or kickstart,
                     settings=tec.settings,
-                    tmt=tec.tmt
+                    tmt=tec.tmt,
+                    excluded_packages=exported_plan.excludes(logger=self.logger) if exported_plan else []
                 )
 
                 schedule_entry.tmt_reproducer.extend(repository.commands_no_secrets)

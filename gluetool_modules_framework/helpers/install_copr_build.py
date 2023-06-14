@@ -2,14 +2,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import re
 
 import gluetool
+from gluetool.log import log_dict
 from gluetool.result import Ok, Error
 from gluetool_modules_framework.infrastructure.copr import CoprTask
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage, \
     SetupGuestReturnType
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
 from gluetool_modules_framework.libs.guest import NetworkedGuest
+from gluetool_modules_framework.libs.test_schedule import TestScheduleEntry
 
 # Type annotations
 from typing import cast, Any, List, Optional  # noqa
@@ -47,6 +50,7 @@ class InstallCoprBuild(gluetool.Module):
     def setup_guest(
         self,
         guest: NetworkedGuest,
+        schedule_entry: Optional[TestScheduleEntry] = None,
         stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
         log_dirpath: Optional[str] = None,
         **kwargs: Any
@@ -89,6 +93,12 @@ class InstallCoprBuild(gluetool.Module):
         if not builds:
             return r_overloaded_guest_setup_output
 
+        # excluded packages taken from testing environment
+        excluded_packages: List[str] = []
+        if guest.environment and guest.environment.excluded_packages:
+            excluded_packages = guest.environment.excluded_packages
+            log_dict(guest.logger.info, 'Excluded packages', excluded_packages)
+
         guest_setup_output = r_overloaded_guest_setup_output.unwrap() or []
 
         installation_log_dirpath = os.path.join(
@@ -125,7 +135,7 @@ class InstallCoprBuild(gluetool.Module):
                 items=build.repo_url
             )
 
-            # download all artifacts
+            # download all artifacts, including excluded
             sut_installation.add_step(
                 'Download rpms from copr',
                 (
@@ -134,31 +144,64 @@ class InstallCoprBuild(gluetool.Module):
                 ).format(download_path, ' '.join(build.rpm_urls + build.srpm_urls))
             )
 
+            copr_build_rpm_urls = build.rpm_urls
+
+            # exclude packages if requested before installation flow, note that we are matching URLs,
+            # so search with '/' prefix
+            if excluded_packages:
+                # create regexp for excluding packages, note that we will be filtering URLs, thus the slash
+                excluded_packages_regexp = '|'.join(['/{}'.format(package) for package in excluded_packages])
+                excluded_packages_regexp_compiled = re.compile(r'({})'.format(excluded_packages_regexp))
+                copr_build_rpm_urls = [
+                    rpm_url
+                    for rpm_url in build.rpm_urls
+                    if not re.search(excluded_packages_regexp_compiled, rpm_url)
+                ]
+
             # reinstall command has to be called for each rpm separately, hence list of rpms is used
-            if has_dnf:
-                # HACK: this is really awkward wrt. error handling: https://bugzilla.redhat.com/show_bug.cgi?id=1831022
-                sut_installation.add_step('Reinstall packages', 'dnf -y reinstall {} || true', items=build.rpm_urls)
-            else:
-                sut_installation.add_step('Reinstall packages', 'yum -y reinstall {}',
-                                          items=build.rpm_urls, ignore_exception=True)
+            if copr_build_rpm_urls:
+                if has_dnf:
+                    # HACK: this is really awkward wrt. error handling:
+                    #       https://bugzilla.redhat.com/show_bug.cgi?id=1831022
+                    sut_installation.add_step(
+                        'Reinstall packages', 'dnf -y reinstall {} || true', items=copr_build_rpm_urls
+                    )
+                else:
+                    sut_installation.add_step('Reinstall packages', 'yum -y reinstall {}',
+                                              items=copr_build_rpm_urls, ignore_exception=True)
 
             # install command is called just once with all rpms followed, hence list of
             # rpms is joined to one item
-            rpm_urls.extend(build.rpm_urls)
+            rpm_urls.extend(copr_build_rpm_urls)
 
         joined_rpm_urls = ' '.join(rpm_urls)
 
-        if has_dnf:
-            sut_installation.add_step('Install packages', 'dnf -y install {}', items=joined_rpm_urls)
-        else:
-            # yum install refuses downgrades, do it explicitly
-            sut_installation.add_step('Downgrade packages', 'yum -y downgrade {}',
-                                      items=joined_rpm_urls, ignore_exception=True)
-            sut_installation.add_step('Install packages', 'yum -y install {}',
-                                      items=joined_rpm_urls, ignore_exception=True)
+        if joined_rpm_urls:
+            if has_dnf:
+                sut_installation.add_step('Install packages', 'dnf -y install {}', items=joined_rpm_urls)
+            else:
+                # yum install refuses downgrades, do it explicitly
+                sut_installation.add_step('Downgrade packages', 'yum -y downgrade {}',
+                                          items=joined_rpm_urls, ignore_exception=True)
+                sut_installation.add_step('Install packages', 'yum -y install {}',
+                                          items=joined_rpm_urls, ignore_exception=True)
 
         for build in builds:
-            sut_installation.add_step('Verify packages installed', 'rpm -q {}', items=build.rpm_names)
+            rpm_names = build.rpm_names
+
+            if excluded_packages:
+                # create regexp for excluding packages, note that we will filtering rpm names,
+                # so start with beginning of line
+                excluded_packages_regexp = '|'.join(['^{}'.format(package) for package in excluded_packages])
+                excluded_packages_regexp_compiled = re.compile(r'({})'.format(excluded_packages_regexp))
+                rpm_names = [
+                    rpm_name
+                    for rpm_name in build.rpm_names
+                    if not re.search(excluded_packages_regexp_compiled, rpm_name)
+                ]
+
+            if rpm_names:
+                sut_installation.add_step('Verify packages installed', 'rpm -q {}', items=rpm_names)
 
         sut_result = sut_installation.run(guest)
 

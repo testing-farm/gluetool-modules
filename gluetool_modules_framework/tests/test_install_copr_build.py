@@ -13,17 +13,19 @@ from mock import MagicMock
 from mock import call
 import gluetool_modules_framework.libs.sut_installation
 from gluetool_modules_framework.helpers.install_copr_build import InstallCoprBuild
-from gluetool_modules_framework.libs.sut_installation import SUTInstallationFailedError, INSTALL_COMMANDS_FILE
 from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
+from gluetool_modules_framework.libs.sut_installation import SUTInstallationFailedError, INSTALL_COMMANDS_FILE
+from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from . import create_module, patch_shared, check_loadable
 
 LOG_DIR_NAME = 'artifact-installation'
 
 
-def mock_guest(execute_mock, artifacts=None):
+def mock_guest(execute_mock, artifacts=None, environment=None):
     guest_mock = MagicMock()
     guest_mock.name = 'guest0'
     guest_mock.execute = execute_mock
+    guest_mock.environment = environment or TestingEnvironment()
     if artifacts:
         guest_mock.environment.artifacts = artifacts
 
@@ -71,9 +73,9 @@ def fixture_module_shared_patched(module, monkeypatch):
     """
     primary_task_mock = MagicMock()
     primary_task_mock.repo_url = 'dummyX_repo_url'
-    primary_task_mock.rpm_urls = ['dummyX_rpm_url1', 'dummyX_rpm_url2']
-    primary_task_mock.srpm_urls = ['dummyX_srpm_url1', 'dummyX_srpm_url2']
-    primary_task_mock.rpm_names = ['dummyX_rpm_names1', 'dummyX_rpm_names2']
+    primary_task_mock.rpm_urls = ['https://example.com/dummyX_rpm_name1-1.0.1-el7.rpm', 'https://example.com/dummyX_rpm_name2-1.0.1-el7.rpm']  # noqa
+    primary_task_mock.srpm_urls = ['https://example.com/dummyX_rpm_name1-1.0.1-el7.src.rpm', 'https://example.com/dummyX_rpm_name2-1.0.1-el7.src.rpm']  # noqa
+    primary_task_mock.rpm_names = ['dummyX_rpm_name1', 'dummyX_rpm_name2']
     primary_task_mock.project = 'copr/projectX'
 
     def tasks_mock(task_ids=None):
@@ -117,26 +119,37 @@ def test_loadable(module):
     check_loadable(module.glue, 'gluetool_modules_framework/helpers/install_copr_build.py', 'InstallCoprBuild')
 
 
-@pytest.mark.parametrize('guest_artifacts, expected_commands, expected_filenames', [
+@pytest.mark.parametrize('guest_artifacts, guest_environment, expected_commands, expected_filenames', [
     (
-        # Test case no. 1
+        #
+        # Test case - single artifact
+        #
         [  # Input artifacts
             {'type': 'fedora-copr-build', 'id': 'artifact1'},
         ],
+        None,
         [  # Expected install commands
             'mkdir -pv some-download-path',
             'curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo',
-            'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy1_rpm_url1 dummy1_rpm_url2 dummy1_srpm_url1 dummy1_srpm_url2',  # noqa
-            'dnf -y reinstall dummy1_rpm_url1 || true',
-            'dnf -y reinstall dummy1_rpm_url2 || true',
-            'dnf -y install --allowerasing dummy1_rpm_url1 dummy1_rpm_url2',
-            'rpm -q dummy1_rpm_names1',
-            'rpm -q dummy1_rpm_names2',
+            (
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm '
+                'https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm '
+                'https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
+            ),
+            'dnf -y reinstall https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm || true',
+            'dnf -y reinstall https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm || true',
+            'dnf -y install --allowerasing https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm',
+            'rpm -q dummy1_rpm_name1',
+            'rpm -q dummy1_rpm_name2',
         ],
         None  # No expected generated files - use the default ones in `assert_log_files()`
     ),
+    #
+    # Test case - multiple artifacts
+    #
     (
-        # Test case no. 2
         [  # Input artifacts
             {'type': 'fedora-copr-build', 'id': 'artifact1'},
             {'type': 'ignore-this-type', 'id': 'artifact-other'},
@@ -144,27 +157,54 @@ def test_loadable(module):
             {'type': 'ignore-this-type-too', 'id': 'artifact-other2'},
             {'type': 'fedora-copr-build', 'id': 'artifact3'}
         ],
+        None,
         [  # Expected install commands
             'mkdir -pv some-download-path',
             'curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo',
-            'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy1_rpm_url1 dummy1_rpm_url2 dummy1_srpm_url1 dummy1_srpm_url2',
-            'dnf -y reinstall dummy1_rpm_url1 || true',
-            'dnf -y reinstall dummy1_rpm_url2 || true',
+            (
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm '
+                'https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm '
+                'https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
+            ),
+            'dnf -y reinstall https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm || true',
+            'dnf -y reinstall https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm || true',
             'curl -v dummy2_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project2-2.repo',
-            'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy2_rpm_url1 dummy2_rpm_url2 dummy2_srpm_url1 dummy2_srpm_url2',
-            'dnf -y reinstall dummy2_rpm_url1 || true',
-            'dnf -y reinstall dummy2_rpm_url2 || true',
+            (
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm '
+                'https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm '
+                'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm '
+                'https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm'
+            ),
+            'dnf -y reinstall https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm || true',
+            'dnf -y reinstall https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm || true',
             'curl -v dummy3_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project3-3.repo',
-            'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy3_rpm_url1 dummy3_rpm_url2 dummy3_srpm_url1 dummy3_srpm_url2',
-            'dnf -y reinstall dummy3_rpm_url1 || true',
-            'dnf -y reinstall dummy3_rpm_url2 || true',
-            'dnf -y install --allowerasing dummy1_rpm_url1 dummy1_rpm_url2 dummy2_rpm_url1 dummy2_rpm_url2 dummy3_rpm_url1 dummy3_rpm_url2',
-            'rpm -q dummy1_rpm_names1',
-            'rpm -q dummy1_rpm_names2',
-            'rpm -q dummy2_rpm_names1',
-            'rpm -q dummy2_rpm_names2',
-            'rpm -q dummy3_rpm_names1',
-            'rpm -q dummy3_rpm_names2',
+            (
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm '
+                'https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm '
+                'https://example.com/dummy3_rpm_name1-1.0.1-el7.src.rpm '
+                'https://example.com/dummy3_rpm_name2-1.0.1-el7.src.rpm'
+            ),
+            'dnf -y reinstall https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm || true',
+            'dnf -y reinstall https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm || true',
+            (
+                'dnf -y install --allowerasing '
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm '
+                'https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
+                'https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm '
+                'https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm '
+                'https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm '
+                'https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm'
+            ),
+            'rpm -q dummy1_rpm_name1',
+            'rpm -q dummy1_rpm_name2',
+            'rpm -q dummy2_rpm_name1',
+            'rpm -q dummy2_rpm_name2',
+            'rpm -q dummy3_rpm_name1',
+            'rpm -q dummy3_rpm_name2',
         ],
         [  # Expected generated files
             '0-Create-artifacts-directory.txt',
@@ -182,13 +222,104 @@ def test_loadable(module):
             '12-Verify-packages-installed.txt',
             '13-Verify-packages-installed.txt',
         ]
+    ),
+    #
+    # Test case - with-excludes
+    #
+    (
+        [  # Input artifacts
+            {'type': 'fedora-copr-build', 'id': 'artifact1'},
+            {'type': 'ignore-this-type', 'id': 'artifact-other'},
+            {'type': 'fedora-copr-build', 'id': 'artifact2'},
+            {'type': 'ignore-this-type-too', 'id': 'artifact-other2'},
+            {'type': 'fedora-copr-build', 'id': 'artifact3'}
+        ],
+        TestingEnvironment(
+            excluded_packages=['dummy1_rpm_name1', 'dummy1_rpm_name2', 'dummy2_rpm_name1', 'dummy2_rpm_name2']
+        ),
+        [  # Expected install commands
+            'mkdir -pv some-download-path',
+            'curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo',
+            (
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
+            ),
+            'curl -v dummy2_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project2-2.repo',
+            (
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm '
+                'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm'
+            ),
+            'curl -v dummy3_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project3-3.repo',
+            (
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm '
+                'https://example.com/dummy3_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.src.rpm'
+            ),
+            'dnf -y reinstall https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm || true',
+            'dnf -y reinstall https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm || true',
+            (
+                'dnf -y install --allowerasing '
+                'https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm'
+            ),
+            'rpm -q dummy3_rpm_name1',
+            'rpm -q dummy3_rpm_name2',
+        ],
+        [  # Expected generated files
+            '0-Create-artifacts-directory.txt',
+            '1-Download-copr-repository.txt',
+            '2-Download-rpms-from-copr.txt',
+            '3-Download-copr-repository.txt',
+            '4-Download-rpms-from-copr.txt',
+            '5-Download-copr-repository.txt',
+            '6-Download-rpms-from-copr.txt',
+            '7-Reinstall-packages.txt',
+            '8-Install-packages.txt',
+            '9-Verify-packages-installed.txt'
+        ]
+    ),
+    #
+    # Test case - all-excluded
+    #
+    (
+        [  # Input artifacts
+            {'type': 'fedora-copr-build', 'id': 'artifact1'},
+            {'type': 'fedora-copr-build', 'id': 'artifact2'},
+        ],
+        TestingEnvironment(
+            excluded_packages=['dummy1_rpm_name1', 'dummy1_rpm_name2', 'dummy2_rpm_name1', 'dummy2_rpm_name2']
+        ),
+        [  # Expected install commands
+            'mkdir -pv some-download-path',
+            'curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo',
+            (
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
+            ),
+            'curl -v dummy2_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project2-2.repo',
+            (
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm '
+                'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm'
+            )
+        ],
+        [  # Expected generated files
+            '0-Create-artifacts-directory.txt',
+            '1-Download-copr-repository.txt',
+            '2-Download-rpms-from-copr.txt',
+            '3-Download-copr-repository.txt',
+            '4-Download-rpms-from-copr.txt'
+        ]
     )
-])
-def test_setup_guest(module_shared_patched, tmpdir, guest_artifacts, expected_commands, expected_filenames):
+
+], ids=['single-artifact', 'multiple-artifacts', 'with-excludes', 'all-excluded'])
+def test_setup_guest(module_shared_patched, tmpdir, guest_artifacts, guest_environment, expected_commands, expected_filenames):
     module, primary_task_mock = module_shared_patched
 
     execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
-    guest = mock_guest(execute_mock, artifacts=guest_artifacts)
+    guest = mock_guest(execute_mock, artifacts=guest_artifacts, environment=guest_environment)
 
     module.setup_guest(guest, stage=GuestSetupStage.ARTIFACT_INSTALLATION, log_dirpath=str(tmpdir))
 
@@ -219,13 +350,19 @@ def test_no_dnf(module_shared_patched, tmpdir):
         call('command -v dnf'),
         call('mkdir -pv some-download-path'),
         call('curl -v dummyX_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_projectX-1.repo'),
-        call('cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummyX_rpm_url1 dummyX_rpm_url2 dummyX_srpm_url1 dummyX_srpm_url2'),  # noqa
-        call('yum -y reinstall dummyX_rpm_url1'),
-        call('yum -y reinstall dummyX_rpm_url2'),
-        call('yum -y downgrade dummyX_rpm_url1 dummyX_rpm_url2'),
-        call('yum -y install dummyX_rpm_url1 dummyX_rpm_url2'),
-        call('rpm -q dummyX_rpm_names1'),
-        call('rpm -q dummyX_rpm_names2')
+        call(
+            'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+            'https://example.com/dummyX_rpm_name1-1.0.1-el7.rpm '
+            'https://example.com/dummyX_rpm_name2-1.0.1-el7.rpm '
+            'https://example.com/dummyX_rpm_name1-1.0.1-el7.src.rpm '
+            'https://example.com/dummyX_rpm_name2-1.0.1-el7.src.rpm'
+        ),
+        call('yum -y reinstall https://example.com/dummyX_rpm_name1-1.0.1-el7.rpm'),
+        call('yum -y reinstall https://example.com/dummyX_rpm_name2-1.0.1-el7.rpm'),
+        call('yum -y downgrade https://example.com/dummyX_rpm_name1-1.0.1-el7.rpm https://example.com/dummyX_rpm_name2-1.0.1-el7.rpm'),
+        call('yum -y install https://example.com/dummyX_rpm_name1-1.0.1-el7.rpm https://example.com/dummyX_rpm_name2-1.0.1-el7.rpm'),
+        call('rpm -q dummyX_rpm_name1'),
+        call('rpm -q dummyX_rpm_name2')
     ]
 
     execute_mock.assert_has_calls(calls, any_order=False)

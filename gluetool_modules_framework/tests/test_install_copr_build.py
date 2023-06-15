@@ -70,11 +70,11 @@ def fixture_module_shared_patched(module, monkeypatch):
     Modification of the `InstallCoprBuild` module such as mocking shared functions.
     """
     primary_task_mock = MagicMock()
-    primary_task_mock.repo_url = 'dummy_repo_url'
-    primary_task_mock.rpm_urls = ['dummy_rpm_url1', 'dummy_rpm_url2']
-    primary_task_mock.srpm_urls = ['dummy_srpm_url1', 'dummy_srpm_url2']
-    primary_task_mock.rpm_names = ['dummy_rpm_names1', 'dummy_rpm_names2']
-    primary_task_mock.project = 'copr/project'
+    primary_task_mock.repo_url = 'dummyX_repo_url'
+    primary_task_mock.rpm_urls = ['dummyX_rpm_url1', 'dummyX_rpm_url2']
+    primary_task_mock.srpm_urls = ['dummyX_srpm_url1', 'dummyX_srpm_url2']
+    primary_task_mock.rpm_names = ['dummyX_rpm_names1', 'dummyX_rpm_names2']
+    primary_task_mock.project = 'copr/projectX'
 
     def tasks_mock(task_ids=None):
         """
@@ -86,19 +86,19 @@ def fixture_module_shared_patched(module, monkeypatch):
         """
         if task_ids:
             tasks = []
-            for task_id in task_ids:
-                def append_task_id(s):
-                    return '{}_{}'.format(s, task_id)
+            for number, _ in enumerate(task_ids, 1):
+                def generate_id(item: str):
+                    return item.replace('X', str(number))
 
                 tasks.append(copy.deepcopy(primary_task_mock))
-                tasks[-1].repo_url = append_task_id(tasks[-1].repo_url)
-                tasks[-1].rpm_urls[0] = append_task_id(tasks[-1].rpm_urls[0])
-                tasks[-1].rpm_urls[1] = append_task_id(tasks[-1].rpm_urls[1])
-                tasks[-1].srpm_urls[0] = append_task_id(tasks[-1].srpm_urls[0])
-                tasks[-1].srpm_urls[1] = append_task_id(tasks[-1].srpm_urls[1])
-                tasks[-1].rpm_names[0] = append_task_id(tasks[-1].rpm_names[0])
-                tasks[-1].rpm_names[1] = append_task_id(tasks[-1].rpm_names[1])
-                tasks[-1].project = append_task_id(tasks[-1].project)
+                tasks[-1].repo_url = generate_id(tasks[-1].repo_url)
+                tasks[-1].rpm_urls[0] = generate_id(tasks[-1].rpm_urls[0])
+                tasks[-1].rpm_urls[1] = generate_id(tasks[-1].rpm_urls[1])
+                tasks[-1].srpm_urls[0] = generate_id(tasks[-1].srpm_urls[0])
+                tasks[-1].srpm_urls[1] = generate_id(tasks[-1].srpm_urls[1])
+                tasks[-1].rpm_names[0] = generate_id(tasks[-1].rpm_names[0])
+                tasks[-1].rpm_names[1] = generate_id(tasks[-1].rpm_names[1])
+                tasks[-1].project = generate_id(tasks[-1].project)
         else:
             tasks = [primary_task_mock]
 
@@ -120,16 +120,18 @@ def test_loadable(module):
 @pytest.mark.parametrize('guest_artifacts, expected_commands, expected_filenames', [
     (
         # Test case no. 1
-        None,  # No input artifacts
+        [  # Input artifacts
+            {'type': 'fedora-copr-build', 'id': 'artifact1'},
+        ],
         [  # Expected install commands
             'mkdir -pv some-download-path',
-            'curl -v dummy_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project-1.repo',
-            'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy_rpm_url1 dummy_rpm_url2 dummy_srpm_url1 dummy_srpm_url2',  # noqa
-            'dnf --allowerasing -y reinstall dummy_rpm_url1 || true',
-            'dnf --allowerasing -y reinstall dummy_rpm_url2 || true',
-            'dnf --allowerasing -y install dummy_rpm_url1 dummy_rpm_url2',
-            'rpm -q dummy_rpm_names1',
-            'rpm -q dummy_rpm_names2',
+            'curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo',
+            'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy1_rpm_url1 dummy1_rpm_url2 dummy1_srpm_url1 dummy1_srpm_url2',  # noqa
+            'dnf --allowerasing -y reinstall dummy1_rpm_url1 || true',
+            'dnf --allowerasing -y reinstall dummy1_rpm_url2 || true',
+            'dnf --allowerasing -y install dummy1_rpm_url1 dummy1_rpm_url2',
+            'rpm -q dummy1_rpm_names1',
+            'rpm -q dummy1_rpm_names2',
         ],
         None  # No expected generated files - use the default ones in `assert_log_files()`
     ),
@@ -144,25 +146,25 @@ def test_loadable(module):
         ],
         [  # Expected install commands
             'mkdir -pv some-download-path',
-            'curl -v dummy_repo_url_artifact1 --retry 5 --output /etc/yum.repos.d/copr_build-copr_project_artifact1-1.repo',
-            'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy_rpm_url1_artifact1 dummy_rpm_url2_artifact1 dummy_srpm_url1_artifact1 dummy_srpm_url2_artifact1',
-            'dnf --allowerasing -y reinstall dummy_rpm_url1_artifact1 || true',
-            'dnf --allowerasing -y reinstall dummy_rpm_url2_artifact1 || true',
-            'curl -v dummy_repo_url_artifact2 --retry 5 --output /etc/yum.repos.d/copr_build-copr_project_artifact2-2.repo',
-            'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy_rpm_url1_artifact2 dummy_rpm_url2_artifact2 dummy_srpm_url1_artifact2 dummy_srpm_url2_artifact2',
-            'dnf --allowerasing -y reinstall dummy_rpm_url1_artifact2 || true',
-            'dnf --allowerasing -y reinstall dummy_rpm_url2_artifact2 || true',
-            'curl -v dummy_repo_url_artifact3 --retry 5 --output /etc/yum.repos.d/copr_build-copr_project_artifact3-3.repo',
-            'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy_rpm_url1_artifact3 dummy_rpm_url2_artifact3 dummy_srpm_url1_artifact3 dummy_srpm_url2_artifact3',
-            'dnf --allowerasing -y reinstall dummy_rpm_url1_artifact3 || true',
-            'dnf --allowerasing -y reinstall dummy_rpm_url2_artifact3 || true',
-            'dnf --allowerasing -y install dummy_rpm_url1_artifact1 dummy_rpm_url2_artifact1 dummy_rpm_url1_artifact2 dummy_rpm_url2_artifact2 dummy_rpm_url1_artifact3 dummy_rpm_url2_artifact3',
-            'rpm -q dummy_rpm_names1_artifact1',
-            'rpm -q dummy_rpm_names2_artifact1',
-            'rpm -q dummy_rpm_names1_artifact2',
-            'rpm -q dummy_rpm_names2_artifact2',
-            'rpm -q dummy_rpm_names1_artifact3',
-            'rpm -q dummy_rpm_names2_artifact3',
+            'curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo',
+            'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy1_rpm_url1 dummy1_rpm_url2 dummy1_srpm_url1 dummy1_srpm_url2',
+            'dnf --allowerasing -y reinstall dummy1_rpm_url1 || true',
+            'dnf --allowerasing -y reinstall dummy1_rpm_url2 || true',
+            'curl -v dummy2_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project2-2.repo',
+            'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy2_rpm_url1 dummy2_rpm_url2 dummy2_srpm_url1 dummy2_srpm_url2',
+            'dnf --allowerasing -y reinstall dummy2_rpm_url1 || true',
+            'dnf --allowerasing -y reinstall dummy2_rpm_url2 || true',
+            'curl -v dummy3_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project3-3.repo',
+            'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy3_rpm_url1 dummy3_rpm_url2 dummy3_srpm_url1 dummy3_srpm_url2',
+            'dnf --allowerasing -y reinstall dummy3_rpm_url1 || true',
+            'dnf --allowerasing -y reinstall dummy3_rpm_url2 || true',
+            'dnf --allowerasing -y install dummy1_rpm_url1 dummy1_rpm_url2 dummy2_rpm_url1 dummy2_rpm_url2 dummy3_rpm_url1 dummy3_rpm_url2',
+            'rpm -q dummy1_rpm_names1',
+            'rpm -q dummy1_rpm_names2',
+            'rpm -q dummy2_rpm_names1',
+            'rpm -q dummy2_rpm_names2',
+            'rpm -q dummy3_rpm_names1',
+            'rpm -q dummy3_rpm_names2',
         ],
         [  # Expected generated files
             '0-Create-artifacts-directory.txt',
@@ -216,14 +218,14 @@ def test_no_dnf(module_shared_patched, tmpdir):
     calls = [
         call('command -v dnf'),
         call('mkdir -pv some-download-path'),
-        call('curl -v dummy_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project-1.repo'),
-        call('cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy_rpm_url1 dummy_rpm_url2 dummy_srpm_url1 dummy_srpm_url2'),  # noqa
-        call('yum -y reinstall dummy_rpm_url1'),
-        call('yum -y reinstall dummy_rpm_url2'),
-        call('yum -y downgrade dummy_rpm_url1 dummy_rpm_url2'),
-        call('yum -y install dummy_rpm_url1 dummy_rpm_url2'),
-        call('rpm -q dummy_rpm_names1'),
-        call('rpm -q dummy_rpm_names2')
+        call('curl -v dummyX_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_projectX-1.repo'),
+        call('cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummyX_rpm_url1 dummyX_rpm_url2 dummyX_srpm_url1 dummyX_srpm_url2'),  # noqa
+        call('yum -y reinstall dummyX_rpm_url1'),
+        call('yum -y reinstall dummyX_rpm_url2'),
+        call('yum -y downgrade dummyX_rpm_url1 dummyX_rpm_url2'),
+        call('yum -y install dummyX_rpm_url1 dummyX_rpm_url2'),
+        call('rpm -q dummyX_rpm_names1'),
+        call('rpm -q dummyX_rpm_names2')
     ]
 
     execute_mock.assert_has_calls(calls, any_order=False)

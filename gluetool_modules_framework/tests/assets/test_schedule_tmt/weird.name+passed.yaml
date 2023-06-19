@@ -1,0 +1,19 @@
+---
+outcome: PASSED
+results:
+  - name: /tests/core/docs
+    result: passed
+    artifacts:
+      - name: log_dir
+        path: weird-name-passed/execute/logs/tests/core/docs
+      - name: testout.log
+        path: weird-name-passed/execute/logs/tests/core/docs/out.log
+      - name: journal.txt
+        path: weird-name-passed/execute/logs/tests/core/docs/journal.txt
+  - name: /tests/core/dry
+    result: passed
+    artifacts:
+      - name: log_dir
+        path: weird-name-passed/execute/logs/tests/core/dry
+      - name: testout.log
+        path: weird-name-passed/execute/logs/tests/core/dry/out.log

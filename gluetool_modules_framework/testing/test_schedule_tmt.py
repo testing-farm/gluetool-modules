@@ -340,6 +340,19 @@ class TestScheduleEntry(BaseTestScheduleEntry):
         log_fn('plan: {}'.format(self.plan))
 
 
+def safe_name(name: str) -> str:
+    """
+    A safe variant of the name which does not contain special characters.
+
+    Spaces and other special characters are removed to prevent problems with
+    tools which do not expect them (e.g. in directory names).
+
+    Workaround for https://github.com/teemtee/tmt/issues/1857
+    """
+
+    return re.sub(r"[^\w/-]+", "-", name).strip("-")
+
+
 def gather_plan_results(
     schedule_entry: TestScheduleEntry,
     work_dir: str,
@@ -356,7 +369,7 @@ def gather_plan_results(
 
     # TMT uses plan name as a relative directory to the working directory, but
     # plan start's with '/' character, strip it so we can use it with os.path.join
-    plan_path = schedule_entry.plan[1:]
+    plan_path = safe_name(schedule_entry.plan[1:])
 
     results_yaml = os.path.join(work_dir, plan_path, RESULTS_YAML)
 

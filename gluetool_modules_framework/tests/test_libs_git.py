@@ -54,13 +54,15 @@ def test_invalid_clone_options(remote_git_repository):
         remote_git_repository.clone()
 
 
-@pytest.mark.parametrize('path, prefix, expected_path, ref, branch', [
-    ('some_path', '', 'some_path', '', 'branch_bar'),
-    ('some_other_path', 'prefix_foo', 'some_other_path', 'ref_foo', ''),
-    ('', 'foo', 'workdir', '', 'branch_bar'),
-    ('', '', 'workdir', '', 'branch_bar')
+@pytest.mark.parametrize('path, prefix, expected_path, ref, branch, merge', [
+    ('some_path', '', 'some_path', '', 'branch_bar', ''),
+    ('some_other_path', 'prefix_foo', 'some_other_path', 'ref_foo', '', ''),
+    ('', 'foo', 'workdir', '', 'branch_bar', ''),
+    ('', '', 'workdir', '', 'branch_bar', ''),
+    ('some_other_path', 'prefix_foo', 'some_other_path', 'ref_merge_foo', '', 'ref_merge_foo'),
+    ('some_other_path', 'prefix_foo', 'some_other_path', 'ref_foo', '', 'merge_foo'),
 ])
-def test_clone(remote_git_repository, path, prefix, ref, monkeypatch, log, expected_path, branch):
+def test_clone(remote_git_repository, path, prefix, ref, monkeypatch, log, expected_path, branch, merge):
     remote_git_repository.clone_url = 'clone-url'
     remote_git_repository.path = path
 
@@ -72,9 +74,36 @@ def test_clone(remote_git_repository, path, prefix, ref, monkeypatch, log, expec
     mock_mkdtemp = MagicMock(return_value='workdir')
     monkeypatch.setattr(tempfile, 'mkdtemp', mock_mkdtemp)
 
-    remote_git_repository.clone(path=path, prefix=prefix, ref=ref, branch=branch, clone_timeout=2, clone_tick=1)
+    remote_git_repository.clone(
+        path=path, prefix=prefix, ref=ref, branch=branch, merge=merge, clone_timeout=2, clone_tick=1)
 
-    if ref:
+    if ref and merge and ref == merge:
+        assert log.match(
+            levelno=logging.WARNING,
+            message="ref and merge are the same: {}. Skipping merging".format(ref)
+        )
+        assert log.match(
+            levelno=logging.INFO,
+            message="cloning repo clone-url (branch not specified, ref {})".format(ref)
+        )
+        assert log.match(
+            levelno=logging.DEBUG,
+            message="['git', 'clone', 'clone-url', '{}']".format(expected_path)
+        )
+    elif ref and merge:
+        assert log.match(
+            levelno=logging.INFO,
+            message="cloning repo clone-url (branch not specified, ref {})".format(ref)
+        )
+        assert log.match(
+            levelno=logging.DEBUG,
+            message="['git', 'clone', 'clone-url', '{}']".format(expected_path)
+        )
+        assert log.match(
+            levelno=logging.INFO,
+            message="merging {}".format(merge)
+        )
+    elif ref:
         assert log.match(
             levelno=logging.INFO,
             message="cloning repo clone-url (branch not specified, ref {})".format(ref)

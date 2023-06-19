@@ -230,7 +230,10 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
         # If specified, merge ref into the currently checked out ref
         if merge:
-            self._merge(clone_url, merge, actual_path, logger)
+            if merge != ref:
+                self._merge(clone_url, merge, actual_path, logger)
+            else:
+                logger.warning('ref and merge are the same: {}. Skipping merging'.format(ref))
 
         self.commands.append('cd {}'.format(TESTCODE_DIR))
 

@@ -110,6 +110,7 @@ def _assert_results(results, expected_results):
         _load_assets('passed'),
         _load_assets('failed'),
         _load_assets('error'),
+        _load_assets('weird.name+passed'),
     ]
 )
 def test_gather_results(module, asset, monkeypatch):

@@ -110,10 +110,10 @@ def test_guest_setup(module, environment_index, tmpdir):
             '| egrep "(/package1|/package2)" '
             '| xargs -n1 curl -sO'
         ),
-        call('dnf --allowerasing -y reinstall dummy-path/*[^.src].rpm'),
-        call('dnf --allowerasing -y downgrade dummy-path/*[^.src].rpm'),
-        call('dnf --allowerasing -y update dummy-path/*[^.src].rpm'),
-        call('dnf --allowerasing -y install dummy-path/*[^.src].rpm'),
+        call('dnf -y reinstall dummy-path/*[^.src].rpm'),
+        call('dnf -y downgrade --allowerasing dummy-path/*[^.src].rpm'),
+        call('dnf -y update --allowerasing dummy-path/*[^.src].rpm'),
+        call('dnf -y install --allowerasing dummy-path/*[^.src].rpm'),
         call("basename --suffix=.rpm dummy-path/*[^.src].rpm | xargs rpm -q")
     ]
 

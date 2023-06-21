@@ -125,8 +125,8 @@ def test_guest_setup(module, local_guest, tmpdir):
         'koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch src 123123123',  # noqa
         'brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch src 123123124',  # noqa
         'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | awk "{print \\$2}" | tee rpms-list',  # noqa
-        'dnf --allowerasing -y reinstall $(cat rpms-list) || true',
-        'dnf --allowerasing -y install $(cat rpms-list)',
+        'dnf -y reinstall $(cat rpms-list) || true',
+        'dnf -y install --allowerasing $(cat rpms-list)',
         "sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q"
     ]
 
@@ -175,8 +175,8 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
         'koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch src 123123123',  # noqa
         'brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch src 123123124',  # noqa
         'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | awk "{print \\$2}" | tee rpms-list',  # noqa
-        'dnf --allowerasing -y reinstall $(cat rpms-list) || true',
-        'dnf --allowerasing -y install $(cat rpms-list)',
+        'dnf -y reinstall $(cat rpms-list) || true',
+        'dnf -y install --allowerasing $(cat rpms-list)',
         "sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q"
     ]
 
@@ -184,9 +184,9 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
         'mkdir -pv some-download-path',
         'curl -v dummy_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-dummy_project-1.repo',
         'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy_rpm_url1 dummy_rpm_url2 dummy_srpm_url1 dummy_srpm_url2',  # noqa
-        'dnf --allowerasing -y reinstall dummy_rpm_url1 || true',
-        'dnf --allowerasing -y reinstall dummy_rpm_url2 || true',
-        'dnf --allowerasing -y install dummy_rpm_url1 dummy_rpm_url2',
+        'dnf -y reinstall dummy_rpm_url1 || true',
+        'dnf -y reinstall dummy_rpm_url2 || true',
+        'dnf -y install --allowerasing dummy_rpm_url1 dummy_rpm_url2',
         'rpm -q dummy_rpm_names1',
         'rpm -q dummy_rpm_names2',
     ]

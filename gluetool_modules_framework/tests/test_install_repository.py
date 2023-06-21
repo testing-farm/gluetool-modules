@@ -97,10 +97,10 @@ def test_guest_setup(module, environment_index, tmpdir):
         call('mkdir -pv dummy-path'),
         call('cd dummy-path && dnf repoquery -q --queryformat "%{name}" --repofrompath artifacts-repo,https://example.com/repo1 --disablerepo="*" --enablerepo="artifacts-repo" --location | xargs -n1 curl -sO'),  # noqa
         call('cd dummy-path && dnf repoquery -q --queryformat "%{name}" --repofrompath artifacts-repo,https://example.com/repo2 --disablerepo="*" --enablerepo="artifacts-repo" --location | xargs -n1 curl -sO'),  # noqa
-        call('dnf --allowerasing -y reinstall dummy-path/*[^.src].rpm'),
-        call('dnf --allowerasing -y downgrade dummy-path/*[^.src].rpm'),
-        call('dnf --allowerasing -y update dummy-path/*[^.src].rpm'),
-        call('dnf --allowerasing -y install dummy-path/*[^.src].rpm'),
+        call('dnf -y reinstall dummy-path/*[^.src].rpm'),
+        call('dnf -y downgrade --allowerasing dummy-path/*[^.src].rpm'),
+        call('dnf -y update --allowerasing dummy-path/*[^.src].rpm'),
+        call('dnf -y install --allowerasing dummy-path/*[^.src].rpm'),
         call("basename --suffix=.rpm dummy-path/*[^.src].rpm | xargs rpm -q")
     ]
 

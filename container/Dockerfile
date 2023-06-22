@@ -21,6 +21,7 @@ ENV GLUETOOL_TRACING_DISABLE=1
 
 # Enable SSH pipelinening in Ansible
 ENV ANSIBLE_PIPELINING=1
+ENV ANSIBLE_SSH_PIPELINING=1
 
 # Virtual environment bin path
 ENV PATH="/opt/gluetool/bin:$PATH"

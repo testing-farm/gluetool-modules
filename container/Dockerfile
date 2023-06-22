@@ -33,7 +33,7 @@ COPY container/requirements.yml /etc/ansible/requirements.yml
 RUN    ln -s /CONFIG /etc/citool.d \
     && rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
     && dnf -y update \
-    && dnf -y install ansible-core autoconf automake crun gcc git krb5-devel libcurl-devel \
+    && dnf -y install ansible-core-2.14.2 autoconf automake crun gcc git krb5-devel libcurl-devel \
                       libpq-devel libtool libxml2-devel make openssl-devel popt-devel \
                       postgresql-devel python39 python39-devel python39-pip python3-libselinux \
                       redhat-rpm-config koji python3-virtualenv \

@@ -2,6 +2,8 @@
 package:
   ansible-core:
     installed: true
+    versions:
+      - 2.14.2
 
   beakerlib:
     installed: true

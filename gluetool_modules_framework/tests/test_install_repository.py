@@ -1,6 +1,7 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+import glob
 import pytest
 
 from mock import MagicMock, call
@@ -84,7 +85,7 @@ def test_sanity_shared(module):
 
 
 @pytest.mark.parametrize('environment_index', [0, 1], ids=['multiple-repositories', 'no-repositories'])
-def test_guest_setup(module, environment_index, tmpdir):
+def test_guest_setup(module, environment_index, tmpdir, monkeypatch):
     module.execute()
 
     stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
@@ -92,6 +93,10 @@ def test_guest_setup(module, environment_index, tmpdir):
     execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
     guest = mock_guest(execute_mock)
     guest.environment = module.shared('testing_farm_request').environments_requested[environment_index]
+    guest.environment.excluded_packages = ['dummy3']
+
+    glob_mock = MagicMock(return_value=['dummy-path/dummy1.rpm', 'dummy-path/dummy2.rpm', 'dummy-path/dummy3.rpm'])
+    monkeypatch.setattr(glob, 'glob', glob_mock)
 
     module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir))
 
@@ -110,11 +115,11 @@ def test_guest_setup(module, environment_index, tmpdir):
             '| egrep "(/package1|/package2)" '
             '| xargs -n1 curl -sO'
         ),
-        call('dnf -y reinstall dummy-path/*[^.src].rpm'),
-        call('dnf -y downgrade --allowerasing dummy-path/*[^.src].rpm'),
-        call('dnf -y update --allowerasing dummy-path/*[^.src].rpm'),
-        call('dnf -y install --allowerasing dummy-path/*[^.src].rpm'),
-        call("basename --suffix=.rpm dummy-path/*[^.src].rpm | xargs rpm -q")
+        call('dnf -y reinstall dummy-path/dummy1.rpm dummy-path/dummy2.rpm'),
+        call('dnf -y downgrade --allowerasing dummy-path/dummy1.rpm dummy-path/dummy2.rpm'),
+        call('dnf -y update --allowerasing dummy-path/dummy1.rpm dummy-path/dummy2.rpm'),
+        call('dnf -y install --allowerasing dummy-path/dummy1.rpm dummy-path/dummy2.rpm'),
+        call("basename --suffix=.rpm dummy-path/dummy1.rpm dummy-path/dummy2.rpm | xargs rpm -q")
     ]
 
     execute_mock.assert_has_calls(calls)

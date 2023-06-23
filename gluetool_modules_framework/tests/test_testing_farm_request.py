@@ -363,12 +363,13 @@ def test_execute_request3(module, monkeypatch):
         arch='forced-arch',
         tmt={'context': {'some': 'context'}},
         secrets={'some': 'secrets'},
-        variables={"something": "variables"}.update({
+        variables={
+            "something": "variables",
             "TESTING_FARM_REQUEST_ID": "3",
             "TESTING_FARM_TEST_TYPE": "sti",
             "TESTING_FARM_GIT_URL": "https://username:secret@gitlab.com/namespace/repo",
-            "TESTING_FARM_GIT_REF": "main"
-        }),
+            "TESTING_FARM_GIT_REF": "testref"
+        },
         compose=None,
         artifacts=None,
         hardware=None,

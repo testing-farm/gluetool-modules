@@ -9,7 +9,7 @@ import re
 import gluetool
 from gluetool.log import LoggerMixin
 from gluetool.result import Result
-from gluetool.utils import log_dict, requests, render_template
+from gluetool.utils import dict_update, log_dict, requests, render_template
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from gluetool_modules_framework.libs.git import GIT_URL_REGEX
 
@@ -273,7 +273,7 @@ class TestingFarmRequest(LoggerMixin, object):
                 arch=environment_raw['arch'],
                 compose=(environment_raw.get('os') or {}).get('compose'),
                 pool=environment_raw.get('pool'),
-                variables=(environment_raw.get('variables') or {}).update(testing_farm_env_vars),
+                variables=dict_update(environment_raw.get('variables') or {}, testing_farm_env_vars),
                 secrets=environment_raw.get('secrets'),
                 artifacts=cast(Optional[List[Dict[str, Any]]], environment_raw.get('artifacts')),
                 hardware=environment_raw.get('hardware'),

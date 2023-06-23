@@ -205,7 +205,10 @@ class InstallAncestors(gluetool.Module):
 
         ancestor_components = self.get_ancestor_components()
 
-        source_release = self.option('source-release')
+        # The source-release option usually contains space but Jenkins somehow messes it up when passing it to
+        # gluetool pipeline. The workaround is to use hashes instead of spaces as in test-scheduler-sti module.
+        source_release = self.option('source-release').replace('#', ' ')
+
         major_version_pattern = self.option('major-version-pattern')
         source_version_match = re.match(major_version_pattern, source_release)
         if not source_version_match:

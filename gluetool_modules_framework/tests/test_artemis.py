@@ -121,7 +121,8 @@ def fixture_scenario(module, monkeypatch, request, tmpdir):
         environment = TestingEnvironment(
             arch=scenario['environment']['arch'],
             compose=scenario['environment']['compose'],
-            snapshots=scenario['environment']['snapshots']
+            snapshots=scenario['environment']['snapshots'],
+            settings=scenario['environment']['settings']
         )
 
     else:

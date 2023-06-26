@@ -1133,7 +1133,7 @@ class ArtemisProvisioner(gluetool.Module):
         options = normalize_multistring_option(self.option('ssh-options'))
         # NOTE(ivasilev) Use artemis module requested post-install-script or the one from the environment
         post_install_script = self.option('post-install-script')
-        provisioning = (environment.settings or {}).get('provisioning', {})
+        provisioning = (environment.settings or {}).get('provisioning') or {}
         if not post_install_script:
             post_install_script = provisioning.get('post_install_script')
 

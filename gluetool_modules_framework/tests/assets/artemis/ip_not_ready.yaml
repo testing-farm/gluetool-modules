@@ -7,6 +7,9 @@ environment:
   arch: x86_64
   compose: RHEL
   snapshots: false
+  settings:
+    pipeline: null
+    provisioning: null
 
 requests:
   get:

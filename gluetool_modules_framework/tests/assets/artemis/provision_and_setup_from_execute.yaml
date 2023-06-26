@@ -10,6 +10,9 @@ config:
   compose: Fedora
   keep: true
   snapshots: true
+  settings:
+    pipeline: null
+    provisioning: null
 
 requests:
   get:

@@ -744,6 +744,59 @@ class TestScheduleTMT(Module):
 
         return plans
 
+    def _remove_empty_plans(self,
+                            plans: List[str],
+                            repodir: str,
+                            context_files: List[str],
+                            testing_environment: TestingEnvironment) -> List[str]:
+        """
+        Return list of plans which still have tests after applying test filter.
+        """
+
+        # As the loop will remove the items in the list, the copy of the
+        # list needs to be created, otherwise a single element would be always skipped after each removed one.
+        for plan in plans[:]:
+            command = [
+                self.option('command')
+            ]
+
+            if context_files:
+                command.extend([
+                    '--context=@{}'.format(filepath)
+                    for filepath in context_files
+                ])
+
+            command.extend(self._root_option)
+
+            if testing_environment.tmt and 'context' in testing_environment.tmt:
+                command.extend(self._tmt_context_to_options(testing_environment.tmt['context']))
+
+            command.extend(['run', 'discover', 'plan', '--name', plan])
+
+            try:
+                tmt_output = Command(command).run(cwd=repodir)
+
+            except GlueCommandError as exc:
+                log_blob(
+                    self.error,
+                    "Failed to discover tests",
+                    exc.output.stderr or exc.output.stdout or '<no output>'
+                )
+                raise GlueError('Failed to discover tests, TMT metadata are absent or corrupted.')
+
+            if not tmt_output.stderr:
+                raise GlueError("Did not find any plans. Command used '{}'.".format(' '.join(command)))
+
+            output_lines = [line.strip() for line in tmt_output.stderr.splitlines()]
+
+            if any(['No tests found' in line for line in output_lines]):
+                plans.remove(plan)
+
+        if not plans:
+            raise GlueError('No plans to execute after removing empty plans. Cowardly refusing to continue.')
+
+        return plans
+
     def export_plan(self, repodir: str, plan: str, context_files: List[str]) -> Optional[TMTPlan]:
         command: List[str] = [self.option('command')]
         command.extend(self._root_option)
@@ -836,6 +889,8 @@ class TestScheduleTMT(Module):
 
             if self.test_filter:
                 plans = self._apply_test_filter(plans, repodir, context_files, tec)
+
+            plans = self._remove_empty_plans(plans, repodir, context_files, tec)
 
             for plan in plans:
                 exported_plan = self.export_plan(repodir, plan, context_files)

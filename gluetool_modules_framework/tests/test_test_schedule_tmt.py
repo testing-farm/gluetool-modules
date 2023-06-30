@@ -432,6 +432,7 @@ def test_tmt_output_distgit(module, guest, monkeypatch, additional_options, addi
                         '',       # git clone
                         'myfix',  # git show-ref
                         # '',     # git checkout  # TODO: somehow one of the `git` calls is skipped
+                        'plan1',   # tmt run discover plan --name plan1
                         r'[{"name": "plan_name", "prepare": [{"how": "foo"}, {"how": "install", "exclude": ["exclude1", "exclude2"]}], "provision": {}}]')     # tmt plan export  # noqa
         schedule_entry = module.create_test_schedule([guest.environment])[0]
 
@@ -491,6 +492,7 @@ def test_create_schedule(module, monkeypatch, log, tec, expected_schedule, expec
                          '',       # git checkout
                          'plan1',  # tmt plan ls
                          'plan1',   # tmt run discover plan --name plan1 test --filter filter1
+                         'plan1',   # tmt run discover plan --name plan1
                          '[]')     # tmt plan export
 
         schedule = module.create_test_schedule(tec)
@@ -601,6 +603,51 @@ def test_apply_test_filter(module, monkeypatch):
         'test',
         '--filter',
         'filter1'
+    ])
+
+
+def test_remove_empty_plans(module, monkeypatch):
+    repodir = 'foo'
+    context_files = []
+    testing_environment = TestingEnvironment('x86_64')
+
+    # Plan with tests
+    mock_output = MagicMock(exit_code=0, stdout='', stderr='plan1')
+    mock_command_run = MagicMock(return_value=mock_output)
+    mock_command = MagicMock(return_value=MagicMock(run=mock_command_run))
+    monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt, 'Command', mock_command)
+
+    module._remove_empty_plans(['plan1'], repodir, context_files, testing_environment)
+
+    mock_command.assert_called_once_with([
+        'dummytmt',
+        '--root',
+        'some-tmt-root',
+        'run',
+        'discover',
+        'plan',
+        '--name',
+        'plan1',
+    ])
+
+    # Empty plan
+    mock_output = MagicMock(exit_code=0, stdout='', stderr='warning: No tests found, finishing plan.')
+    mock_command_run = MagicMock(return_value=mock_output)
+    mock_command = MagicMock(return_value=MagicMock(run=mock_command_run))
+    monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt, 'Command', mock_command)
+
+    with pytest.raises(gluetool.glue.GlueError, match='No plans to execute after removing empty plans. Cowardly refusing to continue.'):
+        module._remove_empty_plans(['plan1'], repodir, context_files, testing_environment)
+
+    mock_command.assert_called_once_with([
+        'dummytmt',
+        '--root',
+        'some-tmt-root',
+        'run',
+        'discover',
+        'plan',
+        '--name',
+        'plan1',
     ])
 
 
@@ -731,6 +778,7 @@ def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir, cl
                          '',       # git fetch
                          '',       # git checkout
                          'plan1',  # tmt plan ls
+                         'plan1',  # tmt run discover plan --name plan1
                          '[]')     # tmt plan export
         schedule_entry = module.create_test_schedule([guest.environment])[0]
 
@@ -820,6 +868,7 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir, cl
                          '',       # git fetch
                          '',       # git checkout
                          'plan1',  # tmt plan ls
+                         'plan1',   # tmt run discover plan --name plan1
                          ' - name: plan1\n'  # tmt plan export
                          '   provision:\n'
                          '     how: null\n'

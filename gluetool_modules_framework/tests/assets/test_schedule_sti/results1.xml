@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites overall-result="some-overall-result">
+<testsuites overall-result="passed">
  <properties>
-  <property name="baseosci.overall-result" value="some-schedule-result"/>
+  <property name="baseosci.overall-result" value="passed"/>
  </properties>
- <testsuite name="some-suite" result="some-result" tests="1">
-  <testcase name="foo" result="fail">
+ <testsuite name="some-suite" result="passed" tests="1">
+  <testcase name="foo" result="failed">
    <properties>
     <property name="baseosci.arch" value="x86_64"/>
     <property name="baseosci.connectable_host" value="hostname"/>

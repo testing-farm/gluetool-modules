@@ -160,6 +160,7 @@ class TestScheduleResult(GlueEnum):
     FAILED = 'failed'
     INFO = 'info'
     NOT_APPLICABLE = 'not_applicable'
+    NEEDS_INSPECTION = 'needs_inspection'
 
 
 # TODO: incorporate guest-setup output, it's very similar but guest-setup output carries one extra field,

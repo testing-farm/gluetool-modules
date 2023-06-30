@@ -13,7 +13,10 @@ from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestSche
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
 
 # Type annotations
-from typing import Any, cast, Dict, List, Optional  # noqa
+from typing import Any, cast, Dict, List, Optional, TYPE_CHECKING  # noqa
+
+if TYPE_CHECKING:
+    from gluetool_modules_framework.testing.test_schedule_runner_sti import TaskRun
 
 
 class TestScheduleEntry(BaseTestScheduleEntry):
@@ -40,7 +43,7 @@ class TestScheduleEntry(BaseTestScheduleEntry):
         self.work_dirpath: Optional[str] = None
         self.artifact_dirpath: Optional[str] = None
         self.inventory_filepath: Optional[str] = None
-        self.results: Any = None
+        self.results: Optional[List[TaskRun]] = None
         self.ansible_playbook_filepath: Optional[str] = None
         self.ansible_environment: Optional[Dict[str, str]] = {}
 

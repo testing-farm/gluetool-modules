@@ -206,7 +206,7 @@ class TestScheduleReport(gluetool.Module):
 
     def _serialize_results(self, schedule: TestSchedule) -> None:
 
-        self._results = Results(overall_result=self._overall_result(schedule).name.lower())
+        self._results = Results(overall_result=self._overall_result(schedule))
 
         # TODO: More task types are possible, having a base class would be handy.
         # using `# noqa` because flake8 and coala are confused by the walrus operator
@@ -214,7 +214,7 @@ class TestScheduleReport(gluetool.Module):
         if primary_task := cast(Union[KojiTask, CoprTask], self.shared('primary_task')):  # noqa: E203 E231 E701
             self._results.primary_task = primary_task
 
-        self._results.test_schedule_result = schedule.result.name.lower()
+        self._results.test_schedule_result = schedule.result
 
         if self.shared('thread_id'):
             self._results.testing_thread = self.shared('thread_id')
@@ -227,7 +227,7 @@ class TestScheduleReport(gluetool.Module):
         for schedule_entry in schedule:
             test_suite = TestSuite(
                 name=schedule_entry.testsuite_name or schedule_entry.id,
-                result=schedule_entry.result.name.lower(),
+                result=schedule_entry.result,
                 properties={'baseosci.result': schedule_entry.result.name.lower()},
             )
 

@@ -1,6 +1,6 @@
 ---
 results:
   - test: foo
-    result: bar
+    result: fail
     logs:
       - log1

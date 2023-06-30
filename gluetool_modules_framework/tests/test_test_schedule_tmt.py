@@ -99,7 +99,7 @@ def test_shared(module):
 def _assert_results(results, expected_results):
     for result, expected in zip(results, expected_results):
         assert result.name == expected['name']
-        assert result.result == expected['result']
+        assert result.result == getattr(TestScheduleResult, expected['result'].upper())
         assert len(result.artifacts) == len(expected['artifacts'])
         for ta, ea in zip(result.artifacts, expected['artifacts']):
             assert ta.name == ea['name']
@@ -162,13 +162,13 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
             gluetool_modules_framework.testing.test_schedule_tmt.gather_plan_results = orig_gather_plan_results
 
     # generate results.xml
-    test_suite = TestSuite(name='some-suite', result='some-result')
+    test_suite = TestSuite(name='some-suite', result=TestScheduleResult.PASSED)
     module.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
 
     assert test_suite.test_count == 2
     testcase_docs, testcase_dry = test_suite.test_cases[0], test_suite.test_cases[1]
     assert testcase_docs.name == '/tests/core/docs'
-    assert testcase_docs.result == 'passed'
+    assert testcase_docs.result == TestScheduleResult.PASSED
     # expecting log_dir, testout.log, and journal.txt, in exactly that order
     assert len(testcase_docs.logs) == 3
     assert testcase_docs.logs[0].name == 'log_dir'
@@ -179,7 +179,7 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     assert testcase_docs.logs[2].href.endswith('/passed/execute/logs/tests/core/docs/journal.txt')
 
     assert testcase_dry.name == '/tests/core/dry'
-    assert testcase_dry.result == 'passed'
+    assert testcase_dry.result == TestScheduleResult.PASSED
     assert len(testcase_dry.logs) == 2
     assert testcase_dry.logs[0].name == 'log_dir'
     assert testcase_dry.logs[0].href.endswith('/passed/execute/logs/tests/core/dry')
@@ -222,7 +222,7 @@ def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest
 
     schedule_entry.results = None
     # generate results.xml
-    test_suite = TestSuite(name='some-suite', result='some-result')
+    test_suite = TestSuite(name='some-suite', result=TestScheduleResult.PASSED)
     module.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
 
     assert len(test_suite.logs) == 3

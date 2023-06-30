@@ -11,6 +11,7 @@ import gluetool
 import gluetool_modules_framework.helpers.pipeline_state_reporter
 import gluetool_modules_framework.helpers.rules_engine
 from gluetool_modules_framework.libs import strptime
+from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 
 from . import create_module, patch_shared
 
@@ -551,7 +552,7 @@ def test_destroy_old_messages(module, evaluate, publish_old_messages, mock_names
 
     # test with failure and publish_bus_messages
     module.destroy(failure=MagicMock(sentry_event_url='sentry-url'))
-    assert publish_old_messages['message'].body['status'] == 'unknown'
+    assert publish_old_messages['message'].body['status'] == 'undefined'
     assert publish_old_messages['message'].body['issue_url'] == 'sentry-url'
 
 
@@ -563,19 +564,19 @@ def test_destroy_new_messages(module, evaluate, publish_new_messages, mock_names
 
     # test with failure and publish_bus_messages
     module.destroy(failure=MagicMock(sentry_event_url='sentry-url'))
-    assert message_content['message'].body['test']['result'] == 'unknown'
+    assert message_content['message'].body['test']['result'] == 'undefined'
     assert message_content['message'].body['error']['issue_url'] == 'sentry-url'
 
     # test `--final-message-file` option saving the message to a file
     message = gluetool.utils.load_json(message_path)
-    assert message['body']['test']['result'] == 'unknown'
+    assert message['body']['test']['result'] == 'undefined'
     assert message['body']['error']['issue_url'] == 'sentry-url'
     assert message['topic'] == 'topic'
     assert message['headers'] == VERSION_1_ARTIFACT
 
 
 def test_destroy_with_results_and_recipients_old_messages(module, evaluate, mock_namespace, publish_old_messages):
-    module.results = lambda: [MagicMock(overall_result='passed')]
+    module.results = lambda: [MagicMock(overall_result=TestScheduleResult.PASSED)]
     module.glue.add_shared('results', module)
 
     module.notification_recipients = lambda: 'batman'
@@ -591,7 +592,7 @@ def test_destroy_with_results_and_recipients_old_messages(module, evaluate, mock
 def test_destroy_with_results_and_recipients_new_messages(module, evaluate, mock_namespace, publish_new_messages):
     message_content, message_path = publish_new_messages
 
-    module.results = lambda: [MagicMock(overall_result='passed')]
+    module.results = lambda: [MagicMock(overall_result=TestScheduleResult.PASSED)]
     module.glue.add_shared('results', module)
 
     module.notification_recipients = lambda: 'batman'
@@ -605,11 +606,11 @@ def test_destroy_with_results_and_recipients_new_messages(module, evaluate, mock
 
 
 @pytest.mark.parametrize('expected,results', [
-    ('info', ['info', 'info', 'info']),
-    ('passed', ['passed', 'info', 'passed']),
-    ('passed', ['passed', 'passed', 'passed']),
-    ('failed', ['passed', 'failed', 'info']),
-    ('failed', ['info', 'failed', 'failed']),
+    (TestScheduleResult.INFO, [TestScheduleResult.INFO, TestScheduleResult.INFO, TestScheduleResult.INFO]),
+    (TestScheduleResult.PASSED, [TestScheduleResult.PASSED, TestScheduleResult.INFO, TestScheduleResult.PASSED]),
+    (TestScheduleResult.PASSED, [TestScheduleResult.PASSED, TestScheduleResult.PASSED, TestScheduleResult.PASSED]),
+    (TestScheduleResult.FAILED, [TestScheduleResult.PASSED, TestScheduleResult.FAILED, TestScheduleResult.INFO]),
+    (TestScheduleResult.FAILED, [TestScheduleResult.INFO, TestScheduleResult.FAILED, TestScheduleResult.FAILED]),
 ])
 def test_get_test_results(module, expected, results):
     results = [MagicMock(overall_result=result) for result in results]

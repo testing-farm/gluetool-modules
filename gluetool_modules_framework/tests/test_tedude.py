@@ -11,6 +11,7 @@ import gluetool_modules_framework.testing.testing_results
 import gluetool_modules_framework.helpers.rules_engine
 from . import create_module, check_loadable, patch_shared, testing_asset  # helper function to easy creating of a module
 from gluetool_modules_framework.libs.results import TestSuite
+from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 
 BZ_QUERY_RESULTS = {
     111111: {
@@ -39,7 +40,7 @@ BZ_QUERY_RESULTS = {
 }
 
 GATING_TEST_STATUSES_NO_BUGS = [
-    "passed",
+    TestScheduleResult.PASSED,
     {
         'NO_BUGS_FOUND': {
             "message": "No bugs have been found in the changelog. This is acceptable.",
@@ -49,7 +50,7 @@ GATING_TEST_STATUSES_NO_BUGS = [
 ]
 
 GATING_TEST_STATUSES = [
-    "failed",
+    TestScheduleResult.FAILED,
     {
         'BZ#111111': {
             "message": "ci_tests_implemented: CI Gating tests are implemented.",

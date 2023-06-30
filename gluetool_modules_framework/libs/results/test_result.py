@@ -7,6 +7,7 @@ import six
 import gluetool
 from gluetool.utils import new_xml_element
 from gluetool_modules_framework.libs.results import TestSuite
+from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 
 # Type annotations
 # pylint: disable=unused-import,wrong-import-order
@@ -24,7 +25,7 @@ class TestResult(object):
         by this instance, or loaded by it.
     :param str test_type: Type of testing. Makes sense to producers and consumers,
       ``Result`` class does not care of its actual value.
-    :param str overall_result: Overall result of the test, e.g. ``PASS``, ``FAIL`` or ``ERROR``.
+    :param enum overall_result: Overall result of the test, e.g. ``PASS``, ``FAIL`` or ``ERROR``.
       The actual value depends on producer's view of the testing process and its results.
     :param dict ids: producer may want to attach arbitrary IDs to the result, e.g.
       test run ID (default: empty)
@@ -34,7 +35,7 @@ class TestResult(object):
       list of individual tests and their results performed.
 
     :ivar str test_type: Type of the test.
-    :ivar str overall_result: Overall result of the testing process, e.g. ``PASS``, ``FAIL``
+    :ivar enum overall_result: Overall result of the testing process, e.g. ``PASS``, ``FAIL``
       or ``ERROR``.
     :ivar dict ids: IDs producer think might interest the result consumer.
     :ivar dict urls: URLs producer think might interest the result consumer.
@@ -46,7 +47,7 @@ class TestResult(object):
     def __init__(self,
                  glue: gluetool.Glue,
                  test_type: str,
-                 overall_result: str,
+                 overall_result: TestScheduleResult,
                  ids: Optional[Dict[str, Any]] = None,
                  urls: Optional[Dict[str, str]] = None,
                  payload: Any = None
@@ -76,7 +77,7 @@ class TestResult(object):
         return {
             'test_type': self.test_type,
             'result_class': self.result_class,
-            'overall_result': self.overall_result,
+            'overall_result': self.overall_result.value,
             'ids': self.ids,
             'urls': self.urls,
             'payload': self.payload
@@ -129,7 +130,7 @@ class TestResult(object):
 
         _add_property('test-type', self.test_type)
         _add_property('result-class', self.result_class)
-        _add_property('overall-result', self.overall_result)
+        _add_property('overall-result', self.overall_result.value)
 
         # serialize result's IDs into properties
         self._serialize_to_xunit_property_dict(test_suite_properties, self.ids.copy(), {
@@ -159,7 +160,7 @@ class TestResult(object):
         test_suite.properties.update({
             'baseosci.test-type': self.test_type,
             'baseosci.result-class': self.result_class,
-            'baseosci.overall-result': self.overall_result
+            'baseosci.overall-result': self.overall_result.value
         })
 
         if 'testing-thread-id' in self.ids:

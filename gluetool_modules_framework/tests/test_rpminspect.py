@@ -13,6 +13,7 @@ import gluetool
 from gluetool.utils import from_json
 import gluetool_modules_framework.infrastructure.distgit
 import gluetool_modules_framework.static_analysis.rpminspect.rpminspect
+from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 from . import create_module, patch_shared, check_loadable
 
 ALL_PASSED_STDOUT = "{}"
@@ -85,7 +86,7 @@ ANALYSIS_PARSED_STDOUT = [
             "taskid": 111111,
             "type": "brew_build"
         },
-        "outcome": "FAILED",
+        "outcome": "failed",
         "ref_url": "",
         "testcase": {
             "name": "dist.rpminspect.analysis",
@@ -101,7 +102,7 @@ ANALYSIS_PARSED_STDOUT = [
             "taskid": 111111,
             "type": "brew_build"
         },
-        "outcome": "FAILED",
+        "outcome": "failed",
         "ref_url": "",
         "testcase": {
             "name": "dist.rpminspect.analysis.license",
@@ -140,7 +141,7 @@ ANALYSIS_PARSED_STDOUT = [
             "taskid": 111111,
             "type": "brew_build"
         },
-        "outcome": "FAILED",
+        "outcome": "failed",
         "ref_url": "",
         "testcase": {
             "name": "dist.rpminspect.analysis.man_pages",
@@ -179,7 +180,7 @@ ANALYSIS_PARSED_STDOUT = [
             "taskid": 111111,
             "type": "brew_build"
         },
-        "outcome": "PASSED",
+        "outcome": "passed",
         "ref_url": "",
         "testcase": {
             "name": "dist.rpminspect.analysis.payload",
@@ -204,7 +205,7 @@ COMPARISON_PARSED_STDOUT = [
             "taskid": 111111,
             "type": "brew_build_pair"
         },
-        "outcome": "FAILED",
+        "outcome": "failed",
         "ref_url": "",
         "testcase": {
             "name": "dist.rpminspect.comparison",
@@ -220,7 +221,7 @@ COMPARISON_PARSED_STDOUT = [
             "taskid": 111111,
             "type": "brew_build_pair"
         },
-        "outcome": "FAILED",
+        "outcome": "failed",
         "ref_url": "",
         "testcase": {
             "name": "dist.rpminspect.comparison.license",
@@ -259,7 +260,7 @@ COMPARISON_PARSED_STDOUT = [
             "taskid": 111111,
             "type": "brew_build_pair"
         },
-        "outcome": "FAILED",
+        "outcome": "failed",
         "ref_url": "",
         "testcase": {
             "name": "dist.rpminspect.comparison.man_pages",
@@ -298,7 +299,7 @@ COMPARISON_PARSED_STDOUT = [
             "taskid": 111111,
             "type": "brew_build_pair"
         },
-        "outcome": "PASSED",
+        "outcome": "passed",
         "ref_url": "",
         "testcase": {
             "name": "dist.rpminspect.comparison.payload",
@@ -557,7 +558,7 @@ def test_execute_no_latest(module, monkeypatch, log):
     assert log.records[-1].message == """result:
 {
     "ids": {},
-    "overall_result": "INFO",
+    "overall_result": "info",
     "payload": [
         {
             "data": {
@@ -567,7 +568,7 @@ def test_execute_no_latest(module, monkeypatch, log):
                 "type": "brew_build_pair"
             },
             "note": "No baseline found for the build. Testing skipped",
-            "outcome": "INFO",
+            "outcome": "info",
             "ref_url": "",
             "testcase": {
                 "name": "dist.rpminspect.comparison",
@@ -602,7 +603,7 @@ def test_sanity(module, monkeypatch):
 
 def test_test_result_type():
     test_result = gluetool_modules_framework.static_analysis.rpminspect.rpminspect.RpminspectTestResult(
-        gluetool.glue, 'comparison', 'INFO')
+        gluetool.glue, 'comparison', TestScheduleResult.INFO)
     assert test_result.rpminspect_test_type == 'comparison'
 
     skipped_test_result = gluetool_modules_framework.static_analysis.rpminspect.rpminspect.RpminspectSkippedTestResult(

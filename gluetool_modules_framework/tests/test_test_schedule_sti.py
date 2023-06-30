@@ -155,8 +155,8 @@ def test_create_test_schedule_repo_no_request(module_scheduler, monkeypatch):
 
 # Testing module test-schedule-runner-sti
 @pytest.mark.parametrize('results_filename, results_content, expected_results', [
-    ('test.log', read_asset_file('test.log'), ('result', 'pass', TestScheduleResult.PASSED)),
-    ('results.yml', read_asset_file('results.yaml'), ('foo', 'bar', TestScheduleResult.FAILED)),
+    ('test.log', read_asset_file('test.log'), ('result', TestScheduleResult.PASSED, TestScheduleResult.PASSED)),
+    ('results.yml', read_asset_file('results.yaml'), ('foo', TestScheduleResult.FAILED, TestScheduleResult.FAILED)),
 ])
 def test_run_test_schedule_entry(module_runner, monkeypatch, results_filename, results_content, expected_results):
     with tempfile.TemporaryDirectory(prefix='test-schedule-runner-sti') as tmpdir:
@@ -217,7 +217,7 @@ def test_run_test_schedule_entry(module_runner, monkeypatch, results_filename, r
 @pytest.mark.parametrize('schedule_entry_results, expected_schedule_entry_outputs, expected_xml, expected_junit', [
     ([], [], None, None),
     (
-        [TaskRun(name='foo', schedule_entry=None, result='fail', logs=None)],
+        [TaskRun(name='foo', schedule_entry=None, result=TestScheduleResult.FAILED, logs=None)],
         [
             TestScheduleEntryOutput(
                 stage=TestScheduleEntryStage.RUNNING,
@@ -230,7 +230,7 @@ def test_run_test_schedule_entry(module_runner, monkeypatch, results_filename, r
         read_asset_file('results-junit1.xml')
     ),
     (
-        [TaskRun(name='foo', schedule_entry=None, result='error', logs=['log1', 'log2'])],
+        [TaskRun(name='foo', schedule_entry=None, result=TestScheduleResult.ERROR, logs=['log1', 'log2'])],
         [
             TestScheduleEntryOutput(
                 stage=TestScheduleEntryStage.RUNNING,
@@ -269,9 +269,9 @@ def test_serialize_test_schedule_entry_results(module_runner, schedule_entry_res
     schedule_entry.testing_environment = TestingEnvironment(arch='x86_64', compose='rhel-9')
     schedule_entry.results = schedule_entry_results
     schedule_entry.runner_capability = 'sti'
-    test_suite = TestSuite(name='some-suite', result='some-result')
-    results = Results(test_suites=[test_suite], test_schedule_result='some-schedule-result',
-                      overall_result='some-overall-result')
+    test_suite = TestSuite(name='some-suite', result=TestScheduleResult.PASSED)
+    results = Results(test_suites=[test_suite], test_schedule_result=TestScheduleResult.PASSED,
+                      overall_result=TestScheduleResult.PASSED)
 
     module_runner.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
 
@@ -293,9 +293,9 @@ def test_serialize_to_junit_non_printable_characters(monkeypatch, module_runner)
     schedule_entry.guest = NetworkedGuest(module_runner, 'hostname', 'name')
     schedule_entry.guest.environment = TestingEnvironment(arch='x86_64', compose='rhel-9')
     schedule_entry.testing_environment = TestingEnvironment(arch='x86_64', compose='rhel-9')
-    schedule_entry.results = [TaskRun(name='foo', schedule_entry=None, result='pass', logs=['log1'])]
+    schedule_entry.results = [TaskRun(name='foo', schedule_entry=None, result=TestScheduleResult.PASSED, logs=['log1'])]
     schedule_entry.runner_capability = 'sti'
-    test_suite = TestSuite(name='some-suite', result='some-result')
+    test_suite = TestSuite(name='some-suite', result=TestScheduleResult.PASSED)
     results = Results(test_suites=[test_suite], test_schedule_result='some-schedule-result',
                       overall_result='some-overall-result')
 

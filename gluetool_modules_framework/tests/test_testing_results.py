@@ -6,6 +6,7 @@ import pytest
 
 import gluetool
 import gluetool_modules_framework.libs.results.test_result
+from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 
 import gluetool_modules_framework.testing.testing_results
 
@@ -19,7 +20,8 @@ def fixture_module():
 
 @pytest.fixture(name='result')
 def fixture_result(module):
-    return gluetool_modules_framework.libs.results.test_result.TestResult(module.glue, 'dummy', 'PASS')
+    return gluetool_modules_framework.libs.results.test_result.TestResult(module.glue, 'dummy',
+                                                                          TestScheduleResult.PASSED)
 
 
 def assert_results(results, length=0, model=None):

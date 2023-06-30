@@ -8,6 +8,9 @@ from typing import Any, Optional, cast  # noqa
 from gluetool import Failure
 from gluetool.log import log_dict
 
+from gluetool_modules_framework.libs.results import Results
+from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
+
 STATE_QUEUED = 'queued'
 STATE_RUNNING = 'running'
 STATE_COMPLETE = 'complete'
@@ -66,13 +69,13 @@ class TestingFarmRequestStateReporter(gluetool.Module):
         if failure is not None and isinstance(failure.exc_info[1], SystemExit):
             return
 
-        request = self.shared('testing_farm_request')
+        request = cast(TestingFarmRequest, self.shared('testing_farm_request'))
 
         if not request:
             self.warn('no request found in pipeline, refusing to report state', sentry=True)
             return
 
-        test_results = self.shared('results')
+        test_results = cast(Results, self.shared('results'))
 
         if failure:
             self.info('pipeline failure')
@@ -84,7 +87,9 @@ class TestingFarmRequestStateReporter(gluetool.Module):
         request.update(
             state=self._get_state(failure),
             overall_result=self._get_overall_result(
-                test_results.overall_result if test_results else 'unknown', failure),
+                (test_results.overall_result.value if test_results.overall_result else None)
+                if test_results
+                else 'unknown', failure),
             summary=self._get_summary(failure),
             xunit=test_results.xunit_testing_farm.to_xml_string() if test_results else None,
             artifacts_url=self.shared('coldstore_url')
@@ -123,7 +128,8 @@ class TestingFarmRequestStateReporter(gluetool.Module):
 
         return STATE_ERROR
 
-    def _get_overall_result(self, result: str, failure: Optional[gluetool.Failure]) -> str:
+    def _get_overall_result(self, result: Optional[str],
+                            failure: Optional[gluetool.Failure]) -> Optional[str]:
         """
         Determine result.overall from mapping file, defaulting to result content and finally error.
         """

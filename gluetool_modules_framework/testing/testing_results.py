@@ -7,6 +7,7 @@ import sys
 import gluetool
 import gluetool_modules_framework.libs.results.test_result
 from gluetool_modules_framework.libs.results import Results
+from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 
 # Type annotations
 from typing import cast, Any, List, Tuple, Optional, Union  # noqa
@@ -152,6 +153,7 @@ class TestingResults(gluetool.Module):
                                                                                                    str(exc)))
 
                     for result in results:
+                        result['overall_result'] = TestScheduleResult(result['overall_result'])
                         if 'result_class' in result:
                             klass_path = result['result_class'].split('.')
                             module_name, klass_name = '.'.join(klass_path[0:-1]), klass_path[-1]

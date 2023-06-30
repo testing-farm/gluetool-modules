@@ -15,6 +15,7 @@ from gluetool.utils import Command, check_for_commands, load_json, normalize_mul
 from gluetool.log import format_blob, log_blob
 from gluetool_modules_framework.libs.artifacts import artifacts_location
 from gluetool_modules_framework.libs.results.test_result import TestResult, publish_result
+from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 
 # Type annotations
 from typing import cast, TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Type, Union  # noqa
@@ -22,7 +23,8 @@ from gluetool.utils import ProcessOutput  # noqa
 
 # Map RPMINSPECT_SCORE to resultsdb 2.0 API outcome states - http://docs.resultsdb20.apiary.io/
 # Note: WAIVED score is mapped to INFO
-RPMINSPECT_MAP = ['INFO', 'PASSED', 'INFO', 'NEEDS_INSPECTION', 'FAILED']
+RPMINSPECT_MAP = [TestScheduleResult.INFO, TestScheduleResult.PASSED, TestScheduleResult.INFO,
+                  TestScheduleResult.NEEDS_INSPECTION, TestScheduleResult.FAILED]
 
 # Helping dict for calculating overall_result
 # Note: numbers represent the priority of the result and also position in RPMINSPECT_MAP list
@@ -49,7 +51,8 @@ class RpminspectTestResult(TestResult):
     :param str overall_result: general result of a test
     """
 
-    def __init__(self, glue: gluetool.glue.Glue, test_type: str, overall_result: str, **kwargs: Any) -> None:
+    def __init__(self, glue: gluetool.glue.Glue, test_type: str, overall_result: TestScheduleResult,
+                 **kwargs: Any) -> None:
 
         super(RpminspectTestResult, self).__init__(glue, 'rpminspect-{}'.format(test_type), overall_result, **kwargs)
         self.rpminspect_test_type = test_type
@@ -98,7 +101,8 @@ class RpminspectSkippedTestResult(TestResult):
     """
 
     def __init__(self, glue: gluetool.glue.Glue, **kwargs: Any) -> None:
-        super(RpminspectSkippedTestResult, self).__init__(glue, 'rpminspect-comparison', 'INFO', **kwargs)
+        super(RpminspectSkippedTestResult, self).__init__(glue, 'rpminspect-comparison', TestScheduleResult.INFO,
+                                                          **kwargs)
         self.rpminspect_test_type = 'comparison'
         self.test_results = {'ALL': 'SKIPPED'}  # notification for users, will be visible in email
 
@@ -258,7 +262,7 @@ class CIRpminspect(gluetool.Module):
                 'name': 'dist.rpminspect.comparison',
                 'ref_url': '',
             },
-            'outcome': 'INFO',
+            'outcome': TestScheduleResult.INFO.value,
             'note': 'No baseline found for the build. Testing skipped'
         }]
 
@@ -288,7 +292,7 @@ class CIRpminspect(gluetool.Module):
                     overall_result = test_entry['result']
 
         # Map to result consistent with resultsdb
-        overall_result = RPMINSPECT_MAP[RPMINSPECT_SCORE[overall_result]]
+        overall_result = RPMINSPECT_MAP[RPMINSPECT_SCORE[overall_result]].value
 
         # Basic result data and overall result
         payload = [{
@@ -317,11 +321,11 @@ class CIRpminspect(gluetool.Module):
                 # Return the worst result from test
                 def _outcome() -> str:
                     if not test_info:
-                        return 'PASSED'
+                        return TestScheduleResult.PASSED.value
 
                     return RPMINSPECT_MAP[
                         max([RPMINSPECT_SCORE[test_entry['result']] for test_entry in test_info])
-                    ]
+                    ].value
 
                 def _test_outputs() -> List[Dict[str, str]]:
                     test_outputs = []
@@ -330,7 +334,7 @@ class CIRpminspect(gluetool.Module):
                         if 'message' in test_entry:
                             output['message'] = test_entry['message']
                         if 'result' in test_entry:
-                            output['result'] = RPMINSPECT_MAP[RPMINSPECT_SCORE[test_entry['result']]]
+                            output['result'] = RPMINSPECT_MAP[RPMINSPECT_SCORE[test_entry['result']]].value.upper()
                         if 'screendump' in test_entry:
                             output['screendump'] = test_entry['screendump']
                         if 'remedy' in test_entry:
@@ -371,7 +375,7 @@ class CIRpminspect(gluetool.Module):
     def _publish_results(self, task: Any, json_output: Dict[str, List[Dict[str, str]]]) -> None:
 
         payload = self._parse_runinfo(task, json_output)
-        overall_result = payload[0]['outcome']
+        overall_result = TestScheduleResult(payload[0]['outcome'])
         publish_result(self, RpminspectTestResult, self.option('type'), overall_result, payload=payload)
 
     def rpminspect_xunit_serialize(self: Any, test_suite: Any, result: Any) -> Any:
@@ -397,8 +401,8 @@ class CIRpminspect(gluetool.Module):
 
                 outcome_index = RPMINSPECT_MAP.index(outcome)
                 fail_indexes = [
-                    RPMINSPECT_MAP.index('NEEDS_INSPECTION'),
-                    RPMINSPECT_MAP.index('FAILED')
+                    RPMINSPECT_MAP.index(TestScheduleResult.NEEDS_INSPECTION),
+                    RPMINSPECT_MAP.index(TestScheduleResult.FAILED)
                 ]
 
                 if outcome_index in fail_indexes:

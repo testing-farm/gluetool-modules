@@ -71,11 +71,11 @@ RESULT_WEIGHT = {
 #
 # For more context see: https://pagure.io/fedora-ci/messages/pull-request/86
 RESULT_OUTCOME = {
-    'pass': 'passed',
-    'info': 'info',
-    'fail': 'failed',
-    'warn': 'needs_inspection',
-    'error': 'error'
+    'pass': TestScheduleResult.PASSED,
+    'info': TestScheduleResult.INFO,
+    'fail': TestScheduleResult.FAILED,
+    'warn': TestScheduleResult.NEEDS_INSPECTION,
+    'error': TestScheduleResult.ERROR
 }
 
 # Result weight to TestScheduleResult outcome
@@ -125,7 +125,7 @@ class TestResult:
     :ivar artifacts: artifacts/log files declared by the test
     """
     name: str
-    result: str
+    result: TestScheduleResult
     artifacts: List[TestArtifact]
 
 
@@ -324,7 +324,7 @@ class TestScheduleEntry(BaseTestScheduleEntry):
         self.testing_environment = tec
         self.testsuite_name = self.plan = plan
         self.work_dirpath: Optional[str] = None
-        self.results: Any = None
+        self.results: Optional[List[TestResult]] = None
         self.repodir: str = repodir
         self.tmt_reproducer: List[str] = []
         self.tmt_reproducer_filepath: Optional[str] = None
@@ -1274,10 +1274,10 @@ class TestScheduleTMT(Module):
                 result=task.result,
             )
 
-            if task.result == 'failed':
+            if task.result == TestScheduleResult.FAILED:
                 test_case.failure = True
 
-            if task.result == 'error':
+            if task.result == TestScheduleResult.ERROR:
                 test_case.error = True
 
             # test properties

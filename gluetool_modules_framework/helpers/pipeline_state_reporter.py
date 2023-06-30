@@ -25,6 +25,7 @@ from typing import Any, List, Optional, Dict, Tuple, Union, cast  # noqa
 
 from gluetool_modules_framework.libs.results import Results
 from gluetool_modules_framework.libs.results.test_result import TestResult
+from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 
 
 STATE_QUEUED = 'queued'
@@ -390,7 +391,7 @@ class PipelineStateReporter(gluetool.Module):
         test_docs: Optional[str] = None,
         test_namespace: Optional[str] = None,
         test_type: Optional[str] = None,
-        test_overall_result: Optional[str] = None,
+        test_overall_result: Optional[TestScheduleResult] = None,
         test_results: Optional[bs4.element.Tag] = None,
         distros: Optional[List[Tuple[str, str, str, str]]] = None,
         error_message: Optional[str] = None,
@@ -558,35 +559,35 @@ class PipelineStateReporter(gluetool.Module):
             **self.shared('eval_context')
         )
 
-    def _get_overall_result_xunit(self, test_results: Optional[Results]) -> str:
+    def _get_overall_result_xunit(self, test_results: Optional[Results]) -> TestScheduleResult:
         """
         Decide what the overall result should be, based on xUnit representation of test results.
 
         It is quite simple - xUnit representation already carries necessary value.
         """
         if not test_results or not test_results.overall_result:
-            return 'unknown'
+            return TestScheduleResult.UNDEFINED
 
         return test_results.overall_result
 
-    def _get_overall_result_legacy(self, results: Optional[List[TestResult]]) -> str:
+    def _get_overall_result_legacy(self, results: Optional[List[TestResult]]) -> TestScheduleResult:
         """
         Decide what the overall result should be, based on internal representation of test results.
         """
 
         if not results:
-            return 'unknown'
+            return TestScheduleResult.UNDEFINED
 
-        if all([result.overall_result.lower() in ('info',) for result in results]):
-            return 'info'
+        if all([result.overall_result in (TestScheduleResult.INFO,) for result in results]):
+            return TestScheduleResult.INFO
 
-        if all([result.overall_result.lower() in ('pass', 'passed', 'info') for result in results]):
-            return 'passed'
+        if all([result.overall_result in (TestScheduleResult.PASSED, TestScheduleResult.INFO) for result in results]):
+            return TestScheduleResult.PASSED
 
-        return 'failed'
+        return TestScheduleResult.FAILED
 
     def _get_final_overall_result(self, results: Union[Optional[Results], List[TestResult]],
-                                  failure: Optional[gluetool.Failure]) -> str:
+                                  failure: Optional[gluetool.Failure]) -> TestScheduleResult:
         """
         Read instructions from a file, and find out what the final overall result of the current pipeline
         should be. If the instructions yield no decision, use default simple scheme to decide.
@@ -612,7 +613,7 @@ class PipelineStateReporter(gluetool.Module):
         }, context=context, default_rule='False')
 
         if overall_result.result is not None:
-            return cast(str, overall_result.result)
+            return TestScheduleResult(overall_result.result)
 
         # No instruction applied, therefore fall back to default behavior.
         if isinstance(results, Results):
@@ -745,7 +746,7 @@ class PipelineStateReporter(gluetool.Module):
             })
 
         if self.option('pr-label'):
-            self._set_pr_status(overall_result, 'Test finished', self.option('dont-upload-url-finished'))
+            self._set_pr_status(overall_result.value, 'Test finished', self.option('dont-upload-url-finished'))
 
         self.report_pipeline_state(
             self._get_final_state(failure),
@@ -782,7 +783,7 @@ class UMBMessage():
         self.test_category: Optional[str] = None
         self.test_docs: Optional[str] = None
         self.test_namespace: Optional[str] = None
-        self.test_result: Optional[str] = None
+        self.test_result: Optional[TestScheduleResult] = None
         self.test_type: Optional[str] = None
         self.test_xunit: Optional[str] = None
         self.version: Optional[str] = None
@@ -853,7 +854,7 @@ class UMBMessage():
                     'category': self.test_category,
                     'docs': self.test_docs,
                     'namespace': self.test_namespace,
-                    'result': self.test_result,
+                    'result': self.test_result.value if self.test_result else None,
                     'type': self.test_type,
                     'xunit': self.test_xunit,
                 }) or None,
@@ -887,7 +888,7 @@ class UMBMessage():
                 self._dict_filter_no_value({
                     'note': self.note,
                     'recipients': self.recipients,
-                    'status': self.test_result,
+                    'status': self.test_result.value if self.test_result else None,
                     'system': self.system,
                     'thread_id': self.pipeline_id,
                     'xunit': self.test_xunit,

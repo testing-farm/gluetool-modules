@@ -6,6 +6,7 @@ from gluetool.log import log_dict
 from gluetool.utils import cached_property
 from gluetool_modules_framework.libs.results.test_result import TestResult, publish_result
 from gluetool_modules_framework.libs.results import TestSuite, TestCase
+from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 
 # Type annotations
 from typing import Any, Dict, List, Optional, Tuple, cast  # noqa
@@ -16,7 +17,7 @@ class TeDuDeTestResult(TestResult):
     TeDuDe test result data container
     """
 
-    def __init__(self, glue: gluetool.glue.Glue, overall_result: str, **kwargs: Any) -> None:
+    def __init__(self, glue: gluetool.glue.Glue, overall_result: TestScheduleResult, **kwargs: Any) -> None:
         super(TeDuDeTestResult, self).__init__(glue, 'tedude', overall_result, **kwargs)
 
     def convert_to_results(self) -> TestSuite:
@@ -69,7 +70,7 @@ class TeDuDe(gluetool.Module):
         return gluetool.utils.normalize_multistring_option(self.option('bugzilla-attributes'))
 
     @cached_property
-    def _tedude_test_statuses(self) -> Tuple[str, Dict[int, Dict[str, str]]]:
+    def _tedude_test_statuses(self) -> Tuple[TestScheduleResult, Dict[int, Dict[str, str]]]:
         """
         Evaluates each bug using the provided instructions.
 
@@ -164,8 +165,8 @@ class TeDuDe(gluetool.Module):
             overall_result = check_instructions(self._instructions, context, 'NO_BUGS_FOUND')
 
         log_dict(self.debug, 'Detailed TeDuDe test results', results)
-        self.info("Result of testing: {}".format(overall_result.upper()))
-        return overall_result, results
+        self.info("Result of testing: {}".format(TestScheduleResult(overall_result)))
+        return TestScheduleResult(overall_result), results
 
     def execute(self) -> None:
         self.require_shared('dist_git_bugs', 'bugzilla_attributes', 'evaluate_instructions')

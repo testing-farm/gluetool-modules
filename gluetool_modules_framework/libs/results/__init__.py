@@ -8,6 +8,8 @@ from gluetool_modules_framework.libs.testing_environment import TestingEnvironme
 from gluetool_modules_framework.infrastructure.koji_fedora import KojiTask
 from gluetool_modules_framework.infrastructure.copr import CoprTask
 
+from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
+
 import attrs
 
 from typing import List, Dict, Optional, Union
@@ -34,7 +36,7 @@ class Phase:
 @attrs.define
 class TestCase:
     name: str
-    result: Optional[str] = None
+    result: Optional[TestScheduleResult] = None
     properties: Dict[str, str] = attrs.field(factory=dict)
     logs: List[Log] = attrs.field(factory=list)
     requested_environment: Optional[TestingEnvironment] = None
@@ -65,7 +67,7 @@ class TestCase:
 @attrs.define
 class TestSuite:
     name: str
-    result: Optional[str] = None
+    result: Optional[TestScheduleResult] = None
     logs: List[Log] = attrs.field(factory=list)
     properties: Dict[str, str] = attrs.field(factory=dict)
     test_cases: List[TestCase] = attrs.field(factory=list)
@@ -78,17 +80,17 @@ class TestSuite:
 
     @property
     def failure_count(self) -> int:
-        return len([test_case for test_case in self.test_cases if test_case.result in ('failed', 'fail', 'fail:',
-                                                                                       'needs_inspection', 'error',
-                                                                                       'errored', 'error:')])
+        return len([test_case for test_case in self.test_cases
+                    if test_case.result in (TestScheduleResult.FAILED, TestScheduleResult.NEEDS_INSPECTION,
+                                            TestScheduleResult.ERROR)])
 
     @property
     def error_count(self) -> int:
-        return len([test_case for test_case in self.test_cases if test_case.result in ('error', 'errored', 'error:')])
+        return len([test_case for test_case in self.test_cases if test_case.result == TestScheduleResult.ERROR])
 
     @property
     def skipped_count(self) -> int:
-        return len([test_case for test_case in self.test_cases if test_case.result in ('error', 'errored', 'error:')])
+        return len([test_case for test_case in self.test_cases if test_case.result == TestScheduleResult.ERROR])
 
 
 @attrs.define
@@ -98,12 +100,12 @@ class Results:
     into various resulting structures.
     """
 
-    overall_result: Optional[str] = None
+    overall_result: Optional[TestScheduleResult] = None
     test_suites: List[TestSuite] = attrs.field(factory=list)
 
     primary_task: Optional[Union[KojiTask, CoprTask]] = None
 
-    test_schedule_result: Optional[str] = None
+    test_schedule_result: Optional[TestScheduleResult] = None
 
     testing_thread: Optional[str] = None
 

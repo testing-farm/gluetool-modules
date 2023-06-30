@@ -12,7 +12,7 @@ import gluetool
 from gluetool.utils import Command
 
 from gluetool_modules_framework.libs.results.test_result import TestResult, publish_result
-
+from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 # Type annotations
 from typing import Any, Iterator, List, NoReturn, Optional, TYPE_CHECKING, Dict  # noqa
 from gluetool_modules_framework.infrastructure import github  # noqa
@@ -53,7 +53,7 @@ def _assert_never(x: Any) -> NoReturn:
 class CoprBuildTestResult(TestResult):
     def __init__(self,
                  glue: gluetool.Glue,
-                 overall_result: str,
+                 overall_result: TestScheduleResult,
                  build_url: Optional[str] = None,
                  process_output: Optional[gluetool.utils.ProcessOutput] = None,
                  **kwargs: Any) -> None:

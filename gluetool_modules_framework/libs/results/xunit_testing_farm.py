@@ -192,7 +192,7 @@ class XUnitTFTestCase:
 
         return XUnitTFTestCase(
             name=test_case.name,
-            result=test_case.result,
+            result=test_case.result.value if test_case.result else None,
             properties=XUnitTFProperties.construct(test_case.properties) if test_case.properties else None,
             logs=XUnitTFLogs.construct(test_case.logs) if test_case.logs else None,
             testing_environment=environments,
@@ -239,7 +239,7 @@ class XUnitTFTestSuite:
 
         return XUnitTFTestSuite(
             name=test_suite.name,
-            result=test_suite.result,
+            result=test_suite.result.value if test_suite.result else None,
             tests=str(test_suite.test_count),
             logs=XUnitTFLogs.construct(test_suite.logs) if test_suite.logs else None,
             properties=XUnitTFProperties.construct(test_suite.properties) if test_suite.properties else None,
@@ -274,8 +274,8 @@ class XUnitTFTestSuites:
                 'baseosci.artifact-namespace': results.primary_task.ARTIFACT_NAMESPACE
             })
 
-        if results.test_schedule_result:
-            properties.update({'baseosci.overall-result': results.test_schedule_result})
+        if results.test_schedule_result is not None:
+            properties.update({'baseosci.overall-result': results.test_schedule_result.value})
 
         if results.testing_thread:
             properties.update({'baseosci.id.testing-thread': results.testing_thread})
@@ -290,7 +290,7 @@ class XUnitTFTestSuites:
             })
 
         return XUnitTFTestSuites(
-            overall_result=results.overall_result,
+            overall_result=results.overall_result.value if results.overall_result else None,
             properties=XUnitTFProperties.construct(properties) if properties else None,
             testsuite=[XUnitTFTestSuite.construct(test_suite) for test_suite in results.test_suites]
         )

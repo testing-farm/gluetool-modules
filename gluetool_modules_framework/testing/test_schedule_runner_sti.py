@@ -1,12 +1,12 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
-import collections
 import tempfile
 import os
 import re
 import stat
 import six
+import attrs
 
 from concurrent.futures import ThreadPoolExecutor
 import inotify.adapters
@@ -34,15 +34,31 @@ DEFAULT_WATCH_TIMEOUT = 5
 
 STI_ANSIBLE_LOG_FILENAME = 'ansible-output.txt'
 
+RESULT_OUTCOME = {
+    'pass': TestScheduleResult.PASSED,
+    'info': TestScheduleResult.INFO,
+    'fail': TestScheduleResult.FAILED,
+    'warn': TestScheduleResult.NEEDS_INSPECTION,
+    'error': TestScheduleResult.ERROR
+}
 
-#: Represents a single run of a test - one STI playbook can contain multiple such tests
-#  - and results of this run.
-#:
-#: :ivar str name: name of the test.
-#: :ivar libs.test_schedule.TestScheduleEntry schedule_entry: test schedule entry the task belongs to.
-#: :ivar dict results: results of the test run, as reported by Ansible playbook log.
-#: :ivar dict logs: list of logs associated with the test
-TaskRun = collections.namedtuple('TaskRun', ('name', 'schedule_entry', 'result', 'logs'))
+
+@attrs.define
+class TaskRun:
+    """
+    Represents a single run of a test - one STI playbook can contain multiple such tests
+    - and results of this run.
+
+    :ivar str name: name of the test.
+    :ivar libs.test_schedule.TestScheduleEntry schedule_entry: test schedule entry the task belongs to.
+    :ivar dict results: results of the test run, as reported by Ansible playbook log.
+    :ivar dict logs: list of logs associated with the test
+    """
+
+    name: str
+    schedule_entry: TestScheduleEntry
+    result: TestScheduleResult
+    logs: List[Any]
 
 
 def gather_test_results(schedule_entry: TestScheduleEntry, artifacts_directory: str) -> List[TaskRun]:
@@ -69,7 +85,7 @@ def gather_test_results(schedule_entry: TestScheduleEntry, artifacts_directory: 
                     TaskRun(
                         name=result.get('test'),
                         schedule_entry=schedule_entry,
-                        result=result.get('result'),
+                        result=RESULT_OUTCOME[result.get('result')],
                         logs=result.get('logs', [])))
         else:
             schedule_entry.warn("Results file {} contains nothing under 'results' key".format(results_yml_filename))
@@ -86,7 +102,7 @@ def gather_test_results(schedule_entry: TestScheduleEntry, artifacts_directory: 
                     continue
                 result, name = match.groups()
                 results.append(TaskRun(
-                    name=name, schedule_entry=schedule_entry, result=result, logs=[]))
+                    name=name, schedule_entry=schedule_entry, result=RESULT_OUTCOME[result], logs=[]))
     except IOError:
         schedule_entry.warn('Unable to check results in {}'.format(test_log_filename))
 
@@ -136,12 +152,12 @@ class STIRunner(gluetool.Module):
 
         self.debug('Try to find any non-PASS task')
 
-        for task_run in schedule_entry.results:
+        for task_run in schedule_entry.results or []:
             schedule_entry, task, result = task_run.schedule_entry, task_run.name, task_run.result
 
             schedule_entry.debug('  {}: {}'.format(task, result))
 
-            if result.lower() == 'pass':
+            if result == TestScheduleResult.PASSED:
                 continue
 
             schedule_entry.debug('    We have our traitor!')
@@ -343,7 +359,8 @@ sut     ansible_host={} ansible_user=root {}
             # Note that Ansible error is still a user error though, nothing we can do anything about, in case ansible
             # failed, report the ansible output as the test result.
             if not results:
-                results.append(TaskRun(name='ansible', schedule_entry=schedule_entry, result='FAIL', logs=[]))
+                results.append(TaskRun(name='ansible', schedule_entry=schedule_entry, result=TestScheduleResult.FAILED,
+                                       logs=[]))
 
         return results
 
@@ -394,10 +411,10 @@ sut     ansible_host={} ansible_user=root {}
         for task in schedule_entry.results:
             test_case = TestCase(name=task.name, result=task.result)
 
-            if task.result.upper() == 'FAIL':
+            if task.result == TestScheduleResult.FAILED:
                 test_case.failure = True
 
-            if task.result.upper() == 'ERROR':
+            if task.result == TestScheduleResult.ERROR:
                 test_case.error = True
 
             # test properties

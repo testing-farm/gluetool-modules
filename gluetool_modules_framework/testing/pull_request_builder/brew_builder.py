@@ -11,6 +11,7 @@ from gluetool_modules_framework.libs import run_and_log
 from gluetool_modules_framework.libs.brew_build_fail import BrewBuildFailedError, run_command
 from gluetool_modules_framework.libs.results.test_result import TestResult, publish_result
 from gluetool_modules_framework.libs.artifacts import artifacts_location
+from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 
 from typing import Dict, Any, Optional, List, cast # noqa
 
@@ -18,7 +19,7 @@ from typing import Dict, Any, Optional, List, cast # noqa
 class BrewBuildTestResult(TestResult):
     def __init__(self,
                  glue: gluetool.Glue,
-                 overall_result: str,
+                 overall_result: TestScheduleResult,
                  build_url: str,
                  comment: str,
                  process_output: str,

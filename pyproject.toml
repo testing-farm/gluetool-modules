@@ -165,6 +165,7 @@ sphinx-rtd-theme = "*"
 typing-extensions = "^4.4.0"
 version-utils = "^0.3.2"
 attrs = "^22.2.0"
+xsdata = "^23.5"
 xsdata-attrs = "^21.11"
 
 [tool.poetry.dev-dependencies]

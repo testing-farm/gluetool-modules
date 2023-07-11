@@ -1,7 +1,6 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
-import glob
 import os
 import re
 from dataclasses import dataclass
@@ -10,6 +9,8 @@ import gluetool
 from gluetool.action import Action
 from gluetool.log import log_dict
 from gluetool.result import Ok, Error
+from gluetool.utils import Command
+from gluetool.glue import GlueCommandError, GlueError
 
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
@@ -67,12 +68,37 @@ class InstallRepository(gluetool.Module):
 
         sut_installation.add_step('Create artifacts directory', 'mkdir -pv {}'.format(download_path),
                                   ignore_exception=True)
+        packages = []
 
         for artifact in artifacts:
 
-            # We pass this regexp to egrep, and it is expected to match part of the downloadable URL,
-            # e.g. https://some-repo/@oamg/leapp/epel-7-x86_64/repository/package-1.0-1.el7.src.rpm
-            packages_regexp = '|'.join(['/{}'.format(package) for package in artifact.packages or []])
+            # First, get locations of RPMs on worker
+            repoquery_cmd = [
+                'dnf',
+                'repoquery',
+                '-q',
+                '--queryformat',
+                '"%{{name}}"',
+                '--repofrompath=artifacts-repo,{}'.format(artifact.url),
+                '--repo',
+                'artifacts-repo',
+                '--location',
+            ]
+            try:
+                output = Command(repoquery_cmd).run()
+
+            except GlueCommandError as exc:
+                assert exc.output.stderr is not None
+                raise GlueError('Fetching location of RPMs failed: {} cmd: {}'.format(exc.output.stderr, repoquery_cmd))
+
+            if not output.stdout:
+                self.warning('No packages have been found in {}'.format(artifact.url))
+                continue
+
+            output_packages = output.stdout.strip('\n').split('\n')
+
+            # Remove .src.rpm packages
+            output_packages = [out_package for out_package in output_packages if ".src.rpm" not in out_package]
 
             if artifact.packages:
                 log_dict(
@@ -80,24 +106,12 @@ class InstallRepository(gluetool.Module):
                     "installing only following packages from repository '{}'".format(artifact.url),
                     artifact.packages
                 )
+                for out_package in output_packages:
+                    if any([artifact_package in out_package for artifact_package in artifact.packages]):
+                        packages.append(out_package)
 
-            sut_installation.add_step(
-                'Download artifacts',
-                (
-                    'cd {} && '
-                    # the repo url needs to be quoted, as it can contain yum variables, e.g. $basearch
-                    'dnf repoquery -q --queryformat "%{{name}}" --repofrompath \'artifacts-repo,{}\' '
-                    '--disablerepo="*" --enablerepo="artifacts-repo" --location | '
-                    '{}'
-                    'xargs -n1 curl -sO'
-                ).format(
-                    download_path,
-                    artifact.url,
-                    'egrep "({})" | '.format(packages_regexp) if packages_regexp else ''
-                )
-            )
-
-        package_rpm_files = glob.glob('{}/*[^.src].rpm'.format(download_path))
+            else:
+                packages += output_packages
 
         # filter excluded packages
         if guest.environment and guest.environment.excluded_packages:
@@ -106,24 +120,28 @@ class InstallRepository(gluetool.Module):
 
             excluded_packages_regexp = '|'.join(['/{}'.format(package) for package in excluded_packages])
 
-            package_rpm_files = [
+            packages = [
                 rpm_file
-                for rpm_file in package_rpm_files
+                for rpm_file in packages
                 if not re.search(excluded_packages_regexp, rpm_file)
             ]
 
         # create a string with all packages to install
-        packages = ' '.join(package_rpm_files)
+        packages_str = ' '.join(packages)
 
         # note: the `SUTInstallation` library does the magic of using DNF where it is needed \o/
-        sut_installation.add_step('Reinstall packages', 'yum -y reinstall {}'.format(packages), ignore_exception=True)
-        sut_installation.add_step('Downgrade packages', 'yum -y downgrade {}'.format(packages), ignore_exception=True)
-        sut_installation.add_step('Update packages', 'yum -y update {}'.format(packages), ignore_exception=True)
-        sut_installation.add_step('Install packages', 'yum -y install {}'.format(packages), ignore_exception=True)
+        sut_installation.add_step('Reinstall packages',
+                                  'yum -y reinstall {}'.format(packages_str), ignore_exception=True)
+        sut_installation.add_step('Downgrade packages',
+                                  'yum -y downgrade {}'.format(packages_str), ignore_exception=True)
+        sut_installation.add_step('Update packages',
+                                  'yum -y update {}'.format(packages_str), ignore_exception=True)
+        sut_installation.add_step('Install packages',
+                                  'yum -y install {}'.format(packages_str), ignore_exception=True)
 
         sut_installation.add_step(
             'Verify all packages installed',
-            'basename --suffix=.rpm {} | xargs rpm -q'.format(packages)
+            'basename --suffix=.rpm {} | xargs rpm -q'.format(' '.join(packages))
         )
 
     def _install_repository_file_artifacts(

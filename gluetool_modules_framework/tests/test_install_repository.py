@@ -5,6 +5,7 @@ import pytest
 
 from mock import MagicMock, call
 
+from gluetool.utils import Command
 import gluetool_modules_framework.libs.guest as guest_module
 import gluetool_modules_framework.libs.guest_setup
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
@@ -84,11 +85,17 @@ def test_sanity_shared(module):
 
 
 @pytest.mark.parametrize('environment_index', [0, 1], ids=['multiple-repositories', 'no-repositories'])
-def test_guest_setup(module, environment_index, tmpdir):
+def test_guest_setup(module, monkeypatch, environment_index, tmpdir):
     module.execute()
 
     stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
 
+    mock_output = MagicMock(exit_code=0, stdout='https://example.com/package1.rpm', stderr='')
+    mock_command_init = MagicMock(return_value=None)
+    mock_command_run = MagicMock(return_value=mock_output)
+
+    monkeypatch.setattr(Command, '__init__', mock_command_init)
+    monkeypatch.setattr(Command, 'run', mock_command_run)
     execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
     guest = mock_guest(execute_mock)
     guest.environment = module.shared('testing_farm_request').environments_requested[environment_index]
@@ -99,22 +106,22 @@ def test_guest_setup(module, environment_index, tmpdir):
         execute_mock.assert_has_calls([])
         return
 
-    calls = [
+    command_calls = [
+        call(['dnf', 'repoquery', '-q', '--queryformat', '"%{{name}}"', '--repofrompath=artifacts-repo,https://example.com/repo1', '--repo', 'artifacts-repo', '--location']),  # noqa
+        call(['dnf', 'repoquery', '-q', '--queryformat', '"%{{name}}"', '--repofrompath=artifacts-repo,https://example.com/repo2', '--repo', 'artifacts-repo', '--location']),  # noqa
+        call(['dnf', 'repoquery', '-q', '--queryformat', '"%{{name}}"', '--repofrompath=artifacts-repo,https://example.com/repo3', '--repo', 'artifacts-repo', '--location']),  # noqa
+    ]
+    mock_command_init.assert_has_calls(command_calls)
+
+    execute_calls = [
         call('command -v dnf'),
         call('curl --output-dir /etc/yum.repos.d -LO https://example.com/repo4.repo'),
         call('mkdir -pv dummy-path'),
-        call('cd dummy-path && dnf repoquery -q --queryformat "%{name}" --repofrompath \'artifacts-repo,https://example.com/repo1\' --disablerepo="*" --enablerepo="artifacts-repo" --location | xargs -n1 curl -sO'),  # noqa
-        call('cd dummy-path && dnf repoquery -q --queryformat "%{name}" --repofrompath \'artifacts-repo,https://example.com/repo2\' --disablerepo="*" --enablerepo="artifacts-repo" --location | xargs -n1 curl -sO'),  # noqa
-        call(
-            'cd dummy-path && dnf repoquery -q --queryformat "%{name}" --repofrompath \'artifacts-repo,https://example.com/repo3\' --disablerepo="*" --enablerepo="artifacts-repo" --location '  # noqa
-            '| egrep "(/package1|/package2)" '
-            '| xargs -n1 curl -sO'
-        ),
-        call('dnf -y reinstall dummy-path/*[^.src].rpm'),
-        call('dnf -y downgrade --allowerasing dummy-path/*[^.src].rpm'),
-        call('dnf -y update --allowerasing dummy-path/*[^.src].rpm'),
-        call('dnf -y install --allowerasing dummy-path/*[^.src].rpm'),
-        call("basename --suffix=.rpm dummy-path/*[^.src].rpm | xargs rpm -q")
+        call('dnf -y reinstall https://example.com/package1.rpm https://example.com/package1.rpm https://example.com/package1.rpm'),
+        call('dnf -y downgrade --allowerasing https://example.com/package1.rpm https://example.com/package1.rpm https://example.com/package1.rpm'),
+        call('dnf -y update --allowerasing https://example.com/package1.rpm https://example.com/package1.rpm https://example.com/package1.rpm'),
+        call('dnf -y install --allowerasing https://example.com/package1.rpm https://example.com/package1.rpm https://example.com/package1.rpm'),
+        call("basename --suffix=.rpm https://example.com/package1.rpm https://example.com/package1.rpm https://example.com/package1.rpm | xargs rpm -q")
     ]
 
-    execute_mock.assert_has_calls(calls)
+    execute_mock.assert_has_calls(execute_calls)

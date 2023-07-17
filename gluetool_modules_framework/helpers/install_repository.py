@@ -97,9 +97,6 @@ class InstallRepository(gluetool.Module):
 
             output_packages = output.stdout.strip('\n').split('\n')
 
-            # Remove .src.rpm packages
-            output_packages = [out_package for out_package in output_packages if ".src.rpm" not in out_package]
-
             if artifact.packages:
                 log_dict(
                     self.info,
@@ -112,6 +109,14 @@ class InstallRepository(gluetool.Module):
 
             else:
                 packages += output_packages
+
+        # First download all found .rpm files
+        sut_installation.add_step('Download packages',
+                                  'cd {}; echo {} | xargs -n1 curl -sO'.format(download_path, ' '.join(packages)),
+                                  ignore_exception=True)
+
+        # Remove .src.rpm packages
+        packages = [package for package in packages if ".src.rpm" not in package]
 
         # filter excluded packages
         if guest.environment and guest.environment.excluded_packages:
@@ -141,7 +146,7 @@ class InstallRepository(gluetool.Module):
 
         sut_installation.add_step(
             'Verify all packages installed',
-            'basename --suffix=.rpm {} | xargs rpm -q'.format(' '.join(packages))
+            'basename --suffix=.rpm {} | xargs rpm -q'.format(packages_str)
         )
 
     def _install_repository_file_artifacts(

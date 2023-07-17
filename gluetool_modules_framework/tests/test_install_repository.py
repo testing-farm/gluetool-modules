@@ -119,6 +119,7 @@ def test_guest_setup(module, environment_index, tmpdir, monkeypatch):
         call('command -v dnf'),
         call('curl --output-dir /etc/yum.repos.d -LO https://example.com/repo4.repo'),
         call('mkdir -pv dummy-path'),
+        call('cd dummy-path; echo https://example.com/package1.rpm https://example.com/dummy3.rpm https://example.com/package1.rpm https://example.com/dummy3.rpm https://example.com/package1.rpm | xargs -n1 curl -sO'),
         call('dnf -y reinstall https://example.com/package1.rpm https://example.com/package1.rpm https://example.com/package1.rpm'),
         call('dnf -y downgrade --allowerasing https://example.com/package1.rpm https://example.com/package1.rpm https://example.com/package1.rpm'),
         call('dnf -y update --allowerasing https://example.com/package1.rpm https://example.com/package1.rpm https://example.com/package1.rpm'),

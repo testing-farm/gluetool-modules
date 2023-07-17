@@ -41,9 +41,9 @@ RUN    ln -s /CONFIG /etc/citool.d \
     # workaround for https://pagure.io/standard-test-roles/pull-request/410
     && dnf copr enable -y @osci/standard-test-roles \
     && dnf -y install standard-test-roles \
-    # install tmt-1.22 from copr, this has fix for dnf5
-    && dnf copr enable -y psss/tmt \
-    && dnf -y install tmt-1.24.1 tmt-provision-container-1.24.1 tmt-provision-virtual-1.24.1 tmt-report-polarion-1.24.1 tmt-report-html-1.24.1 \
+    # install tmt-1.25 from updates testing, this has all the required fixes for Rawhide (dnf5)
+    # && dnf copr enable -y psss/tmt \
+    && dnf -y install --enablerepo=epel-testing tmt-1.25.0 tmt-provision-container-1.25.0 tmt-provision-virtual-1.25.0 tmt-report-polarion-1.25.0 tmt-report-html-1.25.0 \
     && dnf clean all \
     # Install pylero from PyPI, it is broken in CentOS 8
     && rpm -e --nodeps python3-suds \

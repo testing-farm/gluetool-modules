@@ -107,7 +107,7 @@ command:
   tmt --version:
     exit-status: 0
     stdout:
-      - "tmt version: 1.24"
+      - "tmt version: 1.25"
     timeout: 100000
 
   tmt run report -h polarion:

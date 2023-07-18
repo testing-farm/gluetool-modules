@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import re
 from dataclasses import dataclass
 
 import gluetool
@@ -58,6 +59,7 @@ class InstallRepository(gluetool.Module):
 
     def _install_repository_artifacts(
         self,
+        guest: NetworkedGuest,
         sut_installation: SUTInstallation,
         artifacts: List[RepositoryArtifact]
     ) -> None:
@@ -115,6 +117,19 @@ class InstallRepository(gluetool.Module):
 
         # Remove .src.rpm packages
         packages = [package for package in packages if ".src.rpm" not in package]
+
+        # filter excluded packages
+        if guest.environment and guest.environment.excluded_packages:
+            excluded_packages = guest.environment.excluded_packages
+            log_dict(guest.logger.info, 'Excluded packages', excluded_packages)
+
+            excluded_packages_regexp = '|'.join(['/{}'.format(package) for package in excluded_packages])
+
+            packages = [
+                rpm_file
+                for rpm_file in packages
+                if not re.search(excluded_packages_regexp, rpm_file)
+            ]
 
         packages_str = ' '.join(packages)
 
@@ -213,7 +228,7 @@ class InstallRepository(gluetool.Module):
             self._install_repository_file_artifacts(sut_installation, repository_file_artifacts)
 
         if repository_artifacts:
-            self._install_repository_artifacts(sut_installation, repository_artifacts)
+            self._install_repository_artifacts(guest, sut_installation, repository_artifacts)
 
         with Action(
                 'installing repositories',

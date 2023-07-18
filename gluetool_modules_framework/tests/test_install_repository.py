@@ -90,7 +90,8 @@ def test_guest_setup(module, monkeypatch, environment_index, tmpdir):
 
     stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
 
-    mock_output = MagicMock(exit_code=0, stdout='https://example.com/package1.rpm', stderr='')
+    mock_output = MagicMock(
+        exit_code=0, stdout='https://example.com/package1.rpm\nhttps://example.com/dummy3.rpm', stderr='')
     mock_command_init = MagicMock(return_value=None)
     mock_command_run = MagicMock(return_value=mock_output)
 
@@ -99,6 +100,7 @@ def test_guest_setup(module, monkeypatch, environment_index, tmpdir):
     execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
     guest = mock_guest(execute_mock)
     guest.environment = module.shared('testing_farm_request').environments_requested[environment_index]
+    guest.environment.excluded_packages = ['dummy3']
 
     module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir))
 
@@ -117,7 +119,7 @@ def test_guest_setup(module, monkeypatch, environment_index, tmpdir):
         call('command -v dnf'),
         call('curl --output-dir /etc/yum.repos.d -LO https://example.com/repo4.repo'),
         call('mkdir -pv dummy-path'),
-        call('cd dummy-path; echo https://example.com/package1.rpm https://example.com/package1.rpm https://example.com/package1.rpm | xargs -n1 curl -sO'),
+        call('cd dummy-path; echo https://example.com/package1.rpm https://example.com/dummy3.rpm https://example.com/package1.rpm https://example.com/dummy3.rpm https://example.com/package1.rpm | xargs -n1 curl -sO'),
         call('dnf -y reinstall https://example.com/package1.rpm https://example.com/package1.rpm https://example.com/package1.rpm'),
         call('dnf -y downgrade --allowerasing https://example.com/package1.rpm https://example.com/package1.rpm https://example.com/package1.rpm'),
         call('dnf -y update --allowerasing https://example.com/package1.rpm https://example.com/package1.rpm https://example.com/package1.rpm'),

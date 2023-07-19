@@ -40,7 +40,8 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       rsync beakerlib-libraries rpm-build rpm-devel \
     # workaround for https://pagure.io/standard-test-roles/pull-request/410
     && dnf copr enable -y @osci/standard-test-roles \
-    && dnf -y install standard-test-roles \
+    # Newer version fails on: nothing provides python3dist(ansible) needed by standard-test-roles-4.11-1.el8.noarch from epel
+    && dnf -y install standard-test-roles-4.10-6.el8 \
     # install tmt-1.25 from updates testing, this has all the required fixes for Rawhide (dnf5)
     # && dnf copr enable -y psss/tmt \
     && dnf -y install --enablerepo=epel-testing tmt-1.25.0 tmt-provision-container-1.25.0 tmt-provision-virtual-1.25.0 tmt-report-polarion-1.25.0 tmt-report-html-1.25.0 \

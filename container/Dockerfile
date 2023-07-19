@@ -29,6 +29,9 @@ ENV PATH="/opt/gluetool/bin:$PATH"
 # Ansible requirements
 COPY container/requirements.yml /etc/ansible/requirements.yml
 
+# ~/.gitconfig is required for some operations of the git library in gluetool-modules
+COPY container/.gitconfig /root/.gitconfig
+
 # install all required dependencies
 RUN    ln -s /CONFIG /etc/citool.d \
     && rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \

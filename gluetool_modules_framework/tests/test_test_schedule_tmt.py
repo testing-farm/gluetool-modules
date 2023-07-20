@@ -692,7 +692,7 @@ def test_plans_from_git_filter_from_request(module, monkeypatch):
     ids=['no_excludes', 'excludes', 'prepare_list', 'multiple_steps']
 )
 def test_excludes(module, plan, expected):
-    plan.update({'provision': {'hardware': None}})
+    plan.update({'provision': [{'hardware': None}]})
     plan = gluetool.utils.create_cattrs_converter(prefer_attrib_converters=True).structure(plan, TMTPlan)
     assert plan.excludes() == expected
 
@@ -875,11 +875,11 @@ dummytmt --root some-tmt-root run --last --since prepare'''
 TMT_PLANS = ['''
 - name: some-plan
   provision:
-    hardware: null
+    - hardware: null
 ''', '''
 - name: some-plan
   provision:
-    hardware: null
+    - hardware: null
   prepare:
     how: somehow
     exclude:
@@ -888,7 +888,7 @@ TMT_PLANS = ['''
 ''', '''
 - name: some-plan
   provision:
-    hardware: null
+    - hardware: null
   prepare:
     - how: somehow1
       exclude:
@@ -904,17 +904,17 @@ TMT_PLANS = ['''
 @pytest.mark.parametrize('tf_request, mock_output, context_files, expected_command, expected_plan', [
     (None, MagicMock(stdout=TMT_PLANS[0]), [],
      ['dummytmt', 'plan', 'export', '^some\\-plan$'],
-     TMTPlan(name='some-plan', provision=TMTPlanProvision(), prepare=[])),
+     TMTPlan(name='some-plan', provision=[TMTPlanProvision()], prepare=[])),
     (MagicMock(tmt=MagicMock(path='some-tmt-root')), MagicMock(stdout=TMT_PLANS[0]), [],
      ['dummytmt', '--root', 'some-tmt-root', 'plan', 'export', '^some\\-plan$'],
-     TMTPlan(name='some-plan', provision=TMTPlanProvision(), prepare=[])),
+     TMTPlan(name='some-plan', provision=[TMTPlanProvision()], prepare=[])),
     (None, MagicMock(stdout=TMT_PLANS[1]), ['file1', 'file 2'],
      ['dummytmt', '--context=@file1', '--context=@file 2', 'plan', 'export', '^some\\-plan$'],
-     TMTPlan(name='some-plan', provision=TMTPlanProvision(),
+     TMTPlan(name='some-plan', provision=[TMTPlanProvision()],
              prepare=[TMTPlanPrepare(how='somehow', exclude=['exclude1', 'exclude2'])])),
     (None, MagicMock(stdout=TMT_PLANS[2]), [],
      ['dummytmt', 'plan', 'export', '^some\\-plan$'],
-     TMTPlan(name='some-plan', provision=TMTPlanProvision(),
+     TMTPlan(name='some-plan', provision=[TMTPlanProvision()],
              prepare=[TMTPlanPrepare(how='somehow1', exclude=['prep1_exclude1', 'prep1_exclude2']),
                       TMTPlanPrepare(how='somehow2', exclude=['prep2_exclude1', 'prep2_exclude2'])])),
     (None, MagicMock(stdout='[]'), [],
@@ -931,3 +931,127 @@ def test_export(monkeypatch, module, tf_request, mock_output, context_files, exp
     assert plan == expected_plan
 
     mock_command.assert_called_once_with(expected_command)
+
+
+TMT_EXPORTED_PLANS = [
+    # single_provision_phase
+    '''
+    - name: plan1
+      provision:
+        - name: default-0
+          how: virtual
+    ''',
+    # single_provision_phase_with_hardware
+    '''
+    - name: plan1
+      provision:
+        - name: default-0
+          how: virtual
+          hardware:
+            tpm:
+              version: '2'
+    ''',
+    # single_provision_phase_with_kickstart
+    '''
+    - name: plan1
+      provision:
+        - name: default-0
+          how: virtual
+          kickstart:
+            script: some-script
+            metadata: some-metadata
+    ''',
+    # multiple_provision_phases
+    '''
+    - name: plan1
+      provision:
+        - name: default-0
+          how: virtual
+        - name: default-1
+          how: virtual
+    ''',
+]
+
+
+@pytest.mark.parametrize('exported_plan, expected_environment, expected_exception', [
+        # single_provision_phase
+        (
+            TMT_EXPORTED_PLANS[0],
+            TestingEnvironment(
+                arch='x86_64',
+                excluded_packages=[],
+                snapshots=False
+            ),
+            None
+        ),
+        # single_provision_phase_with_hardware
+        (
+            TMT_EXPORTED_PLANS[1],
+            TestingEnvironment(
+                arch='x86_64',
+                excluded_packages=[],
+                hardware={
+                    'tpm': {
+                        'version': '2'
+                    }
+                },
+                snapshots=False
+            ),
+            None
+        ),
+        # single_provision_phase_with_hardware
+        (
+            TMT_EXPORTED_PLANS[2],
+            TestingEnvironment(
+                arch='x86_64',
+                excluded_packages=[],
+                kickstart={
+                    'script': 'some-script',
+                    'metadata': 'some-metadata',
+                },
+                snapshots=False
+            ),
+            None
+        ),
+        # multiple_provision_phases
+        (
+            TMT_EXPORTED_PLANS[3],
+            None,
+            (gluetool.GlueError, 'Multiple provision phases not supported, refusing to continue.')
+        ),
+    ],
+    ids=[
+        'single_provision_phase',
+        'single_provision_phase_with_hardware',
+        'single_provision_phase_with_kickstart',
+        'multiple_provision_phases'
+    ]
+)
+def test_tmt_plan_export(module, monkeypatch, exported_plan, expected_environment, expected_exception, tmpdir):
+    module_dist_git = create_module(DistGit)[1]
+    module_dist_git._repository = DistGitRepository(
+        module_dist_git, 'some-package',
+        clone_url='http://example.com/git/myproject', ref='myfix'
+    )
+    module.glue.add_shared('dist_git_repository', module_dist_git)
+
+    with monkeypatch.context() as m:
+        m.chdir(tmpdir)
+        _set_run_outputs(m,
+                         '',       # git clone
+                         '',       # git config #1
+                         '',       # git config #2
+                         '',       # git fetch
+                         '',       # git checkout
+                         'plan1',  # tmt plan ls
+                         exported_plan)     # tmt plan export
+
+        if expected_exception:
+            with pytest.raises(expected_exception[0], match=expected_exception[1]):
+                schedules = module.create_test_schedule([TestingEnvironment('x86_64')])
+            return
+
+        schedules = module.create_test_schedule([TestingEnvironment('x86_64')])
+
+    if not expected_exception:
+        assert schedules[0].testing_environment == expected_environment

@@ -46,7 +46,7 @@ def fixture_module(monkeypatch):
                 {
                     'id': 'https://example.com/repo3',
                     'packages': [
-                        'package1',
+                        'package-install-1',
                         'package2'
                     ],
                     'type': 'repository'
@@ -91,7 +91,7 @@ def test_guest_setup(module, monkeypatch, environment_index, tmpdir):
     stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
 
     mock_output = MagicMock(
-        exit_code=0, stdout='https://example.com/package1.rpm\nhttps://example.com/dummy3.rpm', stderr='')
+        exit_code=0, stdout='https://example.com/package-install-1.rpm\nhttps://example.com/dummy3.rpm', stderr='')
     mock_command_init = MagicMock(return_value=None)
     mock_command_run = MagicMock(return_value=mock_output)
 
@@ -119,12 +119,12 @@ def test_guest_setup(module, monkeypatch, environment_index, tmpdir):
         call('command -v dnf'),
         call('curl --output-dir /etc/yum.repos.d -LO https://example.com/repo4.repo'),
         call('mkdir -pv dummy-path'),
-        call('cd dummy-path; echo https://example.com/package1.rpm https://example.com/dummy3.rpm https://example.com/package1.rpm https://example.com/dummy3.rpm https://example.com/package1.rpm | xargs -n1 curl -sO'),
-        call('dnf -y reinstall https://example.com/package1.rpm https://example.com/package1.rpm https://example.com/package1.rpm'),
-        call('dnf -y downgrade --allowerasing https://example.com/package1.rpm https://example.com/package1.rpm https://example.com/package1.rpm'),
-        call('dnf -y update --allowerasing https://example.com/package1.rpm https://example.com/package1.rpm https://example.com/package1.rpm'),
-        call('dnf -y install --allowerasing https://example.com/package1.rpm https://example.com/package1.rpm https://example.com/package1.rpm'),
-        call("basename --suffix=.rpm https://example.com/package1.rpm https://example.com/package1.rpm https://example.com/package1.rpm | xargs rpm -q")
+        call('cd dummy-path; echo https://example.com/package-install-1.rpm https://example.com/dummy3.rpm https://example.com/package-install-1.rpm https://example.com/dummy3.rpm https://example.com/package-install-1.rpm | xargs -n1 curl -sO'),
+        call('dnf -y reinstall https://example.com/package-install-1.rpm https://example.com/package-install-1.rpm https://example.com/package-install-1.rpm'),
+        call('dnf -y downgrade --allowerasing https://example.com/package-install-1.rpm https://example.com/package-install-1.rpm https://example.com/package-install-1.rpm'),
+        call('dnf -y update --allowerasing https://example.com/package-install-1.rpm https://example.com/package-install-1.rpm https://example.com/package-install-1.rpm'),
+        call('dnf -y install --allowerasing https://example.com/package-install-1.rpm https://example.com/package-install-1.rpm https://example.com/package-install-1.rpm'),
+        call("basename --suffix=.rpm https://example.com/package-install-1.rpm https://example.com/package-install-1.rpm https://example.com/package-install-1.rpm | xargs rpm -q")
     ]
 
     execute_mock.assert_has_calls(execute_calls)

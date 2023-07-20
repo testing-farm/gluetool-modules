@@ -241,9 +241,12 @@ class TMTPlan:
       * https://github.com/teemtee/tmt/blob/main/tmt/schemas/plan.yaml
     """
     name: str = attrs.field(validator=attrs.validators.instance_of(str))
-    provision: Optional[TMTPlanProvision] = attrs.field(
-        default=None,
-        validator=attrs.validators.optional(attrs.validators.instance_of(TMTPlanProvision))
+    provision: List[TMTPlanProvision] = attrs.field(
+        factory=list,
+        validator=attrs.validators.deep_iterable(
+            member_validator=attrs.validators.instance_of(TMTPlanProvision),
+            iterable_validator=attrs.validators.instance_of(list)
+        )
     )
     prepare: List[TMTPlanPrepare] = attrs.field(
         factory=list,
@@ -897,10 +900,15 @@ class TestScheduleTMT(Module):
 
                 hardware = kickstart = watchdog_dispatch_delay = watchdog_period_delay = None
                 if exported_plan and exported_plan.provision:
-                    hardware = exported_plan.provision.hardware
-                    kickstart = exported_plan.provision.kickstart
-                    watchdog_dispatch_delay = exported_plan.provision.watchdog_dispatch_delay
-                    watchdog_period_delay = exported_plan.provision.watchdog_period_delay
+                    # this module will never support multiple provision phases
+                    if len(exported_plan.provision) > 1:
+                        raise GlueError('Multiple provision phases not supported, refusing to continue.')
+
+                    provision = exported_plan.provision[0]
+                    hardware = provision.hardware
+                    kickstart = provision.kickstart
+                    watchdog_dispatch_delay = provision.watchdog_dispatch_delay
+                    watchdog_period_delay = provision.watchdog_period_delay
 
                 schedule_entry = TestScheduleEntry(
                     root_logger,

@@ -39,7 +39,7 @@ SUTStep = collections.namedtuple(
 # Pattern for dnf commands which will be extended with --allowerasing
 # NOTE: Reinstall does not support allowerasing for dnf5, disable temporarily
 # ALLOW_ERASING_PATTERN = re.compile(r'\b(install|update|reinstall|downgrade)\b')
-ALLOW_ERASING_PATTERN = re.compile(r'\b(install|update|downgrade)\b')
+ALLOW_ERASING_PATTERN = re.compile(r'\s(install|update|downgrade)\s')
 
 INSTALL_COMMANDS_FILE = 'sut_install_commands.sh'
 
@@ -133,7 +133,7 @@ class SUTInstallation(object):
             # always use `--allowerasing` with `dnf` commands
             if command.startswith('dnf'):
                 if re.search(ALLOW_ERASING_PATTERN, command):
-                    command = re.sub(ALLOW_ERASING_PATTERN, r'\1 --allowerasing', command)
+                    command = re.sub(ALLOW_ERASING_PATTERN, r' \1 --allowerasing ', command)
 
             if not step.items:
                 commands.append(command)

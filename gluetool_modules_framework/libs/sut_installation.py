@@ -79,7 +79,7 @@ class SUTInstallation(object):
                  module: gluetool.Module,
                  log_dirpath: str,
                  artifact: Any,
-                 logger: Optional[gluetool.log.ContextAdapter] = None) -> None:
+                 logger: Optional[Union[gluetool.log.ContextAdapter, gluetool.log.LoggerMixin]] = None) -> None:
 
         self.module = module
         self.log_dirpath = log_dirpath

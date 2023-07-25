@@ -791,17 +791,18 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir, cl
     module_koji = create_module(InstallKojiBuildExecute)[1]
     module_koji._config['log-dir-name'] = 'artifact-installation'
 
-    def dummy_testing_farm_request():
-        environments_requested = [TestingEnvironment(artifacts=[
-            {'id': '123', 'packages': None, 'type': 'fedora-koji-build'}
-        ])]
-        return MagicMock(environments_requested=environments_requested)
+    testing_environment = TestingEnvironment(
+        compose='guest-compose',
+        arch='x86_64',
+        artifacts=[{'id': '123', 'packages': None, 'type': 'fedora-koji-build'}]
+    )
+    guest.environment = testing_environment
 
     def evaluate_instructions_mock(workarounds, callbacks):
         callbacks['steps']('instructions', 'commands', workarounds, 'context')
 
     patch_shared(monkeypatch, module_koji, {}, callables={
-        'testing_farm_request': dummy_testing_farm_request,
+        'testing_farm_request': lambda: MagicMock(),
         'evaluate_instructions': evaluate_instructions_mock,
     })
 

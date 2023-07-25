@@ -24,8 +24,26 @@ def mock_guest(execute_mock, artifacts=None, environment=None):
     guest_mock.name = 'guest0'
     guest_mock.execute = execute_mock
     guest_mock.environment = environment or TestingEnvironment()
+    guest_mock.environment.arch = 'x86_64'
+    guest_mock.environment.artifacts = [
+        {
+            'id': '123123123',
+            'packages': None,
+            'type': 'fedora-koji-build'
+        },
+        {
+            'id': '123123124',
+            'packages': None,
+            'type': 'redhat-brew-build'
+        },
+        {
+            'id': 'wrongid',
+            'packages': None,
+            'type': 'wongtype'
+        }
+    ]
     if artifacts:
-        guest_mock.environment.artifacts = artifacts
+        guest_mock.environment.artifacts += artifacts
 
     return guest_mock
 
@@ -36,40 +54,11 @@ def fixture_module(monkeypatch):
 
     module._config['log-dir-name'] = 'log-dir-example'
 
-    def dummy_testing_farm_request():
-        environments_requested = [
-            TestingEnvironment(artifacts=[
-                {
-                    'id': '123123123',
-                    'packages': None,
-                    'type': 'fedora-koji-build'
-                },
-                {
-                    'id': '123123124',
-                    'packages': None,
-                    'type': 'redhat-brew-build'
-                },
-                {
-                    'id': 'wrongid',
-                    'packages': None,
-                    'type': 'wongtype'
-                }
-            ]),
-            TestingEnvironment(artifacts=[
-                {
-                    'id': 'wrongid',
-                    'packages': None,
-                    'type': 'wongtype'
-                }
-            ]),
-        ]
-        return MagicMock(environments_requested=environments_requested)
-
     def evaluate_instructions_mock(workarounds, callbacks):
         callbacks['steps']('instructions', 'commands', workarounds, 'context')
 
     patch_shared(monkeypatch, module, {}, callables={
-        'testing_farm_request': dummy_testing_farm_request,
+        'testing_farm_request': lambda: MagicMock(),
         'evaluate_instructions': evaluate_instructions_mock,
         'setup_guest': None
     })
@@ -97,10 +86,8 @@ def test_setup_guest(module, local_guest):
     pass
 
 
-def test_execute(module, local_guest, monkeypatch):
-    module.execute()
-
-    assert module.request_artifacts == [
+def test_extract_artifacts(module, monkeypatch):
+    assert module._extract_artifacts(mock_guest(MagicMock(return_value=MagicMock(stdout='', stderr='')))) == [
         {
             'id': '123123123',
             'packages': None,
@@ -115,8 +102,6 @@ def test_execute(module, local_guest, monkeypatch):
 
 
 def test_guest_setup(module, local_guest, tmpdir):
-    module.execute()
-
     stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
 
     execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
@@ -164,8 +149,6 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
         'tasks': tasks_mock
     })
 
-    module.execute()
-
     stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
 
     execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
@@ -206,8 +189,6 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
 
 
 def test_guest_setup_yum(module, local_guest, tmpdir):
-    module.execute()
-
     stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
 
     def execute_mock_side_effect(cmd):
@@ -221,6 +202,7 @@ def test_guest_setup_yum(module, local_guest, tmpdir):
     module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir))
 
     calls = [
+        call('command -v dnf'),
         call('command -v dnf'),
         call('koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch src 123123123'),  # noqa
         call('brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch src 123123124'),  # noqa

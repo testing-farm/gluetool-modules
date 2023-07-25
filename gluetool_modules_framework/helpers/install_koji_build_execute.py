@@ -10,8 +10,9 @@ from gluetool.result import Ok, Error
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
 from gluetool_modules_framework.libs.guest import NetworkedGuest
+from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
 
-from typing import Any, List, Optional  # noqa
+from typing import Any, List, Optional, cast, Dict  # noqa
 
 # accepted artifact types from testing farm request
 TESTING_FARM_ARTIFACT_TYPES = ['fedora-koji-build', 'redhat-brew-build']
@@ -36,10 +37,17 @@ class InstallKojiBuildExecute(gluetool.Module):
         },
     }
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super(InstallKojiBuildExecute, self).__init__(*args, **kwargs)
-        self.request = None
-        self.request_artifacts = None
+    def _extract_artifacts(self, guest: NetworkedGuest) -> List[Dict[str, Any]]:
+        """
+        Extracts artifacts of acceptable types from guest's TestingEnvironment
+        """
+        artifacts = []
+        if guest.environment and guest.environment.artifacts:
+            artifacts = [
+                artifact for artifact in guest.environment.artifacts
+                if artifact['type'] in TESTING_FARM_ARTIFACT_TYPES
+            ]
+        return artifacts
 
     def setup_guest(
         self,
@@ -49,7 +57,7 @@ class InstallKojiBuildExecute(gluetool.Module):
         **kwargs: Any
     ) -> Any:
 
-        self.require_shared('evaluate_instructions')
+        self.require_shared('evaluate_instructions', 'testing_farm_request')
 
         log_dirpath = guest_setup_log_dirpath(guest, log_dirpath)
 
@@ -70,8 +78,10 @@ class InstallKojiBuildExecute(gluetool.Module):
         if stage != GuestSetupStage.ARTIFACT_INSTALLATION:
             return r_overloaded_guest_setup_output
 
+        artifacts = self._extract_artifacts(guest)
+
         # no artifacts to test
-        if not self.request_artifacts:
+        if not artifacts:
             return r_overloaded_guest_setup_output
 
         # excluded packages
@@ -89,17 +99,15 @@ class InstallKojiBuildExecute(gluetool.Module):
             '{}-{}'.format(self.option('log-dir-name'), guest.name)
         )
 
-        sut_installation = SUTInstallation(self, installation_log_dirpath, self.request, logger=guest)
+        request = cast(TestingFarmRequest, self.shared('testing_farm_request'))
 
-        # TODO: hack, for multi-arch suppport, actually the arch should come from guest I guess ...
-        try:
-            arch = self.shared('testing_farm_request').environments_requested[0].arch
-        except (AttributeError, IndexError):
-            arch = None
-        if not arch:
-            arch = 'x86_64'
+        sut_installation = SUTInstallation(self, installation_log_dirpath, request, logger=guest)
 
-        for artifact in self.request_artifacts:
+        assert guest.environment is not None
+
+        arch = guest.environment.arch
+
+        for artifact in artifacts:
             koji_command = 'koji' if 'fedora' in artifact['type'] else 'brew'
 
             sut_installation.add_step(
@@ -178,8 +186,8 @@ class InstallKojiBuildExecute(gluetool.Module):
                     'hostname': guest.hostname,
                     'environment': guest.environment.serialize_to_json()
                 },
-                'artifact-id': self.request.id,
-                'artifact-type': self.request.ARTIFACT_NAMESPACE
+                'artifact-id': request.id,
+                'artifact-type': request.ARTIFACT_NAMESPACE
             }
         ):
             sut_result = sut_installation.run(guest)
@@ -202,22 +210,3 @@ class InstallKojiBuildExecute(gluetool.Module):
             ))
 
         return Ok(guest_setup_output)
-
-    def execute(self) -> None:
-        if not self.has_shared('testing_farm_request'):
-            return
-
-        # extract ids from the request
-        self.request = self.shared('testing_farm_request')
-
-        assert self.request is not None
-
-        if not self.request.environments_requested[0].artifacts:
-            return
-
-        # TODO: currently we support only installation of koji builds, ignore other artifacts
-        # TODO: environment should be coming from test scheduler later
-        self.request_artifacts = [
-            artifact for artifact in self.request.environments_requested[0].artifacts
-            if artifact['type'] in TESTING_FARM_ARTIFACT_TYPES
-        ]

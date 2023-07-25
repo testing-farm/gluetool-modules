@@ -83,6 +83,7 @@ class InstallRepository(gluetool.Module):
                 '--repo',
                 'artifacts-repo',
                 '--location',
+                '--disable-modular-filtering'
             ]
             try:
                 output = Command(repoquery_cmd).run()

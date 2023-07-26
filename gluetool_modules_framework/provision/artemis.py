@@ -41,7 +41,8 @@ API_FEATURE_VERSIONS: Dict[str, str] = {
     'hw-constraints-compatible-distro': 'v0.0.48',
     'hw-constraints-kickstart': 'v0.0.53',
     'fixed-hw-validation': 'v0.0.55',
-    'user-defined-watchdog-delay': 'v0.0.56'
+    'user-defined-watchdog-delay': 'v0.0.56',
+    'fixed-hw-virtualization-hypervisor': 'v0.0.58'
 }
 
 SUPPORTED_API_VERSIONS: Set[str] = set(API_FEATURE_VERSIONS.values())

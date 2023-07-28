@@ -7,6 +7,7 @@ import gluetool_modules_framework.testing_farm.testing_farm_request
 import os
 import gluetool
 import contextlib
+import logging
 from mock import MagicMock
 
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
@@ -55,11 +56,6 @@ class ResponseInvalidJSON(ResponseMock):
         raise ValueError
 
 
-class ResponseInvalidBool(ResponseMock):
-    def __nonzero__(self):
-        return False
-
-
 class RequestsMock():
     def get(self, url, json):
         return ResponseMock()
@@ -75,9 +71,6 @@ class RequestsMock():
 
     def request_invalid_json(self, url, json):
         return ResponseInvalidJSON()
-
-    def request_invalid_bool(self, url, json):
-        return ResponseInvalidBool()
 
     def request_http_error(self, url, json):
         raise HTTPError
@@ -145,16 +138,12 @@ def fixture_request2(module):
 
 # TestingFarmAPI class tests
 def test_request_type_error(module_api):
-    try:
+    with pytest.raises(gluetool.GlueError, match='No request type specified'):
         module_api._request('', None, None)
-    except gluetool.GlueError as e:
-        assert str(e) == 'No request type specified'
 
     module_api._module._config.update({'retry-timeout': 1, 'retry-tick': 1})
-    try:
+    with pytest.raises(gluetool.GlueError, match="Invalid request type 'sometype'"):
         module_api._request('', type='sometype')
-    except gluetool.GlueError as e:
-        assert str(e) == "Invalid request type 'sometype'"
 
 
 def test_get_request(module_api):
@@ -165,46 +154,20 @@ def test_get_request(module_api):
 def test_get_request_404(module_api):
     RequestsMock.get = RequestsMock.request_404
     module_api._module._config.update({'retry-timeout': 1, 'retry-tick': 1})
-    try:
+    with pytest.raises(gluetool.GlueError, match="Request '1' was not found"):
         module_api.get_request('1', 'fakekey')
-    except gluetool.GlueError as e:
-        assert str(e) == "Request '1' was not found"
-
-
-def test_get_request_no_response(module_api):
-    RequestsMock.get = RequestsMock.request_invalid_bool
-    module_api._module._config.update({'retry-timeout': 1, 'retry-tick': 1})
-    try:
-        module_api.get_request('1', 'fakekey')
-    except gluetool.GlueError as e:
-        assert str(e) == ("Condition 'getting get response from dummy-module/v0.1/requests/1?api_key=fakekey' "
-                          "failed to pass within given time")
 
 
 def test_get_request_invalid_json(module_api):
     RequestsMock.get = RequestsMock.request_invalid_json
     module_api._module._config.update({'retry-timeout': 1, 'retry-tick': 1})
-    try:
+    with pytest.raises(ValueError):
         module_api.get_request('1', 'fakekey')
-    except ValueError:
-        pass
-
-
-def test_get_request_http_error(module_api):
-    RequestsMock.get = RequestsMock.request_http_error
-    module_api._module._config.update({'retry-timeout': 1, 'retry-tick': 1})
-    try:
-        module_api.get_request('1', 'fakekey')
-    except gluetool.GlueError as e:
-        assert str(e) == ("Condition 'getting get response from dummy-module/v0.1/requests/1?api_key=fakekey' "
-                          "failed to pass within given time")
 
 
 def test_put_request_error(module_api):
-    try:
+    with pytest.raises(gluetool.GlueError, match="payload is required for 'post' and 'put' requests"):
         module_api.put_request('', None)
-    except gluetool.GlueError as e:
-        assert str(e) == "payload is required for 'post' and 'put' requests"
 
 
 def test_put_request(module_api):
@@ -215,10 +178,8 @@ def test_put_request(module_api):
 def test_put_request_404(module_api):
     RequestsMock.put = RequestsMock.request_404
     module_api._module._config.update({'retry-timeout': 1, 'retry-tick': 1})
-    try:
+    with pytest.raises(gluetool.GlueError, match='Request failed: None'):
         module_api.put_request('1', {'hello': 'world'})
-    except gluetool.GlueError as e:
-        assert str(e) == 'Request failed: None'
 
 
 # TestingFarmRequest class tests
@@ -259,28 +220,17 @@ def test_webhook(module, requests_mock, request2):
     request.webhook()
 
 
-def test_webhook_invalid_bool(module, requests_mock, request2):
-    RequestsMock.post = RequestsMock.request_invalid_bool
-    module._config.update({'retry-timeout': 1, 'retry-tick': 1})
-    request = module._tf_request
-    request.webhook_url = 'someurl'
-    request.webhook_token = 'sometoken'
-    try:
-        request.webhook()
-    except gluetool.GlueError as e:
-        assert str(e) == "Condition 'posting update to webhook someurl' failed to pass within given time"
-
-
-def test_webhook_http_error(module, requests_mock, request2):
+def test_webhook_http_error(module, requests_mock, request2, log):
     RequestsMock.post = RequestsMock.request_http_error
     module._config.update({'retry-timeout': 1, 'retry-tick': 1})
     request = module._tf_request
     request.webhook_url = 'someurl'
     request.webhook_token = 'sometoken'
-    try:
-        request.webhook()
-    except gluetool.GlueError as e:
-        assert str(e) == "Condition 'posting update to webhook someurl' failed to pass within given time"
+    request.webhook()
+    assert log.match(
+        levelno=logging.WARNING,
+        message="failed to post to webhook: Condition 'posting update to webhook someurl' failed to pass within given time"
+    )
 
 
 # TestingFarmRequestModule class tests
@@ -296,10 +246,7 @@ def test_eval_context(module, request1):
 
 
 def test_eval_context_empty(module):
-    try:
-        module.eval_context
-    except AssertionError:
-        pass
+    assert module.eval_context == {}
 
 
 def test_testing_farm_request(module, request1):

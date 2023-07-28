@@ -328,10 +328,13 @@ class TestingFarmRequest(LoggerMixin, object):
                 return Result.Error(error)
 
         # wait until we get a valid response
-        return gluetool.utils.wait('posting update to webhook {}'.format(self.webhook_url),
-                                   _response,
-                                   timeout=self._module.option('retry-timeout'),
-                                   tick=self._module.option('retry-tick'))
+        try:
+            return gluetool.utils.wait('posting update to webhook {}'.format(self.webhook_url),
+                                       _response,
+                                       timeout=self._module.option('retry-timeout'),
+                                       tick=self._module.option('retry-tick'))
+        except gluetool.GlueError as e:
+            self._module.warn('failed to post to webhook: {}'.format(e), sentry=True)
 
     def update(self,
                state: Optional[str] = None,

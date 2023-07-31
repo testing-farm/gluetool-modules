@@ -16,7 +16,7 @@ from typing import List, Optional, cast  # noqa
 
 
 def product_version(product: str) -> str:
-    matched_product = re.match(r'(?i).*rhel-(\d.\d)', product)
+    matched_product = re.match(r'(?i).*rhel-(\d+.\d+)', product)
 
     if not matched_product:
         raise gluetool.GlueError('Unexpected product format: {}'.format(product))

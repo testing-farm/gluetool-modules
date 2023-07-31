@@ -5,6 +5,9 @@ import os
 import re
 from dataclasses import dataclass
 
+from functools import cmp_to_key
+from version_utils.rpm import compare_packages
+
 import gluetool
 from gluetool.action import Action
 from gluetool.log import log_dict
@@ -12,6 +15,7 @@ from gluetool.result import Ok, Error
 from gluetool.utils import Command
 from gluetool.glue import GlueCommandError, GlueError
 
+from gluetool_modules_framework.libs.artifacts import splitFilename
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
 from gluetool_modules_framework.libs.guest import NetworkedGuest
@@ -31,6 +35,13 @@ DEFAULT_DOWNLOAD_PATH = "/var/share/test-artifacts"
 class RepositoryArtifact:
     url: str
     packages: Optional[List[str]]
+
+
+@dataclass
+class PackageDetails:
+    url: str
+    rpm: str
+    name: str
 
 
 class InstallRepository(gluetool.Module):
@@ -56,6 +67,43 @@ class InstallRepository(gluetool.Module):
     }
 
     shared_functions = ['setup_guest']
+
+    # If there are several different versions of the same package, keep the latest one
+    def _filter_latest_packages(self, packages: List[str]) -> List[str]:
+        filtered_packages = []
+        package_details_list = []
+
+        for package in packages:
+            # Remove url part, keep only rpm names
+            rpm = package.split('/')[-1]
+
+            splitted_filename = splitFilename(rpm)
+
+            package_details = PackageDetails(
+                url=package,
+                rpm=rpm,
+                name=splitted_filename[0],
+            )
+            package_details_list.append(package_details)
+
+        unique_package_names = list(set([package_details.name for package_details in package_details_list]))
+
+        for package_name in unique_package_names:
+
+            available_packages = [
+                package_details for package_details in package_details_list if package_details.name == package_name
+            ]
+
+            # Type ignore here, lambdas syntax does not support annotations
+            latest_package = sorted(
+                available_packages,
+                key=cmp_to_key(lambda x, y: compare_packages(x.rpm, y.rpm)),  # type: ignore
+                reverse=True
+            )[0]
+            filtered_packages.append(latest_package)
+
+        # Sorted here is just for consistent results in tests
+        return sorted([package.url for package in filtered_packages])
 
     def _install_repository_artifacts(
         self,
@@ -97,6 +145,8 @@ class InstallRepository(gluetool.Module):
                 continue
 
             output_packages = output.stdout.strip('\n').split('\n')
+
+            output_packages = self._filter_latest_packages(output_packages)
 
             if artifact.packages:
                 log_dict(

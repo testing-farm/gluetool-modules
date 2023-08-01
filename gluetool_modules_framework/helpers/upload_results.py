@@ -9,7 +9,7 @@ from gluetool import Failure
 from gluetool import GlueCommandError
 from gluetool import GlueError
 from gluetool.utils import Command
-from gluetool_modules_framework.libs.test_schedule import TestScheduleEntryState
+from gluetool_modules_framework.libs.test_schedule import TestScheduleEntryStage, TestScheduleEntryState
 
 from typing import AnyStr, List, Optional, Dict, Any, cast # noqa
 
@@ -163,8 +163,9 @@ class UploadResults(gluetool.Module):
         files = []
         for entry in schedule:
 
-            # If entry errored, there is no files to upload
-            if entry.state == TestScheduleEntryState.ERROR:
+            # If entry did not finish, there are no files to upload
+            if entry.state == TestScheduleEntryState.ERROR or entry.stage != TestScheduleEntryStage.COMPLETE:
+                self.warn('skipping file upload, state {}, stage {}'.format(entry.state, entry.stage))
                 continue
 
             dest_filename = "{}-{}{}".format(
@@ -240,6 +241,12 @@ class UploadResults(gluetool.Module):
         for entry in schedule:
             if entry.state == TestScheduleEntryState.ERROR:
                 line = '<p> Testing error: {}</p>\n'.format(
+                    os.path.splitext(entry.playbook_filepath.split('/')[-1])[0]
+                )
+                body += line
+
+            elif entry.stage != TestScheduleEntryStage.COMPLETE:
+                line = '<p> Testing timeout: {}</p>\n'.format(
                     os.path.splitext(entry.playbook_filepath.split('/')[-1])[0]
                 )
                 body += line

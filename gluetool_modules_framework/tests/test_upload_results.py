@@ -8,6 +8,7 @@ from mock import MagicMock, call
 import gluetool
 import gluetool_modules_framework.helpers.upload_results
 from gluetool_modules_framework.helpers import upload_results
+from gluetool_modules_framework.libs.test_schedule import TestScheduleEntryStage
 
 from . import check_loadable, create_module, patch_shared
 
@@ -115,11 +116,13 @@ def test_destroy(module, monkeypatch):
     mock_test_entry_1.work_dirpath = 'work/dir/path'
     mock_test_entry_1.playbook_filepath = 'repo/tests/test_foo.yml'
     mock_test_entry_1.result = 'PASSED'
+    mock_test_entry_1.stage = TestScheduleEntryStage.COMPLETE
 
     mock_test_entry_2 = MagicMock()
     mock_test_entry_2.work_dirpath = 'work/dir2/path2'
     mock_test_entry_2.playbook_filepath = 'repo/tests/test_bar.yml'
     mock_test_entry_2.result = 'PASSED'
+    mock_test_entry_2.stage = TestScheduleEntryStage.COMPLETE
 
     mock_test_schedule = [mock_test_entry_1, mock_test_entry_2]
 

@@ -75,7 +75,7 @@ class InstallRepository(gluetool.Module):
 
         for package in packages:
             # skip srpm package
-            if 'src.rpm' in package:
+            if package.endswith('src.rpm'):
                 continue
 
             # Remove url part, keep only rpm names

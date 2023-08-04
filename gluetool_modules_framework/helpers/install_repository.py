@@ -211,9 +211,11 @@ class InstallRepository(gluetool.Module):
     ) -> None:
 
         for repository_file in repository_file_artifacts:
+            # Remove url part, keep only repo name
+            repo_name = repository_file.split('/')[-1]
             sut_installation.add_step(
                 'Download repository file',
-                'curl --output-dir /etc/yum.repos.d -LO {}'.format(repository_file)
+                'curl --output /etc/yum.repos.d/{}.repo -LO {}'.format(repo_name, repository_file)
             )
 
     def setup_guest(

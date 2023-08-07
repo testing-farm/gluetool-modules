@@ -107,16 +107,22 @@ class InstallKojiBuildExecute(gluetool.Module):
 
         arch = guest.environment.arch
 
+        rpms_lists_to_skip_install = []
+
         for artifact in artifacts:
             koji_command = 'koji' if 'fedora' in artifact.type else 'brew'
 
             sut_installation.add_step(
                 'Download task id {}'.format(artifact.id),
                 (
-                    '{0} download-build --debuginfo --task-id --arch noarch --arch {2} --arch src {1} || '
-                    '{0} download-task --arch noarch --arch {2} --arch src {1}'
+                    '( {0} download-build --debuginfo --task-id --arch noarch --arch {2} --arch src {1} || '
+                    '{0} download-task --arch noarch --arch {2} --arch src {1} ) | '
+                    'egrep Downloading | cut -d " " -f 3 | tee rpms-list-{1}'
                 ).format(koji_command, artifact.id, arch)
             )
+
+            if artifact.install is False:
+                rpms_lists_to_skip_install.append('rpms-list-{}'.format(artifact.id))
 
         excluded_packages_regexp = '|'.join(['^{} '.format(package) for package in excluded_packages])
 
@@ -125,12 +131,13 @@ class InstallKojiBuildExecute(gluetool.Module):
             (
                 'ls *[^.src].rpm | '
                 'sed -r "s/(.*)-.*-.*/\\1 \\0/" | '
-                '{}'
+                '{}'  # Do not install excluded packages in the tmt plan
+                '{}'  # Do not install packages with "install: false" specified in the TF API
                 'awk "{{print \\$2}}" | '
                 'tee rpms-list'
             ).format(
-                'egrep -v "({})" | '.format(excluded_packages_regexp)
-                if excluded_packages_regexp else ''
+                'egrep -v "({})" | '.format(excluded_packages_regexp) if excluded_packages_regexp else '',
+                ''.join(['egrep -v "$(cat {})" | '.format(rpm) for rpm in rpms_lists_to_skip_install])
             )
         )
 
@@ -176,6 +183,8 @@ class InstallKojiBuildExecute(gluetool.Module):
             'Verify all packages installed',
             "sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q"
         )
+
+        assert request is not None
 
         with Action(
             'installing rpm artifacts',

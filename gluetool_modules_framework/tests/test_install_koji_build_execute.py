@@ -102,29 +102,55 @@ def test_extract_artifacts(module, monkeypatch):
     ]
 
 
-def test_guest_setup(module, local_guest, tmpdir):
+@pytest.mark.parametrize('guest_artifacts, expected_commands', [
+    #
+    # Test case 1 - install all artifacts
+    #
+    (
+        None,  # No additional input artifacts, see `mock_guest` function for the base artifacts
+        [  # Expected install commands
+            '( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch src 123123123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123123',  # noqa
+            '( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch src 123123124 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123124',  # noqa
+            'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | awk "{print \\$2}" | tee rpms-list',  # noqa
+            'dnf -y reinstall $(cat rpms-list) || true',
+            'dnf -y install --allowerasing $(cat rpms-list)',
+            "sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q"
+        ]
+    ),
+    #
+    # Test case 2 - skip installation of some artifacts
+    #
+    (
+        [  # Additional input artifacts, see `mock_guest` function for the base artifacts
+            Artifact(id='skip-installing-me-1', packages=None, type='fedora-koji-build', install=False),
+            Artifact(id='skip-installing-me-2', packages=None, type='redhat-brew-build', install=False),
+        ],
+        [  # Expected install commands
+            '( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch src 123123123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123123',  # noqa
+            '( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch src 123123124 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123124',  # noqa
+            '( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src skip-installing-me-1 || koji download-task --arch noarch --arch x86_64 --arch src skip-installing-me-1 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-skip-installing-me-1',  # noqa
+            '( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src skip-installing-me-2 || brew download-task --arch noarch --arch x86_64 --arch src skip-installing-me-2 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-skip-installing-me-2',  # noqa
+            'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "$(cat rpms-list-skip-installing-me-1)" | egrep -v "$(cat rpms-list-skip-installing-me-2)" | awk "{print \\$2}" | tee rpms-list',  # noqa
+            'dnf -y reinstall $(cat rpms-list) || true',
+            'dnf -y install --allowerasing $(cat rpms-list)',
+            "sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q"
+        ]
+    )
+])
+def test_guest_setup(module, local_guest, tmpdir, guest_artifacts, expected_commands):
     stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
 
     execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
-    guest = mock_guest(execute_mock)
+    guest = mock_guest(execute_mock, artifacts=guest_artifacts)
 
     module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir))
 
-    commands = [
-        'koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch src 123123123',  # noqa
-        'brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch src 123123124',  # noqa
-        'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | awk "{print \\$2}" | tee rpms-list',  # noqa
-        'dnf -y reinstall $(cat rpms-list) || true',
-        'dnf -y install --allowerasing $(cat rpms-list)',
-        "sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q"
-    ]
-
-    calls = [call('command -v dnf')] * 2 + [call(c) for c in commands]
+    calls = [call('command -v dnf')] * 2 + [call(c) for c in expected_commands]
     execute_mock.assert_has_calls(calls, any_order=False)
     assert execute_mock.call_count == len(calls)
 
     with open(os.path.join(str(tmpdir), 'log-dir-example-guest0', INSTALL_COMMANDS_FILE)) as f:
-        assert f.read() == '\n'.join(commands) + '\n'
+        assert f.read() == '\n'.join(expected_commands) + '\n'
 
 
 def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
@@ -161,8 +187,8 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
     copr_module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir))
 
     koji_commands = [
-        'koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch src 123123123',  # noqa
-        'brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch src 123123124',  # noqa
+        '( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch src 123123123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123123',  # noqa
+        '( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch src 123123124 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123124',  # noqa
         'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | awk "{print \\$2}" | tee rpms-list',  # noqa
         'dnf -y reinstall $(cat rpms-list) || true',
         'dnf -y install --allowerasing $(cat rpms-list)',
@@ -205,8 +231,8 @@ def test_guest_setup_yum(module, local_guest, tmpdir):
     calls = [
         call('command -v dnf'),
         call('command -v dnf'),
-        call('koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch src 123123123'),  # noqa
-        call('brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch src 123123124'),  # noqa
+        call('( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch src 123123123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123123'),  # noqa
+        call('( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch src 123123124 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123124'),  # noqa
         call('ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | awk "{print \\$2}" | tee rpms-list'),  # noqa
         call('yum -y reinstall $(cat rpms-list)'),
         call('yum -y downgrade $(cat rpms-list)'),

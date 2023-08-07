@@ -201,15 +201,14 @@ class InstallRepository(gluetool.Module):
     def _install_repository_file_artifacts(
         self,
         sut_installation: SUTInstallation,
-        repository_file_artifacts: List[str]
+        repository_file_artifacts: List[Artifact]
     ) -> None:
 
-        for repository_file in repository_file_artifacts:
-            # Remove url part, keep only repo name
-            repo_name = repository_file.split('/')[-1]
+        for artifact in repository_file_artifacts:
+            repo_name = artifact.id.split('/')[-1]
             sut_installation.add_step(
                 'Download repository file',
-                'curl --output /etc/yum.repos.d/{}.repo -LO {}'.format(repo_name, repository_file)
+                'curl --output /etc/yum.repos.d/{}.repo -LO {}'.format(repo_name, artifact.id)
             )
 
     def setup_guest(
@@ -245,10 +244,10 @@ class InstallRepository(gluetool.Module):
         assert guest.environment
 
         # Get `repository-file` artifacts from TestingEnvironment
-        repository_file_artifacts: List[str] = []
+        repository_file_artifacts: List[Artifact] = []
         if guest.environment and guest.environment.artifacts:
             repository_file_artifacts = [
-                artifact.id for artifact in guest.environment.artifacts
+                artifact for artifact in guest.environment.artifacts
                 if artifact.type == REPOSITORY_FILE_ARTIFACT_TYPE
             ]
 

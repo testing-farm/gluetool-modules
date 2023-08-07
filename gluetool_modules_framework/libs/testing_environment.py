@@ -8,11 +8,15 @@ from gluetool.utils import normalize_multistring_option
 import gluetool_modules_framework.libs
 
 import ast
+import cattrs
 
 from dataclasses import dataclass
 
 # Type annotations
-from typing import Any, Dict, List, Optional, Union, Tuple  # noqa
+from typing import Any, Dict, List, Optional, Union, Tuple, TYPE_CHECKING  # noqa
+
+if TYPE_CHECKING:
+    from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact  # noqa: F401
 
 
 ComposeType = Union[str, gluetool_modules_framework.libs._UniqObject]
@@ -61,7 +65,7 @@ class TestingEnvironment(object):
     pool: Optional[str] = None
     variables: Optional[Dict[str, str]] = None
     secrets: Optional[Dict[str, str]] = None
-    artifacts: Optional[List[Dict[str, Any]]] = None
+    artifacts: Optional[List['Artifact']] = None
     hardware: Optional[Dict[str, Any]] = None
     settings: Optional[Dict[str, Any]] = None
     tmt: Optional[Dict[str, Any]] = None
@@ -126,7 +130,8 @@ class TestingEnvironment(object):
         """
 
         return ','.join([
-            '{}={}'.format(name, value) for name, value in self._serialize_get_fields(hide_secrets, show_none_fields)
+            '{}={}'.format(name, cattrs.unstructure(value)) for name, value
+            in self._serialize_get_fields(hide_secrets, show_none_fields)
         ])
 
     def serialize_to_json(self, hide_secrets: bool = True, show_none_fields: bool = False) -> Dict[str, Any]:
@@ -138,7 +143,8 @@ class TestingEnvironment(object):
         :rtype: dict(str, object)
         """
 
-        return {name: value for name, value in self._serialize_get_fields(hide_secrets, show_none_fields)}
+        return {name: cattrs.unstructure(value) for name, value
+                in self._serialize_get_fields(hide_secrets, show_none_fields)}
 
     @classmethod
     def _assert_env_properties(cls, env_properties: List[str]) -> None:

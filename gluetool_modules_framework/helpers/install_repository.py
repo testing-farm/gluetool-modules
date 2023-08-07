@@ -19,7 +19,7 @@ from gluetool_modules_framework.libs.artifacts import splitFilename
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
 from gluetool_modules_framework.libs.guest import NetworkedGuest
-from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
+from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest, Artifact
 
 from typing import Any, cast, List, Optional
 
@@ -29,12 +29,6 @@ REPOSITORY_FILE_ARTIFACT_TYPE = 'repository-file'
 
 # Default path to downloading the packages
 DEFAULT_DOWNLOAD_PATH = "/var/share/test-artifacts"
-
-
-@dataclass
-class RepositoryArtifact:
-    url: str
-    packages: Optional[List[str]]
 
 
 @dataclass
@@ -113,7 +107,7 @@ class InstallRepository(gluetool.Module):
         self,
         guest: NetworkedGuest,
         sut_installation: SUTInstallation,
-        artifacts: List[RepositoryArtifact]
+        artifacts: List[Artifact]
     ) -> None:
 
         download_path = self.option('download-path')
@@ -131,7 +125,7 @@ class InstallRepository(gluetool.Module):
                 '-q',
                 '--queryformat',
                 '"%{{name}}"',
-                '--repofrompath=artifacts-repo,{}'.format(artifact.url),
+                '--repofrompath=artifacts-repo,{}'.format(artifact.id),
                 '--repo',
                 'artifacts-repo',
                 '--location',
@@ -145,7 +139,7 @@ class InstallRepository(gluetool.Module):
                 raise GlueError('Fetching location of RPMs failed: {} cmd: {}'.format(exc.output.stderr, repoquery_cmd))
 
             if not output.stdout:
-                self.warning('No packages have been found in {}'.format(artifact.url))
+                self.warning('No packages have been found in {}'.format(artifact.id))
                 continue
 
             output_packages = output.stdout.strip('\n').split('\n')
@@ -155,7 +149,7 @@ class InstallRepository(gluetool.Module):
             if artifact.packages:
                 log_dict(
                     self.info,
-                    "installing only following packages from repository '{}'".format(artifact.url),
+                    "installing only following packages from repository '{}'".format(artifact.id),
                     artifact.packages
                 )
                 for out_package in output_packages:
@@ -254,17 +248,16 @@ class InstallRepository(gluetool.Module):
         repository_file_artifacts: List[str] = []
         if guest.environment and guest.environment.artifacts:
             repository_file_artifacts = [
-                artifact['id'] for artifact in guest.environment.artifacts
-                if artifact['type'] == REPOSITORY_FILE_ARTIFACT_TYPE
+                artifact.id for artifact in guest.environment.artifacts
+                if artifact.type == REPOSITORY_FILE_ARTIFACT_TYPE
             ]
 
         # Get `repository` artifacts from TestingEnvironment
-        repository_artifacts: List[RepositoryArtifact] = []
+        repository_artifacts: List[Artifact] = []
         if guest.environment and guest.environment.artifacts:
             repository_artifacts = [
-                RepositoryArtifact(artifact['id'], artifact.get('packages'))
-                for artifact in guest.environment.artifacts
-                if artifact['type'] == REPOSITORY_ARTIFACT_TYPE
+                artifact for artifact in guest.environment.artifacts
+                if artifact.type == REPOSITORY_ARTIFACT_TYPE
             ]
 
         # no artifacts to install

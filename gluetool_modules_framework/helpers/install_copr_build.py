@@ -83,8 +83,8 @@ class InstallCoprBuild(gluetool.Module):
         artifact_ids = []
         if guest.environment and guest.environment.artifacts:
             artifact_ids = [
-                artifact['id'] for artifact in guest.environment.artifacts
-                if artifact['type'] in TESTING_FARM_ARTIFACT_TYPES
+                artifact.id for artifact in guest.environment.artifacts
+                if artifact.type in TESTING_FARM_ARTIFACT_TYPES
             ]
 
         builds = cast(Optional[List[CoprTask]], self.shared('tasks', task_ids=artifact_ids))

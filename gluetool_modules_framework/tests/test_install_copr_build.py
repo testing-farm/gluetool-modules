@@ -16,6 +16,7 @@ from gluetool_modules_framework.helpers.install_copr_build import InstallCoprBui
 from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
 from gluetool_modules_framework.libs.sut_installation import SUTInstallationFailedError, INSTALL_COMMANDS_FILE
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
+from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact
 from . import create_module, patch_shared, check_loadable
 
 LOG_DIR_NAME = 'artifact-installation'
@@ -125,7 +126,7 @@ def test_loadable(module):
         # Test case - single artifact
         #
         [  # Input artifacts
-            {'type': 'fedora-copr-build', 'id': 'artifact1'},
+            Artifact(type='fedora-copr-build', id='artifact1'),
         ],
         None,
         [  # Expected install commands
@@ -151,11 +152,11 @@ def test_loadable(module):
     #
     (
         [  # Input artifacts
-            {'type': 'fedora-copr-build', 'id': 'artifact1'},
-            {'type': 'ignore-this-type', 'id': 'artifact-other'},
-            {'type': 'fedora-copr-build', 'id': 'artifact2'},
-            {'type': 'ignore-this-type-too', 'id': 'artifact-other2'},
-            {'type': 'fedora-copr-build', 'id': 'artifact3'}
+            Artifact(type='fedora-copr-build', id='artifact1'),
+            Artifact(type='ignore-this-type', id='artifact-other'),
+            Artifact(type='fedora-copr-build', id='artifact2'),
+            Artifact(type='ignore-this-type-too', id='artifact-other2'),
+            Artifact(type='fedora-copr-build', id='artifact3'),
         ],
         None,
         [  # Expected install commands
@@ -228,11 +229,11 @@ def test_loadable(module):
     #
     (
         [  # Input artifacts
-            {'type': 'fedora-copr-build', 'id': 'artifact1'},
-            {'type': 'ignore-this-type', 'id': 'artifact-other'},
-            {'type': 'fedora-copr-build', 'id': 'artifact2'},
-            {'type': 'ignore-this-type-too', 'id': 'artifact-other2'},
-            {'type': 'fedora-copr-build', 'id': 'artifact3'}
+            Artifact(type='fedora-copr-build', id='artifact1'),
+            Artifact(type='ignore-this-type', id='artifact-other'),
+            Artifact(type='fedora-copr-build', id='artifact2'),
+            Artifact(type='ignore-this-type-too', id='artifact-other2'),
+            Artifact(type='fedora-copr-build', id='artifact3'),
         ],
         TestingEnvironment(
             excluded_packages=['dummy1_rpm_name1', 'dummy1_rpm_name2', 'dummy2_rpm_name1', 'dummy2_rpm_name2']
@@ -284,8 +285,8 @@ def test_loadable(module):
     #
     (
         [  # Input artifacts
-            {'type': 'fedora-copr-build', 'id': 'artifact1'},
-            {'type': 'fedora-copr-build', 'id': 'artifact2'},
+            Artifact(type='fedora-copr-build', id='artifact1'),
+            Artifact(type='fedora-copr-build', id='artifact2'),
         ],
         TestingEnvironment(
             excluded_packages=['dummy1_rpm_name1', 'dummy1_rpm_name2', 'dummy2_rpm_name1', 'dummy2_rpm_name2']

@@ -14,6 +14,7 @@ from gluetool_modules_framework.libs.sut_installation import INSTALL_COMMANDS_FI
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 import gluetool_modules_framework.helpers.install_koji_build_execute
 from gluetool_modules_framework.helpers.install_copr_build import InstallCoprBuild
+from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact
 import gluetool_modules_framework.helpers.rules_engine
 
 from . import create_module, patch_shared
@@ -26,21 +27,21 @@ def mock_guest(execute_mock, artifacts=None, environment=None):
     guest_mock.environment = environment or TestingEnvironment()
     guest_mock.environment.arch = 'x86_64'
     guest_mock.environment.artifacts = [
-        {
-            'id': '123123123',
-            'packages': None,
-            'type': 'fedora-koji-build'
-        },
-        {
-            'id': '123123124',
-            'packages': None,
-            'type': 'redhat-brew-build'
-        },
-        {
-            'id': 'wrongid',
-            'packages': None,
-            'type': 'wongtype'
-        }
+        Artifact(
+            id='123123123',
+            packages=None,
+            type='fedora-koji-build'
+        ),
+        Artifact(
+            id='123123124',
+            packages=None,
+            type='redhat-brew-build'
+        ),
+        Artifact(
+            id='wrongid',
+            packages=None,
+            type='wongtype'
+        ),
     ]
     if artifacts:
         guest_mock.environment.artifacts += artifacts
@@ -88,16 +89,16 @@ def test_setup_guest(module, local_guest):
 
 def test_extract_artifacts(module, monkeypatch):
     assert module._extract_artifacts(mock_guest(MagicMock(return_value=MagicMock(stdout='', stderr='')))) == [
-        {
-            'id': '123123123',
-            'packages': None,
-            'type': 'fedora-koji-build'
-        },
-        {
-            'id': '123123124',
-            'packages': None,
-            'type': 'redhat-brew-build'
-        }
+        Artifact(
+            id='123123123',
+            packages=None,
+            type='fedora-koji-build'
+        ),
+        Artifact(
+            id='123123124',
+            packages=None,
+            type='redhat-brew-build'
+        ),
     ]
 
 
@@ -153,7 +154,7 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
 
     execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
     guest = mock_guest(execute_mock, artifacts=[
-        {'type': 'fedora-copr-build', 'id': 'artifact1'},
+        Artifact(type='fedora-copr-build', id='artifact1'),
     ])
 
     module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir))

@@ -23,6 +23,7 @@ from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 from gluetool_modules_framework.libs.results import TestSuite
 from gluetool_modules_framework.testing.test_schedule_tmt import (gather_plan_results, TestScheduleEntry, TMTPlan,
                                                                   TMTPlanProvision, TMTPlanPrepare)
+from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact
 
 from . import create_module, check_loadable, patch_shared
 
@@ -759,6 +760,7 @@ def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir, cl
     primary_task_mock.srpm_urls = ['http://copr/project/one.src.rpm', 'http://copr/project/two.src.rpm']
     primary_task_mock.rpm_names = ['one', 'two']
     primary_task_mock.project = 'owner/project'
+    guest.environment.artifacts = [Artifact(type='fedora-copr-build', id='some-artifact')]
 
     patch_shared(monkeypatch, module_copr, {
         'primary_task': primary_task_mock,
@@ -839,12 +841,11 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir, cl
     module_koji = create_module(InstallKojiBuildExecute)[1]
     module_koji._config['log-dir-name'] = 'artifact-installation'
 
-    testing_environment = TestingEnvironment(
+    guest.environment = TestingEnvironment(
         compose='guest-compose',
         arch='x86_64',
-        artifacts=[{'id': '123', 'packages': None, 'type': 'fedora-koji-build'}]
+        artifacts=[Artifact(id='123', packages=None, type='fedora-koji-build')]
     )
-    guest.environment = testing_environment
 
     def evaluate_instructions_mock(workarounds, callbacks):
         callbacks['steps']('instructions', 'commands', workarounds, 'context')

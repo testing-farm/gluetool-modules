@@ -10,7 +10,7 @@ from gluetool.result import Ok, Error
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
 from gluetool_modules_framework.libs.guest import NetworkedGuest
-from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
+from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest, Artifact
 
 from typing import Any, List, Optional, cast, Dict  # noqa
 
@@ -37,7 +37,7 @@ class InstallKojiBuildExecute(gluetool.Module):
         },
     }
 
-    def _extract_artifacts(self, guest: NetworkedGuest) -> List[Dict[str, Any]]:
+    def _extract_artifacts(self, guest: NetworkedGuest) -> List[Artifact]:
         """
         Extracts artifacts of acceptable types from guest's TestingEnvironment
         """
@@ -45,7 +45,7 @@ class InstallKojiBuildExecute(gluetool.Module):
         if guest.environment and guest.environment.artifacts:
             artifacts = [
                 artifact for artifact in guest.environment.artifacts
-                if artifact['type'] in TESTING_FARM_ARTIFACT_TYPES
+                if artifact.type in TESTING_FARM_ARTIFACT_TYPES
             ]
         return artifacts
 
@@ -108,14 +108,14 @@ class InstallKojiBuildExecute(gluetool.Module):
         arch = guest.environment.arch
 
         for artifact in artifacts:
-            koji_command = 'koji' if 'fedora' in artifact['type'] else 'brew'
+            koji_command = 'koji' if 'fedora' in artifact.type else 'brew'
 
             sut_installation.add_step(
-                'Download task id {}'.format(artifact['id']),
+                'Download task id {}'.format(artifact.id),
                 (
                     '{0} download-build --debuginfo --task-id --arch noarch --arch {2} --arch src {1} || '
                     '{0} download-task --arch noarch --arch {2} --arch src {1}'
-                ).format(koji_command, artifact['id'], arch)
+                ).format(koji_command, artifact.id, arch)
             )
 
         excluded_packages_regexp = '|'.join(['^{} '.format(package) for package in excluded_packages])

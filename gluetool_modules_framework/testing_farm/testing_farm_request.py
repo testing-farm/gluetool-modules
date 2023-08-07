@@ -5,6 +5,7 @@ from functools import partial
 from posixpath import join as urljoin
 from dataclasses import dataclass, fields
 import re
+import attrs
 
 import gluetool
 from gluetool.log import LoggerMixin
@@ -191,6 +192,20 @@ class TestingFarmRequestSTI():
     extra_variables: Optional[Dict[str, str]] = None
 
 
+@attrs.define
+class Artifact():
+    """
+    Gluetool representation of an artifact specified on the Testing Farm API.
+
+        :ivar id: Unique identifier of the artifact. Value depends on the type of the artifact.
+        :ivar type: Type of the artifact, e.g. "fedora-copr-build", "fedora-koji-build", "repository-file".
+        :ivar packages: List of packages to install, if applicable to the artifact.
+    """
+    id: str
+    type: str
+    packages: Optional[List[str]] = None
+
+
 class TestingFarmRequest(LoggerMixin, object):
     ARTIFACT_NAMESPACE = 'testing-farm-request'
 
@@ -275,7 +290,7 @@ class TestingFarmRequest(LoggerMixin, object):
                 pool=environment_raw.get('pool'),
                 variables=dict_update(environment_raw.get('variables') or {}, testing_farm_env_vars),
                 secrets=environment_raw.get('secrets'),
-                artifacts=cast(Optional[List[Dict[str, Any]]], environment_raw.get('artifacts')),
+                artifacts=[Artifact(**artifact) for artifact in (environment_raw.get('artifacts') or [])],
                 hardware=environment_raw.get('hardware'),
                 settings=environment_raw.get('settings'),
                 tmt=cast(Dict[str, Any], environment_raw.get('tmt'))

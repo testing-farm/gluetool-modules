@@ -10,6 +10,7 @@ import gluetool_modules_framework.libs.guest_setup
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 import gluetool_modules_framework.helpers.install_repository
 import gluetool_modules_framework.helpers.rules_engine
+from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact
 
 from . import create_module, patch_shared
 
@@ -32,41 +33,13 @@ def fixture_module(monkeypatch):
     def dummy_testing_farm_request():
         environments_requested = [
             TestingEnvironment(artifacts=[
-                {
-                    'id': 'https://example.com/repo1',
-                    'packages': None,
-                    'type': 'repository'
-                },
-                {
-                    'id': 'https://example.com/repo2',
-                    'packages': None,
-                    'type': 'repository'
-                },
-                {
-                    'id': 'https://example.com/repo3',
-                    'packages': [
-                        'package-install-1',
-                        'package2'
-                    ],
-                    'type': 'repository'
-                },
-                {
-                    'id': 'https://example.com/repo4.repo',
-                    'type': 'repository-file'
-                },
-                {
-                    'id': 'wrongid',
-                    'packages': None,
-                    'type': 'wongtype'
-                }
+                Artifact(id='https://example.com/repo1', packages=None, type='repository'),
+                Artifact(id='https://example.com/repo2', packages=None, type='repository'),
+                Artifact(id='https://example.com/repo3', packages=['package-install-1', 'package2'], type='repository'),
+                Artifact(id='https://example.com/repo4.repo', type='repository-file'),
+                Artifact(id='wrongid', packages=None, type='wongtype'),
             ]),
-            TestingEnvironment(artifacts=[
-                {
-                    'id': 'wrongid',
-                    'packages': None,
-                    'type': 'wongtype'
-                }
-            ]),
+            TestingEnvironment(artifacts=[Artifact(id='wrongid', packages=None, type='wongtype')]),
         ]
         return MagicMock(environments_requested=environments_requested)
 

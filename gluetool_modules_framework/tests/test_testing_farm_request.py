@@ -329,7 +329,7 @@ def test_execute_request3(module, monkeypatch):
             "TESTING_FARM_GIT_REF": "testref"
         },
         compose=None,
-        artifacts=None,
+        artifacts=[],
         hardware=None,
         pool=None,
         settings=None

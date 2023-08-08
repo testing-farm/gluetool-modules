@@ -25,7 +25,7 @@
         ],
         "hardware": {"cpu": {"model_name": "AMD"}},
         "settings": {"pipeline": {"skip_guest_setup": true}, "provisioning": {"post_install_skip": "foo"}},
-        "tmt": {"context": {"some": "context"}}
+        "tmt": {"context": {"some": "context"}, "environment": {"foo": "foo-value", "bar": "bar-value"}}
     }],
     "notification": {
         "webhook": {

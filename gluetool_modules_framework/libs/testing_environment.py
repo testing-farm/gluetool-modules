@@ -1,6 +1,7 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+import copy
 import gluetool
 from gluetool.utils import normalize_multistring_option
 
@@ -100,8 +101,15 @@ class TestingEnvironment(object):
             if not show_none_fields and field_value is None:
                 continue
 
-            if hide_secrets and field_name == 'secrets' and field_value is not None:
-                field_value = '******'
+            if hide_secrets and field_value is not None:
+                if field_name == 'secrets':
+                    field_value = '******'
+
+                elif field_name == 'tmt' and field_value.get('environment'):
+                    field_value = copy.deepcopy(field_value)
+                    for key in field_value['environment']:
+                        field_value['environment'][key] = '******'
+
             fields.append((field_name, field_value))
 
         return fields

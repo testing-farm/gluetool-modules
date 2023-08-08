@@ -15,21 +15,28 @@ def test_eq():
 
 
 def test_serialize():
-    env = TestingEnvironment(arch='foo', compose='bar', secrets={'hello': 'world'})
+    env = TestingEnvironment(
+        arch='foo',
+        compose='bar',
+        secrets={'hello': 'world'},
+        tmt={'environment': {'foo': 'foo-value', 'bar': 'bar-value'}}
+    )
 
     # Calling str(TestingEnvironment(...)) directly results in a call to TestingEnvironment.__str__()
-    assert str(env) == 'arch=foo,compose=bar,secrets=******,snapshots=False'  # noqa
+    assert str(env) == "arch=foo,compose=bar,secrets=******,snapshots=False,tmt={'environment': {'foo': '******', 'bar': '******'}}"  # noqa
 
     # Nesting the object into a list and calling str() results in a call to TestingEnvironment.__repr__()
-    assert str([env]) == '[<TestingEnvironment(arch=foo,compose=bar,secrets=******,snapshots=False)>]'  # noqa
+    assert str([env]) == "[<TestingEnvironment(arch=foo,compose=bar,secrets=******,snapshots=False,tmt={'environment': {'foo': '******', 'bar': '******'}})>]"  # noqa
 
     expected_serialized_string = (
            "arch=foo,artifacts=None,compose=bar,hardware=None,"
-            "kickstart=None,secrets={'hello': 'world'},settings=None,snapshots=False,tmt=None,variables=None"
+            "kickstart=None,secrets={'hello': 'world'},settings=None,snapshots=False,"
+            "tmt={'environment': {'foo': 'foo-value', 'bar': 'bar-value'}},variables=None"
     )
     expected_serialized_json = {
             'arch': 'foo', 'artifacts': None, 'compose': 'bar', 'hardware': None, 'kickstart': None,
-            'secrets': {'hello': 'world'}, 'settings': None, 'snapshots': False, 'tmt': None, 'variables': None
+            'secrets': {'hello': 'world'}, 'settings': None, 'snapshots': False,
+            'tmt': {'environment': {'bar': 'bar-value', 'foo': 'foo-value'}}, 'variables': None
     }
 
     assert env.serialize_to_string(hide_secrets=False, show_none_fields=True) == expected_serialized_string

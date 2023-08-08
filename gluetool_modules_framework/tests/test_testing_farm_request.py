@@ -1,6 +1,7 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 import pytest
 import gluetool_modules_framework.testing_farm.testing_farm_request
 import os
@@ -330,6 +331,16 @@ def test_execute_request1(module):
     assert request.environments_requested[1].compose == 'Fedora-37'
     assert request.environments_requested[1].secrets == {'secret_key': 'secret-value'}
     assert len(request.environments_requested[1].artifacts) == 2
+
+
+def test_execute_log_request1(module, log):
+    module._config.update({'request-id': '1'})
+    module.execute()
+
+    with open(os.path.join(ASSETS_DIR, 'request1-log.log'), 'r') as request1_log_file:
+        request1_log = ''.join(request1_log_file.readlines())
+
+    assert log.records[-1].message == request1_log
 
 
 def test_execute_request2(module):

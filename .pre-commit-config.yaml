@@ -25,7 +25,11 @@ repos:
       - id: check-symlinks
       - id: check-yaml
       - id: end-of-file-fixer
-        exclude: gluetool_modules_framework/tests/assets/test_schedule_tmt/passed/execute/logs/tests/core/docs/out\.log
+        exclude: |
+            (?x)^(
+                gluetool_modules_framework/tests/assets/test_schedule_tmt/passed/execute/logs/tests/core/docs/out\.log|
+                gluetool_modules_framework/tests/assets/testing_farm/request1-log\.log
+            )$
       - id: mixed-line-ending
       - id: no-commit-to-branch
         args:

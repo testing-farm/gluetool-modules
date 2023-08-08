@@ -1,0 +1,76 @@
+Initialized with 1:
+{
+    "environments_requested": [
+        {
+            "arch": "x86_64",
+            "secrets": "******",
+            "snapshots": false,
+            "tmt": {
+                "context": {
+                    "some": "context"
+                }
+            },
+            "variables": {
+                "TESTING_FARM_GIT_REF": "testref",
+                "TESTING_FARM_GIT_URL": "testurl",
+                "TESTING_FARM_REQUEST_ID": "1",
+                "TESTING_FARM_TEST_TYPE": "fmf",
+                "something": "variables"
+            }
+        },
+        {
+            "arch": "s390",
+            "artifacts": [
+                {
+                    "id": "111",
+                    "packages": "pacakge1",
+                    "type": "fedora-copr-build"
+                },
+                {
+                    "id": "111",
+                    "packages": "pacakge2",
+                    "type": "fedora-copr-build"
+                }
+            ],
+            "compose": "Fedora-37",
+            "hardware": {
+                "cpu": {
+                    "model_name": "AMD"
+                }
+            },
+            "secrets": "******",
+            "settings": {
+                "pipeline": {
+                    "skip_guest_setup": true
+                },
+                "provisioning": {
+                    "post_install_skip": "foo"
+                }
+            },
+            "snapshots": false,
+            "tmt": {
+                "context": {
+                    "some": "context"
+                },
+                "environment": {
+                    "bar": "******",
+                    "foo": "******"
+                }
+            },
+            "variables": {
+                "TESTING_FARM_GIT_REF": "testref",
+                "TESTING_FARM_GIT_URL": "testurl",
+                "TESTING_FARM_REQUEST_ID": "1",
+                "TESTING_FARM_TEST_TYPE": "fmf",
+                "foo": "bar"
+            }
+        }
+    ],
+    "plan": "testname",
+    "plan_filter": "<not applicable>",
+    "ref": "testref",
+    "test_filter": "<not applicable>",
+    "type": "fmf",
+    "url": "testurl",
+    "webhook_url": "webhookurl"
+}

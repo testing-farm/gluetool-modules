@@ -44,7 +44,7 @@ RUN    ln -s /CONFIG /etc/citool.d \
     && dnf -y install standard-test-roles-4.10-6.el8 \
     # install tmt-1.25 from updates testing, this has all the required fixes for Rawhide (dnf5)
     # && dnf copr enable -y psss/tmt \
-    && dnf -y install --enablerepo=epel-testing tmt-1.25.0 tmt-provision-container-1.25.0 tmt-provision-virtual-1.25.0 tmt-report-polarion-1.25.0 tmt-report-html-1.25.0 \
+    && dnf -y install --enablerepo=epel-testing tmt-1.26.0 tmt-provision-container-1.26.0 tmt-provision-virtual-1.26.0 tmt-report-polarion-1.26.0 tmt-report-html-1.26.0 \
     && dnf clean all \
     # Install pylero from PyPI, it is broken in CentOS 8
     && rpm -e --nodeps python3-suds \

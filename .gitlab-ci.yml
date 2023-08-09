@@ -45,7 +45,7 @@ container:
   image: quay.io/buildah/stable:$BUILDAH_TAG
   variables:
     GOSS_PATH: /usr/bin/goss
-    GOSS_DOWNLOAD_URL: https://github.com/aelsabbahy/goss/releases/latest/download
+    GOSS_DOWNLOAD_URL: https://github.com/goss-org/goss/releases/download/v0.3.21
   script:
     - dnf -y install make poetry python3.9 podman-docker
     - curl -L $GOSS_DOWNLOAD_URL/goss-linux-amd64 -o /usr/bin/goss && chmod +rx /usr/bin/goss

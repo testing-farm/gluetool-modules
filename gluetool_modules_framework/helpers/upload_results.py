@@ -246,7 +246,7 @@ class UploadResults(gluetool.Module):
                 body += line
 
             elif entry.stage != TestScheduleEntryStage.COMPLETE:
-                line = '<p> Testing timeout: {}</p>\n'.format(
+                line = '<p> Testing timed out for: {}</p>\n'.format(
                     os.path.splitext(entry.playbook_filepath.split('/')[-1])[0]
                 )
                 body += line

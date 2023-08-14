@@ -13,6 +13,7 @@ from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath,
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
 from gluetool_modules_framework.libs.guest import NetworkedGuest
 from gluetool_modules_framework.libs.test_schedule import TestScheduleEntry
+from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact
 
 # Type annotations
 from typing import cast, Any, List, Optional  # noqa
@@ -79,15 +80,15 @@ class InstallCoprBuild(gluetool.Module):
         if stage != GuestSetupStage.ARTIFACT_INSTALLATION:
             return r_overloaded_guest_setup_output
 
-        # If guest's TestingEnvironment contains any artifacts of acceptable types, extract their ids and use them
-        artifact_ids = []
+        # Filter artifacts of the acceptable type from guest's TestingEnvironment
+        artifacts: List[Artifact] = []
         if guest.environment and guest.environment.artifacts:
-            artifact_ids = [
-                artifact.id for artifact in guest.environment.artifacts
+            artifacts = [
+                artifact for artifact in guest.environment.artifacts
                 if artifact.type in TESTING_FARM_ARTIFACT_TYPES
             ]
 
-        builds = cast(Optional[List[CoprTask]], self.shared('tasks', task_ids=artifact_ids))
+        builds = cast(Optional[List[CoprTask]], self.shared('tasks', task_ids=[artifact.id for artifact in artifacts]))
 
         # no artifact to install
         if not builds:
@@ -126,7 +127,7 @@ class InstallCoprBuild(gluetool.Module):
         except gluetool.glue.GlueCommandError:
             has_dnf = False
 
-        for number, build in enumerate(builds, 1):
+        for number, (build, artifact) in enumerate(zip(builds, artifacts), 1):
             sut_installation.add_step(
                 'Download copr repository',
                 'curl -v {{}} --retry 5 --output /etc/yum.repos.d/copr_build-{}-{}.repo'.format(
@@ -143,6 +144,9 @@ class InstallCoprBuild(gluetool.Module):
                     'curl -sL --retry 5 --remote-name-all -w "Downloaded: %{{url_effective}}\\n" {}'
                 ).format(download_path, ' '.join(build.rpm_urls + build.srpm_urls))
             )
+
+            if artifact.install is False:
+                continue
 
             copr_build_rpm_urls = build.rpm_urls
 
@@ -186,7 +190,10 @@ class InstallCoprBuild(gluetool.Module):
                 sut_installation.add_step('Install packages', 'yum -y install {}',
                                           items=joined_rpm_urls, ignore_exception=True)
 
-        for build in builds:
+        for build, artifact in zip(builds, artifacts):
+            if artifact.install is False:
+                continue
+
             rpm_names = build.rpm_names
 
             if excluded_packages:

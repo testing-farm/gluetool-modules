@@ -32,6 +32,7 @@ class RequestEnvironmentArtifactType(TypedDict):
     id: str
     type: str
     packages: NotRequired[List[str]]
+    install: NotRequired[bool]
 
 
 class RequestEnvironmentTMTType(TypedDict):
@@ -200,10 +201,12 @@ class Artifact():
         :ivar id: Unique identifier of the artifact. Value depends on the type of the artifact.
         :ivar type: Type of the artifact, e.g. "fedora-copr-build", "fedora-koji-build", "repository-file".
         :ivar packages: List of packages to install, if applicable to the artifact.
+        :ivar install: Whether to fetch and install artifacts or just fetch them.
     """
     id: str
     type: str
     packages: Optional[List[str]] = None
+    install: bool = True
 
 
 class TestingFarmRequest(LoggerMixin, object):

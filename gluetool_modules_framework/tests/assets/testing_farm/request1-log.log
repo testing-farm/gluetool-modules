@@ -24,11 +24,13 @@ Initialized with 1:
             "artifacts": [
                 {
                     "id": "111",
+                    "install": false,
                     "packages": "pacakge1",
                     "type": "fedora-copr-build"
                 },
                 {
                     "id": "111",
+                    "install": true,
                     "packages": "pacakge2",
                     "type": "fedora-copr-build"
                 }

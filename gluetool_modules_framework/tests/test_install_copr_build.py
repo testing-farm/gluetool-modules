@@ -313,9 +313,49 @@ def test_loadable(module):
             '3-Download-copr-repository.txt',
             '4-Download-rpms-from-copr.txt'
         ]
+    ),
+    #
+    # Test case - with "install=False"
+    #
+    (
+        [  # Input artifacts
+            Artifact(type='fedora-copr-build', id='artifact1', install=False),
+            Artifact(type='fedora-copr-build', id='artifact2'),
+        ],
+        None,
+        [  # Expected install commands
+            'mkdir -pv some-download-path',
+            'curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo',
+            (
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
+            ),
+            'curl -v dummy2_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project2-2.repo',
+            (
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm '
+                'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm'
+            ),
+            'dnf -y reinstall https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm || true',
+            'dnf -y reinstall https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm || true',
+            'dnf -y install --allowerasing https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm',
+            'rpm -q dummy2_rpm_name1',
+            'rpm -q dummy2_rpm_name2',
+        ],
+        [  # Expected generated files
+            '0-Create-artifacts-directory.txt',
+            '1-Download-copr-repository.txt',
+            '2-Download-rpms-from-copr.txt',
+            '3-Download-copr-repository.txt',
+            '4-Download-rpms-from-copr.txt',
+            '5-Reinstall-packages.txt',
+            '6-Install-packages.txt',
+            '7-Verify-packages-installed.txt'
+        ]
     )
 
-], ids=['single-artifact', 'multiple-artifacts', 'with-excludes', 'all-excluded'])
+], ids=['single-artifact', 'multiple-artifacts', 'with-excludes', 'all-excluded', 'with-install-false'])
 def test_setup_guest(module_shared_patched, tmpdir, guest_artifacts, guest_environment, expected_commands, expected_filenames):
     module, primary_task_mock = module_shared_patched
 
@@ -344,26 +384,27 @@ def test_no_dnf(module_shared_patched, tmpdir):
     execute_mock = MagicMock()
     execute_mock.side_effect = execute_mock_side_effect
 
-    guest = mock_guest(execute_mock)
+    guest = mock_guest(execute_mock, [Artifact(id='dummy-artifact', type='fedora-copr-build')])
     module.setup_guest(guest, stage=GuestSetupStage.ARTIFACT_INSTALLATION, log_dirpath=str(tmpdir))
 
     calls = [
         call('command -v dnf'),
+        call('command -v dnf'),
         call('mkdir -pv some-download-path'),
-        call('curl -v dummyX_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_projectX-1.repo'),
+        call('curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo'),
         call(
             'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
-            'https://example.com/dummyX_rpm_name1-1.0.1-el7.rpm '
-            'https://example.com/dummyX_rpm_name2-1.0.1-el7.rpm '
-            'https://example.com/dummyX_rpm_name1-1.0.1-el7.src.rpm '
-            'https://example.com/dummyX_rpm_name2-1.0.1-el7.src.rpm'
+            'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm '
+            'https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
+            'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm '
+            'https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
         ),
-        call('yum -y reinstall https://example.com/dummyX_rpm_name1-1.0.1-el7.rpm'),
-        call('yum -y reinstall https://example.com/dummyX_rpm_name2-1.0.1-el7.rpm'),
-        call('yum -y downgrade https://example.com/dummyX_rpm_name1-1.0.1-el7.rpm https://example.com/dummyX_rpm_name2-1.0.1-el7.rpm'),
-        call('yum -y install https://example.com/dummyX_rpm_name1-1.0.1-el7.rpm https://example.com/dummyX_rpm_name2-1.0.1-el7.rpm'),
-        call('rpm -q dummyX_rpm_name1'),
-        call('rpm -q dummyX_rpm_name2')
+        call('yum -y reinstall https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm'),
+        call('yum -y reinstall https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm'),
+        call('yum -y downgrade https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm'),
+        call('yum -y install https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm'),
+        call('rpm -q dummy1_rpm_name1'),
+        call('rpm -q dummy1_rpm_name2')
     ]
 
     execute_mock.assert_has_calls(calls, any_order=False)
@@ -387,7 +428,7 @@ def test_nvr_check_fails(module_shared_patched, tmpdir):
             raise gluetool.glue.GlueCommandError('dummy_error', MagicMock(exit_code=1, stdout='', stderr=''))
         return MagicMock(stdout='', stderr='')
 
-    guest = mock_guest(execute_mock)
+    guest = mock_guest(execute_mock, [Artifact(id='dummy-artifact', type='fedora-copr-build')])
 
     ret = module.setup_guest(guest, stage=GuestSetupStage.ARTIFACT_INSTALLATION, log_dirpath=str(tmpdir))
 
@@ -415,7 +456,7 @@ def test_repo_download_fails(module_shared_patched, tmpdir):
             raise gluetool.glue.GlueCommandError('dummy_error', MagicMock(exit_code=1, stdout='', stderr=''))
         return MagicMock(stdout='', stderr='')
 
-    guest = mock_guest(execute_mock)
+    guest = mock_guest(execute_mock, [Artifact(id='dummy-artifact', type='fedora-copr-build')])
 
     ret = module.setup_guest(guest, stage=GuestSetupStage.ARTIFACT_INSTALLATION, log_dirpath=str(tmpdir))
 

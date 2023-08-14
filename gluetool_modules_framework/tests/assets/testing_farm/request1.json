@@ -20,7 +20,7 @@
         "variables": {"foo": "bar"},
         "secrets": {"secret_key": "secret-value"},
         "artifacts": [
-            {"id": "111", "type": "fedora-copr-build", "packages": "pacakge1"},
+            {"id": "111", "type": "fedora-copr-build", "packages": "pacakge1", "install": false},
             {"id": "111", "type": "fedora-copr-build", "packages": "pacakge2"}
         ],
         "hardware": {"cpu": {"model_name": "AMD"}},

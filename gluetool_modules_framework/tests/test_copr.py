@@ -11,6 +11,8 @@ import gluetool_modules_framework.infrastructure.copr
 from gluetool_modules_framework.infrastructure.copr import Copr, TaskArches
 from . import create_module, check_loadable
 
+from mock import MagicMock
+
 BUILD_INFO = {
     'chroots': [
         'fedora-28-x86_64'
@@ -299,7 +301,7 @@ def test_unreachable_copr(module, monkeypatch):
         module.execute()
 
 
-def test_invalid_copr(module, monkeypatch):
+def test_invalid_copr_get(module, monkeypatch):
     def mocked_get(url):
         raise Exception
 
@@ -308,6 +310,19 @@ def test_invalid_copr(module, monkeypatch):
     with pytest.raises(gluetool.GlueError,
                        match=r"^Invalid copr build with id '8020fedora-28-x86_64', must be 'build_id:chroot_name'"):
         module.tasks(task_ids=['8020fedora-28-x86_64'])
+
+
+def test_invalid_copr_get_error(module, monkeypatch):
+    def mocked_get(url):
+        return MagicMock(status_code=200, json=lambda: {'error': 'mocked copr error'})
+
+    monkeypatch.setattr(gluetool_modules_framework.infrastructure.copr.requests, 'get', mocked_get)
+
+    with pytest.raises(
+        gluetool.GlueError,
+        match=r"^Error initializing copr task 5788940:fedora-38-aarch6: mocked copr error"
+    ):
+        module.tasks(task_ids=['5788940:fedora-38-aarch6'])
 
 
 def test_tasks(module, monkeypatch):

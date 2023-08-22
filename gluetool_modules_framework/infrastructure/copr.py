@@ -331,6 +331,10 @@ class Copr(gluetool.Module):
                     "Could not find copr build id '{}' for chroot '{}'".format(build_id, chroot_name)
                 )
 
+        for task in tasks:
+            if task.error:
+                raise gluetool.GlueError('Error initializing copr task {}: {}'.format(task.id, task.error))
+
         self._tasks = tasks
         return self._tasks
 

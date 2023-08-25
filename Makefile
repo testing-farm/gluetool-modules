@@ -10,7 +10,7 @@ IMAGE_TAG ?= ${USER}
 
 build:  ## Build worker container image
 	poetry build
-	buildah bud -t $(IMAGE):$(IMAGE_TAG) -f container/Dockerfile .
+	buildah bud --layers -t $(IMAGE):$(IMAGE_TAG) -f container/Dockerfile .
 
 push:  ## Push worker container image to quay.io
 	buildah push $(IMAGE):$(IMAGE_TAG)

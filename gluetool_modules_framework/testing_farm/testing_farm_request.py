@@ -384,6 +384,11 @@ class TestingFarmRequest(LoggerMixin, object):
                 'xunit': xunit
             })
 
+        if xunit and artifacts_url and self._module.shared('xunit_testing_farm_file'):
+            result.update({
+                'xunit_url': '{}/{}'.format(artifacts_url, self._module.shared('xunit_testing_farm_file'))
+            })
+
         if summary:
             result.update({
                 'summary': summary

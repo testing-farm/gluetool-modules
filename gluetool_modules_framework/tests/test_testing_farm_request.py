@@ -189,7 +189,8 @@ def test_update_empty(module, request2):
     assert PUT_REQUESTS['2'] == {'api_key': 'fakekey'}
 
 
-def test_update(module, request2):
+def test_update(module, request2, monkeypatch):
+    patch_shared(monkeypatch, module, {'xunit_testing_farm_file': 'xunitfile'})
     request = module._tf_request
     request.update(
         state='somestate',
@@ -205,6 +206,7 @@ def test_update(module, request2):
             'overall': 'someresult',
             'xunit': 'somexunit',
             'summary': 'somesummary',
+            'xunit_url': 'someurl/xunitfile'
         },
         'run': {
             'artifacts': 'someurl',

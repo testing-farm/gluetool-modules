@@ -82,7 +82,7 @@ class TestScheduleReport(gluetool.Module):
         })
     ]
 
-    shared_functions = ['test_schedule_results', 'results']
+    shared_functions = ['test_schedule_results', 'results', 'xunit_testing_farm_file']
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
 
@@ -112,6 +112,13 @@ class TestScheduleReport(gluetool.Module):
             instructions += gluetool.utils.load_yaml(filepath, logger=self.logger)
 
         return instructions
+
+    @gluetool.utils.cached_property
+    def xunit_testing_farm_file(self) -> Optional[str]:
+        if not self.option('xunit-testing-farm-file'):
+            return None
+
+        return cast(str, self.option('xunit-testing-farm-file'))
 
     @property
     def _schedule(self) -> TestSchedule:

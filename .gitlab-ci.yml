@@ -1,6 +1,7 @@
 ---
 
 stages:
+  - build
   - test
   - deploy
 
@@ -41,7 +42,7 @@ variables:
 # Build, test and expose the container image
 container:
   extends: .merge-request
-  stage: test
+  stage: build
   image: quay.io/buildah/stable:$BUILDAH_TAG
   variables:
     GOSS_PATH: /usr/bin/goss
@@ -62,6 +63,7 @@ container:
 py39-unit:
   extends: .tests
   stage: test
+  needs: []
   script:
     - tox -v -e py39-unit-tests -- --cov=gluetool_modules_framework --cov-report=html:coverage-report
   artifacts:
@@ -72,6 +74,7 @@ py39-unit:
 py39-static:
   extends: .tests
   stage: test
+  needs: []
   script:
     - tox -v -e py39-static-analysis
 
@@ -81,6 +84,7 @@ py39-static:
 static-coala:
   extends: .merge-request
   stage: test
+  needs: []
   image: quay.io/testing-farm/coala:latest
   script:
     - /usr/bin/coala --non-interactive --config .coafile
@@ -89,6 +93,7 @@ static-coala:
 type-check:
   extends: [.colors, .merge-request]
   stage: test
+  needs: []
   script:
     - tox -v -e type-check
 
@@ -96,6 +101,7 @@ type-check:
 pre-commit:
   extends: .merge-request
   stage: test
+  needs: []
   script:
     - dnf -y install pre-commit
     - poetry --version
@@ -105,9 +111,48 @@ pre-commit:
 testing-farm:
   extends: .merge-request
   stage: test
+  needs: []
   image: quay.io/testing-farm/cli:latest
   script:
     - testing-farm request --git-ref $CI_MERGE_REQUEST_REF_PATH --git-url $CI_MERGE_REQUEST_PROJECT_URL
+
+# Run worker integration tests against staging environment and Artemis CI instance
+# Note that we spin a new Artemis instance so the localhost get's access to Artemis API and guests
+integration:
+  extends: .merge-request
+  stage: test
+  needs:
+    - container
+    - pre-commit
+    - py39-static
+    - py39-unit
+    - type-check
+  variables:
+    INFRA_REPO: https://gitlab.com/testing-farm/infrastructure
+    INFRA_PATH: /builds/testing-farm/infrastructure
+    # TODO: revert to main once all code in main
+    INFRA_BRANCH: refactor-tests-split
+    # Use the worker image build in the "container" step
+    WORKER_IMAGE: quay.io/testing-farm/worker:$CI_PIPELINE_ID
+  before_script:
+    # Use public nameservers to mitigate the EKS cluster to be reolved locally.
+    # A known issues due to the AWS setup we use.
+    - printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\nnameserver 8.8.4.4\n" > /etc/resolv.conf
+    - git clone -b $INFRA_BRANCH $INFRA_REPO $INFRA_PATH && cd $INFRA_PATH
+    - dnf -y install direnv libffi libffi-devel podman buildah
+    - echo -n "$INFRA_VAULT_PASSWORD" > .vault_pass
+    - podman login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
+  script:
+    - direnv allow
+    - eval "$(direnv export bash)"
+    - make staging/apply/artemis/ci
+    - make generate/staging/citool-config/ci
+    - make test/staging/pipeline/ci
+  after_script:
+    - cd $INFRA_PATH
+    - direnv allow
+    - eval "$(direnv export bash)"
+    - make staging/destroy/artemis/ci
 
 # Generate documentation from the sources
 #
@@ -118,6 +163,7 @@ testing-farm:
 py39-generate-docs:
   extends: .tests
   stage: test
+  needs: []
   script:
     - tox -v -e py39-doctest -- ./docs
   artifacts:

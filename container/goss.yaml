@@ -3,7 +3,7 @@ package:
   ansible-core:
     installed: true
     versions:
-      - 2.14.2
+      - 2.14.8
 
   beakerlib:
     installed: true
@@ -51,6 +51,12 @@ file:
     group: root
     filetype: directory
 
+  /etc/os-release:
+    exists: true
+    filetype: symlink
+    contains:
+      - PRETTY_NAME="Fedora Linux 38 (Container Image)"
+
   /etc/ssh/ssh_config:
     exists: true
     mode: "0644"
@@ -64,13 +70,6 @@ file:
       - SendEnv -LC_* -LANG_*
       - ServerAliveInterval 60
       - ServerAliveCountMax 5
-
-  /usr/lib/python3.6/site-packages/pylero:
-    exists: true
-    mode: "0755"
-    owner: root
-    group: root
-    filetype: directory
 
 command:
   ansible-galaxy collection list:

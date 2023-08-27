@@ -5,9 +5,7 @@
 #    /CONFIG            - place for configuration
 #
 
-# Based on CentOS 8 podman image, which makes it possible to run tmt container provisioner.
-# https://github.com/thrix/podman/blob/main/contrib/podmanimage/stable/Dockerfile.centos8
-FROM quay.io/testing-farm/podman:latest
+FROM quay.io/containers/podman:v4.6
 LABEL maintainer="tft@redhat.com"
 
 # workdir needs to be a writable path in all supported operating systems, a tmt requirement
@@ -32,26 +30,17 @@ COPY container/requirements.yml /etc/ansible/requirements.yml
 # ~/.gitconfig is required for some operations of the git library in gluetool-modules
 COPY container/.gitconfig /root/.gitconfig
 
+# make sure we have latest packages installed
+RUN dnf -y update
+
 # install all required dependencies
 RUN    ln -s /CONFIG /etc/citool.d \
-    && rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
-    && dnf -y update \
-    && dnf -y install ansible-core-2.14.2 autoconf automake crun gcc git krb5-devel libcurl-devel \
+    && dnf -y install ansible-core-2.14.8 autoconf automake crun gcc git krb5-devel libcurl-devel \
                       libpq-devel libtool libxml2-devel make openssl-devel popt-devel \
-                      postgresql-devel python39 python39-devel python39-pip python3-libselinux \
-                      redhat-rpm-config koji python3-virtualenv \
+                      postgresql-devel python3.9 python3-libselinux \
+                      redhat-rpm-config koji python3-virtualenv standard-test-roles \
                       rsync beakerlib-libraries rpm-build rpm-devel \
-    # workaround for https://pagure.io/standard-test-roles/pull-request/410
-    && dnf copr enable -y @osci/standard-test-roles \
-    # Newer version fails on: nothing provides python3dist(ansible) needed by standard-test-roles-4.11-1.el8.noarch from epel
-    && dnf -y install standard-test-roles-4.10-6.el8 \
-    # install tmt-1.25 from updates testing, this has all the required fixes for Rawhide (dnf5)
-    # && dnf copr enable -y psss/tmt \
-    && dnf -y install --enablerepo=epel-testing tmt-1.26.0 tmt-provision-container-1.26.0 tmt-provision-virtual-1.26.0 tmt-report-polarion-1.26.0 tmt-report-html-1.26.0 tmt-report-reportportal-1.26.0 \
-    && dnf clean all \
-    # Install pylero from PyPI, it is broken in CentOS 8
-    && rpm -e --nodeps python3-suds \
-    && pip3.6 install -t /lib/python3.6/site-packages pylero \
+    && dnf -y install tmt-1.26.0 tmt-provision-container-1.26.0 tmt-provision-virtual-1.26.0 tmt-report-polarion-1.26.0 tmt-report-html-1.26.0 tmt-report-reportportal-1.26.0 \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \

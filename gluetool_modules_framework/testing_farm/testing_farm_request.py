@@ -286,6 +286,10 @@ class TestingFarmRequest(LoggerMixin, object):
         }
 
         environments_requested: List[TestingEnvironment] = []
+
+        if not request['environments_requested']:
+            raise gluetool.GlueError("No testing environment specified, cannot continue.")
+
         for environment_raw in request['environments_requested']:
             environments_requested.append(TestingEnvironment(
                 arch=environment_raw['arch'],

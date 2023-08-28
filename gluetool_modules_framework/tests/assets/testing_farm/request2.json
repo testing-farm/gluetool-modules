@@ -6,6 +6,6 @@
         },
         "sti": null
     },
-    "environments_requested": [],
+    "environments_requested": [{"arch": "x86_64"}],
     "user_id": "user"
 }

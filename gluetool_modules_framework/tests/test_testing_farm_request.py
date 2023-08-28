@@ -302,7 +302,19 @@ def test_execute_request2(module):
     assert request.tmt.ref == 'faketestref'
     assert request.webhook_url == None
     assert request.webhook_token == None
-    assert request.environments_requested == []
+    assert request.environments_requested == [
+        TestingEnvironment(
+            arch='x86_64',
+            artifacts=[],
+            snapshots=False,
+            variables={
+                'TESTING_FARM_REQUEST_ID': '2',
+                'TESTING_FARM_TEST_TYPE': 'fmf',
+                'TESTING_FARM_GIT_URL': 'faketesturl',
+                'TESTING_FARM_GIT_REF': 'faketestref'
+            }
+        )
+    ]
 
 
 def test_execute_request3(module, monkeypatch):

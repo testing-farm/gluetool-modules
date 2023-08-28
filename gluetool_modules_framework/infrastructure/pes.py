@@ -248,8 +248,8 @@ class PES(gluetool.Module):
         Note that this currently expects PES only holds successors for a next major release.
 
         :param str component: Component to find successors for.
-        :param str initial_release: Version of source system in a RHEL-X.Y format.
-        :param str release: Version of targeted system in a RHEL-X.Y format.
+        :param str initial_release: Version of source system in a RHEL X.Y format.
+        :param str release: Version of targeted system in a RHEL X.Y format.
         """
         successors = self._pes_api.get_successor_components(component, initial_release, release)
         successors.sort()

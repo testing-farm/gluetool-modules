@@ -1,38 +1,25 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
-import gluetool
 import re
-import six
-
-from gluetool.log import log_dict
-from gluetool_modules_framework.libs.artifacts import splitFilename
-from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
-from gluetool_modules_framework.libs.test_schedule import TestSchedule
-from gluetool_modules_framework.testing.test_scheduler_sti import TestScheduleEntry
 
 # Type annotations
-from typing import List, Optional, cast  # noqa
+from typing import Optional, cast
 
+import six
 
-def product_version(product: str) -> str:
-    matched_product = re.match(r'(?i).*rhel-(\d+.\d+)', product)
-
-    if not matched_product:
-        raise gluetool.GlueError('Unexpected product format: {}'.format(product))
-
-    return matched_product.group(1)
-
-
-def format_for_pes(product: str) -> str:
-    return 'RHEL {}'.format(product_version(product))
-
-
-def format_for_test(product: str) -> str:
-    return product_version(product)
+import gluetool
+from gluetool.log import log_dict
+from gluetool_modules_framework.libs.artifacts import splitFilename
+from gluetool_modules_framework.libs.test_schedule import TestSchedule
+from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
+from gluetool_modules_framework.testing.test_scheduler_sti import TestScheduleEntry
 
 
 class TestSchedulerUpgrades(gluetool.Module):
+    '''
+    Module that prepares test schedule for upgrade testing.
+    '''
 
     name = 'test-scheduler-upgrades'
     description = 'Prepare schedule for upgrade testing. Modify schedule entries provided by previous (STI) provider.'
@@ -61,31 +48,76 @@ class TestSchedulerUpgrades(gluetool.Module):
         'compose-url': {
             'help': 'Url of compose.',
             'type': str
+        },
+        'product-pattern': {
+            'help': 'Regular expression used to extract major and minor version from the product name.',
+            'type': str
         }
     }
 
-    required_options = ('variant', 'compose-url')
+    required_options = ('variant', 'compose-url', 'product-pattern')
 
     shared_functions = ['create_test_schedule']
 
     def sanity(self) -> None:
+        '''
+        Check correct combination of options.
+        '''
+
         if self.option('variant') == 'from' and not self.option('destination'):
-            raise gluetool.GlueError('Option `destination` is required when `variant` is set to `from`.')
+            msg = 'Option `destination` is required when `variant` is set to `from`.'
+            raise gluetool.GlueError(msg)
         if self.option('repos') and self.option('exclude-repos'):
-            raise gluetool.GlueError('Options `repos` and `exclude-repos` are mutually exclusive.')
+            msg = 'Options `repos` and `exclude-repos` are mutually exclusive.'
+            raise gluetool.GlueError(msg)
 
-    def binary_rpms_list(self, compose_url: str, components: List[str]) -> List[str]:
+    def product_version(self, product: str) -> tuple[str, str]:
+        '''
+        Get major and minor versions out of the product name using pattern provided by product-pattern option.
+        '''
 
-        # List of binary package names is obtained from compose metadata (metadata/rpms.json).
-        # Only x86_64 builds are considered, upgrades for other arches are not yet supported.
-        metadata_rpms_json_path = '{}/metadata/rpms.json'.format(compose_url)
+        product_pattern = self.option('product-pattern')
+        match = re.match(product_pattern, product)
+
+        if not match:
+            msg = f'Unexpected product format: {product}'
+            raise gluetool.GlueError(msg)
+
+        versions = match.groupdict()
+        return cast(str, versions['major']), cast(str, versions['minor'])
+
+    def format_for_pes(self, product: str) -> str:
+        '''
+        Get release string suitable for use with Package Evolution Service.
+        '''
+
+        return f'RHEL {self.product_version(product)}'
+
+    def format_for_leapp(self, product: str) -> str:
+        '''
+        Get version string suitable for use with Leapp.
+        '''
+
+        major, minor = self.product_version(product)
+        return f'{major}.{minor}'
+
+    def binary_rpms_list(self, compose_url: str, components: list[str]) -> list[str]:
+        '''
+        Return list of package names that belong to provided components (srpms).
+
+        Package names are obtained from compose metadata (metadata/rpms.json).
+        Only x86_64 builds are considered, upgrades for other arches are not yet supported.
+        '''
+
+        metadata_rpms_json_path = f'{compose_url}/metadata/rpms.json'
 
         with gluetool.utils.requests(logger=self.logger) as requests:
             try:
                 response = requests.get(metadata_rpms_json_path)
                 response.raise_for_status()
-            except requests.exceptions.RequestException:
-                raise gluetool.GlueError('Unable to fetch compose metadata from: {}'.format(metadata_rpms_json_path))
+            except requests.exceptions.RequestException as requests_exception:
+                message = f'Unable to fetch compose metadata from: {metadata_rpms_json_path}'
+                raise gluetool.GlueError(message) from requests_exception
 
         metadata_rpms_json = response.json()
 
@@ -121,13 +153,18 @@ class TestSchedulerUpgrades(gluetool.Module):
 
     def create_test_schedule(
         self,
-        testing_environment_constraints: Optional[List[TestingEnvironment]] = None
+        testing_environment_constraints: Optional[list[TestingEnvironment]] = None
     ) -> TestSchedule:
-        """
-        This module modifies STI test schedule provided by other module. It expects one of the test is testing upgrade
-        and require special variables for successful run. Namely url of composes, made by OSCI guys based on tested
-        artifact and list of binary package names, which belongs to the artifact.
-        """
+        '''
+        Modify STI test schedule with variables special to the upgrade test.
+
+        Its expected that one of the schedule entries is for upgrade test, which requires special variables for
+        successful run. These variables are added here and include:
+
+          * compose_url - url of the compose used during the upgrade
+          * binary_rpms_list - list of rpm names added to the upgrade transaction
+          * target_release - target release for the upgrade test
+        '''
 
         self.require_shared('primary_task', 'product')
 
@@ -144,16 +181,15 @@ class TestSchedulerUpgrades(gluetool.Module):
             successor_components = self.shared(
                 'successor_components',
                 component,
-                format_for_pes(product),
-                format_for_pes(destination)
+                self.format_for_pes(product),
+                self.format_for_pes(destination)
             )
 
             if successor_components:
-                log_dict(self.info, "Successor components of '{}'".format(component), successor_components)
+                log_dict(self.info, f"Successor components of '{component}'", successor_components)
                 components = successor_components
             else:
-                self.info("No successors of components '{}' found, assume successor's name is the same.".format(
-                    component))
+                self.info(f"No successors of components '{component}' found, assume successor's name is the same.")
                 components = [component]
 
         elif variant == 'to':
@@ -163,7 +199,7 @@ class TestSchedulerUpgrades(gluetool.Module):
         new_variables = {
             'compose_url': compose_url,
             'binary_rpms_list': self.binary_rpms_list(compose_url, components),
-            'target_release':  format_for_test(destination)
+            'target_release':  self.format_for_leapp(destination)
         }
 
         schedule: TestSchedule = self.overloaded_shared(

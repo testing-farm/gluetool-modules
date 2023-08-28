@@ -113,8 +113,10 @@ class TestScheduleReport(gluetool.Module):
 
         return instructions
 
-    @gluetool.utils.cached_property
     def xunit_testing_farm_file(self) -> Optional[str]:
+        """
+        Return Testing Farm xunit file name.
+        """
         if not self.option('xunit-testing-farm-file'):
             return None
 

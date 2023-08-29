@@ -50,6 +50,9 @@ class OpenStackJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkinsJ
         'guess-environment-options': {
             'help': 'Additional options for ``guess-environment`` module.'
         },
+        'install-ancestors-options': {
+            'help': 'Additional options for install-ancestors module.'
+        },
         'install-mbs-build-options': {
             'help': 'Additional options for install-mbs-build or install-mbs-build-execute module.'
         },
@@ -175,6 +178,7 @@ class OpenStackJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkinsJ
             'ansible_options': self.option('ansible-options'),
             'build_dependencies_options': self.option('build-dependencies-options'),
             'dist_git_options': self.option('dist-git-options'),
+            'install_ancestors_options': self.option('install-ancestors-options'),
             'install_mbs_build_options': self.option('install-mbs-build-options'),
             'guess_environment_options': self.option('guess-environment-options'),
             'wow_options': wow_options,

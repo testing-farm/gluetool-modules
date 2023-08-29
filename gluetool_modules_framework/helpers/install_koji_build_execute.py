@@ -35,6 +35,10 @@ class InstallKojiBuildExecute(gluetool.Module):
             'type': str,
             'default': 'artifact-installation'
         },
+        'download-i686-builds': {
+            'help': 'If set, download both x86_64 and i686 packages on x86_64 guest',
+            'action': 'store_true'
+        }
     }
 
     def _extract_artifacts(self, guest: NetworkedGuest) -> List[Artifact]:
@@ -112,13 +116,18 @@ class InstallKojiBuildExecute(gluetool.Module):
         for artifact in artifacts:
             koji_command = 'koji' if 'fedora' in artifact.type else 'brew'
 
+            if arch == 'x86_64' and self.option('download-i686-builds'):
+                download_arches = 'x86_64 --arch i686'
+            else:
+                download_arches = cast(str, arch)
+
             sut_installation.add_step(
                 'Download task id {}'.format(artifact.id),
                 (
                     '( {0} download-build --debuginfo --task-id --arch noarch --arch {2} --arch src {1} || '
                     '{0} download-task --arch noarch --arch {2} --arch src {1} ) | '
                     'egrep Downloading | cut -d " " -f 3 | tee rpms-list-{1}'
-                ).format(koji_command, artifact.id, arch)
+                ).format(koji_command, artifact.id, download_arches)
             )
 
             if artifact.install is False:
@@ -133,11 +142,13 @@ class InstallKojiBuildExecute(gluetool.Module):
                 'sed -r "s/(.*)-.*-.*/\\1 \\0/" | '
                 '{}'  # Do not install excluded packages in the tmt plan
                 '{}'  # Do not install packages with "install: false" specified in the TF API
+                '{}'  # Do not install i686 builds
                 'awk "{{print \\$2}}" | '
                 'tee rpms-list'
             ).format(
                 'egrep -v "({})" | '.format(excluded_packages_regexp) if excluded_packages_regexp else '',
-                ''.join(['egrep -v "$(cat {})" | '.format(rpm) for rpm in rpms_lists_to_skip_install])
+                ''.join(['egrep -v "$(cat {})" | '.format(rpm) for rpm in rpms_lists_to_skip_install]),
+                'egrep -v "i686" | ' if arch == 'x86_64' and self.option('download-i686-builds') else '',
             )
         )
 

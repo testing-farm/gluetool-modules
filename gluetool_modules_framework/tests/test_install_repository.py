@@ -62,10 +62,38 @@ def test_guest_setup(module, environment_index, tmpdir, monkeypatch):
 
     stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
 
-    mock_output = MagicMock(
-        exit_code=0, stdout='https://example.com/package-install-1.0.1.rpm\nhttps://example.com/dummy3.rpm\nhttps://example.com/package-install-1.0.2.rpm', stderr='')
+    def mock_run_output(stdout):
+        return MagicMock(
+            exit_code=0,
+            stdout=stdout,
+            stderr=''
+        )
+
     mock_command_init = MagicMock(return_value=None)
-    mock_command_run = MagicMock(return_value=mock_output)
+    mock_command_run = MagicMock(side_effect=[
+        # Artifact(id='https://example.com/repo1', packages=None, type='repository')
+        mock_run_output(''),
+        # Artifact(id='https://example.com/repo2', packages=None, type='repository')
+        # dummy2 shout not be installed, as we will exclude it, but src.rpm should be downloaded
+        mock_run_output('\n'.join([
+            'https://example.com/dummy1-1.0.1-1.x86_64.rpm',
+            'https://example.com/dummy2-1.0.1-1.x86_64.rpm',
+            'https://example.com/dummy2-1.0.1-1.src.rpm'
+        ])),
+        # Artifact(id='https://example.com/repo3', packages=['package-install-1'], type='repository')
+        # * package-noinstall should be ignored completely, including src.rpm
+        # * package-install only latest NVR should be installed - package-install-1.0.3.rpm
+        mock_run_output('\n'.join([
+            'https://example.com/package-install-1.0.1-1.x86_64.rpm',
+            'https://example.com/package-install-1.0.1-1.src.rpm',
+            'https://example.com/package-install-1.0.3-1.x86_64.rpm',
+            'https://example.com/package-install-1.0.3-1.src.rpm',
+            'https://example.com/package-install-1.0.2-1.x86_64.rpm',
+            'https://example.com/package-install-1.0.2-1.src.rpm',
+            'https://example.com/package-noinstall-1.0.1-1.x86_64.rpm',
+            'https://example.com/package-noinstall-1.0.1-1.src.rpm'
+        ])),
+    ])
 
     monkeypatch.setattr(Command, '__init__', mock_command_init)
     monkeypatch.setattr(Command, 'run', mock_command_run)
@@ -73,7 +101,7 @@ def test_guest_setup(module, environment_index, tmpdir, monkeypatch):
     execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
     guest = mock_guest(execute_mock)
     guest.environment = module.shared('testing_farm_request').environments_requested[environment_index]
-    guest.environment.excluded_packages = ['dummy3']
+    guest.environment.excluded_packages = ['dummy2']
 
     module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir))
 
@@ -92,12 +120,12 @@ def test_guest_setup(module, environment_index, tmpdir, monkeypatch):
         call('command -v dnf'),
         call('curl --output /etc/yum.repos.d/repo4.repo.repo -LO https://example.com/repo4.repo'),
         call('mkdir -pv dummy-path'),
-        call('cd dummy-path; echo https://example.com/dummy3.rpm https://example.com/package-install-1.0.2.rpm https://example.com/dummy3.rpm https://example.com/package-install-1.0.2.rpm https://example.com/package-install-1.0.2.rpm | xargs -n1 curl -sO'),
-        call('dnf -y reinstall https://example.com/package-install-1.0.2.rpm https://example.com/package-install-1.0.2.rpm https://example.com/package-install-1.0.2.rpm'),
-        call('dnf -y downgrade --allowerasing https://example.com/package-install-1.0.2.rpm https://example.com/package-install-1.0.2.rpm https://example.com/package-install-1.0.2.rpm'),
-        call('dnf -y update --allowerasing https://example.com/package-install-1.0.2.rpm https://example.com/package-install-1.0.2.rpm https://example.com/package-install-1.0.2.rpm'),
-        call('dnf -y install --allowerasing https://example.com/package-install-1.0.2.rpm https://example.com/package-install-1.0.2.rpm https://example.com/package-install-1.0.2.rpm'),
-        call('basename --suffix=.rpm https://example.com/package-install-1.0.2.rpm https://example.com/package-install-1.0.2.rpm https://example.com/package-install-1.0.2.rpm | xargs rpm -q')
+        call('cd dummy-path; echo https://example.com/dummy1-1.0.1-1.x86_64.rpm https://example.com/dummy2-1.0.1-1.src.rpm https://example.com/dummy2-1.0.1-1.x86_64.rpm https://example.com/package-install-1.0.1-1.src.rpm https://example.com/package-install-1.0.2-1.src.rpm https://example.com/package-install-1.0.3-1.src.rpm https://example.com/package-install-1.0.3-1.x86_64.rpm | xargs -n1 curl -sO'),
+        call('dnf -y reinstall https://example.com/dummy1-1.0.1-1.x86_64.rpm https://example.com/package-install-1.0.3-1.x86_64.rpm'),
+        call('dnf -y downgrade --allowerasing https://example.com/dummy1-1.0.1-1.x86_64.rpm https://example.com/package-install-1.0.3-1.x86_64.rpm'),
+        call('dnf -y update --allowerasing https://example.com/dummy1-1.0.1-1.x86_64.rpm https://example.com/package-install-1.0.3-1.x86_64.rpm'),
+        call('dnf -y install --allowerasing https://example.com/dummy1-1.0.1-1.x86_64.rpm https://example.com/package-install-1.0.3-1.x86_64.rpm'),
+        call('basename --suffix=.rpm https://example.com/dummy1-1.0.1-1.x86_64.rpm https://example.com/package-install-1.0.3-1.x86_64.rpm | xargs rpm -q')
     ]
 
     execute_mock.assert_has_calls(execute_calls)

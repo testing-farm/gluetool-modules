@@ -66,10 +66,12 @@ class InstallRepository(gluetool.Module):
     def _filter_latest_packages(self, packages: List[str]) -> List[str]:
         filtered_packages = []
         package_details_list = []
+        src_rpm_packages: List[str] = []
 
         for package in packages:
             # skip srpm package
-            if package.endswith('src.rpm'):
+            if package.endswith('.src.rpm'):
+                src_rpm_packages.append(package)
                 continue
 
             # Remove url part, keep only rpm names
@@ -101,7 +103,7 @@ class InstallRepository(gluetool.Module):
             filtered_packages.append(latest_package)
 
         # Sorted here is just for consistent results in tests
-        return sorted([package.url for package in filtered_packages])
+        return sorted([package.url for package in filtered_packages] + src_rpm_packages)
 
     def _install_repository_artifacts(
         self,

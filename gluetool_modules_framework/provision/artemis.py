@@ -6,6 +6,7 @@ import re
 import six
 import sys
 import os
+import time
 
 import gluetool
 import gluetool.utils
@@ -784,6 +785,12 @@ class ArtemisProvisioner(gluetool.Module):
                 'help': 'Provision given number of guests',
                 'metavar': 'COUNT',
                 'type': int
+            },
+            'wait': {
+                'help': '''Wait given number of SECONDS before destroying the guests.
+                           Useful for testing. Works only with the --provision option.''',
+                'metavar': 'SECONDS',
+                'type': int
             }
         }),
         ('Guest options', {
@@ -842,6 +849,11 @@ class ArtemisProvisioner(gluetool.Module):
                 'metavar': 'POST_INSTALL_SCRIPT',
                 'type': str,
                 'default': ''
+            },
+            'acquire-log': {
+                'help': 'Acquire given log for the guest',
+                'metavar': 'LOG-NAME:VARIANT/CONTENT-TYPE',
+                'type': str,
             }
         }),
         ('Timeout options', {
@@ -1014,6 +1026,9 @@ class ArtemisProvisioner(gluetool.Module):
 
         if self.option('api-version') not in SUPPORTED_API_VERSIONS:
             raise GlueError('Unsupported API version, only {} are supported'.format(', '.join(SUPPORTED_API_VERSIONS)))
+
+        if self.option('wait') and not self.option('provision'):
+            raise GlueError('Option --provision required with --wait.')
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(ArtemisProvisioner, self).__init__(*args, **kwargs)
@@ -1206,6 +1221,11 @@ class ArtemisProvisioner(gluetool.Module):
         if self.option('setup-provisioned'):
             for guest in self.guests:
                 guest.setup()
+
+        wait = self.option('wait')
+        if wait:
+            self.warn('Waiting for {} seconds as requested ...'.format(wait))
+            time.sleep(wait)
 
     def remove_from_list(self, guest: ArtemisGuest) -> None:
         if guest not in self.guests:

@@ -147,6 +147,13 @@ integration:
     - make staging/apply/artemis/ci
     - make generate/staging/citool-config/ci
     - make test/staging/pipeline/ci
+  artifacts:
+    expose_as: integration-report
+    paths:
+      - report.html
+      - assets/
+    when: always
+
   after_script:
     - cd $INFRA_PATH
     - direnv allow

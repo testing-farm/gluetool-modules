@@ -849,6 +849,11 @@ class ArtemisProvisioner(gluetool.Module):
                 'metavar': 'POST_INSTALL_SCRIPT',
                 'type': str,
                 'default': ''
+            },
+            'acquire-log': {
+                'help': 'Acquire given log for the guest',
+                'metavar': 'LOG-NAME:VARIANT/CONTENT-TYPE',
+                'type': str,
             }
         }),
         ('Timeout options', {

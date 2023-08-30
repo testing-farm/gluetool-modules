@@ -323,6 +323,11 @@ class ArtemisAPI(object):
                 response.json()
             ))
 
+        acquire_log = self.module.option('acquire-log')
+        if acquire_log:
+            self.module.debug('Asking for log {}'.format(acquire_log))
+            self.api_call('guests/logs/{}'.format(self.module.option('log-name')), method='POST', expected_status_codes=[202])
+
         return response.json()
 
     def inspect_guest(self, guest_id: str) -> Any:

@@ -27,6 +27,30 @@
                     }
                 },
                 "x86_64": {
+                    "apache-commons-cli-0:1.4-17.el9.src": {
+                        "apache-commons-cli-0:1.4-17.el9.noarch": {
+                            "category": "binary",
+                            "path": "AppStream/x86_64/os/Packages/apache-commons-cli-1.4-17.el9.noarch.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "apache-commons-cli-0:1.4-17.el9.src": {
+                            "category": "source",
+                            "path": "AppStream/source/tree/Packages/apache-commons-cli-1.4-17.el9.src.rpm",
+                            "sigkey": "fd431d51"
+                        }
+                    },
+                    "apache-commons-cli-0:1.5.0-4.module+el9.2.0+18047+4ad4bba4.src": {
+                        "apache-commons-cli-0:1.5.0-4.module+el9.2.0+18047+4ad4bba4.noarch": {
+                            "category": "binary",
+                            "path": "AppStream/x86_64/os/Packages/apache-commons-cli-1.5.0-4.module+el9.2.0+18047+4ad4bba4.noarch.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "apache-commons-cli-0:1.5.0-4.module+el9.2.0+18047+4ad4bba4.src": {
+                            "category": "source",
+                            "path": "AppStream/source/tree/Packages/apache-commons-cli-1.5.0-4.module+el9.2.0+18047+4ad4bba4.src.rpm",
+                            "sigkey": "fd431d51"
+                        }
+                    },
                     "Box2D-0:2.4.1-7.el9.src": {
                         "Box2D-0:2.4.1-7.el9.x86_64": {
                             "category": "binary",
@@ -53,12 +77,48 @@
             "CRB": {
                 "x86_64": {
                     "CUnit-0:2.1.3-25.el9.src": {
-                        "CUnit-devel-0:2.1.3-25.el9.i686": {},
-                        "CUnit-devel-0:2.1.3-25.el9.x86_64": {}
+                        "CUnit-devel-0:2.1.3-25.el9.i686": {
+                            "category": "binary",
+                            "path": "CRB/x86_64/os/Packages/CUnit-devel-2.1.3-25.el9.i686.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "CUnit-devel-0:2.1.3-25.el9.x86_64": {
+                            "category": "binary",
+                            "path": "CRB/x86_64/os/Packages/CUnit-devel-2.1.3-25.el9.x86_64.rpm",
+                            "sigkey": "fd431d51"
+                        }
                     },
                     "gcc-0:11.3.1-4.3.el9.src": {
-                        "gcc-plugin-devel-0:11.3.1-4.3.el9.i686": {},
-                        "gcc-plugin-devel-debuginfo-0:11.3.1-4.3.el9.x86_64": {}
+                        "gcc-plugin-devel-0:11.3.1-4.3.el9.i686": {
+                            "category": "binary",
+                            "path": "CRB/x86_64/os/Packages/gcc-plugin-devel-11.3.1-4.3.el9.i686.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "gcc-plugin-devel-0:11.3.1-4.3.el9.x86_64": {
+                            "category": "binary",
+                            "path": "CRB/x86_64/os/Packages/gcc-plugin-devel-11.3.1-4.3.el9.x86_64.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "gcc-plugin-devel-debuginfo-0:11.3.1-4.3.el9.i686": {
+                            "category": "debug",
+                            "path": "CRB/x86_64/debug/tree/Packages/gcc-plugin-devel-debuginfo-11.3.1-4.3.el9.i686.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "gcc-plugin-devel-debuginfo-0:11.3.1-4.3.el9.x86_64": {
+                            "category": "debug",
+                            "path": "CRB/x86_64/debug/tree/Packages/gcc-plugin-devel-debuginfo-11.3.1-4.3.el9.x86_64.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "libstdc++-static-0:11.3.1-4.3.el9.i686": {
+                            "category": "binary",
+                            "path": "CRB/x86_64/os/Packages/libstdc++-static-11.3.1-4.3.el9.i686.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "libstdc++-static-0:11.3.1-4.3.el9.x86_64": {
+                            "category": "binary",
+                            "path": "CRB/x86_64/os/Packages/libstdc++-static-11.3.1-4.3.el9.x86_64.rpm",
+                            "sigkey": "fd431d51"
+                        }
                     }
                 }
             }

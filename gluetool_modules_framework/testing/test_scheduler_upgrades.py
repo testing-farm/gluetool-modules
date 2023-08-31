@@ -4,9 +4,7 @@
 import re
 
 # Type annotations
-from typing import Optional, cast
-
-import six
+from typing import Optional, cast  # noqa
 
 import gluetool
 from gluetool.log import log_dict
@@ -121,7 +119,7 @@ class TestSchedulerUpgrades(gluetool.Module):
 
         metadata_rpms_json = response.json()
 
-        binary_rpms_set = set()
+        binary_rpms_set: set[str] = set()
 
         repos = metadata_rpms_json['payload']['rpms'].keys()
         if self.option('repos'):
@@ -132,15 +130,13 @@ class TestSchedulerUpgrades(gluetool.Module):
                 if repo not in gluetool.utils.normalize_multistring_option(self.option('exclude-repos'))]
 
         for repo_name in repos:
-            for srpm_name in metadata_rpms_json['payload']['rpms'][repo_name]['x86_64']:
-                if splitFilename(srpm_name)[0] in components:
-                    binary_rpms_set.update(
-                        metadata_rpms_json['payload']['rpms'][repo_name]['x86_64'][srpm_name].keys()
-                    )
+            for srpm_name, rpms in metadata_rpms_json['payload']['rpms'][repo_name]['x86_64'].items():
+                name, _, release, _, _ = splitFilename(srpm_name)
+                # filter out modular builds
+                if name in components and 'module+' not in release:
+                    # keep only binary rpms, i.e. exclude debug and source rpms
+                    binary_rpms_set.update(rpm for rpm in rpms if rpms[rpm]['category'] == 'binary')
 
-        binary_rpms_set = {
-            six.ensure_str(package) for package in binary_rpms_set if not package.endswith('.src')
-        }
         log_dict(self.debug, 'binary rpm nevrs found in compose', sorted(binary_rpms_set))
 
         binary_rpms_list = sorted({splitFilename(package)[0] for package in binary_rpms_set})

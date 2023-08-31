@@ -82,7 +82,7 @@ def test_rpms_arch(module, monkeypatch):
 
 def test_rpms_found_morerepos(module, monkeypatch):
     assert rpms_list(module, monkeypatch, ['AppStream', 'CRB'], ['Box2D', 'CUnit', 'gcc']) ==\
-        ['Box2D', 'CUnit-devel', 'gcc-plugin-devel', 'gcc-plugin-devel-debuginfo']
+        ['Box2D', 'CUnit-devel', 'gcc-plugin-devel', 'libstdc++-static']
 
 
 def test_rpms_nopackages(module, monkeypatch):
@@ -92,7 +92,7 @@ def test_rpms_nopackages(module, monkeypatch):
 def test_rpms_default(module, monkeypatch):
     monkeypatch.setattr(requests, 'get', MagicMock(return_value=MockResponse))
     assert module.binary_rpms_list('', ['Box2D', 'ModemManager', 'CUnit', 'gcc', 'glibc']) ==\
-        ['Box2D', 'CUnit-devel', 'gcc-plugin-devel', 'gcc-plugin-devel-debuginfo']
+        ['Box2D', 'CUnit-devel', 'gcc-plugin-devel', 'libstdc++-static']
 
 
 def test_rpms_exclude(module, monkeypatch):
@@ -100,6 +100,18 @@ def test_rpms_exclude(module, monkeypatch):
     module._config['exclude-repos'] = ['CRB']
     assert module.binary_rpms_list('', ['Box2D', 'ModemManager', 'CUnit', 'gcc', 'glibc']) ==\
         ['Box2D']
+
+
+def test_rpms_nodebug(module, monkeypatch):
+    assert rpms_list(module, monkeypatch, ['CRB'], ['gcc']) == ['gcc-plugin-devel', 'libstdc++-static']
+
+
+def test_rpms_nosource(module, monkeypatch):
+    assert rpms_list(module, monkeypatch, ['AppStream'], ['Box2D']) == ['Box2D']
+
+
+def test_rpms_nomodule(module, monkeypatch):
+    assert rpms_list(module, monkeypatch, ['AppStream'], ['apache-commons-cli']) == ['apache-commons-cli']
 
 
 class MockFailedResponse:

@@ -35,6 +35,7 @@ class Phase:
 class TestCase:
     name: str
     result: Optional[str] = None
+    note: Optional[str] = None
     properties: Dict[str, str] = attrs.field(factory=dict)
     logs: List[Log] = attrs.field(factory=list)
     requested_environment: Optional[TestingEnvironment] = None

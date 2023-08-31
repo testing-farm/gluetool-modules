@@ -6,5 +6,6 @@
       - logs/tests/core/docs/journal.txt
 - name: /tests/core/dry
   result: pass
+  note: 'original result: fail'
   log:
       - logs/tests/core/dry/out.log

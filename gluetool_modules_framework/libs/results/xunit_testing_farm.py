@@ -127,7 +127,7 @@ class XUnitTFTestOutputs:
     test_output: List[XUnitTFTestOutput] = attrs.field(factory=list, metadata={'name': 'test-output'})
 
     @classmethod
-    def construct(self, test_outputs: List[str]) -> 'XUnitTFTestOutputs':
+    def construct(cls, test_outputs: List[str]) -> 'XUnitTFTestOutputs':
         return XUnitTFTestOutputs(test_output=[XUnitTFTestOutput(message=message) for message in test_outputs])
 
 
@@ -160,6 +160,7 @@ class XUnitTFTestCase:
     name: str = attrs.field(metadata={'type': 'Attribute'})
     result: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
     time: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})  # Property used in BaseOS CI result
+    note: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
 
     properties: Optional[XUnitTFProperties]
     parameters: Optional[XUnitTFParameters] = None  # Property used in BaseOS CI results.xml
@@ -193,6 +194,7 @@ class XUnitTFTestCase:
         return XUnitTFTestCase(
             name=test_case.name,
             result=test_case.result,
+            note=test_case.note,
             properties=XUnitTFProperties.construct(test_case.properties) if test_case.properties else None,
             logs=XUnitTFLogs.construct(test_case.logs) if test_case.logs else None,
             testing_environment=environments,

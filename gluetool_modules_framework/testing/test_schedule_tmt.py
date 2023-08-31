@@ -127,6 +127,7 @@ class TestResult:
     name: str
     result: str
     artifacts: List[TestArtifact]
+    note: Optional[str] = None
 
 
 @attrs.define
@@ -147,6 +148,10 @@ class TMTResult:
         member_validator=attrs.validators.instance_of(str),
         iterable_validator=attrs.validators.instance_of(list)
     ))
+    note: Optional[str] = attrs.field(
+        default=None,
+        validator=attrs.validators.optional(attrs.validators.instance_of(str))
+    )
 
 
 @attrs.define
@@ -428,7 +433,7 @@ def gather_plan_results(
         for log in logs:
             artifacts.append(TestArtifact(name=os.path.basename(log), path=os.path.join(artifacts_dir, log)))
 
-        test_results.append(TestResult(name=result.name, result=outcome, artifacts=artifacts))
+        test_results.append(TestResult(name=result.name, result=outcome, artifacts=artifacts, note=result.note))
 
     # count the maximum result weight encountered, i.e. the overall result
     max_weight = max(RESULT_WEIGHT[result.result] for result in results)
@@ -1335,6 +1340,7 @@ class TestScheduleTMT(Module):
             test_case = TestCase(
                 name=task.name,
                 result=task.result,
+                note=task.note
             )
 
             if task.result == 'failed':

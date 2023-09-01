@@ -58,6 +58,7 @@ requests:
           keyname: some-key
           username: some-user
           port: 22
+        environment: {}
 
 asserts:
   guest:

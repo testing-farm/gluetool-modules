@@ -1086,6 +1086,7 @@ class ArtemisProvisioner(gluetool.Module):
                              key=ssh_key, options=options)
         guest.info('Guest is being provisioned')
         log_dict(guest.debug, 'Created guest request', response)
+        log_dict(guest.info, 'Created guest request with environment', response['environment'])
 
         event_log_uri = self.shared('artifacts_location', guest.event_log_path, self.logger)
         guest.info("guest event log: {}".format(event_log_uri))

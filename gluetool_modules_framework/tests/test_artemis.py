@@ -357,7 +357,7 @@ def test_provisioner_capabilities(module):
     'ip_not_ready',
     'snapshot_error'
 ], indirect=True)
-def test_provision(monkeypatch, module, scenario, tmpdir):
+def test_provision(monkeypatch, module, scenario, tmpdir, log):
     environment, guest, snapshot, exception = scenario
 
     # Save guest events yaml file to a tmp directory
@@ -371,6 +371,7 @@ def test_provision(monkeypatch, module, scenario, tmpdir):
 
         if environment:
             module.provision(environment)
+            assert log.match(levelno=logging.INFO, message='Created guest request with environment:\n{}')
 
         for key in guest.keys():
             assert getattr(module.guests[0], key) == guest[key]

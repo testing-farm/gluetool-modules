@@ -78,6 +78,7 @@ requests:
           keyname: some-key
           username: some-user
           port: 22
+        environment: {}
 
     - url: guests/e1c0642d-e5c3-4db9-a845-e740e201e734/snapshots$
       status_code: 201

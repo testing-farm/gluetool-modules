@@ -61,6 +61,7 @@ requests:
           keyname: some-key
           username: some-user
           port: 22
+        environment: {}
 
 asserts:
   exception: "Guest couldn't be provisioned: Artemis resource ended in 'error' state"

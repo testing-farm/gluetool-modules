@@ -19,7 +19,7 @@ from gluetool_modules_framework.libs.test_schedule import (
 
 # Type annotations
 from typing import TYPE_CHECKING, cast, Any, Callable, Dict, List, Optional  # noqa
-from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleEntry  # noqa
+from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleEntry, TestScheduleResult  # noqa
 
 # Make sure all enums listed here use lower case values only, they will not work correctly with config file otherwise.
 STRING_TO_ENUM = {
@@ -96,6 +96,10 @@ class TestScheduleRunner(gluetool.Module):
             'help': "Reuse guests for running multiple tests",
             'action': 'store_true'
         },
+        'destroy-if-fail': {
+            'help': 'If the schedule entry fails, destroy its guest. This works only with the --reuse-guests option.',
+            'action': 'store_true'
+        },
     }
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -149,6 +153,9 @@ class TestScheduleRunner(gluetool.Module):
 
         else:
             self.info('Will run schedule entries serially')
+
+        if self.option('destroy-if-fail') and not self.option('reuse-guests'):
+            raise GlueError('--destroy-if-fail option works only together with the --reuse-guests')
 
     def _get_entry_ready(self, schedule_entry: TestScheduleEntry) -> None:
 
@@ -268,8 +275,17 @@ class TestScheduleRunner(gluetool.Module):
 
         if self.option('reuse-guests'):
             assert schedule_entry.guest is not None
-            self._guests_cache.append(schedule_entry.guest)
-            return
+
+            if schedule_entry.result in [TestScheduleResult.FAILED, TestScheduleResult.ERROR]:
+
+                if self.option('destroy-if-fail'):
+                    self.info('The {} guest will be destroyed.'.format(schedule_entry.guest.name))
+                    self._destroy_guest(schedule_entry)
+                    return
+
+            else:
+                self._guests_cache.append(schedule_entry.guest)
+                return
 
         self._destroy_guest(schedule_entry)
 

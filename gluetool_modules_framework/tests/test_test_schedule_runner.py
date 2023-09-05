@@ -99,6 +99,43 @@ def test_execute(module, monkeypatch):
     assert test_schedule[0].result == TSResult.UNDEFINED
 
 
+def test_execute_destroy_if_fail(module, monkeypatch):
+    module._config['reuse-guests'] = True
+    module._config['destroy-if-fail'] = True
+    module._config['max-parallel'] = 1
+    guest_mock = GuestMock(
+        hostname='foo',
+        environment=TestingEnvironment(arch='x86_64', compose='Fedora37'),
+        name='bar'
+    )
+    test_schedule = create_test_schedule([
+        (TSEntryStage.CREATED, TSEntryState.OK, TSResult.FAILED),
+        (TSEntryStage.CREATED, TSEntryState.OK, TSResult.UNDEFINED),
+        (TSEntryStage.CREATED, TSEntryState.OK, TSResult.UNDEFINED)
+    ])
+    test_schedule_mock = MagicMock(return_value=test_schedule)
+    run_test_schedule_entry_mock = MagicMock()
+    provision_mock = MagicMock(return_value=[guest_mock])
+    patch_shared(monkeypatch, module, {}, callables={
+        'test_schedule': test_schedule_mock,
+        'evaluate_filter': evaluate_filter_mock,
+        'provision': provision_mock,
+        'run_test_schedule_entry': run_test_schedule_entry_mock
+    })
+    module.execute()
+
+    provision_mock.call_args_list == [
+        call(TestingEnvironment(arch='x86_64', compose='Fedora37')),
+        call(TestingEnvironment(arch='x86_64', compose='Fedora37'))
+    ]
+    guest_mock.destroy.assert_has_calls([call(), call()])
+    assert len(test_schedule) == 3
+
+    for i in range(3):
+        assert test_schedule[i].stage == TSEntryStage.COMPLETE
+        assert test_schedule[i].state == TSEntryState.OK
+
+
 def test_execute_reuse_guests(module, monkeypatch):
     module._config['reuse-guests'] = True
     module._config['max-parallel'] = 1

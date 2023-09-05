@@ -789,10 +789,7 @@ class ArtemisGuest(NetworkedGuest):
         self.console_log = latest_console_log
         self.console_log_file = str(self.module.option('console-log-filename').format(guestname=self.artemis_id))
 
-        self._save_console_log(
-            self.console_log_file,
-            latest_console_log
-        )
+        self._save_console_log(self.console_log_file, latest_console_log)
 
         updated = response.json().get('updated')
         if not updated:
@@ -1236,6 +1233,9 @@ class ArtemisProvisioner(gluetool.Module):
         guest.info('Guest is being provisioned')
         log_dict(guest.debug, 'Created guest request', response)
         log_dict(guest.info, 'Created guest request with environment', response['environment'])
+
+        if self.option('enable-console-log'):
+            guest.start_console_logging()
 
         if self.option('enable-console-log'):
             guest.start_console_logging()

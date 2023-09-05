@@ -1127,11 +1127,7 @@ class ArtemisProvisioner(gluetool.Module):
         except (GlueError, KeyboardInterrupt) as exc:
             message = 'KeyboardInterrupt' if isinstance(exc, KeyboardInterrupt) else str(exc)
             self.warn("Exception while provisioning guest: {}".format(message))
-            if not self.option('keep'):
-                self.info("Cancelling guest '{}'".format(guestname))
-                self.api.cancel_guest(guestname)
-            else:
-                self.warn("Keeping guest '{}' provisioned".format(guestname))
+            guest.destroy()
             six.reraise(*sys.exc_info())
 
         return guest

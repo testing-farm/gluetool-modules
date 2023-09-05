@@ -22,6 +22,7 @@ from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestSche
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from gluetool_modules_framework.libs.guest import NetworkedGuest
 from gluetool_modules_framework.libs.results import TestSuite, Results
+from gluetool_modules_framework.provision.artemis import ArtemisGuest, ArtemisProvisioner
 
 from . import create_module
 from . import patch_shared
@@ -45,6 +46,11 @@ def fixture_module_scheduler():
 @pytest.fixture(name='module_runner')
 def fixture_module_runner():
     return create_module(gluetool_modules_framework.testing.test_schedule_runner_sti.STIRunner)[1]
+
+
+@pytest.fixture(name='module_artemis_provisioner')
+def fixture_module_artemis_provisioner():
+    return create_module(ArtemisProvisioner)[1]
 
 
 def clone_mock(logger=None, prefix=None):
@@ -255,7 +261,7 @@ def test_run_test_schedule_entry(module_runner, monkeypatch, results_filename, r
         read_asset_file('results-junit2.xml')
     )
 ])
-def test_serialize_test_schedule_entry_results(module_runner, schedule_entry_results,
+def test_serialize_test_schedule_entry_results(module_runner, module_artemis_provisioner, schedule_entry_results,
                                                expected_schedule_entry_outputs, expected_xml, expected_junit):
     schedule_entry = TestScheduleEntry(
         gluetool.log.Logging().get_logger(),
@@ -264,8 +270,13 @@ def test_serialize_test_schedule_entry_results(module_runner, schedule_entry_res
     )
     schedule_entry.artifact_dirpath = 'some/artifact-dirpath'
     schedule_entry.work_dirpath = 'some/work-dirpath'
-    schedule_entry.guest = NetworkedGuest(module_runner, 'hostname', 'name')
-    schedule_entry.guest.environment = TestingEnvironment(arch='x86_64', compose='rhel-9')
+    schedule_entry.guest = ArtemisGuest(
+        module_artemis_provisioner,
+        'name',
+        'hostname',
+        environment=TestingEnvironment(arch='x86_64', compose='rhel-9')
+    )
+    schedule_entry.guest.console_log_file = 'console-11bbebc3-7029-4154-98ac-b18544181714.log'
     schedule_entry.testing_environment = TestingEnvironment(arch='x86_64', compose='rhel-9')
     schedule_entry.results = schedule_entry_results
     schedule_entry.runner_capability = 'sti'

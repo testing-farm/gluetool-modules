@@ -4,6 +4,9 @@
   <property name="baseosci.overall-result" value="some-schedule-result"/>
  </properties>
  <testsuite name="some-suite" result="some-result" tests="1">
+  <logs>
+   <log href="some/work-dirpath/console-11bbebc3-7029-4154-98ac-b18544181714.log" name="console.log"/>
+  </logs>
   <testcase name="foo" result="fail">
    <properties>
     <property name="baseosci.arch" value="x86_64"/>

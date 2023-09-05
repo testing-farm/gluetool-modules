@@ -21,6 +21,7 @@ from gluetool_modules_framework.libs.artifacts import artifacts_location
 from gluetool_modules_framework.libs.test_schedule import (
     TestScheduleResult, TestScheduleEntryOutput, TestScheduleEntryStage
 )
+from gluetool_modules_framework.provision.artemis import ArtemisGuest
 
 # Type annotations
 from typing import cast, Any, Callable, Dict, List, Optional, Tuple  # noqa
@@ -390,6 +391,12 @@ sut     ansible_host={} ansible_user=root {}
 
         if not schedule_entry.results:
             return
+
+        if schedule_entry.work_dirpath and isinstance(schedule_entry.guest, ArtemisGuest) \
+                and schedule_entry.guest.console_log_file:
+            console_log_filepath = os.path.join(schedule_entry.work_dirpath, schedule_entry.guest.console_log_file)
+            console_log_href = artifacts_location(self, console_log_filepath)
+            test_suite.logs.append(Log(href=console_log_href, name='console.log'))
 
         for task in schedule_entry.results:
             test_case = TestCase(name=task.name, result=task.result)

@@ -1150,11 +1150,11 @@ class ArtemisProvisioner(gluetool.Module):
             raise GlueError('Option --provision required with --wait.')
 
         console_log_filename = self.option('console-log-filename')
-        if self.option(console_log_filename) and '{guestname}' not in console_log_filename:
+        if console_log_filename and '{guestname}' not in console_log_filename:
             raise GlueError("Option --console-log-filename must include '{guestname}' string.")
 
         console_log_datetime_filename = self.option('console-log-datetime-filename')
-        if self.option(console_log_filename):
+        if console_log_datetime_filename:
             if '{guestname}' not in console_log_datetime_filename:
                 raise GlueError("Option '--console-log-datetime-filename' must include '{guestname}' string.")
             if '{datetime}' not in console_log_datetime_filename:

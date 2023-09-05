@@ -129,7 +129,7 @@ integration:
     - type-check
   variables:
     INFRA_REPO: https://gitlab.com/testing-farm/infrastructure
-    INFRA_PATH: /builds/testing-farm/infrastructure
+    INFRA_PATH: infrastructure
     INFRA_BRANCH: main
     # Use the worker image build in the "container" step
     WORKER_IMAGE: quay.io/testing-farm/worker:$CI_PIPELINE_ID
@@ -148,17 +148,18 @@ integration:
     - make generate/staging/citool-config/ci
     - make test/staging/pipeline/ci
   artifacts:
-    expose_as: integration-report
     paths:
-      - report.html
-      - assets/
+      - $INFRA_PATH/.pytest
+      - $INFRA_PATH/assets/style.css
+      - $INFRA_PATH/report.html
     when: always
 
   after_script:
     - cd $INFRA_PATH
     - direnv allow
     - eval "$(direnv export bash)"
-    - make staging/destroy/artemis/ci
+    # NOTE: this leaks secrets, rather hide it
+    - make staging/destroy/artemis/ci &> /dev/null
 
 # Generate documentation from the sources
 #

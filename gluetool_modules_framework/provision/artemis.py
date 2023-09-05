@@ -66,7 +66,7 @@ DEFAULT_SSH_OPTIONS = ['UserKnownHostsFile=/dev/null', 'StrictHostKeyChecking=no
 DEFAULT_SNAPSHOT_READY_TIMEOUT = 600
 DEFAULT_SNAPSHOT_READY_TICK = 10
 DEFAULT_CONNECT_TIMEOUT = 10
-DEFAULT_CONSOLE_LOG_TICK = 10
+DEFAULT_CONSOLE_LOG_TICK = 60
 
 ARTEMIS_LOG_TYPE = 'console:dump/blob'
 DEFAULT_CONSOLE_LOG_FILENAME = 'console-{guestname}.log'
@@ -567,6 +567,7 @@ class ArtemisGuest(NetworkedGuest):
         self.event_log_path = '{}{}'.format(guestname, EVENT_LOG_SUFFIX)
         self.console_log: Optional[str] = None
         self.console_log_timer: Optional[RepeatTimer] = None
+        self.console_log_file: Optional[str] = None
 
     def __str__(self) -> str:
         return 'ArtemisGuest({}, {}@{}, {})'.format(self.artemis_id, self.username, self.hostname, self.environment)
@@ -786,8 +787,10 @@ class ArtemisGuest(NetworkedGuest):
         # save main console log
         log_blob(self.debug, 'saving latest console log', latest_console_log)
         self.console_log = latest_console_log
+        self.console_log_file = str(self.module.option('console-log-filename').format(guestname=self.artemis_id))
+
         self._save_console_log(
-            self.module.option('console-log-filename').format(guestname=self.artemis_id),
+            self.console_log_file,
             latest_console_log
         )
 

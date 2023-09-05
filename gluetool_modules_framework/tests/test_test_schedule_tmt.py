@@ -21,6 +21,7 @@ from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
 from gluetool_modules_framework.libs.sut_installation import INSTALL_COMMANDS_FILE
 from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 from gluetool_modules_framework.libs.results import TestSuite
+from gluetool_modules_framework.provision.artemis import ArtemisGuest
 from gluetool_modules_framework.testing.test_schedule_tmt import (gather_plan_results, TestScheduleEntry, TMTPlan,
                                                                   TMTPlanProvision, TMTPlanPrepare)
 from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact
@@ -72,13 +73,16 @@ def fixture_module_dist_git():
 
 
 @pytest.fixture(name='guest')
-def fixture_guest():
-    guest = MagicMock()
-    guest.name = 'guest0'
-    guest.hostname = 'guest0'
-    guest.key = 'mockkey0'
+def fixture_guest(module):
+    guest = ArtemisGuest(
+        MagicMock(),
+        'guest0',
+        hostname='guest0',
+        environment=TestingEnvironment(compose='guest-compose'),
+        key='mockkey0'
+    )
     guest.execute = MagicMock(return_value=MagicMock(stdout='', stderr=''))
-    guest.environment = TestingEnvironment(compose='guest-compose')
+    guest.console_log_file = 'console-5b926c73-d868-4b3a-aad0-e85718a556aa.log'
     return guest
 
 
@@ -227,10 +231,11 @@ def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest
     test_suite = TestSuite(name='some-suite', result='some-result')
     module.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
 
-    assert len(test_suite.logs) == 3
+    assert len(test_suite.logs) == 4
     assert test_suite.logs[0].name == 'workdir'
     assert test_suite.logs[1].name == 'tmt-log'
-    assert test_suite.logs[2].name == 'tmt-reproducer'
+    assert test_suite.logs[2].name == 'console.log'
+    assert test_suite.logs[3].name == 'tmt-reproducer'
 
     shutil.rmtree(schedule_entry.work_dirpath)
 

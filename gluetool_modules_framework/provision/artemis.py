@@ -567,6 +567,7 @@ class ArtemisGuest(NetworkedGuest):
         self.event_log_path = '{}{}'.format(guestname, EVENT_LOG_SUFFIX)
         self.console_log: Optional[str] = None
         self.console_log_timer: Optional[RepeatTimer] = None
+        self.console_log_file: Optional[str] = None
 
     def __str__(self) -> str:
         return 'ArtemisGuest({}, {}@{}, {})'.format(self.artemis_id, self.username, self.hostname, self.environment)
@@ -786,8 +787,10 @@ class ArtemisGuest(NetworkedGuest):
         # save main console log
         log_blob(self.debug, 'saving latest console log', latest_console_log)
         self.console_log = latest_console_log
+        self.console_log_file = str(self.module.option('console-log-filename').format(guestname=self.artemis_id))
+
         self._save_console_log(
-            self.module.option('console-log-filename').format(guestname=self.artemis_id),
+            self.console_log_file,
             latest_console_log
         )
 

@@ -31,6 +31,7 @@ from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestSche
 from gluetool_modules_framework.libs.test_schedule import TestScheduleEntry as BaseTestScheduleEntry
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
 from gluetool_modules_framework.libs.git import RemoteGitRepository
+from gluetool_modules_framework.provision.artemis import ArtemisGuest
 
 # Type annotations
 from typing import cast, Any, Callable, Dict, List, Optional, Tuple, Union  # noqa
@@ -1327,6 +1328,11 @@ class TestScheduleTMT(Module):
             tmt_log_filepath = os.path.join(schedule_entry.work_dirpath, TMT_LOG)
             tmt_log_href = artifacts_location(self, tmt_log_filepath, logger=schedule_entry.logger)
             test_suite.logs.append(Log(href=tmt_log_href, name='tmt-log'))
+
+            if isinstance(schedule_entry.guest, ArtemisGuest) and schedule_entry.guest.console_log_file:
+                console_log_filepath = os.path.join(schedule_entry.work_dirpath, schedule_entry.guest.console_log_file)
+                console_log_href = artifacts_location(self, console_log_filepath)
+                test_suite.logs.append(Log(href=console_log_href, name='console.log'))
 
         if schedule_entry.tmt_reproducer_filepath:
             href = artifacts_location(self, schedule_entry.tmt_reproducer_filepath, logger=schedule_entry.logger)

@@ -40,7 +40,7 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       postgresql-devel python3.9 python3-libselinux \
                       redhat-rpm-config koji python3-virtualenv standard-test-roles \
                       rsync beakerlib-libraries rpm-build rpm-devel \
-    && dnf -y install tmt-1.26.0 tmt-provision-container-1.26.0 tmt-provision-virtual-1.26.0 tmt-report-polarion-1.26.0 tmt-report-html-1.26.0 tmt-report-reportportal-1.26.0 \
+    && dnf -y install tmt-1.26.1 tmt-provision-container-1.26.1 tmt-provision-virtual-1.26.1 tmt-report-polarion-1.26.1 tmt-report-html-1.26.1 tmt-report-reportportal-1.26.1 \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \

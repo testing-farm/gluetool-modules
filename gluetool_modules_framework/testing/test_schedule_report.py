@@ -249,6 +249,12 @@ class TestScheduleReport(gluetool.Module):
                         guest_setup_stage=stage.name.lower()
                     ))
 
+            if schedule_entry.guest and hasattr(schedule_entry.guest, 'event_log_path'):
+                test_suite.logs.append(Log(
+                    name='Guest event log',
+                    href=artifacts_location(self, schedule_entry.guest.event_log_path, logger=schedule_entry.logger)
+                ))
+
             self.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
             self._results.test_suites.append(test_suite)
 

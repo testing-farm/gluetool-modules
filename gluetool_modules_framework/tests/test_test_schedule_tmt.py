@@ -260,7 +260,7 @@ dummytmt --root some-tmt-root run --all --verbose provision --how virtual --imag
             {},
             TestingEnvironment('x86_64', 'rhel-9'),
             '''# tmt reproducer
-dummytmt --root some-tmt-root run --all --verbose provision plan --name ^plan1$ plan --name ^plan1$''',
+dummytmt --root some-tmt-root run --all --verbose provision plan --name ^plan1$''',
             None,
             None
         ),

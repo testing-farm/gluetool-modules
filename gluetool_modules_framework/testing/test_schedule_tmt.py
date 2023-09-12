@@ -1161,11 +1161,7 @@ class TestScheduleTMT(Module):
         if isinstance(schedule_entry.guest, StaticLocalhostGuest):
             local_command = [
                 # `provision` step
-                'provision',
-
-                # `plan` step
-                'plan',
-                '--name', r'^{}$'.format(re.escape(schedule_entry.plan))
+                'provision'
             ]
             command += local_command
             reproducer += local_command

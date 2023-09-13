@@ -12,7 +12,7 @@ from gluetool.log import LoggerMixin
 from gluetool.result import Result
 from gluetool.utils import dict_update, log_dict, requests, render_template
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
-from gluetool_modules_framework.libs.git import GIT_URL_REGEX
+from gluetool_modules_framework.libs.git import GIT_URL_REGEX, clone_url_hide_secrets
 
 from requests.exceptions import ConnectionError, HTTPError, Timeout
 
@@ -519,7 +519,7 @@ class TestingFarmRequestModule(gluetool.Module):
             'plan': request.tmt.plan if request.tmt and request.tmt.plan else '<not applicable>',
             'plan_filter': request.tmt.plan_filter if request.tmt and request.tmt.plan_filter else '<not applicable>',
             'test_filter': request.tmt.test_filter if request.tmt and request.tmt.test_filter else '<not applicable>',
-            'url': request.url,
+            'url': clone_url_hide_secrets(request.url),
             'ref': request.ref,
             'environments_requested': [env.serialize_to_json() for env in request.environments_requested],
             'webhook_url': request.webhook_url or '<no webhook specified>',

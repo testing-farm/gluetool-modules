@@ -6,6 +6,7 @@ import gluetool
 from gluetool.utils import normalize_multistring_option
 
 import gluetool_modules_framework.libs
+from gluetool_modules_framework.libs.git import clone_url_hide_secrets
 
 import ast
 import cattrs
@@ -113,6 +114,9 @@ class TestingEnvironment(object):
                     field_value = copy.deepcopy(field_value)
                     for key in field_value['environment']:
                         field_value['environment'][key] = '******'
+
+                elif field_name == 'variables' and field_value.get('TESTING_FARM_GIT_URL'):
+                    field_value['TESTING_FARM_GIT_URL'] = clone_url_hide_secrets(field_value['TESTING_FARM_GIT_URL'])
 
             fields.append((field_name, field_value))
 

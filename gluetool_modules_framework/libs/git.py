@@ -51,6 +51,10 @@ class FailedToMerge(RemoteGitRepositoryError):
     pass
 
 
+def clone_url_hide_secrets(clone_url: str) -> str:
+    return re.sub(GIT_URL_REGEX, r"\1*****@\3", clone_url)
+
+
 class RemoteGitRepository(gluetool.log.LoggerMixin):
     """
     A remote Git repository representation.
@@ -99,20 +103,17 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
             self.initialize_from_path(self.path)
 
     def __repr__(self) -> str:
-        clone_url = self.clone_url_hide_secrets(self.clone_url) if self.clone_url else self.clone_url
+        clone_url = clone_url_hide_secrets(self.clone_url) if self.clone_url else self.clone_url
         branch = self.branch or 'not specified'
         ref = self.ref or 'not specified'
         return '<RemoteGitRepository(clone_url={}, branch={}, ref={})>'.format(clone_url, branch, ref)
-
-    def clone_url_hide_secrets(self, clone_url: str) -> str:
-        return re.sub(GIT_URL_REGEX, r"\1*****@\3", clone_url)
 
     @property
     def commands_no_secrets(self) -> List[str]:
         """
         Returns `self.commands` with hidden secrets.
         """
-        return [self.clone_url_hide_secrets(command) for command in self.commands]
+        return [clone_url_hide_secrets(command) for command in self.commands]
 
     @property
     def is_cloned(self) -> bool:
@@ -258,7 +259,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         ref: Optional[str] = None,
         clone_args: Optional[List[str]] = None
     ) -> None:
-        clone_url_no_secrets = self.clone_url_hide_secrets(clone_url)
+        clone_url_no_secrets = clone_url_hide_secrets(clone_url)
 
         # TODO: it would be nice to be able to use the `self.__repr__` method but it is actually not correct using it
         # here, values such `branch` and `ref` can be different than the ones printed in `self.__repr__`

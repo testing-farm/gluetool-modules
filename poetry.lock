@@ -2195,6 +2195,22 @@ files = [
 ]
 
 [[package]]
+name = "secret-type"
+version = "0.3.0"
+description = "A Rune-style secret type for sensitive values in Python."
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "secret_type-0.3.0-py3-none-any.whl", hash = "sha256:44aa14b99fd274b7f58d3a3ea7ec42f96833f2e190464e85c2c903805b4f471c"},
+    {file = "secret_type-0.3.0.tar.gz", hash = "sha256:1cda5a9d6b47eb963a9a70431165759cbb90d4260b13a0649d6fdffc74c2f7ff"},
+]
+
+[package.dependencies]
+cryptography = "*"
+typing-extensions = "*"
+
+[[package]]
 name = "setuptools"
 version = "67.8.0"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
@@ -2934,4 +2950,4 @@ development = ["ipdb"]
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.9"
-content-hash = "1c3c8e2de96430acf12f2d543dfb31199e7a2616de163dede731727dd6482d38"
+content-hash = "c4dd89bb53d1d9494155907106dce1c468e3be872bd3b694267a3d1e71788cd1"

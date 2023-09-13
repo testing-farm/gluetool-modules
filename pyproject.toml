@@ -167,6 +167,7 @@ version-utils = "^0.3.2"
 attrs = "^22.2.0"
 xsdata = "^23.5"
 xsdata-attrs = "^21.11"
+secret-type = "^0.3.0"
 
 [tool.poetry.dev-dependencies]
 flake8 = "3.7.8"

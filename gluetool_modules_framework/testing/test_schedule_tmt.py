@@ -38,6 +38,7 @@ from typing import cast, Any, Callable, Dict, List, Optional, Tuple, Union  # no
 
 from gluetool_modules_framework.libs.results import (TestSuite, Log, TestCase,
                                                      TestingEnvironment as ResultsTestingEnvironment)
+from secret_type import Secret
 
 from cattrs.gen import make_dict_unstructure_fn, make_dict_structure_fn, override
 
@@ -624,7 +625,7 @@ class TestScheduleTMT(Module):
                               plan: str,
                               repodir: str) -> Optional[str]:
         # variables from testing-farm environment
-        variables: Dict[str, str] = {}
+        variables: Dict[str, Union[str, Secret[str]]] = {}
 
         if testing_environment_constraints.variables:
             variables.update(testing_environment_constraints.variables)
@@ -640,7 +641,11 @@ class TestScheduleTMT(Module):
             # we MUST use a dedicated env file for each plan, to mitigate race conditions
             # plans are handled in threads ...
             tmt_env_file = TMT_ENV_FILE.format(plan[1:].replace('/', '-'))
-            gluetool.utils.dump_yaml(variables, os.path.join(repodir, tmt_env_file))
+            # TODO: teach `gluetool.utils.dump_yaml` how to work with `secret_type.Secret`
+            gluetool.utils.dump_yaml(
+                {k: (v._dangerous_extract() if isinstance(v, Secret) else v) for k, v in variables.items()},
+                os.path.join(repodir, tmt_env_file)
+            )
 
             return tmt_env_file
 
@@ -990,7 +995,7 @@ class TestScheduleTMT(Module):
                     excluded_packages=exported_plan.excludes(logger=self.logger) if exported_plan else []
                 )
 
-                schedule_entry.tmt_reproducer.extend(repository.commands_no_secrets)
+                schedule_entry.tmt_reproducer.extend(repository.commands)
 
                 schedule_entry.context_files = context_files
                 schedule_entry.tmt_env_file = tmt_env_file

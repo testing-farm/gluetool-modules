@@ -190,7 +190,7 @@ def test_repo_already_initialized(remote_git_repository, monkeypatch):
 ], ids=['branch', 'ref'])
 def test_clone_shallow_failed(remote_git_repository, monkeypatch, log, attribute, value, messages):
     setattr(remote_git_repository, attribute, value)
-    remote_git_repository.clone_url = 'clone-url'
+    remote_git_repository.clone_url = git_module.SecretGitUrl('clone-url')
     monkeypatch.setattr(os, 'chmod', MagicMock())
 
     # git.py, unlike all other modules, is the only one that uses cmd.options to pass variables to Command.run()
@@ -311,22 +311,23 @@ def test_clone_obeys_ref(self_ref, ref, expected, remote_git_repository, monkeyp
 
 @pytest.mark.parametrize('clone_url, branch, ref, repr, prefix', [
     (
-        'some-url', 'some-branch', None,
+        git_module.SecretGitUrl('some-url'), 'some-branch', None,
         '<RemoteGitRepository(clone_url=some-url, branch=some-branch, ref=not specified)>',
         'git-some-branch'
     ),
     (
-        'some-url', None, 'some-ref',
+        git_module.SecretGitUrl('some-url'), None, 'some-ref',
         '<RemoteGitRepository(clone_url=some-url, branch=not specified, ref=some-ref)>',
         'git-some-ref'
     ),
     (
-        'some-url', None, 'refs/merge-requests/15/head',
+        git_module.SecretGitUrl('some-url'), None, 'refs/merge-requests/15/head',
         '<RemoteGitRepository(clone_url=some-url, branch=not specified, ref=refs/merge-requests/15/head)>',
         'git-refs-merge-requests-15-head'
     ),
     (
-        'https://username:secret@gitlab.com/namespace/repo', None, 'refs/merge-requests/15/head',
+        git_module.SecretGitUrl(
+            'https://username:secret@gitlab.com/namespace/repo'), None, 'refs/merge-requests/15/head',
         '<RemoteGitRepository(clone_url=https://*****@gitlab.com/namespace/repo, branch=not specified, ref=refs/merge-requests/15/head)>',
         'git-refs-merge-requests-15-head'
     )

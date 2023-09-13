@@ -12,7 +12,7 @@ from gluetool.log import Logging
 
 import gluetool_modules_framework.infrastructure.git
 from gluetool_modules_framework.infrastructure.git import Git
-from gluetool_modules_framework.libs.git import RemoteGitRepository as GitRepository
+from gluetool_modules_framework.libs.git import RemoteGitRepository as GitRepository, SecretGitUrl
 from . import create_module, patch_shared, check_loadable
 
 Response = collections.namedtuple('Response', ['status_code', 'content', 'text'])
@@ -29,13 +29,13 @@ def test_loadable(module):
 
 @pytest.fixture(name='dummy_repository')
 def fixture_dummy_repository(module):
-    return GitRepository(module, clone_url='some-clone-url', branch='some-branch')
+    return GitRepository(module, clone_url=SecretGitUrl('some-clone-url'), branch='some-branch')
 
 
 @pytest.fixture(name='dummy_repository_path')
 def fixture_dummy_repository_path(module):
     return GitRepository(
-        module, clone_url='some-clone-url', branch='some-branch', path='some-path'
+        module, clone_url=SecretGitUrl('some-clone-url'), branch='some-branch', path='some-path'
     )
 
 
@@ -53,7 +53,8 @@ def test_clone_url_eval_context(module, monkeypatch):
     module._config['clone-url'] = '{{ some_jinja_template }} {{ some_other_template }}'
     patch_shared(monkeypatch, module, {'eval_context': {'some_jinja_template': 'foo', 'some_other_template': 'bar'}})
     clone_url = module.clone_url
-    assert clone_url == 'foo bar'
+    with (clone_url == 'foo bar').dangerous_reveal() as test:
+        assert test
 
 
 def test_ref_eval_context(module, monkeypatch):
@@ -100,6 +101,7 @@ def test_execute(module):
     module._config['ref'] = 'some-ref'
     module._config['clone-args'] = '--foo bar some-option'
     module.execute()
-    assert module._repository.clone_url == "some-clone-url"
+    with (module._repository.clone_url == "some-clone-url").dangerous_reveal() as test:
+        assert test
     assert module._repository.ref == "some-ref"
     assert module._repository.clone_args == ['--foo', 'bar', 'some-option']

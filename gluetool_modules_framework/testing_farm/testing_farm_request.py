@@ -3,7 +3,6 @@
 
 from functools import partial
 from posixpath import join as urljoin
-from dataclasses import dataclass, fields
 import re
 import attrs
 
@@ -12,7 +11,7 @@ from gluetool.log import LoggerMixin
 from gluetool.result import Result
 from gluetool.utils import dict_update, log_dict, requests, render_template
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
-from gluetool_modules_framework.libs.git import GIT_URL_REGEX, clone_url_hide_secrets
+from gluetool_modules_framework.libs.git import GIT_URL_REGEX, SecretGitUrl
 
 from requests.exceptions import ConnectionError, HTTPError, Timeout
 
@@ -166,9 +165,9 @@ class TestingFarmAPI(LoggerMixin, object):
         return request.json()
 
 
-@dataclass
+@attrs.define
 class TestingFarmRequestTMT():
-    url: str
+    url: SecretGitUrl = attrs.field(converter=SecretGitUrl)
     ref: str
     merge_sha: Optional[str] = None
     path: Optional[str] = None
@@ -184,9 +183,9 @@ class TestingFarmRequestTMT():
         return self.name
 
 
-@dataclass
+@attrs.define
 class TestingFarmRequestSTI():
-    url: str
+    url: SecretGitUrl = attrs.field(converter=SecretGitUrl)
     ref: str
     merge_sha: Optional[str] = None
     playbooks: Optional[List[str]] = None
@@ -244,10 +243,10 @@ class TestingFarmRequest(LoggerMixin, object):
         # In the TF API v0.1, one of the types is called `test.fmf`, the name is expected to change to `test.tmt`
         # in v0.2, therefore this class and variable are named as `TMT`.
         self.tmt = TestingFarmRequestTMT(**{field.name: request_test[field.name]
-                                            for field in fields(TestingFarmRequestTMT)
+                                            for field in attrs.fields(TestingFarmRequestTMT)
                                             if field.name in request_test}) if type == 'fmf' else None
         self.sti = TestingFarmRequestSTI(**{field.name: request_test[field.name]
-                                            for field in fields(TestingFarmRequestSTI)
+                                            for field in attrs.fields(TestingFarmRequestSTI)
                                             if field.name in request_test}) if type == 'sti' else None
 
         # Create a shortcut for the common TMT/STI properties
@@ -256,9 +255,10 @@ class TestingFarmRequest(LoggerMixin, object):
         self.url = test.url
 
         # Check whether the git url contains any secrets, if so, store them in hide-secrets module
-        match = re.match(GIT_URL_REGEX, self.url)
-        if match and self._module.has_shared('add_additional_secrets'):
-            self._module.shared('add_additional_secrets', match.group(2))
+        with self.url.dangerous_reveal() as url:
+            match = re.match(GIT_URL_REGEX, url)
+            if match and self._module.has_shared('add_additional_secrets'):
+                self._module.shared('add_additional_secrets', match.group(2))
 
         # In the context of this class, `self.ref` is a git reference which will be checked out by the
         # RemoteGitRepository library class, `self.merge` is a git reference to be merged into `self.ref`.
@@ -483,14 +483,16 @@ class TestingFarmRequestModule(gluetool.Module):
         return render_template(option, **self.shared('eval_context'))
 
     @property
-    def eval_context(self) -> Dict[str, Optional[str]]:
+    def eval_context(self) -> Dict[str, Optional[Union[str, SecretGitUrl]]]:
         if not self._tf_request:
             return {}
         return {
             # common for all artifact providers
             'TESTING_FARM_REQUEST_ID': self._tf_request.id,
             'TESTING_FARM_REQUEST_TEST_TYPE': self._tf_request.type,
-            'TESTING_FARM_REQUEST_TEST_URL': self._tf_request.url,
+            # TODO: we have raw secret string here because this dict is fed to `gluetool.utils.render_template` which
+            # does not know how to work with `secret_type.Secret[str]`
+            'TESTING_FARM_REQUEST_TEST_URL': self._tf_request.url._dangerous_extract(),
             'TESTING_FARM_REQUEST_TEST_REF': self._tf_request.ref,
             'TESTING_FARM_REQUEST_USERNAME': self._tf_request.request_username,
             'TESTING_FARM_REQUEST_MERGE': self._tf_request.merge
@@ -519,7 +521,7 @@ class TestingFarmRequestModule(gluetool.Module):
             'plan': request.tmt.plan if request.tmt and request.tmt.plan else '<not applicable>',
             'plan_filter': request.tmt.plan_filter if request.tmt and request.tmt.plan_filter else '<not applicable>',
             'test_filter': request.tmt.test_filter if request.tmt and request.tmt.test_filter else '<not applicable>',
-            'url': clone_url_hide_secrets(request.url),
+            'url': request.url,
             'ref': request.ref,
             'environments_requested': [env.serialize_to_json() for env in request.environments_requested],
             'webhook_url': request.webhook_url or '<no webhook specified>',

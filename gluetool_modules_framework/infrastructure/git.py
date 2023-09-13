@@ -3,7 +3,7 @@
 
 import gluetool
 import gluetool_modules_framework.libs
-from gluetool_modules_framework.libs.git import RemoteGitRepository
+from gluetool_modules_framework.libs.git import RemoteGitRepository, SecretGitUrl
 from gluetool.utils import render_template, normalize_shell_option
 
 from typing import Any, Dict, Optional, Union, List, TYPE_CHECKING, cast  # noqa
@@ -54,10 +54,10 @@ class Git(gluetool.Module):
     _repository: Optional[RemoteGitRepository] = None
 
     @property
-    def clone_url(self) -> Optional[str]:
+    def clone_url(self) -> Optional[SecretGitUrl]:
         option = self.option('clone-url')
 
-        return render_template(option, **self.shared('eval_context'))
+        return SecretGitUrl(render_template(option, **self.shared('eval_context')))
 
     @property
     def ref(self) -> Optional[str]:

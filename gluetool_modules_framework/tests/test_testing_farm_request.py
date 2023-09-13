@@ -255,7 +255,8 @@ def test_testing_farm_request(module, request1):
     request = module.testing_farm_request()
     assert isinstance(request, gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmRequest)
     assert request.type == 'fmf'
-    assert request.url == 'testurl'
+    with (request.url == 'testurl').dangerous_reveal() as test:
+        assert test
     assert request.ref == 'testref'
 
 
@@ -270,7 +271,8 @@ def test_execute_request1(module):
     request = module.testing_farm_request()
 
     assert request.type == 'fmf'
-    assert request.tmt.url == 'testurl'
+    with (request.tmt.url == 'testurl').dangerous_reveal() as test:
+        assert test
     assert request.tmt.ref == 'testref'
     assert request.webhook_url == 'webhookurl'
     assert request.webhook_token == None
@@ -298,10 +300,13 @@ def test_execute_request2(module):
     request = module.testing_farm_request()
 
     assert request.type == 'fmf'
-    assert request.tmt.url == 'faketesturl'
+    with (request.tmt.url == 'faketesturl').dangerous_reveal() as test:
+        assert test
     assert request.tmt.ref == 'faketestref'
     assert request.webhook_url == None
     assert request.webhook_token == None
+    with request.environments_requested[0].variables['TESTING_FARM_GIT_URL'].dangerous_reveal() as url:
+        request.environments_requested[0].variables['TESTING_FARM_GIT_URL'] = url
     assert request.environments_requested == [
         TestingEnvironment(
             arch='x86_64',
@@ -327,10 +332,13 @@ def test_execute_request3(module, monkeypatch):
     request = module.testing_farm_request()
 
     assert request.type == 'sti'
-    assert request.sti.url == 'https://username:secret@gitlab.com/namespace/repo'
+    with (request.sti.url == 'https://username:secret@gitlab.com/namespace/repo').dangerous_reveal() as test:
+        assert test
     assert request.sti.playbooks == ['playbook1', 'playbook2']
     assert request.webhook_token == None
     assert len(request.environments_requested) == 1
+    with request.environments_requested[0].variables['TESTING_FARM_GIT_URL'].dangerous_reveal() as url:
+        request.environments_requested[0].variables['TESTING_FARM_GIT_URL'] = url
     assert request.environments_requested[0] == TestingEnvironment(
         arch='forced-arch',
         tmt={'context': {'some': 'context'}},
@@ -339,7 +347,7 @@ def test_execute_request3(module, monkeypatch):
             "something": "variables",
             "TESTING_FARM_REQUEST_ID": "3",
             "TESTING_FARM_TEST_TYPE": "sti",
-            "TESTING_FARM_GIT_URL": "https://*****@gitlab.com/namespace/repo",
+            "TESTING_FARM_GIT_URL": "https://username:secret@gitlab.com/namespace/repo",
             "TESTING_FARM_GIT_REF": "testref"
         },
         compose=None,

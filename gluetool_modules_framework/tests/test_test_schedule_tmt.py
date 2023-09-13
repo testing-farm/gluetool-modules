@@ -21,6 +21,7 @@ from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
 from gluetool_modules_framework.libs.sut_installation import INSTALL_COMMANDS_FILE
 from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 from gluetool_modules_framework.libs.results import TestSuite
+from gluetool_modules_framework.libs.git import SecretGitUrl
 from gluetool_modules_framework.provision.artemis import ArtemisGuest
 from gluetool_modules_framework.testing.test_schedule_tmt import (gather_plan_results, TestScheduleEntry, TMTPlan,
                                                                   TMTPlanProvision, TMTPlanPrepare)
@@ -395,7 +396,7 @@ def test_tmt_output_dir(
         (  # Test case no. 1
             {},
             {},
-            'http://example.com/git/myproject',
+            SecretGitUrl('http://example.com/git/myproject'),
             r'''\# tmt reproducer
 git clone --depth 1 -b myfix http://example.com/git/myproject testcode
 cd testcode
@@ -404,7 +405,7 @@ dummytmt --root some-tmt-root run --all --verbose provision --how virtual --imag
         (  # Test case no. 2
             {'context-template-file': [os.path.abspath(os.path.join(ASSETS_DIR, 'context-template.yaml'))]},
             {},
-            'http://example.com/git/myproject',
+            SecretGitUrl('http://example.com/git/myproject'),
             r'''\# tmt reproducer
 git clone --depth 1 -b myfix http://example.com/git/myproject testcode
 cd testcode
@@ -413,7 +414,7 @@ dummytmt --root some-tmt-root --context=@[a-zA-Z0-9\/\._-]+ run --all --verbose 
         (  # Test case no. 3
             {},
             {},
-            'http://username:secret@example.com/git/myproject',
+            SecretGitUrl('http://username:secret@example.com/git/myproject'),
             r'''\# tmt reproducer
 git clone --depth 1 -b myfix http://\*\*\*\*\*@example.com/git/myproject testcode
 cd testcode
@@ -757,8 +758,8 @@ def test_excludes(module, plan, expected):
 
 
 @pytest.mark.parametrize('clone_url, expected_clone_url', [
-    ('http://example.com/git/myproject', 'http://example.com/git/myproject'),
-    ('http://username:secret@example.com/git/myproject', 'http://*****@example.com/git/myproject')
+    (SecretGitUrl('http://example.com/git/myproject'), 'http://example.com/git/myproject'),
+    (SecretGitUrl('http://username:secret@example.com/git/myproject'), 'http://*****@example.com/git/myproject')
 ])
 def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir, clone_url, expected_clone_url):
     # install-copr-build module
@@ -844,8 +845,8 @@ dummytmt --root some-tmt-root run --last --since prepare'''
 
 
 @pytest.mark.parametrize('clone_url, expected_clone_url', [
-    ('http://example.com/git/myproject', 'http://example.com/git/myproject'),
-    ('http://username:secret@example.com/git/myproject', 'http://*****@example.com/git/myproject')
+    (SecretGitUrl('http://example.com/git/myproject'), 'http://example.com/git/myproject'),
+    (SecretGitUrl('http://username:secret@example.com/git/myproject'), 'http://*****@example.com/git/myproject')
 ])
 def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir, clone_url, expected_clone_url):
     # install-koji-build-execute module

@@ -37,7 +37,6 @@ class TestScheduleEntry(BaseTestScheduleEntry):
 
         self.playbook_filepath = playbook_filepath
         self.variables = variables
-        self.work_dirpath: Optional[str] = None
         self.artifact_dirpath: Optional[str] = None
         self.inventory_filepath: Optional[str] = None
         self.results: Any = None

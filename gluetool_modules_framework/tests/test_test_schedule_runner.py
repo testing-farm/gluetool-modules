@@ -86,7 +86,7 @@ def test_execute(module, monkeypatch):
     patch_shared(monkeypatch, module, {}, callables={
         'test_schedule': lambda: test_schedule,
         'evaluate_filter': evaluate_filter_mock,
-        'provision': lambda _: [guest_mock],
+        'provision': MagicMock(return_value=[guest_mock]),
         'run_test_schedule_entry': run_test_schedule_entry_mock
     })
     module.execute()
@@ -159,7 +159,7 @@ def test_execute_reuse_guests(module, monkeypatch):
     })
     module.execute()
 
-    provision_mock.assert_called_once_with(TestingEnvironment(arch='x86_64', compose='Fedora37'))
+    provision_mock.assert_called_once_with(TestingEnvironment(arch='x86_64', compose='Fedora37'), workdir=None)
     # The guest setup should be called only for the first schedule entry
     guest_mock.setup.assert_has_calls([
         call(stage=GuestSetupStage.PRE_ARTIFACT_INSTALLATION),
@@ -178,20 +178,12 @@ def test_execute_reuse_guests(module, monkeypatch):
 
 
 def test_execute_provision_error(module, monkeypatch):
-    def provision_error_mock(_):
-        raise gluetool.GlueError('mocked provision error')
-
-    guest_mock = GuestMock(
-        hostname='foo',
-        environment=TestingEnvironment(arch='x86_64', compose='Fedora37'),
-        name='bar'
-    )
     test_schedule = create_test_schedule([(TSEntryStage.CREATED, TSEntryState.OK, TSResult.UNDEFINED)])
     run_test_schedule_entry_mock = MagicMock()
     patch_shared(monkeypatch, module, {}, callables={
         'test_schedule': lambda: test_schedule,
         'evaluate_filter': evaluate_filter_mock,
-        'provision': provision_error_mock,
+        'provision': MagicMock(side_effect=gluetool.GlueError('mocked provision error')),
         'run_test_schedule_entry': run_test_schedule_entry_mock
     })
     with pytest.raises(gluetool.GlueError, match='mocked provision error'):
@@ -215,7 +207,7 @@ def test_execute_setup_error(module, monkeypatch):
     patch_shared(monkeypatch, module, {}, callables={
         'test_schedule': lambda: test_schedule,
         'evaluate_filter': evaluate_filter_mock,
-        'provision': lambda _: [guest_mock],
+        'provision': MagicMock(return_value=[guest_mock]),
         'run_test_schedule_entry': run_test_schedule_entry_mock
     })
     with pytest.raises(gluetool.GlueError, match='mocked guest setup error'):
@@ -236,7 +228,7 @@ def test_execute_run_error(module, monkeypatch):
     patch_shared(monkeypatch, module, {}, callables={
         'test_schedule': lambda: test_schedule,
         'evaluate_filter': evaluate_filter_mock,
-        'provision': lambda _: [guest_mock],
+        'provision': MagicMock(return_value=[guest_mock]),
         'run_test_schedule_entry': run_error_mock
     })
     with pytest.raises(gluetool.GlueError, match='mocked run error'):
@@ -259,7 +251,7 @@ def test_execute_cleanup_error(module, monkeypatch):
     patch_shared(monkeypatch, module, {}, callables={
         'test_schedule': lambda: test_schedule,
         'evaluate_filter': evaluate_filter_mock,
-        'provision': lambda _: [guest_mock],
+        'provision': MagicMock(return_value=[guest_mock]),
         'run_test_schedule_entry': run_test_schedule_entry_mock
     })
     with pytest.raises(gluetool.GlueError, match='mocked cleanup error'):
@@ -279,7 +271,7 @@ def test_execute_schedule_entry_attribute_map(module, monkeypatch):
     patch_shared(monkeypatch, module, {}, callables={
         'test_schedule': lambda: test_schedule,
         'evaluate_filter': rules_engine.evaluate_filter,
-        'provision': lambda _: [guest_mock],
+        'provision': MagicMock(return_value=[guest_mock]),
         'run_test_schedule_entry': run_test_schedule_entry_mock
     })
     module._config.update({

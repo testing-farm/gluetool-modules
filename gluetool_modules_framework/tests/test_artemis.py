@@ -3,6 +3,7 @@
 
 import collections
 import logging
+import os
 import re
 
 import pytest
@@ -95,6 +96,11 @@ def fixture_module():
 def fixture_scenario(module, monkeypatch, request, tmpdir):
     asset = testing_asset('artemis', '{}.yaml'.format(request.param))
     scenario = load_yaml(asset)
+
+    # console logs are tested only for 'successful' scenario
+    if request.param == 'successful':
+        module._config['enable-console-log'] = True
+        module._config['console-log-filename'] = 'console-{guestname}.log'
 
     module._mocked_requests = MockRequests(scenario['requests'])
     module._mocked_wait_alive = MagicMock()
@@ -394,3 +400,20 @@ def test_api_url_option(module, monkeypatch):
     patch_shared(monkeypatch, module, {'eval_context': {'some_api_url_template': 'foo'}})
     assert module.api_url == 'foo'
     assert module.option('api-url') == '{{ some_api_url_template }}'
+
+
+@pytest.mark.parametrize('scenario', [
+    'successful',
+], indirect=True)
+def test_console_log_and_workdir(monkeypatch, module, scenario, tmpdir):
+    environment, guest, _, _ = scenario
+
+    # Change working directory to a tmp directory
+    with monkeypatch.context() as m:
+        m.chdir(tmpdir)
+        os.mkdir('workdir')
+
+        module.provision(environment, workdir='workdir')
+        module.destroy()
+
+        assert os.path.exists('workdir/console-{}.log'.format(guest['name']))

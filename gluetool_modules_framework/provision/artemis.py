@@ -549,6 +549,7 @@ class ArtemisGuest(NetworkedGuest):
                  username: Optional[str] = None,
                  key: Optional[str] = None,
                  options: Optional[List[str]] = None,
+                 workdir: Optional[str] = None,
                  **kwargs: Optional[Dict[str, Any]]
                  ):
 
@@ -564,7 +565,8 @@ class ArtemisGuest(NetworkedGuest):
         self._snapshots: List[ArtemisSnapshot] = []
         self.module: ArtemisProvisioner = module
         self.api: ArtemisAPI = module.api
-        self.event_log_path = '{}{}'.format(guestname, EVENT_LOG_SUFFIX)
+        self.workdir = workdir or ''
+        self.event_log_path = os.path.join(self.workdir, '{}{}'.format(guestname, EVENT_LOG_SUFFIX))
         self.console_log: Optional[str] = None
         self.console_log_timer: Optional[RepeatTimer] = None
         self.console_log_file: Optional[str] = None
@@ -753,9 +755,8 @@ class ArtemisGuest(NetworkedGuest):
 
         self.info('successfully released')
 
-    @staticmethod
-    def _save_console_log(filename: str, data: str) -> None:
-        with open(filename, 'w') as f:
+    def _save_console_log(self, filename: str, data: str) -> None:
+        with open(os.path.join(self.workdir, filename), 'w') as f:
             f.write(data)
 
     def gather_console_log(self) -> None:
@@ -1187,7 +1188,8 @@ class ArtemisProvisioner(gluetool.Module):
                         post_install_script: Optional[str] = None,
                         user_data: Optional[Dict[str, str]] = None,
                         watchdog_dispatch_delay: Optional[int] = None,
-                        watchdog_period_delay: Optional[int] = None
+                        watchdog_period_delay: Optional[int] = None,
+                        workdir: Optional[str] = None
                        ) -> ArtemisGuest:  # noqa
         '''
         Provision Artemis guest by submitting a request to Artemis API.
@@ -1211,6 +1213,9 @@ class ArtemisProvisioner(gluetool.Module):
 
         :param int watchdog_period_delay: How often (seconds) check that the guest "is-alive".
 
+        :param str workdir: working directory where all runtime data should be stored.
+            For example the workding directory of a schedule entry.
+
         :rtype: ArtemisGuest
         :returns: ArtemisGuest instance or ``None`` if it wasn't possible to grab the guest.
         '''
@@ -1228,7 +1233,7 @@ class ArtemisProvisioner(gluetool.Module):
         hostname = six.ensure_str(response['address']) if response['address'] is not None else None
         guest = ArtemisGuest(self, guestname, hostname, environment,
                              port=response['ssh']['port'], username=six.ensure_str(response['ssh']['username']),
-                             key=ssh_key, options=options)
+                             key=ssh_key, options=options, workdir=workdir)
         guest.info('Guest is being provisioned')
         log_dict(guest.debug, 'Created guest request', response)
         log_dict(guest.info, 'Created guest request with environment', response['environment'])
@@ -1264,12 +1269,19 @@ class ArtemisProvisioner(gluetool.Module):
 
         return guest
 
-    def provision(self, environment: TestingEnvironment, **kwargs: Any) -> List[ArtemisGuest]:
+    def provision(
+        self,
+        environment: TestingEnvironment,
+        workdir: Optional[str] = None,
+        **kwargs: Any
+    ) -> List[ArtemisGuest]:
         '''
         Provision Artemis guest(s).
 
         :param tuple environment: description of the environment caller wants to provision.
             Follows :doc:`Testing Environment Protocol </protocols/testing-environment>`.
+        :param str workdir: working directory where all runtime data should be stored.
+            For example the workding directory of a schedule entry.
 
         :rtype: list
         :returns: List of ArtemisGuest instances or ``None`` if it wasn't possible to grab the guests.
@@ -1315,7 +1327,8 @@ class ArtemisProvisioner(gluetool.Module):
                                      post_install_script=post_install_script,
                                      user_data=user_data,
                                      watchdog_dispatch_delay=watchdog_dispatch_delay,
-                                     watchdog_period_delay=watchdog_period_delay)
+                                     watchdog_period_delay=watchdog_period_delay,
+                                     workdir=workdir)
 
         guest.info('Guest provisioned')
         self.guests.append(guest)

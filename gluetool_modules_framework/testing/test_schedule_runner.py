@@ -181,7 +181,7 @@ class TestScheduleRunner(gluetool.Module):
         with Action('provisioning guest', parent=schedule_entry.action, logger=schedule_entry.logger):
             return cast(
                 List[gluetool_modules_framework.libs.guest.NetworkedGuest],
-                self.shared('provision', schedule_entry.testing_environment)
+                self.shared('provision', schedule_entry.testing_environment, workdir=schedule_entry.work_dirpath)
             )
 
     def _setup_guest(self, schedule_entry: TestScheduleEntry) -> Any:

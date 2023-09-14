@@ -228,6 +228,9 @@ class TestScheduleEntry(LoggerMixin, object):
         # Used to name the test suite when creating results, if not specified, `id` is used
         self.testsuite_name: Optional[str] = None
 
+        # Working directory path
+        self.work_dirpath: Optional[str] = None
+
     @property
     def has_exceptions(self) -> bool:
 

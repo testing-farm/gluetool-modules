@@ -332,7 +332,6 @@ class TestScheduleEntry(BaseTestScheduleEntry):
 
         self.testing_environment = tec
         self.testsuite_name = self.plan = plan
-        self.work_dirpath: Optional[str] = None
         self.results: Any = None
         self.repodir: str = repodir
         self.tmt_reproducer: List[str] = []

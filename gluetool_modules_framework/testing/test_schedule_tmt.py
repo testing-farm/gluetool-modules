@@ -338,6 +338,7 @@ class TestScheduleEntry(BaseTestScheduleEntry):
         self.tmt_reproducer_filepath: Optional[str] = None
 
         self.context_files: List[str] = []
+        self.tmt_env_file: Optional[str] = None
 
     def log_entry(self, log_fn: Optional[LoggingFunctionType] = None) -> None:
 
@@ -618,6 +619,33 @@ class TestScheduleTMT(Module):
             return ['--root', tf_request.tmt.path]
         return []
 
+    def _prepare_tmt_env_file(self,
+                              testing_environment_constraints: TestingEnvironment,
+                              plan: str,
+                              repodir: str) -> Optional[str]:
+        # variables from testing-farm environment
+        variables: Dict[str, str] = {}
+
+        if testing_environment_constraints.variables:
+            variables.update(testing_environment_constraints.variables)
+
+        eval_context = self.shared('eval_context')
+        # variables from rules-engine's user variables, rendered with the evaluation context
+        variables.update(self.shared('user_variables', logger=self.logger, context=eval_context) or {})
+
+        # add secrets
+        variables.update(testing_environment_constraints.secrets or {})
+
+        if variables:
+            # we MUST use a dedicated env file for each plan, to mitigate race conditions
+            # plans are handled in threads ...
+            tmt_env_file = TMT_ENV_FILE.format(plan[1:].replace('/', '-'))
+            gluetool.utils.dump_yaml(variables, os.path.join(repodir, tmt_env_file))
+
+            return tmt_env_file
+
+        return None
+
     def _plans_from_git(self,
                         repodir: str,
                         context_files: List[str],
@@ -752,58 +780,61 @@ class TestScheduleTMT(Module):
 
         return plans
 
-    def _remove_empty_plans(self,
-                            plans: List[str],
-                            repodir: str,
-                            context_files: List[str],
-                            testing_environment: TestingEnvironment) -> List[str]:
+    def _is_plan_empty(self,
+                       plan: str,
+                       repodir: str,
+                       context_files: List[str],
+                       testing_environment: TestingEnvironment,
+                       tmt_env_file: Optional[str]) -> bool:
         """
         Return list of plans which still have tests after applying test filter.
         """
 
-        # As the loop will remove the items in the list, the copy of the
-        # list needs to be created, otherwise a single element would be always skipped after each removed one.
-        for plan in plans[:]:
-            command = [
-                self.option('command')
+        command = [
+            self.option('command')
+        ]
+
+        if context_files:
+            command.extend([
+                '--context=@{}'.format(filepath)
+                for filepath in context_files
+            ])
+
+        command.extend(self._root_option)
+
+        if testing_environment.tmt and 'context' in testing_environment.tmt:
+            command.extend(self._tmt_context_to_options(testing_environment.tmt['context']))
+
+        command.extend(['run'])
+
+        if tmt_env_file:
+            env_options = [
+                '-e', '@{}'.format(tmt_env_file)
             ]
+            command.extend(env_options)
 
-            if context_files:
-                command.extend([
-                    '--context=@{}'.format(filepath)
-                    for filepath in context_files
-                ])
+        command.extend(['discover', 'plan', '--name', plan])
 
-            command.extend(self._root_option)
+        try:
+            tmt_output = Command(command).run(cwd=repodir)
 
-            if testing_environment.tmt and 'context' in testing_environment.tmt:
-                command.extend(self._tmt_context_to_options(testing_environment.tmt['context']))
+        except GlueCommandError as exc:
+            log_blob(
+                self.error,
+                "Failed to discover tests",
+                exc.output.stderr or exc.output.stdout or '<no output>'
+            )
+            raise GlueError('Failed to discover tests, TMT metadata are absent or corrupted.')
 
-            command.extend(['run', 'discover', 'plan', '--name', plan])
+        if not tmt_output.stderr:
+            raise GlueError("Did not find any plans. Command used '{}'.".format(' '.join(command)))
 
-            try:
-                tmt_output = Command(command).run(cwd=repodir)
+        output_lines = [line.strip() for line in tmt_output.stderr.splitlines()]
 
-            except GlueCommandError as exc:
-                log_blob(
-                    self.error,
-                    "Failed to discover tests",
-                    exc.output.stderr or exc.output.stdout or '<no output>'
-                )
-                raise GlueError('Failed to discover tests, TMT metadata are absent or corrupted.')
+        if any(['No tests found' in line for line in output_lines]):
+            return True
 
-            if not tmt_output.stderr:
-                raise GlueError("Did not find any plans. Command used '{}'.".format(' '.join(command)))
-
-            output_lines = [line.strip() for line in tmt_output.stderr.splitlines()]
-
-            if any(['No tests found' in line for line in output_lines]):
-                plans.remove(plan)
-
-        if not plans:
-            raise GlueError('No plans to execute after removing empty plans. Cowardly refusing to continue.')
-
-        return plans
+        return False
 
     def export_plan(self, repodir: str, plan: str, context_files: List[str]) -> Optional[TMTPlan]:
         command: List[str] = [self.option('command')]
@@ -898,9 +929,13 @@ class TestScheduleTMT(Module):
             if self.test_filter:
                 plans = self._apply_test_filter(plans, repodir, context_files, tec)
 
-            plans = self._remove_empty_plans(plans, repodir, context_files, tec)
-
             for plan in plans:
+
+                tmt_env_file = self._prepare_tmt_env_file(tec, plan, repodir)
+
+                if self._is_plan_empty(plan, repodir, context_files, tec, tmt_env_file):
+                    continue
+
                 exported_plan = self.export_plan(repodir, plan, context_files)
 
                 hardware = kickstart = watchdog_dispatch_delay = watchdog_period_delay = None
@@ -958,8 +993,12 @@ class TestScheduleTMT(Module):
                 schedule_entry.tmt_reproducer.extend(repository.commands_no_secrets)
 
                 schedule_entry.context_files = context_files
+                schedule_entry.tmt_env_file = tmt_env_file
 
                 schedule.append(schedule_entry)
+
+            if not schedule:
+                raise GlueError('No plans to execute after removing empty plans. Cowardly refusing to continue.')
 
         schedule.log(self.debug, label='complete schedule')
 
@@ -1089,12 +1128,6 @@ class TestScheduleTMT(Module):
             '--id', os.path.abspath(work_dirpath)
         ])
 
-        # variables from testing-farm environment
-        variables: Dict[str, str] = {}
-
-        if schedule_entry.testing_environment.variables:
-            variables.update(schedule_entry.testing_environment.variables)
-
         # update eval context with guest name
         eval_context = dict_update(
             self.shared('eval_context'),
@@ -1103,19 +1136,9 @@ class TestScheduleTMT(Module):
             }
         )
 
-        # variables from rules-engine's user variables, rendered with the evaluation context
-        variables.update(self.shared('user_variables', logger=schedule_entry.logger, context=eval_context) or {})
-
-        # add secrets
-        variables.update(schedule_entry.testing_environment.secrets or {})
-
-        if variables:
-            # we MUST use a dedicated env file for each plan, to mitigate race conditions
-            # plans are handled in threads ...
-            tmt_env_file = TMT_ENV_FILE.format(schedule_entry.plan[1:].replace('/', '-'))
-            gluetool.utils.dump_yaml(variables, os.path.join(schedule_entry.repodir, tmt_env_file))
+        if schedule_entry.tmt_env_file:
             env_options = [
-                '-e', '@{}'.format(tmt_env_file)
+                '-e', '@{}'.format(schedule_entry.tmt_env_file)
             ]
             command.extend(env_options)
             reproducer.extend(env_options)
@@ -1125,7 +1148,8 @@ class TestScheduleTMT(Module):
                 'curl -LO {}'.format(
                     artifacts_location(
                         self,
-                        os.path.relpath(os.path.join(schedule_entry.repodir, tmt_env_file)), logger=self.logger)
+                        os.path.relpath(os.path.join(
+                            schedule_entry.repodir, schedule_entry.tmt_env_file)), logger=self.logger)
                 )
             )
 

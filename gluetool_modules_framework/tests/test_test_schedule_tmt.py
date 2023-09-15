@@ -338,6 +338,8 @@ def test_tmt_output_dir(
 
     schedule_entry.guest = guest
 
+    schedule_entry.tmt_env_file = module._prepare_tmt_env_file(testing_environment, 'plan1', tmpdir)
+
     if module._config.get('how') == 'local':
         schedule_entry.guest = StaticLocalhostGuest(module, 'localhost')
 
@@ -613,7 +615,7 @@ def test_apply_test_filter(module, monkeypatch):
     ])
 
 
-def test_remove_empty_plans(module, monkeypatch):
+def test_is_plan_empty(module, monkeypatch):
     repodir = 'foo'
     context_files = []
     testing_environment = TestingEnvironment('x86_64')
@@ -624,13 +626,15 @@ def test_remove_empty_plans(module, monkeypatch):
     mock_command = MagicMock(return_value=MagicMock(run=mock_command_run))
     monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt, 'Command', mock_command)
 
-    module._remove_empty_plans(['plan1'], repodir, context_files, testing_environment)
+    module._is_plan_empty('plan1', repodir, context_files, testing_environment, 'tmt-env-file')
 
     mock_command.assert_called_once_with([
         'dummytmt',
         '--root',
         'some-tmt-root',
         'run',
+        '-e',
+        '@tmt-env-file',
         'discover',
         'plan',
         '--name',
@@ -643,14 +647,15 @@ def test_remove_empty_plans(module, monkeypatch):
     mock_command = MagicMock(return_value=MagicMock(run=mock_command_run))
     monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt, 'Command', mock_command)
 
-    with pytest.raises(gluetool.glue.GlueError, match='No plans to execute after removing empty plans. Cowardly refusing to continue.'):
-        module._remove_empty_plans(['plan1'], repodir, context_files, testing_environment)
+    assert module._is_plan_empty('plan1', repodir, context_files, testing_environment, 'tmt-env-file') == True
 
     mock_command.assert_called_once_with([
         'dummytmt',
         '--root',
         'some-tmt-root',
         'run',
+        '-e',
+        '@tmt-env-file',
         'discover',
         'plan',
         '--name',

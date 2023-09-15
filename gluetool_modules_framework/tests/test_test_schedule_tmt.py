@@ -904,9 +904,9 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir, cl
                          'plan1',   # tmt run discover plan --name plan1
                          ' - name: plan1\n'  # tmt plan export
                          '   provision:\n'
-                         '     how: null\n'
+                         '    - how: null\n'
                          '   prepare:\n'
-                         '     how: somehow'
+                         '    - how: somehow'
                          )
         schedule_entry = module.create_test_schedule([guest.environment])[0]
 
@@ -1052,6 +1052,22 @@ TMT_EXPORTED_PLANS = [
         - name: default-1
           how: virtual
     ''',
+    # artemis_pool
+    '''
+    - name: plan1
+      provision:
+        - name: default-0
+          how: artemis
+          pool: fedora-aws-x86_64-gpu
+    ''',
+    # artemis_pool_ignored
+    '''
+    - name: plan1
+      provision:
+        - name: default-0
+          how: virtual
+          pool: fedora-aws-x86_64-gpu
+    ''',
 ]
 
 
@@ -1101,12 +1117,36 @@ TMT_EXPORTED_PLANS = [
             None,
             (gluetool.GlueError, 'Multiple provision phases not supported, refusing to continue.')
         ),
+        # artemis_pool
+        (
+            TMT_EXPORTED_PLANS[4],
+            TestingEnvironment(
+                arch='x86_64',
+                excluded_packages=[],
+                snapshots=False,
+                pool='fedora-aws-x86_64-gpu'
+            ),
+            None
+        ),
+        # artemis_pool_ignored
+        (
+            TMT_EXPORTED_PLANS[5],
+            TestingEnvironment(
+                arch='x86_64',
+                excluded_packages=[],
+                snapshots=False,
+                pool=None
+            ),
+            None
+        )
     ],
     ids=[
         'single_provision_phase',
         'single_provision_phase_with_hardware',
         'single_provision_phase_with_kickstart',
-        'multiple_provision_phases'
+        'multiple_provision_phases',
+        'artemis_pool',
+        'artemis_pool_ignored'
     ]
 )
 def test_tmt_plan_export(module, monkeypatch, exported_plan, expected_environment, expected_exception, tmpdir):

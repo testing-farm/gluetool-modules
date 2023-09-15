@@ -185,6 +185,14 @@ class TMTPlanProvision:
         default=None,
         validator=attrs.validators.optional(attrs.validators.instance_of(int))
     )
+    how: Optional[str] = attrs.field(
+        default=None,
+        validator=attrs.validators.optional(attrs.validators.instance_of(str))
+    )
+    pool: Optional[str] = attrs.field(
+        default=None,
+        validator=attrs.validators.optional(attrs.validators.instance_of(str))
+    )
 
     # We need to map the yaml attributes containing dashes to Python variables
     @classmethod
@@ -955,7 +963,7 @@ class TestScheduleTMT(Module):
 
                 exported_plan = self.export_plan(repodir, plan, context_files, tmt_env_file)
 
-                hardware = kickstart = watchdog_dispatch_delay = watchdog_period_delay = None
+                hardware = kickstart = watchdog_dispatch_delay = watchdog_period_delay = pool = None
                 if exported_plan and exported_plan.provision:
                     # this module will never support multiple provision phases
                     if len(exported_plan.provision) > 1:
@@ -966,6 +974,7 @@ class TestScheduleTMT(Module):
                     kickstart = provision.kickstart
                     watchdog_dispatch_delay = provision.watchdog_dispatch_delay
                     watchdog_period_delay = provision.watchdog_period_delay
+                    pool = provision.pool if provision.how == 'artemis' else None
 
                 schedule_entry = TestScheduleEntry(
                     root_logger,
@@ -1000,7 +1009,7 @@ class TestScheduleTMT(Module):
                     arch=tec.arch,
                     compose=tec.compose,
                     snapshots=tec.snapshots,
-                    pool=tec.pool,
+                    pool=tec.pool or pool,
                     variables=tec.variables,
                     secrets=tec.secrets,
                     artifacts=tec.artifacts,

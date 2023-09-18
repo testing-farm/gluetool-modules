@@ -841,11 +841,23 @@ class TestScheduleTMT(Module):
 
         return False
 
-    def export_plan(self, repodir: str, plan: str, context_files: List[str]) -> Optional[TMTPlan]:
+    def export_plan(self,
+                    repodir: str,
+                    plan: str,
+                    context_files: List[str],
+                    tmt_env_file: Optional[str]) -> Optional[TMTPlan]:
         command: List[str] = [self.option('command')]
         command.extend(self._root_option)
         command.extend(['--context=@{}'.format(filepath) for filepath in context_files])
-        command.extend(['plan', 'export', '^{}$'.format(re.escape(plan))])
+        command.extend(['plan', 'export'])
+
+        if tmt_env_file:
+            env_options = [
+                '-e', '@{}'.format(tmt_env_file)
+            ]
+            command.extend(env_options)
+
+        command.extend(['^{}$'.format(re.escape(plan))])
 
         try:
             tmt_output = Command(command).run(cwd=repodir)
@@ -941,7 +953,7 @@ class TestScheduleTMT(Module):
                 if self._is_plan_empty(plan, repodir, context_files, tec, tmt_env_file):
                     continue
 
-                exported_plan = self.export_plan(repodir, plan, context_files)
+                exported_plan = self.export_plan(repodir, plan, context_files, tmt_env_file)
 
                 hardware = kickstart = watchdog_dispatch_delay = watchdog_period_delay = None
                 if exported_plan and exported_plan.provision:

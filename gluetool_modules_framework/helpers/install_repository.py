@@ -16,7 +16,8 @@ from gluetool.utils import Command
 from gluetool.glue import GlueCommandError, GlueError
 
 from gluetool_modules_framework.libs.artifacts import splitFilename
-from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage
+from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage, \
+    SetupGuestReturnType
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
 from gluetool_modules_framework.libs.guest import NetworkedGuest
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest, Artifact
@@ -60,7 +61,7 @@ class InstallRepository(gluetool.Module):
         },
     }
 
-    shared_functions = ['setup_guest']
+    shared_functions = ['setup_guest', 'setup_guest_install_repository']
 
     # If there are several different versions of the same package, keep the latest one
     def _filter_latest_packages(self, packages: List[str]) -> List[str]:
@@ -213,34 +214,23 @@ class InstallRepository(gluetool.Module):
                 'curl --output /etc/yum.repos.d/{}.repo -LO {}'.format(repo_name, artifact.id)
             )
 
-    def setup_guest(
+    def setup_guest_install_repository(
         self,
         guest: NetworkedGuest,
         stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
         log_dirpath: Optional[str] = None,
+        r_overloaded_guest_setup_output: Optional[SetupGuestReturnType] = None,
         **kwargs: Any
-    ) -> Any:
+    ) -> SetupGuestReturnType:
 
         self.require_shared('evaluate_instructions', 'testing_farm_request')
         request = cast(TestingFarmRequest, self.shared('testing_farm_request'))
 
         log_dirpath = guest_setup_log_dirpath(guest, log_dirpath)
 
-        r_overloaded_guest_setup_output = self.overloaded_shared(
-            'setup_guest',
-            guest,
-            stage=stage,
-            log_dirpath=log_dirpath,
-            **kwargs
-        )
+        r_overloaded_guest_setup_output = r_overloaded_guest_setup_output or Ok([])
 
-        if r_overloaded_guest_setup_output is None:
-            r_overloaded_guest_setup_output = Ok([])
-
-        if r_overloaded_guest_setup_output.is_error:
-            return r_overloaded_guest_setup_output
-
-        if stage != GuestSetupStage.ARTIFACT_INSTALLATION:
+        if r_overloaded_guest_setup_output.is_error or stage != GuestSetupStage.ARTIFACT_INSTALLATION:
             return r_overloaded_guest_setup_output
 
         assert guest.environment
@@ -314,3 +304,23 @@ class InstallRepository(gluetool.Module):
             ))
 
         return Ok(guest_setup_output)
+
+    def setup_guest(
+        self,
+        guest: NetworkedGuest,
+        stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
+        log_dirpath: Optional[str] = None,
+        **kwargs: Any
+    ) -> Any:
+
+        log_dirpath = guest_setup_log_dirpath(guest, log_dirpath)
+
+        r_overloaded_guest_setup_output = self.overloaded_shared(
+            'setup_guest',
+            guest,
+            stage=stage,
+            log_dirpath=log_dirpath,
+            **kwargs
+        )
+
+        return self.setup_guest_install_repository(guest, stage, log_dirpath, r_overloaded_guest_setup_output)

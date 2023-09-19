@@ -46,39 +46,28 @@ class InstallCoprBuild(gluetool.Module):
         }
     }
 
-    shared_functions = ['setup_guest']
+    shared_functions = ['setup_guest', 'setup_guest_install_copr_build']
 
-    def setup_guest(
+    def setup_guest_install_copr_build(
         self,
         guest: NetworkedGuest,
         schedule_entry: Optional[TestScheduleEntry] = None,
         stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
         log_dirpath: Optional[str] = None,
+        r_overloaded_guest_setup_output: Optional[SetupGuestReturnType] = None,
         **kwargs: Any
     ) -> SetupGuestReturnType:
+
+        r_overloaded_guest_setup_output = r_overloaded_guest_setup_output or Ok([])
+
+        if r_overloaded_guest_setup_output.is_error or stage != GuestSetupStage.ARTIFACT_INSTALLATION:
+            return r_overloaded_guest_setup_output
 
         download_path = cast(str, self.option('download-path'))
 
         self.require_shared('tasks')
 
         log_dirpath = guest_setup_log_dirpath(guest, log_dirpath)
-
-        r_overloaded_guest_setup_output: SetupGuestReturnType = self.overloaded_shared(
-            'setup_guest',
-            guest,
-            stage=stage,
-            log_dirpath=log_dirpath,
-            **kwargs
-        )
-
-        if r_overloaded_guest_setup_output is None:
-            r_overloaded_guest_setup_output = Ok([])
-
-        if r_overloaded_guest_setup_output.is_error:
-            return r_overloaded_guest_setup_output
-
-        if stage != GuestSetupStage.ARTIFACT_INSTALLATION:
-            return r_overloaded_guest_setup_output
 
         # Filter artifacts of the acceptable type from guest's TestingEnvironment
         artifacts: List[Artifact] = []
@@ -230,3 +219,25 @@ class InstallCoprBuild(gluetool.Module):
             ))
 
         return Ok(guest_setup_output)
+
+    def setup_guest(
+        self,
+        guest: NetworkedGuest,
+        schedule_entry: Optional[TestScheduleEntry] = None,
+        stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
+        log_dirpath: Optional[str] = None,
+        **kwargs: Any
+    ) -> SetupGuestReturnType:
+
+        log_dirpath = guest_setup_log_dirpath(guest, log_dirpath)
+
+        r_overloaded_guest_setup_output: SetupGuestReturnType = self.overloaded_shared(
+            'setup_guest',
+            guest,
+            stage=stage,
+            log_dirpath=log_dirpath,
+            **kwargs
+        )
+
+        return self.setup_guest_install_copr_build(
+            guest, schedule_entry, stage, log_dirpath, r_overloaded_guest_setup_output)

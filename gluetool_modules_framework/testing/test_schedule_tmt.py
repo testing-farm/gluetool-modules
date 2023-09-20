@@ -962,6 +962,10 @@ class TestScheduleTMT(Module):
                     repodir,
                 )
 
+                # Prepare environment for test schedule entry execution
+                work_dirpath = self._prepare_environment(schedule_entry)
+                schedule_entry.work_dirpath = work_dirpath
+
                 # Create `settings` dictionary if it doesn't exist and the watchdog specification exists in TMT plan
                 if watchdog_dispatch_delay is not None or watchdog_period_delay is not None:
                     if tec.settings is None:
@@ -1015,8 +1019,6 @@ class TestScheduleTMT(Module):
 
         :returns: a path to a work directory, dedicated for this entry.
         """
-
-        assert schedule_entry.guest is not None
 
         # Create a working directory, we try hard to keep all the related work inside this directory.
         # This directory is passed to `tmt run --id` and tmt will keep all test artifacts.
@@ -1319,17 +1321,17 @@ class TestScheduleTMT(Module):
         self.shared('trigger_event', 'test-schedule-runner-sti.schedule-entry.started',
                     schedule_entry=schedule_entry)
 
-        work_dirpath = self._prepare_environment(schedule_entry)
-        schedule_entry.work_dirpath = work_dirpath
+        # schedile_entry.work_dirpath is created during test schedule creation, see 'create_test_schedule' function
+        assert schedule_entry.work_dirpath
 
-        tmt_log_filepath = os.path.join(work_dirpath, TMT_LOG)
-        schedule_entry.tmt_reproducer_filepath = os.path.join(work_dirpath, TMT_REPRODUCER)
+        tmt_log_filepath = os.path.join(schedule_entry.work_dirpath, TMT_LOG)
+        schedule_entry.tmt_reproducer_filepath = os.path.join(schedule_entry.work_dirpath, TMT_REPRODUCER)
 
         artifacts = artifacts_location(self, tmt_log_filepath, logger=schedule_entry.logger)
 
         schedule_entry.info('TMT logs are in {}'.format(artifacts))
 
-        plan_result, test_results = self._run_plan(schedule_entry, work_dirpath, tmt_log_filepath)
+        plan_result, test_results = self._run_plan(schedule_entry, schedule_entry.work_dirpath, tmt_log_filepath)
 
         schedule_entry.result = plan_result
         schedule_entry.results = test_results

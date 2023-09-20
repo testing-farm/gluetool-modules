@@ -136,7 +136,7 @@ def test_gather_results(module, asset, monkeypatch):
     _assert_results(results, expected_results['results'])
 
 
-def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, monkeypatch):
+def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, monkeypatch, tmpdir):
     # this doesn't appear anywhere in results.xml, but _run_plan() needs it
     module.glue.add_shared('dist_git_repository', module_dist_git)
 
@@ -149,6 +149,8 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     )
     schedule_entry.guest = guest
     schedule_entry.testing_environment = test_env
+    schedule_entry.work_dirpath = os.path.join(tmpdir, 'some-workdir')
+    os.mkdir(schedule_entry.work_dirpath)
 
     # gather_plan_results() is called in _run_plan() right after calling tmt; we need to inject
     # writing results.yaml in between, which we can't do with a mock
@@ -196,7 +198,7 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     shutil.rmtree(schedule_entry.work_dirpath)
 
 
-def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest, monkeypatch):
+def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest, monkeypatch, tmpdir):
     # this doesn't appear anywhere in results.xml, but _run_plan() needs it
     module.glue.add_shared('dist_git_repository', module_dist_git)
 
@@ -209,6 +211,8 @@ def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest
     )
     schedule_entry.guest = guest
     schedule_entry.testing_environment = test_env
+    schedule_entry.work_dirpath = os.path.join(tmpdir, 'some-workdir')
+    os.mkdir(schedule_entry.work_dirpath)
 
     # gather_plan_results() is called in _run_plan() right after calling tmt; we need to inject
     # writing results.yaml in between, which we can't do with a mock
@@ -340,6 +344,8 @@ def test_tmt_output_dir(
     schedule_entry.guest = guest
 
     schedule_entry.tmt_env_file = module._prepare_tmt_env_file(testing_environment, 'plan1', tmpdir)
+    schedule_entry.work_dirpath = os.path.join(tmpdir, 'some-workdir')
+    os.mkdir(schedule_entry.work_dirpath)
 
     if module._config.get('how') == 'local':
         schedule_entry.guest = StaticLocalhostGuest(module, 'localhost')
@@ -477,7 +483,14 @@ def test_tmt_output_distgit(module, guest, monkeypatch, additional_options, addi
         ),
         (
             [TestingEnvironment('x86_64')],
-            [],
+            [{
+                'id': 'None:x86_64:plan1',
+                'plan': 'plan1',
+                'runner_capability': 'tmt',
+                'testing_environment': TestingEnvironment('x86_64', snapshots=False),
+                'work_dirpath': lambda workdir_path: workdir_path.startswith('work-plan'),
+                'repodir': lambda repodir: re.match(r'.*test_create_schedule_tec2.*/git-myfix.*', repodir)
+            }],
             [(logging.INFO, 'cloning repo http://example.com/git/myproject (branch not specified, ref myfix)'),
              (logging.INFO, 'looking for plans')]
         )
@@ -507,8 +520,14 @@ def test_create_schedule(module, monkeypatch, log, tec, expected_schedule, expec
 
         schedule = module.create_test_schedule(tec)
 
+    assert len(schedule) == len(expected_schedule)
+
     for entry, expected_entry in zip(schedule, expected_schedule):
-        assert entry == expected_entry
+        for key in expected_entry.keys():
+            if callable(expected_entry[key]):
+                assert expected_entry[key](entry.__dict__.get(key))
+                continue
+            assert entry.__dict__.get(key) == expected_entry[key]
 
     for log_level, log_message in expected_logs:
         assert log.match(levelno=log_level, message=log_message)

@@ -154,8 +154,12 @@ class InstallKojiBuildExecute(gluetool.Module):
             sut_installation.add_step('Reinstall packages',
                                       'dnf -y reinstall $(cat rpms-list) || true')
 
-            sut_installation.add_step('Install packages',
-                                      'dnf -y install $(cat rpms-list)')
+            sut_installation.add_step(
+                'Install packages',
+                r'if [ ! -z $(sed "s/\s//g" rpms-list) ];'
+                'then dnf -y install $(cat rpms-list);'
+                'else echo "Nothing to install, rpms-list is empty"; fi'
+            )
         else:
             sut_installation.add_step(
                 'Reinstall packages',
@@ -183,7 +187,9 @@ class InstallKojiBuildExecute(gluetool.Module):
         # quoting done previously by printf
         sut_installation.add_step(
             'Verify all packages installed',
-            "sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q"
+            r"if [ ! -z $(sed 's/\s//g' rpms-list) ];"
+            "then sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q;"
+            "else echo 'Nothing to verify, rpms-list is empty'; fi"
         )
 
         assert request is not None

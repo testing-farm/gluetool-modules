@@ -114,8 +114,8 @@ def test_extract_artifacts(module, monkeypatch):
             '( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123124 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123124',  # noqa
             'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list',  # noqa
             'dnf -y reinstall $(cat rpms-list) || true',
-            'dnf -y install --allowerasing $(cat rpms-list)',
-            "sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q"
+            'if [ ! -z $(sed "s/\\s//g" rpms-list) ];then dnf -y install --allowerasing $(cat rpms-list);else echo "Nothing to install, rpms-list is empty"; fi',
+            "if [ ! -z $(sed 's/\\s//g' rpms-list) ];then sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q;else echo 'Nothing to verify, rpms-list is empty'; fi",
         ],
         None
     ),
@@ -134,8 +134,8 @@ def test_extract_artifacts(module, monkeypatch):
             '( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src skip-installing-me-2 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src skip-installing-me-2 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-skip-installing-me-2',  # noqa
             'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "$(cat rpms-list-skip-installing-me-1)" | egrep -v "$(cat rpms-list-skip-installing-me-2)" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list',  # noqa
             'dnf -y reinstall $(cat rpms-list) || true',
-            'dnf -y install --allowerasing $(cat rpms-list)',
-            "sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q"
+            'if [ ! -z $(sed "s/\\s//g" rpms-list) ];then dnf -y install --allowerasing $(cat rpms-list);else echo "Nothing to install, rpms-list is empty"; fi',
+            "if [ ! -z $(sed 's/\\s//g' rpms-list) ];then sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q;else echo 'Nothing to verify, rpms-list is empty'; fi",
         ],
         None
     ),
@@ -148,8 +148,8 @@ def test_extract_artifacts(module, monkeypatch):
             '( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src forced-artifact || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src forced-artifact ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-forced-artifact',  # noqa
             'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list',  # noqa
             'dnf -y reinstall $(cat rpms-list) || true',
-            'dnf -y install --allowerasing $(cat rpms-list)',
-            "sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q"
+            'if [ ! -z $(sed "s/\\s//g" rpms-list) ];then dnf -y install --allowerasing $(cat rpms-list);else echo "Nothing to install, rpms-list is empty"; fi',
+            "if [ ! -z $(sed 's/\\s//g' rpms-list) ];then sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q;else echo 'Nothing to verify, rpms-list is empty'; fi",
         ],
         Artifact(id='forced-artifact', packages=None, type='fedora-koji-build'),
     ),
@@ -208,8 +208,8 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
         '( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123124 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123124',  # noqa
         'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list',  # noqa
         'dnf -y reinstall $(cat rpms-list) || true',
-        'dnf -y install --allowerasing $(cat rpms-list)',
-        "sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q"
+        'if [ ! -z $(sed "s/\\s//g" rpms-list) ];then dnf -y install --allowerasing $(cat rpms-list);else echo "Nothing to install, rpms-list is empty"; fi',
+        "if [ ! -z $(sed 's/\\s//g' rpms-list) ];then sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q;else echo 'Nothing to verify, rpms-list is empty'; fi",
     ]
 
     copr_commands = [
@@ -254,7 +254,7 @@ def test_guest_setup_yum(module, local_guest, tmpdir):
         call('yum -y reinstall $(cat rpms-list)'),
         call('yum -y downgrade $(cat rpms-list)'),
         call('yum -y install $(cat rpms-list)'),
-        call("sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q")
+        call("if [ ! -z $(sed 's/\\s//g' rpms-list) ];then sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q;else echo 'Nothing to verify, rpms-list is empty'; fi")
     ]
 
     execute_mock.assert_has_calls(calls)

@@ -131,7 +131,7 @@ class SUTInstallation(object):
                 command = '{}{}'.format('dnf', command[3:])
 
             # always use `--allowerasing` with `dnf` commands
-            if command.startswith('dnf'):
+            if 'dnf ' in command:
                 if re.search(ALLOW_ERASING_PATTERN, command):
                     command = re.sub(ALLOW_ERASING_PATTERN, r' \1 --allowerasing ', command)
 

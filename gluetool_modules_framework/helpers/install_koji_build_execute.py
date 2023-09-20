@@ -58,6 +58,7 @@ class InstallKojiBuildExecute(gluetool.Module):
         guest: NetworkedGuest,
         stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
         log_dirpath: Optional[str] = None,
+        forced_artifact: Optional[Artifact] = None,
         **kwargs: Any
     ) -> Any:
 
@@ -82,7 +83,7 @@ class InstallKojiBuildExecute(gluetool.Module):
         if stage != GuestSetupStage.ARTIFACT_INSTALLATION:
             return r_overloaded_guest_setup_output
 
-        artifacts = self._extract_artifacts(guest)
+        artifacts = [forced_artifact] if forced_artifact else self._extract_artifacts(guest)
 
         # no artifacts to test
         if not artifacts:

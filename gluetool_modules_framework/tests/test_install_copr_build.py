@@ -120,7 +120,7 @@ def test_loadable(module):
     check_loadable(module.glue, 'gluetool_modules_framework/helpers/install_copr_build.py', 'InstallCoprBuild')
 
 
-@pytest.mark.parametrize('guest_artifacts, guest_environment, expected_commands, expected_filenames', [
+@pytest.mark.parametrize('guest_artifacts, guest_environment, expected_commands, expected_filenames, forced_artifact', [
     (
         #
         # Test case - single artifact
@@ -145,7 +145,8 @@ def test_loadable(module):
             'rpm -q dummy1_rpm_name1',
             'rpm -q dummy1_rpm_name2',
         ],
-        None  # No expected generated files - use the default ones in `assert_log_files()`
+        None,  # No expected generated files - use the default ones in `assert_log_files()`
+        None
     ),
     #
     # Test case - multiple artifacts
@@ -222,7 +223,8 @@ def test_loadable(module):
             '11-Verify-packages-installed.txt',
             '12-Verify-packages-installed.txt',
             '13-Verify-packages-installed.txt',
-        ]
+        ],
+        None
     ),
     #
     # Test case - with-excludes
@@ -278,7 +280,8 @@ def test_loadable(module):
             '7-Reinstall-packages.txt',
             '8-Install-packages.txt',
             '9-Verify-packages-installed.txt'
-        ]
+        ],
+        None
     ),
     #
     # Test case - all-excluded
@@ -312,7 +315,8 @@ def test_loadable(module):
             '2-Download-rpms-from-copr.txt',
             '3-Download-copr-repository.txt',
             '4-Download-rpms-from-copr.txt'
-        ]
+        ],
+        None
     ),
     #
     # Test case - with "install=False"
@@ -352,17 +356,45 @@ def test_loadable(module):
             '5-Reinstall-packages.txt',
             '6-Install-packages.txt',
             '7-Verify-packages-installed.txt'
-        ]
-    )
+        ],
+        None
+    ),
+    (
+        #
+        # Test case - artifact parameter
+        #
+        [  # This artifact should be ignored
+            Artifact(type='fedora-copr-build', id='ignored-artifact'),
+        ],
+        None,
+        [  # Expected install commands
+            'mkdir -pv some-download-path',
+            'curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo',
+            (
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm '
+                'https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm '
+                'https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
+            ),
+            'dnf -y reinstall https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm || true',
+            'dnf -y reinstall https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm || true',
+            'dnf -y install --allowerasing https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm',
+            'rpm -q dummy1_rpm_name1',
+            'rpm -q dummy1_rpm_name2',
+        ],
+        None,  # No expected generated files - use the default ones in `assert_log_files()`
+        Artifact(type='fedora-copr-build', id='artifact1')  # This artifact should be installed
+    ),
 
-], ids=['single-artifact', 'multiple-artifacts', 'with-excludes', 'all-excluded', 'with-install-false'])
-def test_setup_guest(module_shared_patched, tmpdir, guest_artifacts, guest_environment, expected_commands, expected_filenames):
+], ids=['single-artifact', 'multiple-artifacts', 'with-excludes', 'all-excluded', 'with-install-false', 'forced-artifact'])
+def test_setup_guest(module_shared_patched, tmpdir, guest_artifacts, guest_environment, expected_commands, expected_filenames, forced_artifact):
     module, primary_task_mock = module_shared_patched
 
     execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
     guest = mock_guest(execute_mock, artifacts=guest_artifacts, environment=guest_environment)
 
-    module.setup_guest(guest, stage=GuestSetupStage.ARTIFACT_INSTALLATION, log_dirpath=str(tmpdir))
+    module.setup_guest(guest, stage=GuestSetupStage.ARTIFACT_INSTALLATION, log_dirpath=str(tmpdir), forced_artifact=forced_artifact)
 
     calls = [call('command -v dnf')] * 2 + [call(c) for c in expected_commands]
     execute_mock.assert_has_calls(calls, any_order=False)

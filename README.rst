@@ -46,3 +46,14 @@ To edit the image tests::
     <edit goss.yaml file>
     goss validate
     exit
+
+Integration tests
+-----------------
+
+Testing Farm worker integration tests defined in the `infrastructure repository <https://gitlab.com/testing-farm/infrastructure>`_ are used to validate the changes against Testing Farm.
+The tests run automatically in GitLab CI for all code changes.
+
+To force a different infrastructure repository url or branch, you can use the following strings in the merge request description::
+
+    !infra-repo: REPOSITORY_URL
+    !infra-branch: REPOSITORY_BRANCH

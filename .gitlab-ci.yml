@@ -137,6 +137,23 @@ integration:
     # Use public nameservers to mitigate the EKS cluster to be reolved locally.
     # A known issues due to the AWS setup we use.
     - printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\nnameserver 8.8.4.4\n" > /etc/resolv.conf
+    # Get merge request description text
+    - >
+      description=$(
+        curl $CI_API_V4_URL/projects/$CI_PROJECT_ID/merge_requests/$CI_MERGE_REQUEST_IID | jq -r .description
+      )
+    # Parse infrastructure repository from description
+    - >
+      if grep '!infra-repo' <<< $description; then
+        INFRA_REPO=$(grep '!infra-repo' <<< $description | sed 's/.*!infra-repo:\?//' | tr -d '[:space:]');
+        echo "Forcing infrastructure repository '$INFRA_REPO'"
+      fi
+    # Parse infrastructure branch from description
+    - >
+      if grep '!infra-branch' <<< $description; then
+        INFRA_BRANCH=$(grep '!infra-branch' <<< $description | sed 's/.*!infra-branch:\?//' | tr -d '[:space:]');
+        echo "Forcing infrastructure repository branch '$INFRA_BRANCH'"
+      fi
     - git clone -b $INFRA_BRANCH $INFRA_REPO $INFRA_PATH && cd $INFRA_PATH
     - dnf -y install direnv libffi libffi-devel podman buildah
     - echo -n "$INFRA_VAULT_PASSWORD" > .vault_pass

@@ -218,6 +218,7 @@ class InstallRepository(gluetool.Module):
         guest: NetworkedGuest,
         stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
         log_dirpath: Optional[str] = None,
+        forced_artifact: Optional[Artifact] = None,
         **kwargs: Any
     ) -> Any:
 
@@ -245,21 +246,29 @@ class InstallRepository(gluetool.Module):
 
         assert guest.environment
 
-        # Get `repository-file` artifacts from TestingEnvironment
         repository_file_artifacts: List[Artifact] = []
-        if guest.environment and guest.environment.artifacts:
-            repository_file_artifacts = [
-                artifact for artifact in guest.environment.artifacts
-                if artifact.type == REPOSITORY_FILE_ARTIFACT_TYPE
-            ]
-
-        # Get `repository` artifacts from TestingEnvironment
         repository_artifacts: List[Artifact] = []
-        if guest.environment and guest.environment.artifacts:
-            repository_artifacts = [
-                artifact for artifact in guest.environment.artifacts
-                if artifact.type == REPOSITORY_ARTIFACT_TYPE
-            ]
+
+        if forced_artifact and forced_artifact.type == REPOSITORY_FILE_ARTIFACT_TYPE:
+            repository_file_artifacts = [forced_artifact]
+
+        elif forced_artifact and forced_artifact.type == REPOSITORY_ARTIFACT_TYPE:
+            repository_artifacts = [forced_artifact]
+
+        else:
+            # Get `repository-file` artifacts from TestingEnvironment
+            if guest.environment and guest.environment.artifacts:
+                repository_file_artifacts = [
+                    artifact for artifact in guest.environment.artifacts
+                    if artifact.type == REPOSITORY_FILE_ARTIFACT_TYPE
+                ]
+
+            # Get `repository` artifacts from TestingEnvironment
+            if guest.environment and guest.environment.artifacts:
+                repository_artifacts = [
+                    artifact for artifact in guest.environment.artifacts
+                    if artifact.type == REPOSITORY_ARTIFACT_TYPE
+                ]
 
         # no artifacts to install
         if not (repository_artifacts or repository_file_artifacts):

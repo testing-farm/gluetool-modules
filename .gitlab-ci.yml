@@ -133,7 +133,7 @@ integration:
     INFRA_BRANCH: main
     # Use the worker image build in the "container" step
     WORKER_IMAGE: quay.io/testing-farm/worker:$CI_PIPELINE_ID
-    CI_ARTIFACT_URL_PREFIX: $CI_JOB_URL/artifacts/external_file
+    CI_ARTIFACT_URL_PREFIX: "https://testing-farm.gitlab.io/-/gluetool-modules/-/jobs/$CI_JOB_ID/artifacts"
   before_script:
     # Use public nameservers to mitigate the EKS cluster to be reolved locally.
     # A known issues due to the AWS setup we use.

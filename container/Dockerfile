@@ -35,12 +35,12 @@ RUN dnf -y update
 
 # install all required dependencies
 RUN    ln -s /CONFIG /etc/citool.d \
-    && dnf -y install ansible-core-2.14.8 autoconf automake crun gcc git krb5-devel libcurl-devel \
+    && dnf -y install ansible-core-2.14.10 autoconf automake crun gcc git krb5-devel libcurl-devel \
                       libpq-devel libtool libxml2-devel make openssl-devel popt-devel \
                       postgresql-devel python3.9 python3-libselinux \
                       redhat-rpm-config koji python3-virtualenv standard-test-roles \
                       rsync beakerlib-libraries rpm-build rpm-devel \
-    && dnf -y install tmt-1.26.1 tmt-provision-container-1.26.1 tmt-provision-virtual-1.26.1 tmt-report-polarion-1.26.1 tmt-report-html-1.26.1 tmt-report-reportportal-1.26.1 \
+    && dnf -y install https://kojipkgs.fedoraproject.org//packages/tmt/1.26.1/1.fc38/noarch/tmt-1.26.1-1.fc38.noarch.rpm https://kojipkgs.fedoraproject.org//packages/tmt/1.26.1/1.fc38/noarch/python3-tmt-1.26.1-1.fc38.noarch.rpm https://kojipkgs.fedoraproject.org//packages/tmt/1.26.1/1.fc38/noarch/tmt-provision-container-1.26.1-1.fc38.noarch.rpm https://kojipkgs.fedoraproject.org//packages/tmt/1.26.1/1.fc38/noarch/tmt-provision-virtual-1.26.1-1.fc38.noarch.rpm https://kojipkgs.fedoraproject.org//packages/tmt/1.26.1/1.fc38/noarch/tmt-report-polarion-1.26.1-1.fc38.noarch.rpm https://kojipkgs.fedoraproject.org//packages/tmt/1.26.1/1.fc38/noarch/tmt-report-html-1.26.1-1.fc38.noarch.rpm https://kojipkgs.fedoraproject.org//packages/tmt/1.26.1/1.fc38/noarch/tmt-report-reportportal-1.26.1-1.fc38.noarch.rpm https://kojipkgs.fedoraproject.org//packages/tmt/1.26.1/1.fc38/noarch/tmt-report-junit-1.26.1-1.fc38.noarch.rpm \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \

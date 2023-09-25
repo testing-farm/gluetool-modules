@@ -129,3 +129,52 @@ def test_guest_setup(module, environment_index, tmpdir, monkeypatch):
     ]
 
     execute_mock.assert_has_calls(execute_calls)
+
+
+def test_guest_setup_forced_artifact(module, tmpdir, monkeypatch):
+    module.execute()
+
+    stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
+
+    def mock_run_output(stdout):
+        return MagicMock(
+            exit_code=0,
+            stdout=stdout,
+            stderr=''
+        )
+
+    mock_command_init = MagicMock(return_value=None)
+    mock_command_run = MagicMock(side_effect=[
+        mock_run_output('\n'.join([
+            'https://example.com/forced-1.x86_64.rpm',
+        ])),
+    ])
+
+    monkeypatch.setattr(Command, '__init__', mock_command_init)
+    monkeypatch.setattr(Command, 'run', mock_command_run)
+
+    execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
+    guest = mock_guest(execute_mock)
+    guest.environment = module.shared('testing_farm_request').environments_requested[0]
+    guest.environment.excluded_packages = ['dummy2']
+
+    module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir), forced_artifact=Artifact(
+        id='https://example.com/forced-repo', packages=None, type='repository'))
+
+    command_calls = [
+        call(['dnf', 'repoquery', '-q', '--queryformat', '"%{{name}}"', '--repofrompath=artifacts-repo,https://example.com/forced-repo', '--repo', 'artifacts-repo', '--location', '--disable-modular-filtering']),  # noqa
+    ]
+    mock_command_init.assert_has_calls(command_calls)
+
+    execute_calls = [
+        call('command -v dnf'),
+        call('mkdir -pv dummy-path'),
+        call('cd dummy-path; echo https://example.com/forced-1.x86_64.rpm | xargs -n1 curl -sO'),
+        call('dnf -y reinstall https://example.com/forced-1.x86_64.rpm'),
+        call('dnf -y downgrade --allowerasing https://example.com/forced-1.x86_64.rpm'),
+        call('dnf -y update --allowerasing https://example.com/forced-1.x86_64.rpm'),
+        call('dnf -y install --allowerasing https://example.com/forced-1.x86_64.rpm'),
+        call('basename --suffix=.rpm https://example.com/forced-1.x86_64.rpm | xargs rpm -q')
+    ]
+
+    execute_mock.assert_has_calls(execute_calls)

@@ -55,6 +55,7 @@ class InstallCoprBuild(gluetool.Module):
         stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
         log_dirpath: Optional[str] = None,
         r_overloaded_guest_setup_output: Optional[SetupGuestReturnType] = None,
+        forced_artifact: Optional[Artifact] = None,
         **kwargs: Any
     ) -> SetupGuestReturnType:
 
@@ -69,13 +70,15 @@ class InstallCoprBuild(gluetool.Module):
 
         log_dirpath = guest_setup_log_dirpath(guest, log_dirpath)
 
+        artifacts: List[Artifact] = [forced_artifact] if forced_artifact else []
+
         # Filter artifacts of the acceptable type from guest's TestingEnvironment
-        artifacts: List[Artifact] = []
-        if guest.environment and guest.environment.artifacts:
-            artifacts = [
-                artifact for artifact in guest.environment.artifacts
-                if artifact.type in TESTING_FARM_ARTIFACT_TYPES
-            ]
+        if not artifacts:
+            if guest.environment and guest.environment.artifacts:
+                artifacts = [
+                    artifact for artifact in guest.environment.artifacts
+                    if artifact.type in TESTING_FARM_ARTIFACT_TYPES
+                ]
 
         builds = cast(Optional[List[CoprTask]], self.shared('tasks', task_ids=[artifact.id for artifact in artifacts]))
 
@@ -240,4 +243,10 @@ class InstallCoprBuild(gluetool.Module):
         )
 
         return self.setup_guest_install_copr_build(
-            guest, schedule_entry, stage, log_dirpath, r_overloaded_guest_setup_output)
+            guest,
+            schedule_entry,
+            stage,
+            log_dirpath,
+            r_overloaded_guest_setup_output,
+            **kwargs
+        )

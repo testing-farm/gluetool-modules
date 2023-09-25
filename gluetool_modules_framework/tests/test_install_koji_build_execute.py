@@ -103,7 +103,7 @@ def test_extract_artifacts(module, monkeypatch):
     ]
 
 
-@pytest.mark.parametrize('guest_artifacts, expected_commands', [
+@pytest.mark.parametrize('guest_artifacts, expected_commands, forced_artifact', [
     #
     # Test case 1 - install all artifacts
     #
@@ -116,7 +116,8 @@ def test_extract_artifacts(module, monkeypatch):
             'dnf -y reinstall $(cat rpms-list) || true',
             'dnf -y install --allowerasing $(cat rpms-list)',
             "sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q"
-        ]
+        ],
+        None
     ),
     #
     # Test case 2 - skip installation of some artifacts
@@ -135,16 +136,31 @@ def test_extract_artifacts(module, monkeypatch):
             'dnf -y reinstall $(cat rpms-list) || true',
             'dnf -y install --allowerasing $(cat rpms-list)',
             "sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q"
-        ]
-    )
+        ],
+        None
+    ),
+    #
+    # Test case 1 - install forced artifact
+    #
+    (
+        None,  # No additional input artifacts, see `mock_guest` function for the base artifacts
+        [  # Expected install commands
+            '( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src forced-artifact || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src forced-artifact ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-forced-artifact',  # noqa
+            'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list',  # noqa
+            'dnf -y reinstall $(cat rpms-list) || true',
+            'dnf -y install --allowerasing $(cat rpms-list)',
+            "sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q"
+        ],
+        Artifact(id='forced-artifact', packages=None, type='fedora-koji-build'),
+    ),
 ])
-def test_guest_setup(module, local_guest, tmpdir, guest_artifacts, expected_commands):
+def test_guest_setup(module, local_guest, tmpdir, guest_artifacts, expected_commands, forced_artifact):
     stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
 
     execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
     guest = mock_guest(execute_mock, artifacts=guest_artifacts)
 
-    module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir))
+    module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir), forced_artifact=forced_artifact)
 
     calls = [call('command -v dnf')] * 2 + [call(c) for c in expected_commands]
     execute_mock.assert_has_calls(calls, any_order=False)

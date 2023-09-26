@@ -35,7 +35,7 @@ RUN dnf -y update
 
 # install all required dependencies
 RUN    ln -s /CONFIG /etc/citool.d \
-    && dnf -y install ansible-core-2.14.8 autoconf automake crun gcc git krb5-devel libcurl-devel \
+    && dnf -y install ansible-core-2.14.10 autoconf automake crun gcc git krb5-devel libcurl-devel \
                       libpq-devel libtool libxml2-devel make openssl-devel popt-devel \
                       postgresql-devel python3.9 python3-libselinux \
                       redhat-rpm-config koji python3-virtualenv standard-test-roles \

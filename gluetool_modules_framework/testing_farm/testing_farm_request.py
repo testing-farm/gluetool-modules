@@ -201,11 +201,13 @@ class Artifact():
         :ivar type: Type of the artifact, e.g. "fedora-copr-build", "fedora-koji-build", "repository-file".
         :ivar packages: List of packages to install, if applicable to the artifact.
         :ivar install: Whether to fetch and install artifacts or just fetch them.
+        :ivar order: Order in which the artifact will be installed. The real default value is set by API.
     """
     id: str
     type: str
     packages: Optional[List[str]] = None
     install: bool = True
+    order: int = 50
 
 
 class TestingFarmRequest(LoggerMixin, object):

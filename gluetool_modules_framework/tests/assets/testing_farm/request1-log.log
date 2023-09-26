@@ -25,12 +25,14 @@ Initialized with 1:
                 {
                     "id": "111",
                     "install": false,
+                    "order": 50,
                     "packages": "pacakge1",
                     "type": "fedora-copr-build"
                 },
                 {
                     "id": "111",
                     "install": true,
+                    "order": 50,
                     "packages": "pacakge2",
                     "type": "fedora-copr-build"
                 }

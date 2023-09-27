@@ -155,6 +155,12 @@ integration:
         INFRA_BRANCH=$(grep '!infra-branch' <<< $description | sed 's/.*!infra-branch:\?//' | tr -d '[:space:]');
         echo "Forcing infrastructure repository branch '$INFRA_BRANCH'"
       fi
+    # Parse pytest options from description
+    - >
+      if grep '!pytest-options' <<< $description; then
+        export PYTEST_OPTIONS=$(grep '!pytest-options' <<< $description | sed 's/.*!pytest-options:\?//');
+        echo "Forcing pytest options '$PYTEST_OPTIONS'"
+      fi
     - git clone -b $INFRA_BRANCH $INFRA_REPO $INFRA_PATH && cd $INFRA_PATH
     - dnf -y install direnv libffi libffi-devel podman buildah
     - echo -n "$INFRA_VAULT_PASSWORD" > .vault_pass

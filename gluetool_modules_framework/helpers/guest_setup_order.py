@@ -24,7 +24,7 @@ class GuestSetupOrder(gluetool.Module):
 
     options = {
         'artifact-guest-setup-map': {
-            'help': 'Mapping betwee artifact type and related guest setup shared function (default: none).',
+            'help': 'Mapping between artifact type and related guest setup shared function (default: none).',
             'metavar': 'FILE'
         },
     }

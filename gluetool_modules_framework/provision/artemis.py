@@ -134,7 +134,7 @@ class ArtemisAPIError(SoftGlueError):
 class ArtemisAPI(object):
     ''' Class that allows RESTful communication with Artemis API '''
 
-    def __init__(self, module: gluetool.Module, api_url: str, api_version: str, timeout: int, tick: int) -> None:
+    def __init__(self, module: 'ArtemisProvisioner', api_url: str, api_version: str, timeout: int, tick: int) -> None:
 
         self.module = module
         self.url = treat_url(api_url)
@@ -252,14 +252,7 @@ class ArtemisAPI(object):
 
         post_install_script_contents = None
         if post_install_script:
-            # Check if it's a file, if not - treat it as raw script data
-            # NOTE(ivasilev) To unify logic with artemis-cli should be a 3-step check: a file, a url, a raw script
-            if os.path.isfile(post_install_script):
-                with open(normalize_path(post_install_script)) as f:
-                    post_install_script_contents = f.read()
-            else:
-                # NOTE(ivasilev) Remove possible string escaping
-                post_install_script_contents = post_install_script.replace('\\n', '\n')
+            post_install_script_contents = self.module.normalize_post_install_script(post_install_script)
 
         # TODO: yes, semver will make this much better... Or better, artemis-cli package provide an easy-to-use
         # bit of code to construct the payload.
@@ -283,7 +276,7 @@ class ArtemisAPI(object):
             if pool:
                 data['environment']['pool'] = pool
 
-            hardware = cast(ArtemisProvisioner, self.module).hw_constraints or environment.hardware
+            hardware = self.module.hw_constraints or environment.hardware
 
             if hardware:
                 data['environment']['hw']['constraints'] = hardware
@@ -1070,7 +1063,17 @@ class ArtemisProvisioner(gluetool.Module):
 
     required_options = ('api-url', 'api-version', 'key', 'priority-group', 'ssh-key')
 
-    shared_functions = ['provision', 'provisioner_capabilities']
+    shared_functions = ['provision', 'provisioner_capabilities', 'artemis_api_options']
+
+    def artemis_api_options(self) -> Dict[str, Any]:
+        return {
+            'api-url': self.api_url,
+            'api-version': self.api_version,
+            'ssh-key': self.option('ssh-key'),
+            'key': self.option('key'),
+            'post-install-script': self.post_install_script,
+            'skip-prepare-verify-ssh': self.option('skip-prepare-verify-ssh'),
+        }
 
     @property
     def api_url(self) -> str:
@@ -1079,6 +1082,24 @@ class ArtemisProvisioner(gluetool.Module):
     @property
     def api_version(self) -> str:
         return render_template(self.option('api-version') or '', **self.shared('eval_context'))
+
+    def normalize_post_install_script(self, post_install_script: str) -> str:
+        """
+        Converts post_install_script, which can either be a filename or a script itself, into the script by reading the
+        file.
+
+        :param str post_install_script: script or filepath of the script.
+        :rtype: str
+        """
+        if os.path.isfile(self.option('post-install-script')):
+            with open(normalize_path(self.option('post-install-script'))) as f:
+                return f.read()
+        # NOTE(ivasilev) Remove possible string escaping
+        return cast(str, self.option('post-install-script').replace('\\n', '\n'))
+
+    @property
+    def post_install_script(self) -> str:
+        return self.normalize_post_install_script(self.option('post-install-script'))
 
     @gluetool.utils.cached_property
     def hw_constraints(self) -> Optional[Dict[str, Any]]:

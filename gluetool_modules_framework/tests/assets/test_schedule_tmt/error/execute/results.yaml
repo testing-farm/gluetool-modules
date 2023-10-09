@@ -3,11 +3,23 @@
   result: pass
   log:
     - logs/install/out.log
+  serialnumber: 1
+  guest:
+    name: default-0
+    role:
 - name: /update
   result: fail
   log:
     - logs/update/out.log
+  serialnumber: 2
+  guest:
+    name: default-0
+    role:
 - name: /remove
   result: error
   log:
     - logs/remove/out.log
+  serialnumber: 3
+  guest:
+    name: default-0
+    role:

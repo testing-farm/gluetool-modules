@@ -53,17 +53,6 @@ RUN    ln -s /CONFIG /etc/citool.d \
     && bash -c "echo '  ServerAliveInterval 60' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  ServerAliveCountMax 5' >> /etc/ssh/ssh_config"
 
-RUN dnf copr enable -y packit/teemtee-tmt-2347 \
-    && dnf install -y tmt+report-polarion-1.28.dev888-1.20230925122238160602.pr2347.25.gc247032e.noarch \
-        tmt+report-junit-1.28.dev888-1.20230925122238160602.pr2347.25.gc247032e.noarch \
-        tmt+all-1.28.dev888-1.20230925122238160602.pr2347.25.gc247032e.noarch \
-        tmt+provision-beaker-1.28.dev888-1.20230925122238160602.pr2347.25.gc247032e.noarch \
-        tmt+test-convert-1.28.dev888-1.20230925122238160602.pr2347.25.gc247032e.noarch \
-        tmt-1.28.dev888-1.20230925122238160602.pr2347.25.gc247032e.noarch \
-        tmt+provision-virtual-1.28.dev888-1.20230925122238160602.pr2347.25.gc247032e.noarch \
-        tmt+export-polarion-1.28.dev888-1.20230925122238160602.pr2347.25.gc247032e.noarch \
-        tmt+provision-container-1.28.dev888-1.20230925122238160602.pr2347.25.gc247032e.noarch
-
 # copy the built package
 COPY dist/gluetool_modules_framework*.whl .
 

@@ -1,0 +1,4 @@
+---
+default-0:
+    arch: x86_64
+    image: Fedora-Rawhide

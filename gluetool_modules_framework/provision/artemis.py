@@ -1378,7 +1378,7 @@ class ArtemisProvisioner(gluetool.Module):
 
     def remove_from_list(self, guest: ArtemisGuest) -> None:
         if guest not in self.guests:
-            self.error('{} is not found in guests list')
+            self.warn('{} is not found in guests list'.format(guest.name))
             return
 
         self.guests.remove(guest)

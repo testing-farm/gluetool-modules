@@ -628,14 +628,14 @@ gitdb2 = ">=2,<3"
 
 [[package]]
 name = "gluetool"
-version = "2.5"
+version = "2.6"
 description = "Python framework for constructing command-line pipelines."
 category = "main"
 optional = false
 python-versions = ">=3.7.2,<3.10"
 files = [
-    {file = "gluetool-2.5-py3-none-any.whl", hash = "sha256:63c7c3f27337abcd1da1e5048d74dc7f8cb2a83057e6ddb4cd407021c5fbd788"},
-    {file = "gluetool-2.5.tar.gz", hash = "sha256:68c6dcd31a0c552d129de87c303405bc7e8c53c234573922780240db56f3ddd1"},
+    {file = "gluetool-2.6-py3-none-any.whl", hash = "sha256:c3addc247e00a3def7891c303df9b627111a6c6ac5f8cdad5e8175ae9d2f9ccb"},
+    {file = "gluetool-2.6.tar.gz", hash = "sha256:43d543fabd9fa48dc7ae41b276a891734c712692c86610ed87b7b9fce8c7e803"},
 ]
 
 [package.dependencies]
@@ -652,10 +652,10 @@ mock = "*"
 mypy-extensions = "*"
 packaging = "*"
 psutil = ">=5.9.5,<6.0.0"
-raven = "*"
 requests = "*"
 requests-toolbelt = "*"
 "ruamel.yaml" = ">=0.16.12,<0.17.0"
+sentry-sdk = ">=1.30.0,<2.0.0"
 six = "*"
 Sphinx = ">=5.0.0,<6.0.0"
 tabulate = "*"
@@ -2017,22 +2017,6 @@ files = [
 ]
 
 [[package]]
-name = "raven"
-version = "6.10.0"
-description = "Raven is a client for Sentry (https://getsentry.com)"
-category = "main"
-optional = false
-python-versions = "*"
-files = [
-    {file = "raven-6.10.0-py2.py3-none-any.whl", hash = "sha256:44a13f87670836e153951af9a3c80405d36b43097db869a36e92809673692ce4"},
-    {file = "raven-6.10.0.tar.gz", hash = "sha256:3fa6de6efa2493a7c827472e984ce9b020797d0da16f1db67197bcc23c8fae54"},
-]
-
-[package.extras]
-flask = ["Flask (>=0.8)", "blinker (>=1.1)"]
-tests = ["Flask (>=0.8)", "Flask-Login (>=0.2.0)", "ZConfig", "aiohttp", "anyjson", "blinker (>=1.1)", "blinker (>=1.1)", "bottle", "celery (>=2.5)", "coverage (<4)", "exam (>=0.5.2)", "flake8 (==3.5.0)", "logbook", "mock", "nose", "pytest (>=3.2.0,<3.3.0)", "pytest-cov (==2.5.1)", "pytest-flake8 (==1.0.0)", "pytest-pythonpath (==0.7.2)", "pytest-timeout (==1.2.1)", "pytest-xdist (==1.18.2)", "pytz", "requests", "sanic (>=0.7.0)", "tornado (>=4.1,<5.0)", "tox", "webob", "webtest", "wheel"]
-
-[[package]]
 name = "requests"
 version = "2.28.1"
 description = "Python HTTP for Humans."
@@ -2209,6 +2193,52 @@ files = [
 [package.dependencies]
 cryptography = "*"
 typing-extensions = "*"
+
+[[package]]
+name = "sentry-sdk"
+version = "1.32.0"
+description = "Python client for Sentry (https://sentry.io)"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "sentry-sdk-1.32.0.tar.gz", hash = "sha256:935e8fbd7787a3702457393b74b13d89a5afb67185bc0af85c00cb27cbd42e7c"},
+    {file = "sentry_sdk-1.32.0-py2.py3-none-any.whl", hash = "sha256:eeb0b3550536f3bbc05bb1c7e0feb3a78d74acb43b607159a606ed2ec0a33a4d"},
+]
+
+[package.dependencies]
+certifi = "*"
+urllib3 = {version = ">=1.26.11", markers = "python_version >= \"3.6\""}
+
+[package.extras]
+aiohttp = ["aiohttp (>=3.5)"]
+arq = ["arq (>=0.23)"]
+asyncpg = ["asyncpg (>=0.23)"]
+beam = ["apache-beam (>=2.12)"]
+bottle = ["bottle (>=0.12.13)"]
+celery = ["celery (>=3)"]
+chalice = ["chalice (>=1.16.0)"]
+clickhouse-driver = ["clickhouse-driver (>=0.2.0)"]
+django = ["django (>=1.8)"]
+falcon = ["falcon (>=1.4)"]
+fastapi = ["fastapi (>=0.79.0)"]
+flask = ["blinker (>=1.1)", "flask (>=0.11)", "markupsafe"]
+grpcio = ["grpcio (>=1.21.1)"]
+httpx = ["httpx (>=0.16.0)"]
+huey = ["huey (>=2)"]
+loguru = ["loguru (>=0.5)"]
+opentelemetry = ["opentelemetry-distro (>=0.35b0)"]
+opentelemetry-experimental = ["opentelemetry-distro (>=0.40b0,<1.0)", "opentelemetry-instrumentation-aiohttp-client (>=0.40b0,<1.0)", "opentelemetry-instrumentation-django (>=0.40b0,<1.0)", "opentelemetry-instrumentation-fastapi (>=0.40b0,<1.0)", "opentelemetry-instrumentation-flask (>=0.40b0,<1.0)", "opentelemetry-instrumentation-requests (>=0.40b0,<1.0)", "opentelemetry-instrumentation-sqlite3 (>=0.40b0,<1.0)", "opentelemetry-instrumentation-urllib (>=0.40b0,<1.0)"]
+pure-eval = ["asttokens", "executing", "pure-eval"]
+pymongo = ["pymongo (>=3.1)"]
+pyspark = ["pyspark (>=2.4.4)"]
+quart = ["blinker (>=1.1)", "quart (>=0.16.1)"]
+rq = ["rq (>=0.6)"]
+sanic = ["sanic (>=0.8)"]
+sqlalchemy = ["sqlalchemy (>=1.2)"]
+starlette = ["starlette (>=0.19.1)"]
+starlite = ["starlite (>=1.48)"]
+tornado = ["tornado (>=5)"]
 
 [[package]]
 name = "setuptools"

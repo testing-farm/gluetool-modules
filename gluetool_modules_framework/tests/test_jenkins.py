@@ -87,7 +87,7 @@ def test_jenkins_set_build_name(log, module, monkeypatch):
     _, module = module
     jenkins_proxy = JenkinsProxy(MagicMock(), module)
 
-    mocked_response = MagicMock(status_code=200, content='')
+    mocked_response = MagicMock(status_code=200, text='')
     mocked_requests = MagicMock(
         post=MagicMock(return_value=mocked_response)
     )
@@ -114,7 +114,7 @@ def test_jenkins_set_build_name_credentials(log, module, monkeypatch):
 
     jenkins_proxy = JenkinsProxy(MagicMock(), module)
 
-    mocked_response = MagicMock(status_code=200, content='')
+    mocked_response = MagicMock(status_code=200, text='')
     mocked_requests = MagicMock(
         post=MagicMock(return_value=mocked_response)
     )

@@ -29,7 +29,7 @@ def prepare_test(module, monkeypatch, name, side_effect=None, side_effect_json=N
 
     test = gluetool.utils.load_yaml(testing_asset('pes', 'test-{}.yaml'.format(name)))
 
-    mocked_response = MagicMock(content='')
+    mocked_response = MagicMock(text='')
 
     if side_effect_json:
         mocked_response.json = MagicMock(side_effect=side_effect_json)

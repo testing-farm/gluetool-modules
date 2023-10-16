@@ -51,7 +51,7 @@ def test_sanity_pass(module):
 
 
 class MockResponse:
-    content = ''
+    text = ''
 
     @staticmethod
     def json():
@@ -115,7 +115,7 @@ def test_rpms_nomodule(module, monkeypatch):
 
 
 class MockFailedResponse:
-    content = ''
+    text = ''
 
     @staticmethod
     def raise_for_status():

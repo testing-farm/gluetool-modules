@@ -70,8 +70,8 @@ class MockRequests():
 def fixture_module():
     module = create_module(ArtemisProvisioner)[1]
 
-    module._config['api-url'] = "https://artemis.xyz"
-    module._config['api-version'] = "v0.0.28"
+    module._config['api-url'] = "https://artemis.xyz/v0.0.28/"
+    module._config['api-version'] = "0.0.28"
 
     module._config['connect-timeout'] = 1
     module._config['ready-tick'] = 1
@@ -158,7 +158,7 @@ def test_execute(monkeypatch, module, log):
     monkeypatch.setattr(requests, 'get', MockRequests(scenario['requests']).get)
     module.execute()
 
-    assert log.match(levelno=logging.INFO, message='Using Artemis API https://artemis.xyz/')
+    assert log.match(levelno=logging.INFO, message='Using Artemis API https://artemis.xyz/v0.0.28/')
 
 
 def test_api_call(monkeypatch, module, log):
@@ -316,17 +316,9 @@ def test_sanity(module):
         'provision': 1
     }
 
-    with pytest.raises(GlueError, match='Missing required option: --arch'):
-        module.sanity()
-
-    module._config = {
-        'provision': 1,
-        'arch': 'some-arch'
-    }
-
     with pytest.raises(
         GlueError,
-        match='Unsupported API version, only {} are supported'.format(', '.join(SUPPORTED_API_VERSIONS))
+        match="Unsupported API version '', only {} are supported".format(', '.join(SUPPORTED_API_VERSIONS))
     ):
         module.sanity()
 
@@ -338,7 +330,28 @@ def test_sanity(module):
 
     with pytest.raises(
         GlueError,
-        match='Unsupported API version, only {} are supported'.format(', '.join(SUPPORTED_API_VERSIONS))
+        match="Unsupported API version 'unsupported', only {} are supported".format(', '.join(SUPPORTED_API_VERSIONS))
+    ):
+        module.sanity()
+
+    for config in [{
+        'provision': 1,
+        'arch': 'some-arch',
+        'api-version': list(SUPPORTED_API_VERSIONS)[0]
+    }, {
+        'compose': 'some-compose',
+        'arch': None,
+    }]:
+        module._config.update(config)
+        with pytest.raises(
+            GlueError,
+            match="Options --arch and --compose required with --provision"
+        ):
+            module.sanity()
+
+    with pytest.raises(
+        GlueError,
+        match="Options --arch and --compose required with --provision"
     ):
         module.sanity()
 
@@ -346,6 +359,7 @@ def test_sanity(module):
         module._config.update({
             'provision': 1,
             'arch': 'some-arch',
+            'compose': 'some-compose',
             'api-version': version
         })
         assert module.sanity() is None

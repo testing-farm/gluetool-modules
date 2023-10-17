@@ -29,22 +29,22 @@ from typing import Any, Dict, List, Optional, Set, Tuple, cast  # noqa
 
 # As defined in artemis-cli, https://gitlab.com/testing-farm/artemis/-/blob/main/cli/src/tft/artemis_cli/artemis_cli.py
 API_FEATURE_VERSIONS: Dict[str, str] = {
-    'supported-baseline': 'v0.0.16',
-    'arch-under-hw': 'v0.0.19',
-    'hw-constraints': 'v0.0.19',
-    'skip-prepare-verify-ssh': 'v0.0.24',
-    'log-types': 'v0.0.26',
-    'hw-constraints-disk-as-list': 'v0.0.27',
-    'hw-constraints-network': 'v0.0.28',
-    'hw-constraints-boot-method': 'v0.0.32',
-    'hw-constraints-hostname': 'v0.0.38',
-    'hw-constraints-cpu-extra': 'v0.0.46',
-    'hw-constraints-cpu-processors': 'v0.0.47',
-    'hw-constraints-compatible-distro': 'v0.0.48',
-    'hw-constraints-kickstart': 'v0.0.53',
-    'fixed-hw-validation': 'v0.0.55',
-    'user-defined-watchdog-delay': 'v0.0.56',
-    'fixed-hw-virtualization-hypervisor': 'v0.0.58'
+    'supported-baseline': '0.0.16',
+    'arch-under-hw': '0.0.19',
+    'hw-constraints': '0.0.19',
+    'skip-prepare-verify-ssh': '0.0.24',
+    'log-types': '0.0.26',
+    'hw-constraints-disk-as-list': '0.0.27',
+    'hw-constraints-network': '0.0.28',
+    'hw-constraints-boot-method': '0.0.32',
+    'hw-constraints-hostname': '0.0.38',
+    'hw-constraints-cpu-extra': '0.0.46',
+    'hw-constraints-cpu-processors': '0.0.47',
+    'hw-constraints-compatible-distro': '0.0.48',
+    'hw-constraints-kickstart': '0.0.53',
+    'fixed-hw-validation': '0.0.55',
+    'user-defined-watchdog-delay': '0.0.56',
+    'fixed-hw-virtualization-hypervisor': '0.0.58'
 }
 
 SUPPORTED_API_VERSIONS: Set[str] = set(API_FEATURE_VERSIONS.values())
@@ -1074,9 +1074,11 @@ class ArtemisProvisioner(gluetool.Module):
 
     @property
     def api_url(self) -> str:
-        option = self.option('api-url')
+        return render_template(self.option('api-url') or '', **self.shared('eval_context'))
 
-        return render_template(option, **self.shared('eval_context'))
+    @property
+    def api_version(self) -> str:
+        return render_template(self.option('api-version') or '', **self.shared('eval_context'))
 
     @gluetool.utils.cached_property
     def hw_constraints(self) -> Optional[Dict[str, Any]]:
@@ -1133,19 +1135,15 @@ class ArtemisProvisioner(gluetool.Module):
         return user_data
 
     def sanity(self) -> None:
-
         # test whether parsing of HW requirements yields anything valid - the value is just ignored, we just want
         # to be sure it doesn't raise any exception
         self.hw_constraints
 
-        if not self.option('provision'):
-            return
-
-        if not self.option('arch'):
-            raise GlueError('Missing required option: --arch')
-
-        if self.option('api-version') not in SUPPORTED_API_VERSIONS:
-            raise GlueError('Unsupported API version, only {} are supported'.format(', '.join(SUPPORTED_API_VERSIONS)))
+        if self.api_version not in SUPPORTED_API_VERSIONS:
+            raise GlueError("Unsupported API version '{}', only {} are supported".format(
+                self.api_version,
+                ', '.join(SUPPORTED_API_VERSIONS)
+            ))
 
         if self.option('wait') and not self.option('provision'):
             raise GlueError('Option --provision required with --wait.')
@@ -1153,6 +1151,9 @@ class ArtemisProvisioner(gluetool.Module):
         console_log_filename = self.option('console-log-filename')
         if console_log_filename and '{guestname}' not in console_log_filename:
             raise GlueError("Option --console-log-filename must include '{guestname}' string.")
+
+        if self.option('provision') and (not self.option('arch') or not self.option('compose')):
+            raise GlueError('Options --arch and --compose required with --provision')
 
         console_log_datetime_filename = self.option('console-log-datetime-filename')
         if console_log_datetime_filename:
@@ -1339,7 +1340,7 @@ class ArtemisProvisioner(gluetool.Module):
 
         self.api = ArtemisAPI(self,
                               self.api_url,
-                              self.option('api-version'),
+                              self.api_version,
                               self.option('api-call-timeout'),
                               self.option('api-call-tick'))
 

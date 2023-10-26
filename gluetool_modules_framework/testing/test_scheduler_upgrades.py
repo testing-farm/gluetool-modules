@@ -50,10 +50,18 @@ class TestSchedulerUpgrades(gluetool.Module):
         'product-pattern': {
             'help': 'Regular expression used to extract major and minor version from the product name.',
             'type': str
+        },
+        'product-template-leapp': {
+            'help': 'Template for product version usable with leapp.',
+            'type': str
+        },
+        'product-template-pes': {
+            'help': 'Template for product version usable with Package Evolution Service.',
+            'type': str
         }
     }
 
-    required_options = ('variant', 'compose-url', 'product-pattern')
+    required_options = ('variant', 'compose-url', 'product-pattern', 'product-template-leapp')
 
     shared_functions = ['create_test_schedule']
 
@@ -62,9 +70,12 @@ class TestSchedulerUpgrades(gluetool.Module):
         Check correct combination of options.
         '''
 
-        if self.option('variant') == 'from' and not self.option('destination'):
-            msg = 'Option `destination` is required when `variant` is set to `from`.'
-            raise gluetool.GlueError(msg)
+        if self.option('variant') == 'from':
+            for option in ('destination', 'product-template-pes'):
+                if not self.option(option):
+                    msg = f'Option `{option}` is required when option `variant` is set to `from`.'
+                    raise gluetool.GlueError(msg)
+
         if self.option('repos') and self.option('exclude-repos'):
             msg = 'Options `repos` and `exclude-repos` are mutually exclusive.'
             raise gluetool.GlueError(msg)
@@ -89,7 +100,8 @@ class TestSchedulerUpgrades(gluetool.Module):
         Get release string suitable for use with Package Evolution Service.
         '''
 
-        return f'RHEL {self.product_version(product)}'
+        major, minor = self.product_version(product)
+        return cast(str, self.option('product-template-pes').format(major=major, minor=minor))
 
     def format_for_leapp(self, product: str) -> str:
         '''
@@ -97,7 +109,7 @@ class TestSchedulerUpgrades(gluetool.Module):
         '''
 
         major, minor = self.product_version(product)
-        return f'{major}.{minor}'
+        return cast(str, self.option('product-template-leapp').format(major=major, minor=minor))
 
     def binary_rpms_list(self, compose_url: str, components: list[str]) -> list[str]:
         '''

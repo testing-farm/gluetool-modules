@@ -29,10 +29,10 @@ def test_shared(module):
     assert module.glue.has_shared('create_test_schedule')
 
 
-def test_sanity_nodest_fail(module):
+def test_sanity_from_fail(module):
     module._config['variant'] = 'from'
     module._config['destination'] = ''
-    with pytest.raises(GlueError, match=r'Option `destination` is required when `variant` is set to `from`.'):
+    with pytest.raises(GlueError, match=r'Option `destination` is required when option `variant` is set to `from`.'):
         module.sanity()
 
 
@@ -47,7 +47,28 @@ def test_sanity_exclusive_fail(module):
 def test_sanity_pass(module):
     module._config['variant'] = 'from'
     module._config['destination'] = ' '
+    module._config['product-template-pes'] = ' '
     module.sanity()
+
+
+def test_product_version(module):
+    product = 'rhel-7.9.z'
+    module._config['product-pattern'] = '.*rhel-(?P<major>\d+)\.(?P<minor>\d+).*'
+    assert module.product_version(product) == ('7', '9')
+
+
+def test_pes_product(module):
+    product = 'rhel-7.9.z'
+    module._config['product-template-pes'] = 'RHEL {major}.{minor}'
+    module.product_version = MagicMock(return_value=('7', '9'))
+    assert module.format_for_pes(product) == 'RHEL 7.9'
+
+
+def test_leapp_product(module):
+    product = 'rhel-7.9.z'
+    module._config['product-template-leapp'] = '{major}.{minor}'
+    module.product_version = MagicMock(return_value=('7', '9'))
+    assert module.format_for_leapp(product) == '7.9'
 
 
 class MockResponse:

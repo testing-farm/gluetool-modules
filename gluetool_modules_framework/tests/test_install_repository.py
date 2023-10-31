@@ -5,6 +5,7 @@ import pytest
 
 from mock import MagicMock, call
 
+from gluetool import GlueError
 from gluetool.utils import Command
 import gluetool_modules_framework.libs.guest_setup
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
@@ -29,6 +30,7 @@ def fixture_module(monkeypatch):
 
     module._config['log-dir-name'] = 'log-dir-example'
     module._config['download-path'] = 'dummy-path'
+    module._config['packages-amount-threshold'] = 50
 
     def dummy_testing_farm_request():
         environments_requested = [
@@ -178,3 +180,39 @@ def test_guest_setup_forced_artifact(module, tmpdir, monkeypatch):
     ]
 
     execute_mock.assert_has_calls(execute_calls)
+
+
+def test_packages_threshold(module, tmpdir, monkeypatch):
+    module._config['packages-amount-threshold'] = 5
+    module.execute()
+
+    stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
+
+    def mock_run_output(stdout):
+        return MagicMock(
+            exit_code=0,
+            stdout=stdout,
+            stderr=''
+        )
+
+    mock_command_init = MagicMock(return_value=None)
+    mock_command_run = MagicMock(side_effect=[
+        mock_run_output('\n'.join([
+            'https://example.com/dummy1-1.0.1-1.x86_64.rpm',
+            'https://example.com/dummy2-1.0.1-1.x86_64.rpm',
+            'https://example.com/dummy3-1.0.1-1.src.rpm',
+            'https://example.com/dummy4-1.0.1-1.x86_64.rpm',
+            'https://example.com/dummy5-1.0.1-1.x86_64.rpm',
+            'https://example.com/dummy6-1.0.1-1.src.rpm'
+        ])),
+    ])
+
+    monkeypatch.setattr(Command, '__init__', mock_command_init)
+    monkeypatch.setattr(Command, 'run', mock_command_run)
+
+    execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
+    guest = mock_guest(execute_mock)
+    guest.environment = module.shared('testing_farm_request').environments_requested[0]
+
+    with pytest.raises(GlueError, match='Too many packages to install: 6'):
+        module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir))

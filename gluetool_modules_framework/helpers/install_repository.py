@@ -59,6 +59,15 @@ class InstallRepository(gluetool.Module):
             'type': str,
             'default': DEFAULT_DOWNLOAD_PATH
         },
+        'packages-amount-threshold': {
+            'help': '''
+                Threshold for amount of packages to install. If the amount of packages in repository is higher than
+                the given threshold, the installation will fail. This is to prevent installing a
+                lot of packages by accident.
+                ''',
+            'type': int,
+            'default': 50
+        }
     }
 
     shared_functions = ['setup_guest', 'setup_guest_install_repository']
@@ -149,6 +158,8 @@ class InstallRepository(gluetool.Module):
 
             output_packages = self._filter_latest_packages(output_packages)
 
+            packages_to_install = []
+
             if artifact.packages:
                 log_dict(
                     self.info,
@@ -157,10 +168,18 @@ class InstallRepository(gluetool.Module):
                 )
                 for out_package in output_packages:
                     if any([artifact_package in out_package for artifact_package in artifact.packages]):
-                        packages.append(out_package)
+                        packages_to_install.append(out_package)
 
             else:
-                packages += output_packages
+                packages_to_install = output_packages
+
+            if len(packages_to_install) > self.option('packages-amount-threshold'):
+                raise GlueError((
+                    "Too many packages to install: {} (threshold {})."
+                    " Please use 'repository-file' artifact instead."
+                ).format(len(packages_to_install), self.option('packages-amount-threshold')))
+
+            packages += packages_to_install
 
         # First download all found .rpm files
         sut_installation.add_step('Download packages',

@@ -159,7 +159,7 @@ class ArtemisAPI(object):
                 return Result.Error('Unknown HTTP method {}'.format(method))
 
             try:
-                response = _request('{}{}'.format(self.url, endpoint), json=data)
+                response = _request('{}v{}/{}'.format(self.url, self.version, endpoint), json=data)
 
             except NewConnectionError as error:
                 # TFT-1755 - added to workaround DNS problems with podman

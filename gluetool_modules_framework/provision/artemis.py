@@ -6,7 +6,6 @@ import re
 import six
 import sys
 import os
-import threading
 import time
 
 import gluetool
@@ -22,6 +21,7 @@ from gluetool.result import Result
 from gluetool.utils import (
     dump_yaml, treat_url, normalize_multistring_option, wait, normalize_bool_option, normalize_path, render_template
 )
+from gluetool_modules_framework.libs.threading import RepeatTimer
 from gluetool_modules_framework.libs.guest import NetworkedGuest
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 
@@ -85,12 +85,6 @@ class ArtemisResourceError(GlueError):
 class PipelineCancelled(GlueError):
     def __init__(self) -> None:
         super(PipelineCancelled, self).__init__('Pipeline was cancelled, aborting')
-
-
-class RepeatTimer(threading.Timer):
-    def run(self) -> None:
-        while not self.finished.wait(self.interval):
-            self.function(*self.args, **self.kwargs)
 
 
 class ArtemisAPIError(SoftGlueError):
@@ -1031,7 +1025,7 @@ class ArtemisProvisioner(gluetool.Module):
                 'default': DEFAULT_BOOT_TICK
             },
             'console-log-tick': {
-                'help': 'Gather console log every',
+                'help': 'Gather console log every CONSOLE_LOG_TICK seconds (default: %(default)s)',
                 'metavar': 'CONSOLE_LOG_TICK',
                 'type': int,
                 'default': DEFAULT_CONSOLE_LOG_TICK
@@ -1259,9 +1253,6 @@ class ArtemisProvisioner(gluetool.Module):
         guest.info('Guest is being provisioned')
         log_dict(guest.debug, 'Created guest request', response)
         log_dict(guest.info, 'Created guest request with environment', response['environment'])
-
-        if self.option('enable-console-log'):
-            guest.start_console_logging()
 
         if self.option('enable-console-log'):
             guest.start_console_logging()

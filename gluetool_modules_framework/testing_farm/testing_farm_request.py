@@ -3,6 +3,8 @@
 
 from functools import partial
 from posixpath import join as urljoin
+
+import psutil
 import re
 import attrs
 
@@ -19,6 +21,10 @@ from requests.exceptions import ConnectionError, HTTPError, Timeout
 # pylint: disable=unused-import,wrong-import-order
 from typing import Any, Dict, List, Optional, Union, cast  # noqa
 from typing_extensions import TypedDict, NotRequired, Literal
+
+from gluetool_modules_framework.libs.threading import RepeatTimer
+
+DEFAULT_PIPELINE_CANCELLATION_TICK = 30
 
 
 # Following classes reflect the structure of what comes out of GET `/request/{request_id}` endpoint in the TF API.
@@ -65,6 +71,7 @@ class RequestType(TypedDict):
     notification: NotRequired[RequestNotificationType]
     settings: NotRequired[Dict[str, Any]]
     user_id: str
+    state: str
 
 
 class UserType(TypedDict):
@@ -460,7 +467,21 @@ class TestingFarmRequestModule(gluetool.Module):
             },
             'arch': {
                 'help': 'Force given architecture in all environments.'
-            }
+            },
+            'enable-pipeline-cancellation': {
+                'help': "Enable pipeline cancellation in case the request enters 'cancel-requested' state.",
+                'action': 'store_true',
+                'default': False
+            },
+            'pipeline-cancellation-tick': {
+                'help': """
+                        Check for pipeline cancellation every PIPELINE_CANCELLATION_TICK
+                        seconds (default: %(default)s)
+                        """,
+                'metavar': 'PIPELINE_CANCELLATION_TICK',
+                'type': int,
+                'default': DEFAULT_PIPELINE_CANCELLATION_TICK
+            },
         }),
     ]
 
@@ -471,6 +492,7 @@ class TestingFarmRequestModule(gluetool.Module):
         super(TestingFarmRequestModule, self).__init__(*args, **kwargs)
         self._tf_request: Optional[TestingFarmRequest] = None
         self._tf_api: Optional[TestingFarmAPI] = None
+        self._pipeline_cancellation_timer: Optional[RepeatTimer] = None
 
     @property
     def api_url(self) -> str:
@@ -503,6 +525,28 @@ class TestingFarmRequestModule(gluetool.Module):
     def testing_farm_request(self) -> Optional[TestingFarmRequest]:
         return self._tf_request
 
+    def check_pipeline_cancellation(self) -> None:
+        """
+        Check if pipeline cancellation requested via the `cancel-requested` state.
+        """
+
+        assert self._tf_api
+        assert self._tf_request
+        request = self._tf_api.get_request(self._tf_request.id, self.api_key)
+
+        if request['state'] == 'cancel-requested':
+            # update the state
+            self._tf_request.update(state='canceled')
+
+            # stop the repeat timer, it will not be needed anymore
+            self.debug('Stopping pipeline cancellation check')
+            if self._pipeline_cancellation_timer:
+                self._pipeline_cancellation_timer.cancel()
+
+            # cancel the pipeline
+            self.warn('Cancelling pipeline as requested')
+            psutil.Process().terminate()
+
     def execute(self) -> None:
         self._tf_api = TestingFarmAPI(self, self.api_url)
 
@@ -528,3 +572,14 @@ class TestingFarmRequestModule(gluetool.Module):
             'environments_requested': [env.serialize_to_json() for env in request.environments_requested],
             'webhook_url': request.webhook_url or '<no webhook specified>',
         })
+
+        if self.option('enable-pipeline-cancellation'):
+            pipeline_cancellation_tick = self.option('pipeline-cancellation-tick')
+            self._pipeline_cancellation_timer = RepeatTimer(
+                pipeline_cancellation_tick,
+                self.check_pipeline_cancellation
+            )
+
+            self.debug('Starting pipeline cancellation, check every {} seconds'.format(pipeline_cancellation_tick))
+
+            self._pipeline_cancellation_timer.start()

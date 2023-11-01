@@ -2,12 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+import psutil
 import pytest
 import gluetool_modules_framework.testing_farm.testing_farm_request
 import os
 import gluetool
 import contextlib
-import logging
+import time
 from mock import MagicMock
 
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
@@ -369,3 +370,23 @@ def test_api_key_option(module, monkeypatch):
     module._config['api-key'] = '{{ some_api_key_template }}'
     patch_shared(monkeypatch, module, {'eval_context': {'some_api_key_template': 'foo'}})
     assert module.api_key == 'foo'
+
+
+def test_pipeline_cancellation(module, request2, monkeypatch, log):
+    module._config['enable-pipeline-cancellation'] = True
+    module._config['pipeline-cancellation-tick'] = 0.1
+
+    process_mock = MagicMock()
+    monkeypatch.setattr(psutil, 'Process', process_mock)
+
+    # pipeline cancellation is started in execute
+    module.execute()
+    assert log.records[-1].message == 'Starting pipeline cancellation, check every 0.1 seconds'
+
+    # make sure the timer runs
+    time.sleep(0.5)
+
+    assert process_mock.called_once()
+    assert PUT_REQUESTS['2']['state'] == 'canceled'
+    assert log.records[-2].message == 'Stopping pipeline cancellation check'
+    assert log.records[-1].message == 'Cancelling pipeline as requested'

@@ -7,5 +7,6 @@
         "sti": null
     },
     "environments_requested": [{"arch": "x86_64"}],
-    "user_id": "user"
+    "user_id": "user",
+    "state": "cancel-requested"
 }

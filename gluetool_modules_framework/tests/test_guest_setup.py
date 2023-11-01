@@ -172,6 +172,7 @@ def test_playbook_map(module, monkeypatch):
     patch_shared(monkeypatch, module, {
         'eval_context': {
             'BUILD_TARGET': 'rhel-7.0-candidate',
+            'CONFIG_ROOT': '/some-config-root'
         }
     }, callables={
         'evaluate_rules': rules_engine.evaluate_rules
@@ -187,7 +188,7 @@ def test_playbook_map(module, monkeypatch):
             },
             {
                 "playbooks": [
-                    "default.yaml"
+                    "{{ CONFIG_ROOT }}/default.yaml"
                 ],
                 "extra_vars": {
                     "key": "value"
@@ -201,4 +202,4 @@ def test_playbook_map(module, monkeypatch):
     assert module._get_details_from_map(
         None,
         gluetool_modules_framework.libs.guest_setup.GuestSetupStage.PRE_ARTIFACT_INSTALLATION
-    ) == ([os.path.join(os.getcwd(), 'default.yaml')], {'key': 'value'})
+    ) == (['/some-config-root/default.yaml'], {'key': 'value'})

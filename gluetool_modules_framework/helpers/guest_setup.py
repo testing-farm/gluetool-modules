@@ -288,7 +288,7 @@ class GuestSetup(gluetool.Module):
                 continue
 
             if 'playbooks' in playbooks_set:
-                playbooks = [render_context(pbook) for pbook in normalize_path_option(playbooks_set['playbooks'])]
+                playbooks = normalize_path_option([render_context(pbook) for pbook in playbooks_set['playbooks']])
 
                 gluetool.log.log_dict(self.debug, 'using these playbooks', playbooks)
 

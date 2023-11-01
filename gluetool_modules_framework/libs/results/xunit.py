@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import attrs
-import unicodedata
+from xml.sax.saxutils import escape
 
 from typing import List, Optional, TYPE_CHECKING
 
@@ -14,16 +14,20 @@ if TYPE_CHECKING:
     from gluetool_modules_framework.libs.results import Results, TestSuite, TestCase
 
 
-def _remove_control_chars(system_out: List[str]) -> List[str]:
-    """
-    Remove all control characters except LF and CR
-    """
-    formatted_out = []
+def _xml_friendly_encode(system_out: List[str]) -> List[str]:
+    encoded_out = []
+
     for line in system_out:
-        formatted_out.append(''.join(
-            char for char in line if unicodedata.category(char) != 'Cc' or char in ['\r', '\n']
+        # Replace special XML characters
+        encoded_str = escape(line, {"'": "&apos;", '"': "&quot;"})
+
+        # Replace non-printable characters (except tab, newline, carriage return)
+        encoded_out.append(''.join(
+            ch if 0x20 <= ord(ch) <= 0x7E or ch in ('\t', '\n', '\r') else f'&#{ord(ch)};'
+            for ch in encoded_str
         ))
-    return formatted_out
+
+    return encoded_out
 
 
 @attrs.define(kw_only=True)
@@ -48,7 +52,7 @@ class XUnitTestCase:
     def construct(cls, test_case: 'TestCase') -> 'XUnitTestCase':
         return XUnitTestCase(
             name=test_case.name,
-            system_out=_remove_control_chars(test_case.system_out),
+            system_out=_xml_friendly_encode(test_case.system_out),
             failure=XUnitFailure.construct(test_case) if test_case.failure or test_case.error else None
         )
 

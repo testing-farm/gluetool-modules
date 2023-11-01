@@ -1,0 +1,141 @@
+---
+- name: /server-setup/testing-farm/tests/multihost/A
+  result: pass
+  note:
+  log:
+    - data/guest/server/server-setup/testing-farm/tests/multihost/A-1/output.txt
+  starttime: '2023-10-16T07:23:58.568500+00:00'
+  endtime: '2023-10-16T07:23:58.885551+00:00'
+  duration: 00:00:00
+  serialnumber: 1
+  fmf_id:
+    url: https://gitlab.com/testing-farm/tests
+    ref: gluetool/add-multihost-test
+    name: /server-setup/testing-farm/tests/multihost/A
+  ids:
+    id:
+    extra-nitrate:
+    extra-task:
+  guest:
+    name: server
+    role:
+    __class__:
+      module: tmt.result
+      name: ResultGuestData
+  check: []
+  data_path: data/guest/server/server-setup/testing-farm/tests/multihost/A-1/data
+  __class__:
+    module: tmt.result
+    name: Result
+- name: /tests/testing-farm/tests/multihost/B
+  result: pass
+  note:
+  log:
+    - data/guest/server/tests/testing-farm/tests/multihost/B-2/output.txt
+  starttime: '2023-10-16T07:24:17.726241+00:00'
+  endtime: '2023-10-16T07:24:18.041634+00:00'
+  duration: 00:00:00
+  serialnumber: 2
+  fmf_id:
+    url: https://gitlab.com/testing-farm/tests
+    ref: gluetool/add-multihost-test
+    name: /tests/testing-farm/tests/multihost/B
+  ids:
+    id:
+    extra-nitrate:
+    extra-task:
+  guest:
+    name: server
+    role:
+    __class__:
+      module: tmt.result
+      name: ResultGuestData
+  check: []
+  data_path: data/guest/client/tests/testing-farm/tests/multihost/B-2/data
+  __class__:
+    module: tmt.result
+    name: Result
+- name: /tests/testing-farm/tests/multihost/B
+  result: pass
+  note:
+  log:
+    - data/guest/client/tests/testing-farm/tests/multihost/B-2/output.txt
+  starttime: '2023-10-16T07:24:17.726241+00:00'
+  endtime: '2023-10-16T07:24:18.041634+00:00'
+  duration: 00:00:00
+  serialnumber: 2
+  fmf_id:
+    url: https://gitlab.com/testing-farm/tests
+    ref: gluetool/add-multihost-test
+    name: /tests/testing-farm/tests/multihost/B
+  ids:
+    id:
+    extra-nitrate:
+    extra-task:
+  guest:
+    name: client
+    role:
+    __class__:
+      module: tmt.result
+      name: ResultGuestData
+  check: []
+  data_path: data/guest/client/tests/testing-farm/tests/multihost/B-2/data
+  __class__:
+    module: tmt.result
+    name: Result
+- name: /tests/testing-farm/tests/multihost/C
+  result: pass
+  note:
+  log:
+    - data/guest/server/tests/testing-farm/tests/multihost/C-3/output.txt
+  starttime: '2023-10-16T07:24:22.123139+00:00'
+  endtime: '2023-10-16T07:24:22.440081+00:00'
+  duration: 00:00:00
+  serialnumber: 3
+  fmf_id:
+    url: https://gitlab.com/testing-farm/tests
+    ref: gluetool/add-multihost-test
+    name: /tests/testing-farm/tests/multihost/C
+  ids:
+    id:
+    extra-nitrate:
+    extra-task:
+  guest:
+    name: server
+    role:
+    __class__:
+      module: tmt.result
+      name: ResultGuestData
+  check: []
+  data_path: data/guest/client/tests/testing-farm/tests/multihost/C-3/data
+  __class__:
+    module: tmt.result
+    name: Result
+- name: /tests/testing-farm/tests/multihost/C
+  result: pass
+  note:
+  log:
+    - data/guest/client/tests/testing-farm/tests/multihost/C-3/output.txt
+  starttime: '2023-10-16T07:24:22.123139+00:00'
+  endtime: '2023-10-16T07:24:22.440081+00:00'
+  duration: 00:00:00
+  serialnumber: 3
+  fmf_id:
+    url: https://gitlab.com/testing-farm/tests
+    ref: gluetool/add-multihost-test
+    name: /tests/testing-farm/tests/multihost/C
+  ids:
+    id:
+    extra-nitrate:
+    extra-task:
+  guest:
+    name: client
+    role:
+    __class__:
+      module: tmt.result
+      name: ResultGuestData
+  check: []
+  data_path: data/guest/client/tests/testing-farm/tests/multihost/C-3/data
+  __class__:
+    module: tmt.result
+    name: Result

@@ -1,0 +1,7 @@
+---
+server:
+    arch: x86_64
+    image: Fedora-Rawhide
+client:
+    arch: x86_64
+    image: Fedora-Rawhide

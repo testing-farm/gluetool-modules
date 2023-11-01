@@ -31,6 +31,14 @@ class Phase:
     logs: List[Log] = attrs.field(factory=list)
 
 
+# Used in multihost pipeline results
+@attrs.define
+class Guest:
+    name: str
+    role: Optional[str] = None
+    environment: Optional[TestingEnvironment] = None
+
+
 @attrs.define
 class TestCase:
     name: str
@@ -62,6 +70,10 @@ class TestCase:
     test_type: Optional[str] = None
     defects: Optional[str] = None
 
+    # Used in multihost pipeline
+    serial_number: Optional[int] = None
+    guest: Optional[Guest] = None
+
 
 @attrs.define
 class TestSuite:
@@ -72,6 +84,7 @@ class TestSuite:
     test_cases: List[TestCase] = attrs.field(factory=list)
     requested_environment: Optional[TestingEnvironment] = None
     provisioned_environment: Optional[TestingEnvironment] = None
+    guests: List[Guest] = attrs.field(factory=list)
 
     @property
     def test_count(self) -> int:

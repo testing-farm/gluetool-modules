@@ -1,0 +1,38 @@
+---
+outcome: PASSED
+results:
+  - name: /server-setup/testing-farm/tests/multihost/A
+    result: passed
+    artifacts:
+      - name: log_dir
+        path: multihost-passed/execute/data/guest/server/server-setup/testing-farm/tests/multihost/A-1
+      - name: testout.log
+        path: multihost-passed/execute/data/guest/server/server-setup/testing-farm/tests/multihost/A-1/output.txt
+  - name: /tests/testing-farm/tests/multihost/B
+    result: passed
+    artifacts:
+      - name: log_dir
+        path: multihost-passed/execute/data/guest/server/tests/testing-farm/tests/multihost/B-2
+      - name: testout.log
+        path: multihost-passed/execute/data/guest/server/tests/testing-farm/tests/multihost/B-2/output.txt
+  - name: /tests/testing-farm/tests/multihost/B
+    result: passed
+    artifacts:
+      - name: log_dir
+        path: multihost-passed/execute/data/guest/client/tests/testing-farm/tests/multihost/B-2
+      - name: testout.log
+        path: multihost-passed/execute/data/guest/client/tests/testing-farm/tests/multihost/B-2/output.txt
+  - name: /tests/testing-farm/tests/multihost/C
+    result: passed
+    artifacts:
+      - name: log_dir
+        path: multihost-passed/execute/data/guest/server/tests/testing-farm/tests/multihost/C-3
+      - name: testout.log
+        path: multihost-passed/execute/data/guest/server/tests/testing-farm/tests/multihost/C-3/output.txt
+  - name: /tests/testing-farm/tests/multihost/C
+    result: passed
+    artifacts:
+      - name: log_dir
+        path: multihost-passed/execute/data/guest/client/tests/testing-farm/tests/multihost/C-3
+      - name: testout.log
+        path: multihost-passed/execute/data/guest/client/tests/testing-farm/tests/multihost/C-3/output.txt

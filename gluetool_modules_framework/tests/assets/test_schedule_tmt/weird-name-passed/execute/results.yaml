@@ -2,9 +2,17 @@
 - name: /tests/core/docs
   result: pass
   log:
-      - logs/tests/core/docs/out.log
-      - logs/tests/core/docs/journal.txt
+    - logs/tests/core/docs/out.log
+    - logs/tests/core/docs/journal.txt
+  serialnumber: 1
+  guest:
+    name: default-0
+    role:
 - name: /tests/core/dry
   result: pass
   log:
-      - logs/tests/core/dry/out.log
+    - logs/tests/core/dry/out.log
+  serialnumber: 2
+  guest:
+    name: default-0
+    role:

@@ -12,7 +12,7 @@ from typing import List, Optional, Dict, TYPE_CHECKING, cast
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 
 if TYPE_CHECKING:
-    from gluetool_modules_framework.libs.results import Results, TestSuite, TestCase, Log, Phase  # noqa
+    from gluetool_modules_framework.libs.results import Results, TestSuite, TestCase, Log, Phase, Guest  # noqa
 
 
 # Used in BaseOS CI results
@@ -156,6 +156,22 @@ class XUnitTFFailure:
 
 
 @attrs.define(kw_only=True)
+class XUnitTFGuest:
+    name: str = attrs.field(metadata={'type': 'Attribute'})
+    role: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
+    testing_environment: Optional[XUnitTFTestingEnvironment] = attrs.field(metadata={'name': 'testing-environment'})
+
+    @classmethod
+    def construct(cls, guest: 'Guest') -> 'XUnitTFGuest':
+        return XUnitTFGuest(
+            name=guest.name,
+            role=guest.role,
+            testing_environment=XUnitTFTestingEnvironment.construct(guest.environment, 'provisioned')
+            if guest.environment is not None else None
+        )
+
+
+@attrs.define(kw_only=True)
 class XUnitTFTestCase:
     name: str = attrs.field(metadata={'type': 'Attribute'})
     result: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
@@ -182,6 +198,9 @@ class XUnitTFTestCase:
     result_class: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
     test_type: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
     defects: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
+
+    serial_number: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute', 'name': 'serial-number'})
+    guest: Optional[XUnitTFGuest] = None
 
     @classmethod
     def construct(cls, test_case: 'TestCase') -> 'XUnitTFTestCase':
@@ -214,7 +233,9 @@ class XUnitTFTestCase:
             baseline=test_case.baseline,
             result_class=test_case.result_class,
             test_type=test_case.test_type,
-            defects=test_case.defects
+            defects=test_case.defects,
+            serial_number=str(test_case.serial_number) if test_case.serial_number is not None else None,
+            guest=XUnitTFGuest.construct(test_case.guest) if test_case.guest is not None else None,
         )
 
 
@@ -231,6 +252,8 @@ class XUnitTFTestSuite:
         metadata={'name': 'testing-environment'}
     )
 
+    guest: List[XUnitTFGuest] = attrs.field(factory=list)
+
     @classmethod
     def construct(cls, test_suite: 'TestSuite') -> 'XUnitTFTestSuite':
         environments: List[XUnitTFTestingEnvironment] = []
@@ -246,7 +269,8 @@ class XUnitTFTestSuite:
             logs=XUnitTFLogs.construct(test_suite.logs) if test_suite.logs else None,
             properties=XUnitTFProperties.construct(test_suite.properties) if test_suite.properties else None,
             testcase=[XUnitTFTestCase.construct(test_case) for test_case in test_suite.test_cases],
-            testing_environment=environments
+            testing_environment=environments,
+            guest=[XUnitTFGuest.construct(guest) for guest in test_suite.guests]
         )
 
     def to_xml_string(self, pretty_print: bool = False) -> str:

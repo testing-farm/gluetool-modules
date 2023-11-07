@@ -390,3 +390,19 @@ def test_pipeline_cancellation(module, request2, monkeypatch, log):
     assert PUT_REQUESTS['2']['state'] == 'canceled'
     assert log.records[-2].message == 'Stopping pipeline cancellation check'
     assert log.records[-1].message == 'Cancelling pipeline as requested'
+
+
+def test_pipeline_cancellation_destroy(module, request1, monkeypatch, log):
+    module._config['enable-pipeline-cancellation'] = True
+    module._config['pipeline-cancellation-tick'] = 0.1
+
+    process_mock = MagicMock()
+    monkeypatch.setattr(psutil, 'Process', process_mock)
+
+    # pipeline cancellation is started in execute
+    module.execute()
+    assert log.records[-1].message == 'Starting pipeline cancellation, check every 0.1 seconds'
+    module.destroy()
+
+    assert process_mock.called_once()
+    assert log.records[-1].message == 'Stopping pipeline cancellation check'

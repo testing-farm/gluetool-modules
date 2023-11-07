@@ -542,10 +542,18 @@ class TestingFarmRequestModule(gluetool.Module):
             self.debug('Stopping pipeline cancellation check')
             if self._pipeline_cancellation_timer:
                 self._pipeline_cancellation_timer.cancel()
+                self._pipeline_cancellation_timer = None
 
             # cancel the pipeline
             self.warn('Cancelling pipeline as requested')
             psutil.Process().terminate()
+
+    def destroy(self, failure: Optional[gluetool.Failure] = None) -> None:
+        # stop the repeat timer, it will not be needed anymore
+        if self._pipeline_cancellation_timer:
+            self.debug('Stopping pipeline cancellation check')
+            self._pipeline_cancellation_timer.cancel()
+            self._pipeline_cancellation_timer = None
 
     def execute(self) -> None:
         self._tf_api = TestingFarmAPI(self, self.api_url)

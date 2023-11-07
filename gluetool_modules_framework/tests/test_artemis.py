@@ -217,11 +217,21 @@ def test_api_call(monkeypatch, module, log):
         module.api.api_call('some-url')
 
 
-def test_pipeline_cancelled(module):
+@pytest.mark.parametrize('scenario', ['successful'], indirect=True)
+def test_pipeline_cancelled(module, scenario, log):
+    environment, guest, snapshot, exception = scenario
+    module.provision(environment)
+    assert log.match(levelno=logging.INFO, message='Created guest request with environment:\n{}')
+    for key in guest.keys():
+        assert getattr(module.guests[0], key) == guest[key]
+
     module.glue.pipeline_cancelled = True
 
     with pytest.raises(PipelineCancelled):
         module.execute()
+    module.destroy()
+    assert log.match(levelno=logging.INFO, message='destroying guest')
+    assert log.match(levelno=logging.INFO, message='successfully released')
 
 
 def test_new_connection_error(module, monkeypatch, log):

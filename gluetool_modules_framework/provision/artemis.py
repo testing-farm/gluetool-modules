@@ -172,7 +172,7 @@ class ArtemisAPI(object):
                 six.reraise(*sys.exc_info())
 
             finally:
-                if self.module.pipeline_cancelled:
+                if self.module.pipeline_cancelled and not self.module.destroying:
                     return Result.Ok(None)
 
             assert expected_status_codes is not None
@@ -1059,6 +1059,8 @@ class ArtemisProvisioner(gluetool.Module):
 
     shared_functions = ['provision', 'provisioner_capabilities', 'artemis_api_options']
 
+    destroying = False  # Flag indicating that this gluetool module is being destroyed
+
     def artemis_api_options(self) -> Dict[str, Any]:
         return {
             'api-url': self.api_url,
@@ -1397,6 +1399,7 @@ class ArtemisProvisioner(gluetool.Module):
         self.guests.remove(guest)
 
     def destroy(self, failure: Optional[Any] = None) -> None:
+        self.destroying = True
         for guest in self.guests[:]:
             guest.destroy()
             self.api.dump_events(guest)

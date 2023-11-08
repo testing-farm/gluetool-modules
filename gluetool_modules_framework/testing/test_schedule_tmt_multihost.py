@@ -925,9 +925,6 @@ class TestScheduleTMTMultihost(Module):
                 work_dirpath = self._prepare_environment(schedule_entry)
                 schedule_entry.work_dirpath = work_dirpath
 
-                if exported_plan and exported_plan.excludes(logger=self.logger):
-                    raise GlueError("Field 'excludes' is not supported in the plan.")
-
                 schedule_entry.testing_environment = TestingEnvironment(
                     arch=tec.arch,
                     compose=tec.compose,
@@ -938,7 +935,6 @@ class TestScheduleTMTMultihost(Module):
                     artifacts=tec.artifacts,
                     settings=tec.settings,
                     tmt=tec.tmt,
-                    excluded_packages=exported_plan.excludes(logger=self.logger) if exported_plan else []
                 )
 
                 schedule_entry.tmt_reproducer.extend(repository.commands)

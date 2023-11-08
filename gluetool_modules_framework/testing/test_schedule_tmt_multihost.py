@@ -1134,6 +1134,8 @@ class TestScheduleTMTMultihost(Module):
 
         if schedule_entry.testing_environment.compose:
             command.extend(['--image', cast(str, schedule_entry.testing_environment.compose)])
+        if schedule_entry.testing_environment.arch:
+            command.extend(['--arch', cast(str, schedule_entry.testing_environment.arch)])
         if artemis_skip_prepare_verify_ssh:
             command.extend(['--skip-prepare-verify-ssh'])
         if artemis_post_install_script:

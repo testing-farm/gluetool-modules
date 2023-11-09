@@ -27,6 +27,7 @@ from . import create_module, check_loadable, patch_shared
 
 
 Response = collections.namedtuple('Response', ['status_code', 'headers', 'text', 'json'])
+ASSETS_DIR = os.path.join('gluetool_modules_framework', 'tests', 'assets', 'artemis')
 
 
 class MockRequests():
@@ -441,3 +442,11 @@ def test_console_log_and_workdir(monkeypatch, module, scenario, tmpdir):
         module.destroy()
 
         assert os.path.exists('workdir/console-{}.log'.format(guest['name']))
+
+
+@pytest.mark.parametrize('input_script, expected_script', [
+    ('#!/bin/sh\necho hello world', '#!/bin/sh\necho hello world', ),
+    (os.path.join(ASSETS_DIR, 'post-install-script.sh'), '#!/bin/sh\necho hello world from file\n')
+])
+def test_expand_post_install_script(module, input_script, expected_script):
+    assert module.expand_post_install_script(input_script) == expected_script

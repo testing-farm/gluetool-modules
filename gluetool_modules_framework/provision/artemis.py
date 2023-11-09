@@ -246,7 +246,7 @@ class ArtemisAPI(object):
 
         post_install_script_contents = None
         if post_install_script:
-            post_install_script_contents = self.module.normalize_post_install_script(post_install_script)
+            post_install_script_contents = self.module.expand_post_install_script(post_install_script)
 
         # TODO: yes, semver will make this much better... Or better, artemis-cli package provide an easy-to-use
         # bit of code to construct the payload.
@@ -1079,7 +1079,7 @@ class ArtemisProvisioner(gluetool.Module):
     def api_version(self) -> str:
         return render_template(self.option('api-version') or '', **self.shared('eval_context'))
 
-    def normalize_post_install_script(self, post_install_script: str) -> str:
+    def expand_post_install_script(self, post_install_script: str) -> str:
         """
         Converts post_install_script, which can either be a filename or a script itself, into the script by reading the
         file.
@@ -1087,15 +1087,15 @@ class ArtemisProvisioner(gluetool.Module):
         :param str post_install_script: script or filepath of the script.
         :rtype: str
         """
-        if os.path.isfile(self.option('post-install-script')):
-            with open(normalize_path(self.option('post-install-script'))) as f:
+        if os.path.isfile(post_install_script):
+            with open(normalize_path(post_install_script)) as f:
                 return f.read()
         # NOTE(ivasilev) Remove possible string escaping
-        return cast(str, self.option('post-install-script').replace('\\n', '\n'))
+        return post_install_script.replace('\\n', '\n')
 
     @property
     def post_install_script(self) -> str:
-        return self.normalize_post_install_script(self.option('post-install-script'))
+        return self.expand_post_install_script(self.option('post-install-script'))
 
     @gluetool.utils.cached_property
     def hw_constraints(self) -> Optional[Dict[str, Any]]:

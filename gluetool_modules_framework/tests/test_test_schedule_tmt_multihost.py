@@ -268,7 +268,7 @@ def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest
             {},
             TestingEnvironment('x86_64', 'rhel-9'),
             '''# tmt reproducer
-dummytmt --root some-tmt-root run --all --verbose --id {work_dirpath} plan --name ^plan1$''',
+dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic cli-invocations plan --name ^plan1$ provision -h artemis --update -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key''',  # noqa
             None,
             None
         ),
@@ -277,7 +277,7 @@ dummytmt --root some-tmt-root run --all --verbose --id {work_dirpath} plan --nam
             {},
             TestingEnvironment('x86_64', 'rhel-9'),
             '''# tmt reproducer
-dummytmt --root some-tmt-root run --all --verbose --id {work_dirpath} plan --name ^plan1$''',
+dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic cli-invocations plan --name ^plan1$ provision -h artemis --update -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key''',  # noqa
             None,
             None
         ),
@@ -295,7 +295,7 @@ dummytmt --root some-tmt-root run --all --verbose --id {work_dirpath} plan --nam
             ),
             """# tmt reproducer
 curl -LO tmt-environment-lan1.yaml
-dummytmt --root some-tmt-root run --all --verbose --id {work_dirpath} -e @tmt-environment-lan1.yaml plan --name ^plan1$""",  # noqa
+dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic cli-invocations -e @tmt-environment-lan1.yaml plan --name ^plan1$ provision -h artemis --update -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key""",  # noqa
             """user_variable1: user_value1
 user_variable2: user_value2
 user_variable3: user_value3
@@ -309,7 +309,7 @@ secret_variable2: secret_value2
             {},
             TestingEnvironment('x86_64', 'rhel-9', tmt={'context': {'distro': 'rhel', 'trigger': 'push'}}),
             """# tmt reproducer
-dummytmt --root some-tmt-root -c distro=rhel -c trigger=push run --all --verbose --id {work_dirpath} plan --name ^plan1$""",  # noqa
+dummytmt --root some-tmt-root -c distro=rhel -c trigger=push run --all --id {work_dirpath} -ddddvvv --log-topic cli-invocations plan --name ^plan1$ provision -h artemis --update -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key""",  # noqa
             None,
             None
         ),
@@ -321,7 +321,8 @@ dummytmt --root some-tmt-root -c distro=rhel -c trigger=push run --all --verbose
             TestingEnvironment('x86_64', 'rhel-9', tmt={'environment': {'VARIABLE1': 'VALUE1', 'VARIABLE2': 'VALUE2'}}),
             """# tmt reproducer
 export VARIABLE1=***** VARIABLE2=*****
-dummytmt --root some-tmt-root run --all --verbose --id {work_dirpath} plan --name ^plan1$""",  # noqa
+dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic cli-invocations plan --name ^plan1$ provision -h artemis --update -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key""",  # noqa
+
             None,
             None
         ),
@@ -333,7 +334,8 @@ dummytmt --root some-tmt-root run --all --verbose --id {work_dirpath} plan --nam
             TestingEnvironment('x86_64', 'rhel-9', tmt={'environment': {'VARIABLE1': 'VALUE1', 'VARIABLE2': 'VALUE2'}}),
             """# tmt reproducer
 export VARIABLE1=***** VARIABLE2=*****
-dummytmt --root some-tmt-root run --all --verbose provision --how virtual --image rhel-9 plan --name ^plan1$""",  # noqa
+dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic cli-invocations plan --name ^plan1$ provision -h artemis --update -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key""",  # noqa
+
             None,
             (gluetool.glue.GlueError, "Environment variable 'VARIABLE2' is not allowed to be exposed to the tmt process")
         ),
@@ -409,38 +411,40 @@ def test_tmt_output_dir(
         assert not os.path.exists(tmt_environment_file)
 
 
-@pytest.mark.parametrize('additional_options, additional_shared, clone_url, expected_tmt_reproducer_regex', [
+@pytest.mark.parametrize('additional_options, additional_shared, clone_url, expected_tmt_reproducer', [
         (  # Test case no. 1
             {},
             {},
             SecretGitUrl('http://example.com/git/myproject'),
-            r'''\# tmt reproducer
+            r'''# tmt reproducer
 git clone --depth 1 -b myfix http://example.com/git/myproject testcode
 cd testcode
-dummytmt --root some-tmt-root run --all --verbose --id {tmpdir}/{work_dirpath} plan --name \^myfix\$'''  # noqa
+dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic cli-invocations plan --name ^myfix$ provision -h artemis --update -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key'''  # noqa
+
         ),
         (  # Test case no. 2
             {'context-template-file': [os.path.abspath(os.path.join(ASSETS_DIR, 'context-template.yaml'))]},
             {},
             SecretGitUrl('http://example.com/git/myproject'),
-            r'''\# tmt reproducer
+            r'''# tmt reproducer
 git clone --depth 1 -b myfix http://example.com/git/myproject testcode
 cd testcode
-dummytmt --root some-tmt-root run --all --verbose --id {tmpdir}/{work_dirpath} plan --name \^myfix\$'''  # noqa
+dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic cli-invocations plan --name ^myfix$ provision -h artemis --update -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key'''  # noqa
+
         ),
         (  # Test case no. 3
             {},
             {},
             SecretGitUrl('http://username:secret@example.com/git/myproject'),
-            r'''\# tmt reproducer
-git clone --depth 1 -b myfix http://\*\*\*\*\*@example.com/git/myproject testcode
+            r'''# tmt reproducer
+git clone --depth 1 -b myfix http://*****@example.com/git/myproject testcode
 cd testcode
-dummytmt --root some-tmt-root run --all --verbose --id {tmpdir}/{work_dirpath} plan --name \^myfix\$'''  # noqa
+dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic cli-invocations plan --name ^myfix$ provision -h artemis --update -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key'''  # noqa
         ),
     ]
 )
 def test_tmt_output_distgit(module, guest, monkeypatch, additional_options, additional_shared, clone_url,
-                            expected_tmt_reproducer_regex, tmpdir):
+                            expected_tmt_reproducer, tmpdir):
     module._config = {**module._config, **additional_options}
     patch_shared(monkeypatch, module, additional_shared)
 
@@ -476,10 +480,7 @@ def test_tmt_output_distgit(module, guest, monkeypatch, additional_options, addi
     with open(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-run.log')) as f:
         assert 'dummy test done\n' in f.read()
     with open(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
-        assert re.match(
-            expected_tmt_reproducer_regex.format(tmpdir=tmpdir, work_dirpath=schedule_entry.work_dirpath),
-            f.read()
-        )
+        assert expected_tmt_reproducer.format(tmpdir=tmpdir, work_dirpath=schedule_entry.work_dirpath) == f.read()
 
     shutil.rmtree(os.path.join(tmpdir, schedule_entry.work_dirpath))
 
@@ -868,7 +869,7 @@ git -C testcode config --add remote.origin.fetch +refs/pull/*:refs/remotes/origi
 git -C testcode fetch {expected_clone_url} myfix:gluetool/myfix
 git -C testcode checkout gluetool/myfix
 cd testcode
-dummytmt --root some-tmt-root run --all --verbose --id {tmpdir}/{schedule_entry.work_dirpath} plan --name ^plan1$'''
+dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic cli-invocations plan --name ^plan1$ provision -h artemis --update -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key'''
 
 
 @pytest.mark.parametrize('clone_url, expected_clone_url', [
@@ -956,7 +957,7 @@ git -C testcode config --add remote.origin.fetch +refs/pull/*:refs/remotes/origi
 git -C testcode fetch {expected_clone_url} myfix:gluetool/myfix
 git -C testcode checkout gluetool/myfix
 cd testcode
-dummytmt --root some-tmt-root run --all --verbose --id {tmpdir}/{schedule_entry.work_dirpath} plan --name ^plan1$'''
+dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic cli-invocations plan --name ^plan1$ provision -h artemis --update -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key'''
 
 
 TMT_PLANS = ['''

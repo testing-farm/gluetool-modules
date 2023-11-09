@@ -1016,42 +1016,6 @@ class TestScheduleTMTMultihost(Module):
             tmt_context = self._tmt_context_to_options(schedule_entry.testing_environment.tmt['context'])
             command.extend(tmt_context)
 
-        command.extend([
-            'run',
-            '--all',
-            '--verbose',
-            '--id', os.path.abspath(work_dirpath)
-        ])
-
-        if schedule_entry.tmt_env_file:
-            env_options = [
-                '-e', '@{}'.format(schedule_entry.tmt_env_file)
-            ]
-            command.extend(env_options)
-
-            # reproducer command to download the environment file
-            schedule_entry.tmt_reproducer.append(
-                'curl -LO {}'.format(
-                    artifacts_location(
-                        self,
-                        os.path.relpath(os.path.join(
-                            schedule_entry.repodir, schedule_entry.tmt_env_file)), logger=self.logger)
-                )
-            )
-
-        # `plan` step
-        command.extend([
-            'plan',
-            '--name', r'^{}$'.format(re.escape(schedule_entry.plan))
-        ])
-
-        if self.test_filter:
-            command.extend([
-                'tests',
-                '--filter',
-                self.test_filter
-            ])
-
         # create environment variables for the tmt process
         tmt_process_environment: Dict[str, str] = {}
 
@@ -1077,9 +1041,6 @@ class TestScheduleTMTMultihost(Module):
                     _sanitize_environment_variables(tmt['environment'])
                 )
             )
-
-        # add tmt reproducer suitable for local execution: run until provisioning
-        schedule_entry.tmt_reproducer.append(' '.join(command))
 
         def _save_output(output: gluetool.utils.ProcessOutput) -> None:
 
@@ -1117,16 +1078,48 @@ class TestScheduleTMTMultihost(Module):
         artemis_post_install_script = artemis_options['post-install-script']
         artemis_skip_prepare_verify_ssh = artemis_options['skip-prepare-verify-ssh']
 
-        command = [
-            self.option('command'), '--root', '.',
-            'run', '--all', '--id', os.path.abspath(work_dirpath), '-ddddvvv', '--log-topic=cli-invocations',
-            'plan', '--name', schedule_entry.plan,
+        command.extend([
+            'run', '--all', '--id', os.path.abspath(work_dirpath), '-ddddvvv', '--log-topic', 'cli-invocations'
+        ])
+
+        if schedule_entry.tmt_env_file:
+            env_options = [
+                '-e', '@{}'.format(schedule_entry.tmt_env_file)
+            ]
+            command.extend(env_options)
+
+            # reproducer command to download the environment file
+            schedule_entry.tmt_reproducer.append(
+                'curl -LO {}'.format(
+                    artifacts_location(
+                        self,
+                        os.path.relpath(os.path.join(
+                            schedule_entry.repodir, schedule_entry.tmt_env_file)), logger=self.logger)
+                )
+            )
+
+        command.extend([
+            'plan',
+            '--name', r'^{}$'.format(re.escape(schedule_entry.plan))
+        ])
+
+        if self.test_filter:
+            command.extend([
+                'tests',
+                '--filter',
+                self.test_filter
+            ])
+
+        command.extend([
             'provision', '-h', 'artemis', '--update',
             '-k', artemis_ssh_key,
             '--api-url', artemis_api_url,
             '--api-version', artemis_api_version,
             '--keyname', artemis_key,
-        ]
+        ])
+
+        # add tmt reproducer suitable for local execution: run until provisioning
+        schedule_entry.tmt_reproducer.append(' '.join(command))
 
         if schedule_entry.testing_environment.compose:
             command.extend(['--image', cast(str, schedule_entry.testing_environment.compose)])

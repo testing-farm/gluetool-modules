@@ -1118,7 +1118,7 @@ class TestScheduleTMTMultihost(Module):
             '--keyname', artemis_key,
         ])
 
-        # add tmt reproducer suitable for local execution: run until provisioning
+        # add tmt reproducer suitable for local execution
         schedule_entry.tmt_reproducer.append(' '.join(command))
 
         if schedule_entry.testing_environment.compose:

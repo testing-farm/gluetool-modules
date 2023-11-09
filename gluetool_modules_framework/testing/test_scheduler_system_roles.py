@@ -195,6 +195,7 @@ class TestSchedulerSystemRoles(gluetool.Module):
                     "{}/ansible-galaxy".format(ansible_path),
                     "collection",
                     "install",
+                    "--force",
                     "-p",
                     collection_path,
                     "-vv",

@@ -1,0 +1,19 @@
+---
+- name: /tests/core/docs
+  result: skip
+  log:
+    - logs/tests/core/docs/out.log
+    - logs/tests/core/docs/journal.txt
+  serialnumber: 1
+  guest:
+    name: default-0
+    role:
+- name: /tests/core/dry
+  result: skip
+  note: 'original result: fail'
+  log:
+    - logs/tests/core/dry/out.log
+  serialnumber: 2
+  guest:
+    name: default-0
+    role:

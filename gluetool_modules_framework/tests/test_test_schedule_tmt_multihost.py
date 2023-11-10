@@ -127,6 +127,7 @@ def _assert_results(results, expected_results):
         _load_assets('error'),
         _load_assets('weird.name+passed'),
         _load_assets('multihost-passed'),
+        _load_assets('skipped'),
     ]
 )
 def test_gather_results(module, asset, monkeypatch):

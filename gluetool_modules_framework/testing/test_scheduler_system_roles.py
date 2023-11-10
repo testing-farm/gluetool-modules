@@ -191,11 +191,14 @@ class TestSchedulerSystemRoles(gluetool.Module):
         for req_file in [requirements_filepath, test_requirements_filepath]:
             if os.path.isfile(req_file):
                 self.info('The {} requirements file was found'.format(req_file))
+                env = os.environ.copy()
+                env.update({
+                    'ANSIBLE_COLLECTIONS_PATH': collection_path
+                })
                 cmd = [
                     "{}/ansible-galaxy".format(ansible_path),
                     "collection",
                     "install",
-                    "--force",
                     "-p",
                     collection_path,
                     "-vv",
@@ -203,7 +206,7 @@ class TestSchedulerSystemRoles(gluetool.Module):
                     req_file
                 ]
                 try:
-                    gluetool.utils.Command(cmd).run()
+                    gluetool.utils.Command(cmd).run(env=env)
                     self.info('Requirements were successfully installed from {}'.format(req_file))
                 except gluetool.GlueCommandError as exc:
                     raise gluetool.GlueError("ansible-galaxy failed with: {}".format(exc))

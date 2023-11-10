@@ -74,7 +74,8 @@ RESULT_OUTCOME = {
     'info': 'info',
     'fail': 'failed',
     'warn': 'needs_inspection',
-    'error': 'error'
+    'error': 'error',
+    'skip': 'not_applicable'
 }
 
 # Result weight to TestScheduleResult outcome

@@ -5,6 +5,7 @@ import collections
 import logging
 import os
 import re
+from gluetool.glue import Module
 
 import pytest
 import requests
@@ -32,9 +33,12 @@ ASSETS_DIR = os.path.join('gluetool_modules_framework', 'tests', 'assets', 'arte
 
 class MockRequests():
     requests = None
+    module = None
+    cancelled = False
 
-    def __init__(self, mocked_requests):
+    def __init__(self, mocked_requests, module):
         MockRequests.requests = mocked_requests
+        MockRequests.module = module
 
         # initialize generators
         for method in self.requests.keys():
@@ -49,8 +53,14 @@ class MockRequests():
         print("handling method '{}' for url '{}'".format(url, method))
         for mock in mocks:
             if re.search(mock['url'], url):
+                if 'pipeline_cancelled' in mock:
+                    assert MockRequests.module
+                    MockRequests.cancelled = True
+                    MockRequests.module.glue.pipeline_cancelled = True
+
                 if 'generator' in mock:
                     return Response(mock['status_code'], '', '', lambda: next(mock['generator']))
+
                 return Response(mock['status_code'], '', '', lambda: mock.get('response'))
         raise Exception("No mock matched url '{}' for method '{}'".format(url, method))
 
@@ -103,7 +113,7 @@ def fixture_scenario(module, monkeypatch, request, tmpdir):
         module._config['enable-console-log'] = True
         module._config['console-log-filename'] = 'console-{guestname}.log'
 
-    module._mocked_requests = MockRequests(scenario['requests'])
+    module._mocked_requests = MockRequests(scenario['requests'], module)
     module._mocked_wait_alive = MagicMock()
 
     monkeypatch.setattr(requests, 'get', module._mocked_requests.get)
@@ -156,7 +166,7 @@ def test_execute(monkeypatch, module, log):
 
     scenario = load_yaml(testing_asset('artemis', 'successful.yaml'))
 
-    monkeypatch.setattr(requests, 'get', MockRequests(scenario['requests']).get)
+    monkeypatch.setattr(requests, 'get', MockRequests(scenario['requests'], module).get)
     module.execute()
 
     assert log.match(levelno=logging.INFO, message='Using Artemis API https://artemis.xyz/v0.0.28/')
@@ -165,7 +175,7 @@ def test_execute(monkeypatch, module, log):
 def test_api_call(monkeypatch, module, log):
     scenario = load_yaml(testing_asset('artemis', 'successful.yaml'))
 
-    monkeypatch.setattr(requests, 'get', MockRequests(scenario['requests']).get)
+    monkeypatch.setattr(requests, 'get', MockRequests(scenario['requests'], module).get)
     module.execute()
 
     # test unexpected status code
@@ -230,7 +240,25 @@ def test_pipeline_cancelled(module, scenario, log):
 
     with pytest.raises(PipelineCancelled):
         module.execute()
+
     module.destroy()
+    assert log.match(levelno=logging.INFO, message='removing 1 guest(s) during module destroy')
+    assert log.match(levelno=logging.INFO, message='destroying guest')
+    assert log.match(levelno=logging.INFO, message='successfully released')
+
+
+@pytest.mark.parametrize('scenario', ['pipeline_cancelled'], indirect=True)
+def test_pipeline_cancelled_before_provision_finished(module, scenario, log):
+    environment, guest, snapshot, exception = scenario
+
+    with pytest.raises(GlueError, match="Guest couldn't be provisioned: Pipeline was cancelled, aborting"):
+        module.provision(environment)
+
+    assert log.match(levelno=logging.INFO, message='Created guest request with environment:\n{}')
+
+    module.destroy()
+
+    assert log.match(levelno=logging.INFO, message='removing 1 guest(s) during module destroy')
     assert log.match(levelno=logging.INFO, message='destroying guest')
     assert log.match(levelno=logging.INFO, message='successfully released')
 
@@ -417,7 +445,17 @@ def test_provision(monkeypatch, module, scenario, tmpdir, log):
             module.guests[0].create_snapshot()
             module.guests[0].restore_snapshot(module.guests[0]._snapshots[0])
 
+        if module.option('keep'):
+            return
+
+        # destroy directly guests as test scheduler modules would
+        module.guests[0].destroy()
+        assert log.match(levelno=logging.INFO, message='destroying guest')
+        assert log.match(levelno=logging.INFO, message='successfully released')
+
+        # there should be nothing else to cleanup
         module.destroy()
+        assert log.match(levelno=logging.INFO, message='no guests to remove during module destroy')
 
 
 def test_api_url_option(module, monkeypatch):

@@ -1196,21 +1196,21 @@ class ArtemisProvisioner(gluetool.Module):
             available_arches=gluetool_modules_framework.libs.ANY
         )
 
-    def provision_guest(self,
-                        environment: TestingEnvironment,
-                        pool: Optional[str] = None,
-                        key: Optional[str] = None,
-                        priority: Optional[str] = None,
-                        ssh_key: Optional[str] = None,
-                        options: Optional[List[str]] = None,
-                        post_install_script: Optional[str] = None,
-                        user_data: Optional[Dict[str, str]] = None,
-                        watchdog_dispatch_delay: Optional[int] = None,
-                        watchdog_period_delay: Optional[int] = None,
-                        workdir: Optional[str] = None
-                       ) -> ArtemisGuest:  # noqa
+    def provision_guest_start(self,
+                              environment: TestingEnvironment,
+                              pool: Optional[str] = None,
+                              key: Optional[str] = None,
+                              priority: Optional[str] = None,
+                              ssh_key: Optional[str] = None,
+                              options: Optional[List[str]] = None,
+                              post_install_script: Optional[str] = None,
+                              user_data: Optional[Dict[str, str]] = None,
+                              watchdog_dispatch_delay: Optional[int] = None,
+                              watchdog_period_delay: Optional[int] = None,
+                              workdir: Optional[str] = None
+                              ) -> ArtemisGuest:
         '''
-        Provision Artemis guest by submitting a request to Artemis API.
+        Start provisioning of an Artemis guest by submitting a request to Artemis API.
 
         :param tuple environment: description of the environment caller wants to provision.
             Follows :doc:`Testing Environment Protocol </protocols/testing-environment>`.
@@ -1235,7 +1235,7 @@ class ArtemisProvisioner(gluetool.Module):
             For example the workding directory of a schedule entry.
 
         :rtype: ArtemisGuest
-        :returns: ArtemisGuest instance or ``None`` if it wasn't possible to grab the guest.
+        :returns: ArtemisGuest instance.
         '''
 
         response = self.api.create_guest(environment,
@@ -1249,6 +1249,7 @@ class ArtemisProvisioner(gluetool.Module):
 
         guestname = response.get('guestname')
         hostname = six.ensure_str(response['address']) if response['address'] is not None else None
+
         guest = ArtemisGuest(self, guestname, hostname, environment,
                              port=response['ssh']['port'], username=six.ensure_str(response['ssh']['username']),
                              key=ssh_key, options=options, workdir=workdir)
@@ -1256,12 +1257,14 @@ class ArtemisProvisioner(gluetool.Module):
         log_dict(guest.debug, 'Created guest request', response)
         log_dict(guest.info, 'Created guest request with environment', response['environment'])
 
-        if self.option('enable-console-log'):
-            guest.start_console_logging()
+        return guest
 
-        event_log_uri = self.shared('artifacts_location', guest.event_log_path, self.logger)
-        guest.info("guest event log: {}".format(event_log_uri))
+    def provision_guest_wait(self, guest: ArtemisGuest) -> None:
+        '''
+        Wait for provisioning of an Artemis guest.
 
+        :param ArtemisGuest guest: Provisioned guest.
+        '''
         try:
             guest._wait_ready(timeout=self.option('ready-timeout'), tick=self.option('ready-tick'))
             response = self.api.inspect_guest(guest.artemis_id)
@@ -1279,10 +1282,7 @@ class ArtemisProvisioner(gluetool.Module):
         except (GlueError, KeyboardInterrupt) as exc:
             message = 'KeyboardInterrupt' if isinstance(exc, KeyboardInterrupt) else str(exc)
             self.warn("Exception while provisioning guest: {}".format(message))
-            guest.destroy()
             six.reraise(*sys.exc_info())
-
-        return guest
 
     def provision(
         self,
@@ -1333,20 +1333,31 @@ class ArtemisProvisioner(gluetool.Module):
         if watchdog_period_delay is None:
             watchdog_period_delay = provisioning.get('watchdog_period_delay')
 
-        guest = self.provision_guest(environment,
-                                     pool=pool,
-                                     key=key,
-                                     priority=priority,
-                                     ssh_key=ssh_key,
-                                     options=options,
-                                     post_install_script=post_install_script,
-                                     user_data=user_data,
-                                     watchdog_dispatch_delay=watchdog_dispatch_delay,
-                                     watchdog_period_delay=watchdog_period_delay,
-                                     workdir=workdir)
+        guest = self.provision_guest_start(
+            environment,
+            pool=pool,
+            key=key,
+            priority=priority,
+            ssh_key=ssh_key,
+            options=options,
+            post_install_script=post_install_script,
+            user_data=user_data,
+            watchdog_dispatch_delay=watchdog_dispatch_delay,
+            watchdog_period_delay=watchdog_period_delay,
+            workdir=workdir
+        )
+
+        self.guests.append(guest)
+
+        event_log_uri = self.shared('artifacts_location', guest.event_log_path, self.logger)
+        guest.info("guest event log: {}".format(event_log_uri))
+
+        if self.option('enable-console-log'):
+            guest.start_console_logging()
+
+        self.provision_guest_wait(guest)
 
         guest.info('Guest provisioned')
-        self.guests.append(guest)
 
         return [guest]
 
@@ -1400,6 +1411,13 @@ class ArtemisProvisioner(gluetool.Module):
 
     def destroy(self, failure: Optional[Any] = None) -> None:
         self.destroying = True
+
+        if not self.guests:
+            self.info('no guests to remove during module destroy')
+            return
+
+        self.info('removing {} guest(s) during module destroy'.format(len(self.guests)))
+
         for guest in self.guests[:]:
             guest.destroy()
             self.api.dump_events(guest)

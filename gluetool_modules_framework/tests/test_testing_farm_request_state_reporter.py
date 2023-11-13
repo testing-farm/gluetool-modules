@@ -108,6 +108,7 @@ def test_testing_farm_reporter_destroy_failure(module, request_empty, evaluate):
         'overall_result': 'unknown',
         'artifacts_url': None,
         'xunit': None,
+        'destroying': True
     }
 
 
@@ -125,6 +126,7 @@ def test_testing_farm_reporter_destroy_failure_mapping(module, request_empty, ev
         'overall_result': 'some-mapped-overall-result',
         'artifacts_url': None,
         'xunit': None,
+        'destroying': True
     }
 
 
@@ -136,7 +138,8 @@ def test_testing_farm_reporter_destroy_no_result(module, request_running, evalua
         'overall_result': 'unknown',
         'xunit': None,
         'summary': None,
-        'artifacts_url': None
+        'artifacts_url': None,
+        'destroying': True
     }
 
 
@@ -149,4 +152,5 @@ def test_testing_farm_reporter_destroy_result(module, request_empty, results, ev
         'xunit': '<?xml version="1.0" encoding="UTF-8"?>\n<testsuites overall-result="some-overall-result"><properties><property name="baseosci.overall-result" value="some-test-schedule-result"/></properties></testsuites>',  # noqa
         'artifacts_url': None,
         'summary': None,
+        'destroying': True
     }

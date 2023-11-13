@@ -87,7 +87,10 @@ class TestingFarmRequestStateReporter(gluetool.Module):
                 test_results.overall_result if test_results else 'unknown', failure),
             summary=self._get_summary(failure),
             xunit=test_results.xunit_testing_farm.to_xml_string() if test_results else None,
-            artifacts_url=self.shared('coldstore_url')
+            artifacts_url=self.shared('coldstore_url'),
+            # We are indicating that we are updating the state during destroying to deal with
+            # some corner cases for request cancellation.
+            destroying=True
         )
 
     def _get_state(self, failure: Any) -> str:

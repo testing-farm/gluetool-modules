@@ -11,6 +11,7 @@ import contextlib
 import time
 from mock import MagicMock
 
+from gluetool_modules_framework.testing_farm.testing_farm_request import RequestConflictError
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 
 from . import create_module, patch_shared
@@ -52,6 +53,10 @@ class Response404(ResponseMock):
     status_code = 404
 
 
+class Response409(ResponseMock):
+    status_code = 409
+
+
 class ResponseInvalidJSON(ResponseMock):
     def json(self):
         raise ValueError
@@ -69,6 +74,9 @@ class RequestsMock():
 
     def request_404(self, url, json):
         return Response404()
+
+    def request_409(self, url, json):
+        return Response409()
 
     def request_invalid_json(self, url, json):
         return ResponseInvalidJSON()
@@ -159,6 +167,18 @@ def test_get_request_404(module_api):
         module_api.get_request('1', 'fakekey')
 
 
+def test_put_request(module_api):
+    module_api._module._config.update({'retry-timeout': 1, 'retry-tick': 1})
+    module_api.put_request('1', {'hello': 'world'})
+
+
+def test_put_request_409(module_api):
+    RequestsMock.put = RequestsMock.request_409
+    module_api._module._config.update({'retry-timeout': 1, 'retry-tick': 1})
+    with pytest.raises(RequestConflictError, match=""):
+        module_api.put_request('1', 'fakekey')
+
+
 def test_get_request_invalid_json(module_api):
     RequestsMock.get = RequestsMock.request_invalid_json
     module_api._module._config.update({'retry-timeout': 1, 'retry-tick': 1})
@@ -171,15 +191,10 @@ def test_put_request_error(module_api):
         module_api.put_request('', None)
 
 
-def test_put_request(module_api):
-    module_api._module._config.update({'retry-timeout': 1, 'retry-tick': 1})
-    module_api.put_request('1', {'hello': 'world'})
-
-
 def test_put_request_404(module_api):
     RequestsMock.put = RequestsMock.request_404
     module_api._module._config.update({'retry-timeout': 1, 'retry-tick': 1})
-    with pytest.raises(gluetool.GlueError, match='Request failed: None'):
+    with pytest.raises(gluetool.GlueError, match="Request '1' not found."):
         module_api.put_request('1', {'hello': 'world'})
 
 
@@ -213,6 +228,42 @@ def test_update(module, request2, monkeypatch):
             'artifacts': 'someurl',
         }
     }
+
+
+def test_update_conflict(module, request2, monkeypatch, log):
+    patch_shared(monkeypatch, module, {'xunit_testing_farm_file': 'xunitfile'})
+    request = module._tf_request
+    module._tf_api.put_request = MagicMock(side_effect=RequestConflictError('some-message', MagicMock()))
+
+    # state is not canceled but request failed to update, that is unexpected and the update should blow up
+    module._tf_api.get_request = MagicMock(return_value={'state': 'running'})
+    with pytest.raises(RequestConflictError, match='some-message'):
+        request.update(
+            state='error',
+        )
+    assert log.match(
+        levelno=logging.ERROR,
+        message="Request is 'running', but failed to update it, this is unexpected.",
+    )
+
+    # state is canceled, that should be handled gracefully
+    module._tf_api.get_request = MagicMock(return_value={'state': 'canceled'})
+    request.update(
+        state='error',
+    )
+    assert log.match(
+        levelno=logging.INFO,
+        message="Request is 'canceled', refusing to update it."
+    )
+
+    # state is cancel-requested, that should be handled gracefully with a pipeline cancellation
+    module.cancel_pipeline = MagicMock()
+    module._tf_api.get_request = MagicMock(return_value={'state': 'cancel-requested'})
+    request.update(
+        state='error',
+        destroying=True
+    )
+    module.cancel_pipeline.assert_called_once_with(destroying=True)
 
 
 def test_webhook(module, requests_mock, request2):
@@ -388,8 +439,9 @@ def test_pipeline_cancellation(module, request2, monkeypatch, log):
 
     assert process_mock.called_once()
     assert PUT_REQUESTS['2']['state'] == 'canceled'
+    assert log.records[-3].message == 'Cancelling pipeline as requested'
     assert log.records[-2].message == 'Stopping pipeline cancellation check'
-    assert log.records[-1].message == 'Cancelling pipeline as requested'
+    assert log.records[-1].message == 'No webhook, skipping'
 
 
 def test_pipeline_cancellation_destroy(module, request1, monkeypatch, log):

@@ -1,17 +1,21 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+from enum import Enum
 from functools import partial
 from posixpath import join as urljoin
 
 import psutil
 import re
+import six
+import sys
 import attrs
+from requests import Response
 
 import gluetool
-from gluetool.log import LoggerMixin
+from gluetool.log import log_dict, LoggerMixin
 from gluetool.result import Result
-from gluetool.utils import dict_update, log_dict, requests, render_template
+from gluetool.utils import dict_update, requests, render_template
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from gluetool_modules_framework.libs.git import GIT_URL_REGEX, SecretGitUrl
 
@@ -65,6 +69,15 @@ class RequestNotificationType(TypedDict):
     webhook: NotRequired[RequestWebhookType]
 
 
+class PipelineState(str, Enum):
+    new = 'new'
+    queued = 'queued'
+    running = 'running'
+    complete = 'complete'
+    cancel_requested = 'cancel-requested'
+    canceled = 'canceled'
+
+
 class RequestType(TypedDict):
     test: RequestTestType
     environments_requested: NotRequired[List[RequestEnvironmentType]]
@@ -77,6 +90,18 @@ class RequestType(TypedDict):
 class UserType(TypedDict):
     id: str
     name: str
+
+
+class RequestConflictError(gluetool.GlueError):
+    def __init__(
+        self,
+        message: str,
+        response: Response,
+    ) -> None:
+
+        super(RequestConflictError, self).__init__(message)
+
+        self.response = response
 
 
 class TestingFarmAPI(LoggerMixin, object):
@@ -117,8 +142,11 @@ class TestingFarmAPI(LoggerMixin, object):
                 except ValueError:
                     response_data = response.text
 
-                if response.status_code == 404:
-                    return Result.Ok(None)
+                # These error conditions are valid responses
+                # 404 - request not found
+                # 409 - request in conflict
+                if response.status_code in [404, 409]:
+                    return Result.Ok(response)
 
                 if not response:
                     error_msg = 'Got unexpected response status code {}'.format(response.status_code)
@@ -149,12 +177,19 @@ class TestingFarmAPI(LoggerMixin, object):
                                    tick=self._module.option('retry-tick'))
 
     def get_request(self, request_id: str, api_key: str) -> RequestType:
-        request = self._get_request('v0.1/requests/{}?api_key={}'.format(request_id, api_key))
+        response = self._get_request('v0.1/requests/{}?api_key={}'.format(request_id, api_key))
 
-        if not request:
+        if response.status_code == 404:
             raise gluetool.GlueError("Request '{}' was not found".format(request_id))
 
-        return cast(RequestType, request.json())
+        if response.status_code != 200:
+            raise gluetool.GlueError(
+                "Getting request '{}' ended with an unexpected status code '{}'".format(
+                    request_id, response.status_code
+                )
+            )
+
+        return cast(RequestType, response.json())
 
     def get_user(self, user_id: str, api_key: str) -> UserType:
         request = self._get_request('v0.1/users/{}?api_key={}'.format(user_id, api_key))
@@ -165,11 +200,18 @@ class TestingFarmAPI(LoggerMixin, object):
         return cast(UserType, request.json())
 
     def put_request(self, request_id: str, payload: Optional[Dict[str, Any]]) -> Any:
-        request = self._put_request('v0.1/requests/{}'.format(request_id), payload=payload)
-        if not request:
-            raise gluetool.GlueError("Request failed: {}".format(request))
+        response = self._put_request('v0.1/requests/{}'.format(request_id), payload=payload)
 
-        return request.json()
+        if response.status_code == 404:
+            raise gluetool.GlueError("Request '{}' not found.".format(request_id))
+
+        if response.status_code == 409:
+            raise RequestConflictError(
+                "Request '{}' update conflicts with current request state, cannot update it.".format(request_id),
+                response
+            )
+
+        return response.json()
 
 
 @attrs.define
@@ -372,7 +414,19 @@ class TestingFarmRequest(LoggerMixin, object):
                overall_result: Optional[str] = None,
                xunit: Optional[str] = None,
                summary: Optional[str] = None,
-               artifacts_url: Optional[str] = None) -> None:
+               artifacts_url: Optional[str] = None,
+               destroying: bool = False) -> None:
+        """
+        Update the test request. Only a subset of changes is supported according to the use cases
+        we have in the pipeline.
+
+        :param str state: New state of the test request.
+        :param str overall_result: New overall result of the test request.
+        :param str xunit: New XUnit XML content to set.
+        :param str summary: New result summary to set.
+        :param str artifacts_url: The URL to the artifacts to set.
+        :param str destroying: A flag to indicate that the update is happening during pipeline destroy phase.
+        """
         payload: Dict[str, Any] = {}
         result = {}
         run = {}
@@ -422,8 +476,31 @@ class TestingFarmRequest(LoggerMixin, object):
                 'run': run
             })
 
-        self._api.put_request(self.id, payload)
+        try:
+            self._api.put_request(self.id, payload)
 
+        #
+        # Handling cases where an update is requested for a request in the 'canceled' or 'cancel-requested' states.
+        #
+        except RequestConflictError:
+            # get current pipeline state
+            current_state = self._module.get_pipeline_state()
+
+            # if the request is in cancel-requested state, cancel it now and ignore the update
+            if current_state == PipelineState.cancel_requested:
+                self._module.cancel_pipeline(destroying=destroying)
+                return
+
+            # if the request is canceled, ignore the update, there is nothing to do
+            if current_state == PipelineState.canceled:
+                self.info("Request is 'canceled', refusing to update it.")
+                return
+
+            # this should not happen, blow up
+            self.error("Request is '{}', but failed to update it, this is unexpected.".format(current_state))
+            six.reraise(*sys.exc_info())
+
+        # inform webhooks about the state change
         self.webhook()
 
 
@@ -525,28 +602,57 @@ class TestingFarmRequestModule(gluetool.Module):
     def testing_farm_request(self) -> Optional[TestingFarmRequest]:
         return self._tf_request
 
-    def check_pipeline_cancellation(self) -> None:
+    def get_pipeline_state(self) -> PipelineState:
         """
-        Check if pipeline cancellation requested via the `cancel-requested` state.
+        Return pipeline state represented as :py:class:`PipelineState` enum.
+        """
+        assert self._tf_api
+        assert self._tf_request
+
+        request = self._tf_api.get_request(self._tf_request.id, self.api_key)
+
+        return PipelineState(request['state'])
+
+    def cancel_pipeline(self, destroying: bool = False) -> None:
+        """
+        Cancel the pipeline by updating the pipeline state to `canceled` state
+        and terminating the current process. During pipeline destroy we want to skip
+        the process termination, as the pipeline is being destroyed anyway.
+
+        :param: bool destroying: Flag to indicate cancellation during pipeline destroy.
+        """
+        self.warn('Cancelling pipeline as requested')
+
+        # stop the repeat timer, it will not be needed anymore
+        self.debug('Stopping pipeline cancellation check')
+        if self._pipeline_cancellation_timer:
+            self._pipeline_cancellation_timer.cancel()
+            self._pipeline_cancellation_timer = None
+
+        assert self._tf_request
+
+        # update the state
+        self._tf_request.update(state='canceled')
+
+        if not destroying:
+            # cancel the pipeline
+            psutil.Process().terminate()
+
+        else:
+            self.info('Skipped termination of the pipeline process because pipeline is being destroyed.')
+
+    def handle_pipeline_cancellation(self) -> None:
+        """
+        Handle requested pipeline cancellation from the user via the `cancel-requested` state.
         """
 
         assert self._tf_api
         assert self._tf_request
-        request = self._tf_api.get_request(self._tf_request.id, self.api_key)
 
-        if request['state'] == 'cancel-requested':
-            # update the state
-            self._tf_request.update(state='canceled')
+        pipeline_state = self.get_pipeline_state()
 
-            # stop the repeat timer, it will not be needed anymore
-            self.debug('Stopping pipeline cancellation check')
-            if self._pipeline_cancellation_timer:
-                self._pipeline_cancellation_timer.cancel()
-                self._pipeline_cancellation_timer = None
-
-            # cancel the pipeline
-            self.warn('Cancelling pipeline as requested')
-            psutil.Process().terminate()
+        if pipeline_state == PipelineState.cancel_requested:
+            self.cancel_pipeline()
 
     def destroy(self, failure: Optional[gluetool.Failure] = None) -> None:
         # stop the repeat timer, it will not be needed anymore
@@ -585,7 +691,7 @@ class TestingFarmRequestModule(gluetool.Module):
             pipeline_cancellation_tick = self.option('pipeline-cancellation-tick')
             self._pipeline_cancellation_timer = RepeatTimer(
                 pipeline_cancellation_tick,
-                self.check_pipeline_cancellation
+                self.handle_pipeline_cancellation
             )
 
             self.debug('Starting pipeline cancellation, check every {} seconds'.format(pipeline_cancellation_tick))

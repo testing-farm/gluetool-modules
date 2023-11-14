@@ -144,7 +144,7 @@ def test_gather_results(module, asset, monkeypatch):
     import cattrs.errors
     import traceback
     try:
-        outcome, results, guests = gather_plan_results(schedule_entry, ASSETS_DIR)
+        outcome, results, guests = gather_plan_results(module, schedule_entry, ASSETS_DIR)
     except cattrs.errors.IterableValidationError as e:
         traceback.print_exc()
         print(e.exceptions)
@@ -174,9 +174,9 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     # writing results.yaml in between, which we can't do with a mock
     orig_gather_plan_results = gluetool_modules_framework.testing.test_schedule_tmt_multihost.gather_plan_results
 
-    def inject_gather_plan_results(schedule_entry, work_dir, recognize_errors=False):
+    def inject_gather_plan_results(module, schedule_entry, work_dir, recognize_errors=False):
         shutil.copytree(os.path.join(ASSETS_DIR, 'passed'), os.path.join(work_dir, 'passed'))
-        return orig_gather_plan_results(schedule_entry, work_dir, recognize_errors=recognize_errors)
+        return orig_gather_plan_results(module, schedule_entry, work_dir, recognize_errors=recognize_errors)
 
     # run tmt with the mock plan
     with monkeypatch.context() as m:
@@ -236,9 +236,9 @@ def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest
     # writing results.yaml in between, which we can't do with a mock
     orig_gather_plan_results = gluetool_modules_framework.testing.test_schedule_tmt_multihost.gather_plan_results
 
-    def inject_gather_plan_results(schedule_entry, work_dir, recognize_errors=False):
+    def inject_gather_plan_results(module, schedule_entry, work_dir, recognize_errors=False):
         shutil.copytree(os.path.join(ASSETS_DIR, 'passed'), os.path.join(work_dir, 'passed'))
-        return orig_gather_plan_results(schedule_entry, work_dir, recognize_errors=recognize_errors)
+        return orig_gather_plan_results(module, schedule_entry, work_dir, recognize_errors=recognize_errors)
 
     # run tmt with the mock plan
     with monkeypatch.context() as m:

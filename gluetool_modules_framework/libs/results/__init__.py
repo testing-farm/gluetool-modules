@@ -40,6 +40,14 @@ class Guest:
 
 
 @attrs.define
+class TestCaseCheck:
+    name: str
+    result: str
+    event: str
+    logs: List[Log]
+
+
+@attrs.define
 class TestCase:
     name: str
     result: Optional[str] = None
@@ -52,6 +60,7 @@ class TestCase:
     failure: Union[bool, str] = False
     error: Union[bool, str] = False
     system_out: List[str] = attrs.field(factory=list)
+    checks: List[TestCaseCheck] = attrs.field(factory=list)
 
     # Properties used in BaseOS CI results.xml
     # TODO: float would be a more suitable type, fix this when we add time property also to Testing Farm results, str
@@ -73,6 +82,18 @@ class TestCase:
     # Used in multihost pipeline
     serial_number: Optional[int] = None
     guest: Optional[Guest] = None
+
+    @property
+    def check_count(self) -> int:
+        return len(self.checks)
+
+    @property
+    def check_error_count(self) -> int:
+        return len([check for check in self.checks if check.result == 'error'])
+
+    @property
+    def check_failure_count(self) -> int:
+        return len([check for check in self.checks if check.result == 'fail'])
 
 
 @attrs.define

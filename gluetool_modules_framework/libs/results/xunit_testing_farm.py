@@ -12,7 +12,7 @@ from typing import List, Optional, Dict, TYPE_CHECKING, cast
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 
 if TYPE_CHECKING:
-    from gluetool_modules_framework.libs.results import Results, TestSuite, TestCase, Log, Phase, Guest  # noqa
+    from gluetool_modules_framework.libs.results import Results, TestSuite, TestCase, Log, Phase, Guest, TestCaseCheck  # noqa
 
 
 # Used in BaseOS CI results
@@ -172,6 +172,40 @@ class XUnitTFGuest:
 
 
 @attrs.define(kw_only=True)
+class XUnitTFTestCaseCheck:
+    name: str = attrs.field(metadata={'type': 'Attribute'})
+    result: str = attrs.field(metadata={'type': 'Attribute'})
+    event: str = attrs.field(metadata={'type': 'Attribute'})
+    logs: Optional[XUnitTFLogs]
+
+    @classmethod
+    def construct(cls, check: 'TestCaseCheck') -> 'XUnitTFTestCaseCheck':
+        return XUnitTFTestCaseCheck(
+            name=check.name,
+            result=check.result,
+            event=check.event,
+            logs=XUnitTFLogs.construct(check.logs)
+        )
+
+
+@attrs.define(kw_only=True)
+class XUnitTFTestCaseChecks:
+    check: List[XUnitTFTestCaseCheck]
+    checks: int = attrs.field(metadata={'type': 'Attribute'})
+    errors: int = attrs.field(metadata={'type': 'Attribute'})
+    failures: int = attrs.field(metadata={'type': 'Attribute'})
+
+    @classmethod
+    def construct(cls, test_case: 'TestCase') -> 'XUnitTFTestCaseChecks':
+        return XUnitTFTestCaseChecks(
+            check=[XUnitTFTestCaseCheck.construct(check) for check in test_case.checks],
+            checks=test_case.check_count,
+            errors=test_case.check_error_count,
+            failures=test_case.check_failure_count,
+        )
+
+
+@attrs.define(kw_only=True)
 class XUnitTFTestCase:
     name: str = attrs.field(metadata={'type': 'Attribute'})
     result: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
@@ -190,6 +224,7 @@ class XUnitTFTestCase:
         metadata={'name': 'testing-environment'}
     )
     test_outputs: Optional[XUnitTFTestOutputs] = attrs.field(default=None, metadata={'name': 'test-outputs'})
+    checks: Optional[XUnitTFTestCaseChecks] = None
 
     # Properties used in BaseOS CI covscan module
     added: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
@@ -228,6 +263,7 @@ class XUnitTFTestCase:
             packages=XUnitTFPackages.construct(test_case.packages) if test_case.packages is not None else None,
             test_outputs=XUnitTFTestOutputs.construct(test_case.test_outputs)
             if test_case.test_outputs is not None else None,
+            checks=XUnitTFTestCaseChecks.construct(test_case) if test_case.checks else None,
             added=test_case.added,
             fixed=test_case.fixed,
             baseline=test_case.baseline,

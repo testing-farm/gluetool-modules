@@ -131,7 +131,7 @@ def test_gather_results(module, asset, monkeypatch):
         'some-repo-dir'
     )
 
-    outcome, results = gather_plan_results(schedule_entry, ASSETS_DIR)
+    outcome, results = gather_plan_results(module, schedule_entry, ASSETS_DIR)
 
     assert outcome == getattr(TestScheduleResult, expected_results['outcome'])
     _assert_results(results, expected_results['results'])
@@ -157,9 +157,9 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     # writing results.yaml in between, which we can't do with a mock
     orig_gather_plan_results = gluetool_modules_framework.testing.test_schedule_tmt.gather_plan_results
 
-    def inject_gather_plan_results(schedule_entry, work_dir, recognize_errors=False):
+    def inject_gather_plan_results(module, schedule_entry, work_dir, recognize_errors=False):
         shutil.copytree(os.path.join(ASSETS_DIR, 'passed'), os.path.join(work_dir, 'passed'))
-        return orig_gather_plan_results(schedule_entry, work_dir, recognize_errors=recognize_errors)
+        return orig_gather_plan_results(module, schedule_entry, work_dir, recognize_errors=recognize_errors)
 
     # run tmt with the mock plan
     with monkeypatch.context() as m:
@@ -219,9 +219,9 @@ def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest
     # writing results.yaml in between, which we can't do with a mock
     orig_gather_plan_results = gluetool_modules_framework.testing.test_schedule_tmt.gather_plan_results
 
-    def inject_gather_plan_results(schedule_entry, work_dir, recognize_errors=False):
+    def inject_gather_plan_results(module, schedule_entry, work_dir, recognize_errors=False):
         shutil.copytree(os.path.join(ASSETS_DIR, 'passed'), os.path.join(work_dir, 'passed'))
-        return orig_gather_plan_results(schedule_entry, work_dir, recognize_errors=recognize_errors)
+        return orig_gather_plan_results(module, schedule_entry, work_dir, recognize_errors=recognize_errors)
 
     # run tmt with the mock plan
     with monkeypatch.context() as m:

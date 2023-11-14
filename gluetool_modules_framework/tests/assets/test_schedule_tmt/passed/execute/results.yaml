@@ -8,6 +8,7 @@
   guest:
     name: default-0
     role:
+  check: []
 - name: /tests/core/dry
   result: pass
   note: 'original result: fail'
@@ -17,3 +18,4 @@
   guest:
     name: default-0
     role:
+  check: []

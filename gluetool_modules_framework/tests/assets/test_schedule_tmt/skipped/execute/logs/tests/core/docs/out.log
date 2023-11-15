@@ -1,0 +1,101 @@
+
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+::   TEST PROTOCOL
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+    Package       : glibc
+    Installed     : glibc-2.37.9000-9.fc39.x86_64
+    beakerlib RPM : beakerlib-1.29.3-2.fc38.noarch
+    Test name     :
+    Test started  : 2023-05-15 17:24:55 UTC
+    Test finished : 2023-05-15 17:24:56 UTC
+    Test duration : 1 seconds
+    Distro        : Fedora release 39 (Rawhide)
+    Hostname      : ip-172-31-27-3.us-east-2.compute.internal
+    Architecture  : unknown
+    CPUs          : 2 x AMD EPYC 7R13 Processor
+    RAM size      : 3799 MB
+    HDD size      : 98.88 GB
+
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+::   Test description
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+PURPOSE of /tools/glibc/Regression/bz819430-fnmatch-fails-when-wildcard-is-applied-on
+Description: Test for BZ#819430 (fnmatch() fails when '*' wildcard is applied on)
+Author: Miroslav Franc <mfranc@redhat.com>
+Bug summary: fnmatch() fails when '*' wildcard is applied on the file name containing multi-byte character(s)
+Bugzilla link: https://bugzilla.redhat.com/show_bug.cgi?id=819430
+
+
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+::   Setup
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+:: [ 17:24:56 ] :: [   PASS   ] :: Checking for the presence of glibc rpm
+:: [ 17:24:56 ] :: [   LOG    ] :: Package versions:
+:: [ 17:24:56 ] :: [   LOG    ] ::   glibc-2.37.9000-9.fc39.x86_64
+:: [ 17:24:56 ] :: [   LOG    ] ::   glibc-2.37.9000-9.fc39.i686
+:: [ 17:24:56 ] :: [   PASS   ] :: Checking for the presence of gcc rpm
+:: [ 17:24:56 ] :: [   LOG    ] :: Package versions:
+:: [ 17:24:56 ] :: [   LOG    ] ::   gcc-13.1.1-2.fc39.x86_64
+:: [ 17:24:56 ] :: [   PASS   ] :: Creating tmp directory (Expected 0, got 0)
+:: [ 17:24:56 ] :: [   PASS   ] :: Command 'cp arf.c /tmp/tmp.8sD4sH4qEf' (Expected 0, got 0)
+:: [ 17:24:56 ] :: [   PASS   ] :: Command 'pushd /tmp/tmp.8sD4sH4qEf' (Expected 0, got 0)
+:: [ 17:24:56 ] :: [   PASS   ] :: Command 'gcc arf.c -o arf' (Expected 0, got 0)
+:: [ 17:24:56 ] :: [   PASS   ] :: File ./arf should exist
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+::   Duration: 0s
+::   Assertions: 7 good, 0 bad
+::   RESULT: PASS (Setup)
+
+
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+::   c reproducer
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+:: [ 17:24:56 ] :: [   PASS   ] :: Command './arf' (Expected 0, got 0)
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+::   Duration: 0s
+::   Assertions: 1 good, 0 bad
+::   RESULT: PASS (c reproducer)
+
+
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+::   original issue
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+:: [ 17:24:56 ] :: [   PASS   ] :: Command 'cat /dev/null > $'\366'.csv' (Expected 0, got 0)
+:: [ 17:24:56 ] :: [   PASS   ] :: Command 'find . -name *.csv > log' (Expected 0, got 0)
+:: [ 17:24:56 ] :: [   PASS   ] :: File 'log' should contain 'csv'
+:: [ 17:24:56 ] :: [   LOG    ] :: ./ö.csv
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+::   Duration: 0s
+::   Assertions: 3 good, 0 bad
+::   RESULT: PASS (original issue)
+
+
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+::   Cleanup
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+:: [ 17:24:56 ] :: [   PASS   ] :: Command 'popd' (Expected 0, got 0)
+:: [ 17:24:56 ] :: [   PASS   ] :: Removing tmp directory (Expected 0, got 0)
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+::   Duration: 0s
+::   Assertions: 2 good, 0 bad
+::   RESULT: PASS (Cleanup)
+
+
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+::
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+:: [ 17:24:56 ] :: [   LOG    ] :: Phases fingerprint:  3TFH3dbq
+:: [ 17:24:56 ] :: [   LOG    ] :: Asserts fingerprint: 1U5WiVuE
+:: [ 17:24:56 ] :: [   LOG    ] :: JOURNAL XML: /var/home/mvadkert/temp/work-cia715abou/plans/ci/execute/data/guest/default-0/tests/Regression/bz819430-fnmatch-fails-when-wildcard-is-applied-on-55/journal.xml
+:: [ 17:24:56 ] :: [   LOG    ] :: JOURNAL TXT: /var/home/mvadkert/temp/work-cia715abou/plans/ci/execute/data/guest/default-0/tests/Regression/bz819430-fnmatch-fails-when-wildcard-is-applied-on-55/journal.txt
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+::   Duration: 1s
+::   Phases: 4 good, 0 bad
+::   OVERALL RESULT: PASS ()

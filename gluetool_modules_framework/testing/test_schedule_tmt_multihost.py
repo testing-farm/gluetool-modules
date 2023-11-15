@@ -52,11 +52,12 @@ TMT_ENV_FILE = 'tmt-environment-{}.yaml'
 # Weight of a test result, used to count the overall result. Higher weight has precendence
 # when counting the overall result. See https://tmt.readthedocs.io/en/latest/spec/steps.html#execute
 RESULT_WEIGHT = {
-    'pass': 0,
-    'info': 0,
-    'fail': 1,
-    'warn': 1,
-    'error': 2,
+    'skip': 0,
+    'pass': 1,
+    'info': 1,
+    'fail': 2,
+    'warn': 2,
+    'error': 3,
 }
 
 # Map tmt results to our expected results
@@ -85,9 +86,10 @@ RESULT_OUTCOME = {
 # All tmt errors are connected to tests or config, so only higher return code than 3
 # is treated as error
 PLAN_OUTCOME = {
-    0: TestScheduleResult.PASSED,
-    1: TestScheduleResult.FAILED,
+    0: TestScheduleResult.SKIPPED,
+    1: TestScheduleResult.PASSED,
     2: TestScheduleResult.FAILED,
+    3: TestScheduleResult.FAILED,
 }
 
 # Result weight to TestScheduleResult outcome
@@ -97,9 +99,10 @@ PLAN_OUTCOME = {
 # All tmt errors are connected to tests or config, so only higher return code than 3
 # is treated as error
 PLAN_OUTCOME_WITH_ERROR = {
-    0: TestScheduleResult.PASSED,
-    1: TestScheduleResult.FAILED,
-    2: TestScheduleResult.ERROR,
+    0: TestScheduleResult.SKIPPED,
+    1: TestScheduleResult.PASSED,
+    2: TestScheduleResult.FAILED,
+    3: TestScheduleResult.ERROR,
 }
 
 # Results YAML file, contains list of test run results, relative to plan workdir
@@ -324,6 +327,7 @@ class TMTExitCodes(enum.IntEnum):
     TESTS_FAILED = 1
     TESTS_ERROR = 2
     RESULTS_MISSING = 3
+    TESTS_SKIPPED = 4
 
 
 class TestScheduleEntry(BaseTestScheduleEntry):

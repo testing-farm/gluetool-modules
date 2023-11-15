@@ -161,6 +161,9 @@ class TestScheduleResult(GlueEnum):
     INFO = 'info'
     NOT_APPLICABLE = 'not_applicable'
 
+    #: All tests were skipped.
+    SKIPPED = 'skipped'
+
 
 # TODO: incorporate guest-setup output, it's very similar but guest-setup output carries one extra field,
 # the guest-setup stage.

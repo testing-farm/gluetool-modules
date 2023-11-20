@@ -542,6 +542,11 @@ class TestScheduleTMTMultihost(Module):
                         """,
                 'action': 'append',
                 'default': []
+            },
+            'tmt-run-options': {
+                'help': "Additional options passed to ``tmt run``, for example -ddddvvv.",
+                'action': 'append',
+                'default': []
             }
         }),
         ('Result options', {
@@ -1083,9 +1088,8 @@ class TestScheduleTMTMultihost(Module):
         artemis_post_install_script = artemis_options['post-install-script']
         artemis_skip_prepare_verify_ssh = artemis_options['skip-prepare-verify-ssh']
 
-        command.extend([
-            'run', '--all', '--id', os.path.abspath(work_dirpath), '-ddddvvv', '--log-topic', 'cli-invocations'
-        ])
+        command.extend(['run', '--all', '--id', os.path.abspath(work_dirpath)])
+        command.extend(gluetool.utils.normalize_multistring_option(self.option('tmt-run-options')))
 
         if schedule_entry.tmt_env_file:
             env_options = [

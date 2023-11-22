@@ -40,5 +40,12 @@
             "url": "webhookurl"
         }
     },
-    "user_id": "user"
+    "user_id": "user",
+    "user": {
+        "webpage": {
+            "url": "https://example.com",
+            "icon": "https://example.com/icon.png",
+            "name": "Example"
+        }
+    }
 }

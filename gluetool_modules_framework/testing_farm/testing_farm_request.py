@@ -32,6 +32,8 @@ DEFAULT_PIPELINE_CANCELLATION_TICK = 30
 
 
 # Following classes reflect the structure of what comes out of GET `/request/{request_id}` endpoint in the TF API.
+# The classes shouldn't reflect the whole structure of the response, only the parts we are interested in the module.
+
 class RequestTestType(TypedDict):
     fmf: Optional[Dict[str, Any]]
     sti: Optional[Dict[str, Any]]

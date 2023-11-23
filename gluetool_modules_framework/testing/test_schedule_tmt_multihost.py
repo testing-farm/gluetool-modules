@@ -912,18 +912,6 @@ class TestScheduleTMTMultihost(Module):
                 if self._is_plan_empty(plan, repodir, tec, tmt_env_file):
                     continue
 
-                exported_plan = self.export_plan(repodir, plan, tmt_env_file)
-
-                if exported_plan and exported_plan.provision:
-                    for provision_phase in exported_plan.provision:
-                        if any([
-                            provision_phase.hardware is not None,
-                            provision_phase.kickstart is not None,
-                            provision_phase.watchdog_dispatch_delay is not None,
-                            provision_phase.watchdog_period_delay is not None
-                        ]):
-                            raise GlueError("Fields 'hardware', 'kickstart', 'watchdog-dispatch-delay', "
-                                            "'watchdog-period-delay' are not supported in provision phase.")
                 schedule_entry = TestScheduleEntry(
                     root_logger,
                     tec,

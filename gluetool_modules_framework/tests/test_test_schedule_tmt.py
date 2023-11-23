@@ -1100,7 +1100,9 @@ TMT_EXPORTED_PLANS = [
         (
             TMT_EXPORTED_PLANS[3],
             None,
-            (gluetool.GlueError, 'Multiple provision phases not supported, refusing to continue.')
+            (gluetool.GlueError, 'Multiple provision phases not supported in this pipeline. See '
+                                 'https://docs.testing-farm.io/Testing%20Farm/0.1/test-request.html#multihost-testing '
+                                 'for information on how to run the multihost pipeline.')
         ),
     ],
     ids=[

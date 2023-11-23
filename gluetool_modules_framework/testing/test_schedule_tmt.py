@@ -964,7 +964,11 @@ class TestScheduleTMT(Module):
                 if exported_plan and exported_plan.provision:
                     # this module will never support multiple provision phases
                     if len(exported_plan.provision) > 1:
-                        raise GlueError('Multiple provision phases not supported, refusing to continue.')
+                        raise GlueError(
+                            'Multiple provision phases not supported in this pipeline. See '
+                            'https://docs.testing-farm.io/Testing%20Farm/0.1/test-request.html#multihost-testing '
+                            'for information on how to run the multihost pipeline.'
+                        )
 
                     provision = exported_plan.provision[0]
                     hardware = provision.hardware

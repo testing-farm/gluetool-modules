@@ -1,0 +1,19 @@
+---
+outcome: SKIPPED
+results:
+  - name: /tests/core/docs
+    result: not_applicable
+    artifacts:
+      - name: log_dir
+        path: skipped/execute/logs/tests/core/docs
+      - name: testout.log
+        path: skipped/execute/logs/tests/core/docs/out.log
+      - name: journal.txt
+        path: skipped/execute/logs/tests/core/docs/journal.txt
+  - name: /tests/core/dry
+    result: not_applicable
+    artifacts:
+      - name: log_dir
+        path: skipped/execute/logs/tests/core/dry
+      - name: testout.log
+        path: skipped/execute/logs/tests/core/dry/out.log

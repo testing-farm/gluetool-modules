@@ -1080,30 +1080,19 @@ TMT_EXPORTED_PLANS = [
             TestingEnvironment(
                 arch='x86_64',
                 excluded_packages=[],
-                hardware={
-                    'tpm': {
-                        'version': '2'
-                    }
-                },
                 snapshots=False
             ),
-            (gluetool.GlueError, "Fields 'hardware', 'kickstart', 'watchdog-dispatch-delay', 'watchdog-period-delay' "
-                                 "are not supported in provision phase.")
+            None
         ),
-        # single_provision_phase_with_hardware
+        # single_provision_phase_with_kickstart
         (
             TMT_EXPORTED_PLANS[2],
             TestingEnvironment(
                 arch='x86_64',
                 excluded_packages=[],
-                kickstart={
-                    'script': 'some-script',
-                    'metadata': 'some-metadata',
-                },
-                snapshots=False
+                snapshots=False,
             ),
-            (gluetool.GlueError, "Fields 'hardware', 'kickstart', 'watchdog-dispatch-delay', 'watchdog-period-delay' "
-                                 "are not supported in provision phase.")
+            None
         ),
         # multiple_provision_phases
         (

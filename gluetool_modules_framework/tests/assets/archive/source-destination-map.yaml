@@ -1,0 +1,12 @@
+---
+
+- source: /source
+  destination: dest
+
+- source: /source
+
+- source: /source
+  destination: dest
+  permissions: "666"
+
+- source: /dir-source

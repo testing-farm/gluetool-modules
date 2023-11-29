@@ -4,7 +4,7 @@
   log:
     - logs/tests/core/docs/out.log
     - logs/tests/core/docs/journal.txt
-  serialnumber: 1
+  serial-number: 1
   guest:
     name: default-0
     role:
@@ -12,7 +12,7 @@
   result: pass
   log:
     - logs/tests/core/dry/out.log
-  serialnumber: 2
+  serial-number: 2
   guest:
     name: default-0
     role:

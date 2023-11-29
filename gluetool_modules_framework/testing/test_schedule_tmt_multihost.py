@@ -180,10 +180,24 @@ class TMTResult:
         default=None,
         validator=attrs.validators.optional(attrs.validators.instance_of(str))
     )
-    serialnumber: Optional[int] = attrs.field(
+    serial_number: Optional[int] = attrs.field(
         default=None,
         validator=attrs.validators.optional(attrs.validators.instance_of(int))
     )
+
+    # We need to map the yaml attributes containing dashes to Python variables
+    @classmethod
+    def register_hooks(cls, converter: cattrs.Converter) -> None:
+        converter.register_structure_hook(TMTResult, make_dict_structure_fn(
+            TMTResult,
+            converter,
+            serial_number=override(rename='serial-number')
+        ))
+        converter.register_unstructure_hook(TMTResult, make_dict_unstructure_fn(
+            TMTResult,
+            converter,
+            serial_number=override(rename='serial-number')
+        ))
 
 
 @attrs.define
@@ -424,7 +438,12 @@ def gather_plan_results(
     # load test results from `results.yaml` which is created in tmt's execute step
     # https://tmt.readthedocs.io/en/latest/spec/steps.html#execute
     try:
-        results = load_yaml(results_yaml, unserialize=gluetool.utils.create_cattrs_unserializer(List[TMTResult]))
+        converter = create_cattrs_converter(prefer_attrib_converters=True)
+        TMTResult.register_hooks(converter)
+        results = load_yaml(
+            results_yaml,
+            unserialize=gluetool.utils.create_cattrs_unserializer(List[TMTResult], converter=converter)
+        )
         log_dict(schedule_entry.debug, "loaded results from '{}'".format(results_yaml), results)
     except GlueError as error:
         schedule_entry.warn('Could not load results.yaml file: {}'.format(error))
@@ -481,7 +500,7 @@ def gather_plan_results(
             artifacts=artifacts,
             guest=result.guest,
             note=result.note,
-            serial_number=result.serialnumber
+            serial_number=result.serial_number
         ))
 
     # count the maximum result weight encountered, i.e. the overall result

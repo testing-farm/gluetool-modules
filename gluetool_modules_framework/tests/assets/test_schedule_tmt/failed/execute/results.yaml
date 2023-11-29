@@ -3,7 +3,7 @@
   result: pass
   log:
     - logs/install/out.log
-  serialnumber: 1
+  serial-number: 1
   guest:
     name: default-0
     role:
@@ -11,7 +11,7 @@
   result: fail
   log:
     - logs/update/out.log
-  serialnumber: 2
+  serial-number: 2
   guest:
     name: default-0
     role:
@@ -19,7 +19,7 @@
   result: fail
   log:
     - logs/remove/out.log
-  serialnumber: 3
+  serial-number: 3
   guest:
     name: default-0
     role:

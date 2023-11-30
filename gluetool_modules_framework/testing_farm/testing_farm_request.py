@@ -56,6 +56,7 @@ class RequestEnvironmentType(TypedDict):
     secrets: NotRequired[Dict[str, str]]
     artifacts: NotRequired[List[RequestEnvironmentArtifactType]]
     hardware: NotRequired[Dict[str, Any]]
+    kickstart: NotRequired[Dict[str, Any]]
     settings: NotRequired[Dict[str, Any]]
     tmt: NotRequired[RequestEnvironmentTMTType]
 
@@ -350,6 +351,7 @@ class TestingFarmRequest(LoggerMixin, object):
                 secrets=environment_raw.get('secrets'),
                 artifacts=[Artifact(**artifact) for artifact in (environment_raw.get('artifacts') or [])],
                 hardware=environment_raw.get('hardware'),
+                kickstart=environment_raw.get('kickstart'),
                 settings=environment_raw.get('settings'),
                 tmt=cast(Dict[str, Any], environment_raw.get('tmt'))
             ))

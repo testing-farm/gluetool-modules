@@ -24,6 +24,14 @@
             {"id": "111", "type": "fedora-copr-build", "packages": "pacakge2"}
         ],
         "hardware": {"cpu": {"model_name": "AMD"}},
+        "kickstart": {
+            "kernel-options": "some-kernel-options",
+            "kernel-options-post": "some-kernel-options-post",
+            "metadata": "some-metadata",
+            "post-install": "some-post-install",
+            "pre-install": "some-pre-install",
+            "script": "some-script"
+        },
         "settings": {"pipeline": {"skip_guest_setup": true}, "provisioning": {"post_install_skip": "foo"}},
         "tmt": {"context": {"some": "context"}, "environment": {"foo": "foo-value", "bar": "bar-value"}}
     }],

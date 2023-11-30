@@ -329,11 +329,35 @@ def test_execute_request1(module):
     assert request.webhook_url == 'webhookurl'
     assert request.webhook_token == None
     assert len(request.environments_requested) == 2
+
     assert request.environments_requested[0].arch == 'x86_64'
+    assert request.environments_requested[0].tmt == {'context': {'some': 'context'}}
+    assert request.environments_requested[0].secrets == {'some': 'secrets'}
+    assert request.environments_requested[0].variables['something'] == 'variables'
+
     assert request.environments_requested[1].arch == 's390'
     assert request.environments_requested[1].compose == 'Fedora-37'
+    assert request.environments_requested[1].pool == 'some-pool'
+    assert request.environments_requested[1].variables['foo'] == 'bar'
     assert request.environments_requested[1].secrets == {'secret_key': 'secret-value'}
     assert len(request.environments_requested[1].artifacts) == 2
+    assert request.environments_requested[1].hardware == {'cpu': {'model_name': 'AMD'}}
+    assert request.environments_requested[1].kickstart == {
+        'kernel-options': 'some-kernel-options',
+        'kernel-options-post': 'some-kernel-options-post',
+        'metadata': 'some-metadata',
+        'post-install': 'some-post-install',
+        'pre-install': 'some-pre-install',
+        'script': 'some-script'
+    }
+    assert request.environments_requested[1].settings == {
+        'pipeline': {'skip_guest_setup': True},
+        'provisioning': {'post_install_skip': 'foo'}
+    }
+    assert request.environments_requested[1].tmt == {
+        'context': {'some': 'context'},
+        'environment': {'foo': 'foo-value', 'bar': 'bar-value'}
+    }
 
 
 def test_execute_log_request1(module, log):

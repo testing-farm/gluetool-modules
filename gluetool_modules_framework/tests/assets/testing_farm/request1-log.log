@@ -43,6 +43,14 @@ Initialized with 1:
                     "model_name": "AMD"
                 }
             },
+            "kickstart": {
+                "kernel-options": "some-kernel-options",
+                "kernel-options-post": "some-kernel-options-post",
+                "metadata": "some-metadata",
+                "post-install": "some-post-install",
+                "pre-install": "some-pre-install",
+                "script": "some-script"
+            },
             "secrets": "******",
             "settings": {
                 "pipeline": {

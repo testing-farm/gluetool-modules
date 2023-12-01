@@ -56,7 +56,7 @@ class RequestEnvironmentType(TypedDict):
     secrets: NotRequired[Dict[str, str]]
     artifacts: NotRequired[List[RequestEnvironmentArtifactType]]
     hardware: NotRequired[Dict[str, Any]]
-    kickstart: NotRequired[Dict[str, Any]]
+    kickstart: NotRequired[Dict[str, str]]
     settings: NotRequired[Dict[str, Any]]
     tmt: NotRequired[RequestEnvironmentTMTType]
 

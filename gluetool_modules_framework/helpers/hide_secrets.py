@@ -39,8 +39,14 @@ class HideSecrets(gluetool.Module):
 
         secret_values = self.additional_secrets
         for environment in testing_farm_request.environments_requested:
+            # hide environment.secrets
             if environment.secrets:
                 secret_values += [secret_value for secret_value in environment.secrets.values() if secret_value]
+            # hide values of enviornments.tmt.environment which can contain secrets
+            if environment.tmt and environment.tmt.get('environment') and environment.tmt['environment']:
+                secret_values += [
+                    secret_value for secret_value in environment.tmt['environment'].values() if secret_value
+                ]
 
         # POSIX.2 Basic Regular Expressions (BREs) have a specific set of characters
         # that you need to escape to use them as literals.

@@ -826,9 +826,14 @@ class TestScheduleTMTMultihost(Module):
     def export_plan(self,
                     repodir: str,
                     plan: str,
-                    tmt_env_file: Optional[str]) -> Optional[TMTPlan]:
+                    tmt_env_file: Optional[str],
+                    testing_environment: TestingEnvironment) -> Optional[TMTPlan]:
         command: List[str] = [self.option('command')]
         command.extend(self._root_option)
+
+        if testing_environment.tmt and 'context' in testing_environment.tmt:
+            command.extend(self._tmt_context_to_options(testing_environment.tmt['context']))
+
         command.extend(['plan', 'export'])
 
         if tmt_env_file:

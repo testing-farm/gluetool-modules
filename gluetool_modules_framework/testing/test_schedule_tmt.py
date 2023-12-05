@@ -850,10 +850,15 @@ class TestScheduleTMT(Module):
                     repodir: str,
                     plan: str,
                     context_files: List[str],
-                    tmt_env_file: Optional[str]) -> Optional[TMTPlan]:
+                    tmt_env_file: Optional[str],
+                    testing_environment: TestingEnvironment) -> Optional[TMTPlan]:
         command: List[str] = [self.option('command')]
         command.extend(self._root_option)
         command.extend(['--context=@{}'.format(filepath) for filepath in context_files])
+
+        if testing_environment.tmt and 'context' in testing_environment.tmt:
+            command.extend(self._tmt_context_to_options(testing_environment.tmt['context']))
+
         command.extend(['plan', 'export'])
 
         if tmt_env_file:
@@ -958,7 +963,7 @@ class TestScheduleTMT(Module):
                 if self._is_plan_empty(plan, repodir, context_files, tec, tmt_env_file):
                     continue
 
-                exported_plan = self.export_plan(repodir, plan, context_files, tmt_env_file)
+                exported_plan = self.export_plan(repodir, plan, context_files, tmt_env_file, tec)
 
                 hardware = kickstart = watchdog_dispatch_delay = watchdog_period_delay = None
                 if exported_plan and exported_plan.provision:

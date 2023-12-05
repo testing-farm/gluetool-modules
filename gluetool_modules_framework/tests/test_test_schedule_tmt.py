@@ -984,33 +984,38 @@ TMT_PLANS = ['''
 ''']
 
 
-@pytest.mark.parametrize('tf_request, mock_output, context_files, expected_command, expected_plan', [
-    (None, MagicMock(stdout=TMT_PLANS[0]), [],
+@pytest.mark.parametrize('tf_request, mock_output, context_files, tec, expected_command, expected_plan', [
+    (None, MagicMock(stdout=TMT_PLANS[0]), [], TestingEnvironment(),
      ['dummytmt', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
      TMTPlan(name='some-plan', provision=[TMTPlanProvision()], prepare=[])),
-    (MagicMock(tmt=MagicMock(path='some-tmt-root')), MagicMock(stdout=TMT_PLANS[0]), [],
+    (MagicMock(tmt=MagicMock(path='some-tmt-root')), MagicMock(stdout=TMT_PLANS[0]), [], TestingEnvironment(),
      ['dummytmt', '--root', 'some-tmt-root', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
      TMTPlan(name='some-plan', provision=[TMTPlanProvision()], prepare=[])),
-    (None, MagicMock(stdout=TMT_PLANS[1]), ['file1', 'file 2'],
+    (None, MagicMock(stdout=TMT_PLANS[1]), ['file1', 'file 2'], TestingEnvironment(),
      ['dummytmt', '--context=@file1', '--context=@file 2', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
      TMTPlan(name='some-plan', provision=[TMTPlanProvision()],
              prepare=[TMTPlanPrepare(how='somehow', exclude=['exclude1', 'exclude2'])])),
-    (None, MagicMock(stdout=TMT_PLANS[2]), [],
+    (None, MagicMock(stdout=TMT_PLANS[1]), ['file1', 'file 2'], TestingEnvironment(tmt={'context': {'foo': 'bar'}}),
+     ['dummytmt', '--context=@file1', '--context=@file 2', '-c', 'foo=bar',
+         'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
+     TMTPlan(name='some-plan', provision=[TMTPlanProvision()],
+             prepare=[TMTPlanPrepare(how='somehow', exclude=['exclude1', 'exclude2'])])),
+    (None, MagicMock(stdout=TMT_PLANS[2]), [], TestingEnvironment(),
      ['dummytmt', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
      TMTPlan(name='some-plan', provision=[TMTPlanProvision()],
              prepare=[TMTPlanPrepare(how='somehow1', exclude=['prep1_exclude1', 'prep1_exclude2']),
                       TMTPlanPrepare(how='somehow2', exclude=['prep2_exclude1', 'prep2_exclude2'])])),
-    (None, MagicMock(stdout='[]'), [],
+    (None, MagicMock(stdout='[]'), [], TestingEnvironment(),
      ['dummytmt', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
      None),
 ])
-def test_export(monkeypatch, module, tf_request, mock_output, context_files, expected_command, expected_plan):
+def test_export(monkeypatch, module, tf_request, mock_output, context_files, tec, expected_command, expected_plan):
     patch_shared(monkeypatch, module, {'testing_farm_request': tf_request})
     mock_command_run = MagicMock(return_value=mock_output)
     mock_command = MagicMock(return_value=MagicMock(run=mock_command_run))
     monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt, 'Command', mock_command)
 
-    plan = module.export_plan('some-repo', 'some-plan', context_files, 'tmt-env-file')
+    plan = module.export_plan('some-repo', 'some-plan', context_files, 'tmt-env-file', tec)
     assert plan == expected_plan
 
     mock_command.assert_called_once_with(expected_command)

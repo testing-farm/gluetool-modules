@@ -854,56 +854,6 @@ class TestScheduleTMTMultihost(Module):
 
         return False
 
-    def export_plan(self,
-                    repodir: str,
-                    plan: str,
-                    tmt_env_file: Optional[str],
-                    testing_environment: TestingEnvironment) -> Optional[TMTPlan]:
-        command: List[str] = [self.option('command')]
-        command.extend(self._root_option)
-
-        if testing_environment.tmt and 'context' in testing_environment.tmt:
-            command.extend(self._tmt_context_to_options(testing_environment.tmt['context']))
-
-        command.extend(['plan', 'export'])
-
-        if tmt_env_file:
-            env_options = [
-                '-e', '@{}'.format(tmt_env_file)
-            ]
-            command.extend(env_options)
-
-        command.extend(['^{}$'.format(re.escape(plan))])
-
-        try:
-            tmt_output = Command(command).run(cwd=repodir)
-
-        except GlueCommandError as exc:
-            # workaround until tmt prints errors properly to stderr
-            log_dict(self.error, "Failed to get list of plans", {
-                'command': ' '.join(command),
-                'exception': exc.output.stderr
-            })
-            six.reraise(*sys.exc_info())
-
-        output = tmt_output.stdout
-        assert output
-
-        try:
-            converter = create_cattrs_converter(prefer_attrib_converters=True)
-            TMTPlanProvision.register_hooks(converter)
-            exported_plans = converter.structure(from_yaml(output), List[TMTPlan])
-            log_dict(self.debug, "loaded exported plan yaml", exported_plans)
-
-        except GlueError as error:
-            raise GlueError('Could not load exported plan yaml: {}'.format(error))
-
-        if not exported_plans or len(exported_plans) != 1:
-            self.warn('exported plan is not a single item, cowardly skipping extracting hardware')
-            return None
-
-        return exported_plans[0]
-
     def create_test_schedule(
         self,
         testing_environment_constraints: Optional[List[TestingEnvironment]] = None

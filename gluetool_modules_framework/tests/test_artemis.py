@@ -110,8 +110,8 @@ def fixture_scenario(module, monkeypatch, request, tmpdir):
 
     # console logs are tested only for 'successful' scenario
     if request.param == 'successful':
-        module._config['enable-console-log'] = True
-        module._config['console-log-filename'] = 'console-{guestname}.log'
+        module._config['guest-logs-enable'] = True
+        module._config['guest-logs-config'] = os.path.abspath(testing_asset('artemis', 'artemis-log-config.yaml'))
 
     module._mocked_requests = MockRequests(scenario['requests'], module)
     module._mocked_wait_alive = MagicMock()
@@ -480,6 +480,16 @@ def test_console_log_and_workdir(monkeypatch, module, scenario, tmpdir):
         module.destroy()
 
         assert os.path.exists('workdir/console-{}.log'.format(guest['name']))
+        with open('workdir/console-{}.log'.format(guest['name'])) as log:
+            assert log.read() == 'This is a serial console log'
+
+        assert os.path.exists('workdir/flasher-debug-{}.log'.format(guest['name']))
+        with open('workdir/flasher-debug-{}.log'.format(guest['name'])) as log:
+            assert log.read() == 'This is a flasher debug log'
+
+        # This log is simulated as empty, in config there is `save_empty: false`
+        # thus the file should not exist
+        assert not os.path.exists('workdir/flasher-event-{}.log'.format(guest['name']))
 
 
 @pytest.mark.parametrize('input_script, expected_script', [

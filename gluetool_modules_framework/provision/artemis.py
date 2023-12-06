@@ -8,6 +8,8 @@ import sys
 import os
 import time
 
+import attrs
+import cattrs
 import gluetool
 import gluetool.utils
 import gluetool_modules_framework.libs
@@ -19,7 +21,14 @@ from gluetool import GlueError, SoftGlueError
 from gluetool.log import log_blob, log_dict, LoggerMixin
 from gluetool.result import Result
 from gluetool.utils import (
-    dump_yaml, treat_url, normalize_multistring_option, wait, normalize_bool_option, normalize_path, render_template
+    dump_yaml,
+    treat_url,
+    normalize_multistring_option,
+    wait,
+    normalize_bool_option,
+    normalize_path,
+    render_template,
+    load_yaml
 )
 from gluetool_modules_framework.libs.threading import RepeatTimer
 from gluetool_modules_framework.libs.guest import NetworkedGuest
@@ -66,15 +75,35 @@ DEFAULT_SSH_OPTIONS = ['UserKnownHostsFile=/dev/null', 'StrictHostKeyChecking=no
 DEFAULT_SNAPSHOT_READY_TIMEOUT = 600
 DEFAULT_SNAPSHOT_READY_TICK = 10
 DEFAULT_CONNECT_TIMEOUT = 10
-DEFAULT_CONSOLE_LOG_TICK = 60
-
-ARTEMIS_LOG_TYPE = 'console:dump/blob'
-DEFAULT_CONSOLE_LOG_FILENAME = 'console-{guestname}.log'
-DEFAULT_CONSOLE_LOG_DATETIME_FILENAME = 'console-{guestname}.{datetime}.log'
+DEFAULT_GUEST_LOG_TICK = 60
 
 #: Artemis provisioner capabilities.
 #: Follows :doc:`Provisioner Capabilities Protocol </protocols/provisioner-capabilities>`.
 ProvisionerCapabilities = collections.namedtuple('ProvisionerCapabilities', ['available_arches'])
+
+
+@attrs.define(kw_only=True)
+class ArtemisGuestLog:
+    name: str = attrs.field(validator=attrs.validators.instance_of(str))
+    type: str = attrs.field(validator=attrs.validators.instance_of(str))
+    filename: str = attrs.field(validator=attrs.validators.instance_of(str))
+    datetime_filename: str = attrs.field(validator=attrs.validators.instance_of(str))
+    save_empty: bool = attrs.field(default=True, validator=attrs.validators.instance_of(bool))
+    content: Optional[str] = None
+
+    @filename.validator
+    @datetime_filename.validator
+    def validator_contains_guestname(self, attribute: 'ArtemisGuestLog', value: str) -> None:
+        if '{guestname}' not in value:
+            raise GlueError("Field '{}' is missing '{{guestname}}' string.".format(attribute.name))
+
+    @datetime_filename.validator
+    def validator_contains_datetime(self, attribute: 'ArtemisGuestLog', value: str) -> None:
+        if '{datetime}' not in value:
+            raise GlueError("Field '{}' is missing '{{datetime}}' string".format(attribute.name))
+
+
+ArtemisGuestLogs = List[ArtemisGuestLog]
 
 
 class ArtemisResourceError(GlueError):
@@ -499,6 +528,8 @@ class ArtemisSnapshot(LoggerMixin):
 
         snapshot_state = None
 
+        assert self._module.api
+
         try:
             snapshot_data = self._module.api.inspect_snapshot(self.guest.artemis_id, self.name)
 
@@ -522,6 +553,7 @@ class ArtemisSnapshot(LoggerMixin):
         return Result.Error("Couldn't get snapshot {}".format(self.name))
 
     def release(self) -> None:
+        assert self._module.api
         self._module.api.cancel_snapshot(self.guest.artemis_id, self.name)
 
 
@@ -537,6 +569,7 @@ class ArtemisGuest(NetworkedGuest):
                  key: Optional[str] = None,
                  options: Optional[List[str]] = None,
                  workdir: Optional[str] = None,
+                 guest_logs: Optional[ArtemisGuestLogs] = None,
                  **kwargs: Optional[Dict[str, Any]]
                  ):
 
@@ -548,15 +581,16 @@ class ArtemisGuest(NetworkedGuest):
                                            username=username,
                                            key=key,
                                            options=options)
+        assert module.api
+
         self.artemis_id = guestname
         self._snapshots: List[ArtemisSnapshot] = []
         self.module: ArtemisProvisioner = module
         self.api: ArtemisAPI = module.api
         self.workdir = workdir or ''
         self.event_log_path = os.path.join(self.workdir, '{}{}'.format(guestname, EVENT_LOG_SUFFIX))
-        self.console_log: Optional[str] = None
-        self.console_log_timer: Optional[RepeatTimer] = None
-        self.console_log_file: Optional[str] = None
+        self.guest_logs_timer: Optional[RepeatTimer] = None
+        self.guest_logs: Optional[ArtemisGuestLogs] = guest_logs or None
 
     def __str__(self) -> str:
         return 'ArtemisGuest({}, {}@{}, {})'.format(self.artemis_id, self.username, self.hostname, self.environment)
@@ -728,7 +762,7 @@ class ArtemisGuest(NetworkedGuest):
         '''
         Destroy the guest.
         '''
-        self.stop_console_logging()
+        self.stop_guest_logging()
 
         if self._module.option('keep'):
             self.warn("keeping guest provisioned as requested")
@@ -742,87 +776,104 @@ class ArtemisGuest(NetworkedGuest):
 
         self.info('successfully released')
 
-    def _save_console_log(self, filename: str, data: str) -> None:
+    def _save_guest_log(self, filename: str, data: str) -> None:
         with open(os.path.join(self.workdir, filename), 'w') as f:
             f.write(data)
 
-    def gather_console_log(self) -> None:
-        '''
-        Gather console logs and save them to the console log file.
-        '''
-        # get console logs
+    def gather_guest_log(self, log: ArtemisGuestLog) -> None:
+        """
+        Gather a single guest log and save it to the log file.
+        """
+        # get guest log
         response = self.api.api_call(
-            'guests/{}/logs/{}'.format(self.artemis_id, ARTEMIS_LOG_TYPE),
+            'guests/{}/logs/{}'.format(self.artemis_id, log.type),
             expected_status_codes=[200, 404, 409]
         )
 
-        # ask for fresh logs if needed
+        # ask for fresh log if needed
         if response.status_code in [404, 409]:
             # ask for fresh logs
             self.api.api_call(
-                'guests/{}/logs/{}'.format(self.artemis_id, ARTEMIS_LOG_TYPE),
+                'guests/{}/logs/{}'.format(self.artemis_id, log.type),
                 method='POST',
                 expected_status_codes=[202]
             )
             return
 
-        latest_console_log = response.json().get('blob') or '<no console log available>'
+        latest_guest_log = response.json().get('blob')
 
-        # nothing todo in case there is no change in the console log
-        if latest_console_log == self.console_log:
+        if not latest_guest_log:
+            # Do not save empty log of requested
+            if not log.save_empty:
+                return
+            latest_guest_log = '<no {} available>'.format(log.name)
+
+        # nothing todo in case there is no change in the guest log
+        if latest_guest_log == log.content:
             return
 
-        # save main console log
-        log_blob(self.debug, 'saving latest console log', latest_console_log)
-        self.console_log = latest_console_log
-        self.console_log_file = str(self.module.option('console-log-filename').format(guestname=self.artemis_id))
-        self._save_console_log(self.console_log_file, latest_console_log)
+        # save main guest log
+        log_blob(self.debug, 'saving latest {}'.format(log.name), latest_guest_log)
+        log.content = latest_guest_log
+        guest_log_file = log.filename.format(guestname=self.artemis_id)
+        self._save_guest_log(guest_log_file, latest_guest_log)
 
         updated = response.json().get('updated')
         if not updated:
             return
 
-        # save console log with datetime, in case a real log was retrieved
-        console_datetime = updated.replace(' ', '-')
-        self._save_console_log(
-            self.module.option('console-log-datetime-filename').format(
+        # save guest log with datetime, in case a real log was retrieved
+        log_datetime = updated.replace(' ', '-')
+        self._save_guest_log(
+            log.datetime_filename.format(
                 guestname=self.artemis_id,
-                datetime=console_datetime
+                datetime=log_datetime
             ),
-            latest_console_log
+            latest_guest_log
         )
 
-    def stop_console_logging(self) -> None:
-        '''
-        Stop gathering of console log for the guest.
-        '''
-        if self.console_log_timer is None:
+    def gather_guest_logs(self) -> None:
+        """
+        Gather all configured guest logs.
+        """
+        assert self.guest_logs
+        for log in self.guest_logs:
+            self.gather_guest_log(log)
+
+    def stop_guest_logging(self) -> None:
+        """
+        Stop gathering of logs for the guest.
+        """
+        if self.guest_logs_timer is None or not self.guest_logs:
             return
 
-        self.debug('Stopping console logging')
+        self.debug('Stopping guest logging')
 
-        self.console_log_timer.cancel()
-        self.console_log_timer = None
+        self.guest_logs_timer.cancel()
+        self.guest_logs_timer = None
 
-        self.gather_console_log()
+        self.gather_guest_logs()
 
-    def start_console_logging(self) -> None:
+    def start_guest_logging(self) -> None:
         '''
-        Enable gathering of console log for the guest.
+        Start gathering of configured logs for the guest.
         '''
-        if self.console_log_timer:
+        if self.guest_logs_timer:
             return
 
-        self.debug('Starting console logging')
+        if not self.guest_logs:
+            return
 
-        self.gather_console_log()
+        self.debug('Starting guest logging')
 
-        self.console_log_timer = RepeatTimer(
-            self.module.option('console-log-tick'),
-            self.gather_console_log
+        self.gather_guest_logs()
+
+        self.guest_logs_timer = RepeatTimer(
+            self.module.option('guest-log-tick'),
+            self.gather_guest_logs
         )
 
-        self.console_log_timer.start()
+        self.guest_logs_timer.start()
 
 
 class ArtemisProvisioner(gluetool.Module):
@@ -941,21 +992,14 @@ class ArtemisProvisioner(gluetool.Module):
                 'type': str,
                 'default': ''
             },
-            'enable-console-log': {
-                'help': 'Enable gathering of console log.',
+            'guest-logs-enable': {
+                'help': 'Enable gathering of logs from Artemis guests.',
                 'action': 'store_true'
             },
-            'console-log-filename': {
-                'help': 'Console log template file name. Must to contain {guestname} string.',
+            'guest-logs-config': {
+                'help': 'Configuration of the Artemis guest logs gathering.',
                 'type': str,
-                'default': DEFAULT_CONSOLE_LOG_FILENAME
             },
-            'console-log-datetime-filename': {
-                'help': '''Console log template file name with datetime information.
-                           Must to contain '{guestname}' and '{datetime}' strings.''',
-                'type': str,
-                'default': DEFAULT_CONSOLE_LOG_DATETIME_FILENAME,
-            }
         }),
         ('Timeout options', {
             'connect-timeout': {
@@ -1024,11 +1068,11 @@ class ArtemisProvisioner(gluetool.Module):
                 'type': int,
                 'default': DEFAULT_BOOT_TICK
             },
-            'console-log-tick': {
-                'help': 'Gather console log every CONSOLE_LOG_TICK seconds (default: %(default)s)',
-                'metavar': 'CONSOLE_LOG_TICK',
+            'guest-log-tick': {
+                'help': 'Gather guest log every GUEST_LOG_TICK seconds (default: %(default)s)',
+                'metavar': 'GUEST_LOG_TICK',
                 'type': int,
-                'default': DEFAULT_CONSOLE_LOG_TICK
+                'default': DEFAULT_GUEST_LOG_TICK
             },
             'snapshot-ready-timeout': {
                 'help': 'Timeout for snapshot to become ready (default: %(default)s)',
@@ -1165,25 +1209,18 @@ class ArtemisProvisioner(gluetool.Module):
         if self.option('wait') and not self.option('provision'):
             raise GlueError('Option --provision required with --wait.')
 
-        console_log_filename = self.option('console-log-filename')
-        if console_log_filename and '{guestname}' not in console_log_filename:
-            raise GlueError("Option --console-log-filename must include '{guestname}' string.")
-
         if self.option('provision') and (not self.option('arch') or not self.option('compose')):
             raise GlueError('Options --arch and --compose required with --provision')
 
-        console_log_datetime_filename = self.option('console-log-datetime-filename')
-        if console_log_datetime_filename:
-            if '{guestname}' not in console_log_datetime_filename:
-                raise GlueError("Option '--console-log-datetime-filename' must include '{guestname}' string.")
-            if '{datetime}' not in console_log_datetime_filename:
-                raise GlueError("Option '--console-log-datetime-filename' must include '{datetime}' string.")
+        if self.option('guest-logs-enable') and not self.option('guest-logs-config'):
+            raise GlueError('Option --guest-logs-config is required to enable guest logs.')
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(ArtemisProvisioner, self).__init__(*args, **kwargs)
 
         self.guests: List[ArtemisGuest] = []
-        self.api: ArtemisAPI = None  # type: ignore
+        self.api: Optional[ArtemisAPI] = None
+        self.guest_logs_template: Optional[ArtemisGuestLogs] = None
 
     def provisioner_capabilities(self) -> ProvisionerCapabilities:
         '''
@@ -1207,7 +1244,8 @@ class ArtemisProvisioner(gluetool.Module):
                               user_data: Optional[Dict[str, str]] = None,
                               watchdog_dispatch_delay: Optional[int] = None,
                               watchdog_period_delay: Optional[int] = None,
-                              workdir: Optional[str] = None
+                              workdir: Optional[str] = None,
+                              guest_logs: Optional[ArtemisGuestLogs] = None
                               ) -> ArtemisGuest:
         '''
         Start provisioning of an Artemis guest by submitting a request to Artemis API.
@@ -1237,7 +1275,7 @@ class ArtemisProvisioner(gluetool.Module):
         :rtype: ArtemisGuest
         :returns: ArtemisGuest instance.
         '''
-
+        assert self.api
         response = self.api.create_guest(environment,
                                          pool=pool,
                                          keyname=key,
@@ -1251,8 +1289,12 @@ class ArtemisProvisioner(gluetool.Module):
         hostname = six.ensure_str(response['address']) if response['address'] is not None else None
 
         guest = ArtemisGuest(self, guestname, hostname, environment,
-                             port=response['ssh']['port'], username=six.ensure_str(response['ssh']['username']),
-                             key=ssh_key, options=options, workdir=workdir)
+                             port=response['ssh']['port'],
+                             username=six.ensure_str(response['ssh']['username']),
+                             key=ssh_key,
+                             options=options,
+                             workdir=workdir,
+                             guest_logs=guest_logs)
         guest.info('Guest is being provisioned')
         log_dict(guest.debug, 'Created guest request', response)
         log_dict(guest.info, 'Created guest request with environment', response['environment'])
@@ -1265,6 +1307,7 @@ class ArtemisProvisioner(gluetool.Module):
 
         :param ArtemisGuest guest: Provisioned guest.
         '''
+        assert self.api
         try:
             guest._wait_ready(timeout=self.option('ready-timeout'), tick=self.option('ready-tick'))
             response = self.api.inspect_guest(guest.artemis_id)
@@ -1297,6 +1340,7 @@ class ArtemisProvisioner(gluetool.Module):
             Follows :doc:`Testing Environment Protocol </protocols/testing-environment>`.
         :param str workdir: working directory where all runtime data should be stored.
             For example the workding directory of a schedule entry.
+        :param ArtemisGuestLogs logs: List of guest logs to process.
 
         :rtype: list
         :returns: List of ArtemisGuest instances or ``None`` if it wasn't possible to grab the guests.
@@ -1344,7 +1388,9 @@ class ArtemisProvisioner(gluetool.Module):
             user_data=user_data,
             watchdog_dispatch_delay=watchdog_dispatch_delay,
             watchdog_period_delay=watchdog_period_delay,
-            workdir=workdir
+            workdir=workdir,
+            # NOTE: create a copy of the logs template, we need a separate instance for each guest
+            guest_logs=[attrs.evolve(log) for log in self.guest_logs_template] if self.guest_logs_template else None
         )
 
         self.guests.append(guest)
@@ -1352,14 +1398,42 @@ class ArtemisProvisioner(gluetool.Module):
         event_log_uri = self.shared('artifacts_location', guest.event_log_path, self.logger)
         guest.info("guest event log: {}".format(event_log_uri))
 
-        if self.option('enable-console-log'):
-            guest.start_console_logging()
+        if self.option('guest-logs-enable'):
+            guest.start_guest_logging()
 
         self.provision_guest_wait(guest)
 
         guest.info('Guest provisioned')
 
         return [guest]
+
+    def load_guest_logs_template(self) -> None:
+        """
+        Load guest logging configuration.
+        """
+        logs_config: str = normalize_path(self.option('guest-logs-config'))
+
+        try:
+            self.guest_logs_template = load_yaml(
+                logs_config,
+                unserializer=gluetool.utils.create_cattrs_unserializer(ArtemisGuestLogs)
+            )
+            log_dict(
+                self.debug,
+                "loaded guest logs configuration from '{}'".format(logs_config),
+                self.guest_logs_template
+            )
+
+        except cattrs.errors.BaseValidationError as error:
+            log_dict(self.error, 'validation errors', cattrs.transform_error(error))
+            raise GlueError('Failed to validate {} file'.format(logs_config))
+
+        except TypeError:
+            raise GlueError('Failed to validate {} file: {}'.format(logs_config,
+                "The file has invalid content, it needs to contain a list of dicts with `type`, `filename` and `datetime_filename` keys"))  # noqa
+
+        except GlueError as error:
+            raise GlueError('Could not load {} file: {}'.format(logs_config, error))
 
     def execute(self) -> None:
 
@@ -1372,8 +1446,10 @@ class ArtemisProvisioner(gluetool.Module):
         # TODO: print Artemis API version when version endpoint is implemented
         self.info('Using Artemis API {}'.format(self.api.url))
 
-        if self.option('enable-console-log') and self.api.version < API_FEATURE_VERSIONS['log-types']:
-            raise GlueError('Artemis API version {} does not support console logs.'.format(self.api.version))
+        if self.option('guest-logs-enable'):
+            if self.api.version < API_FEATURE_VERSIONS['log-types']:
+                raise GlueError('Artemis API version {} does not support guest logs.'.format(self.api.version))
+            self.load_guest_logs_template()
 
         if not self.option('provision'):
             return
@@ -1417,6 +1493,8 @@ class ArtemisProvisioner(gluetool.Module):
             return
 
         self.info('removing {} guest(s) during module destroy'.format(len(self.guests)))
+
+        assert self.api
 
         for guest in self.guests[:]:
             guest.destroy()

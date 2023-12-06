@@ -45,6 +45,16 @@ requests:
       response:
         blob: This is a serial console log
 
+    - url: guests/e1c0642d-e5c3-4db9-a845-e740e201e734/logs/flasher-debug:dump/blob
+      status_code: 200
+      response:
+        blob: This is a flasher debug log
+
+    - url: guests/e1c0642d-e5c3-4db9-a845-e740e201e734/logs/flasher-event:dump/blob
+      status_code: 200
+      response:
+        blob:
+
   delete:
     - url: guests/e1c0642d-e5c3-4db9-a845-e740e201e734$
       status_code: 204

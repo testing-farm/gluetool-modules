@@ -1,0 +1,17 @@
+---
+- name: console log
+  type: console:dump/blob
+  filename: console-{guestname}.log
+  datetime_filename: console-{guestname}.{datetime}.log
+
+- name: flasher debug log
+  type: flasher-debug:dump/blob
+  filename: flasher-debug-{guestname}.log
+  datetime_filename: flasher-debug-{guestname}.{datetime}.log
+  save_empty: false
+
+- name: flasher event log
+  type: flasher-event:dump/blob
+  filename: flasher-event-{guestname}.log
+  datetime_filename: flasher-event-{guestname}.{datetime}.log
+  save_empty: false

@@ -1267,10 +1267,13 @@ class TestScheduleTMTMultihost(Module):
             tmt_log_href = artifacts_location(self, tmt_log_filepath, logger=schedule_entry.logger)
             test_suite.logs.append(Log(href=tmt_log_href, name='tmt-log'))
 
-            if isinstance(schedule_entry.guest, ArtemisGuest) and schedule_entry.guest.console_log_file:
-                console_log_filepath = os.path.join(schedule_entry.work_dirpath, schedule_entry.guest.console_log_file)
-                console_log_href = artifacts_location(self, console_log_filepath)
-                test_suite.logs.append(Log(href=console_log_href, name='console.log'))
+            if isinstance(schedule_entry.guest, ArtemisGuest) and schedule_entry.guest.guest_logs:
+                for log in schedule_entry.guest.guest_logs:
+                    log_filepath = os.path.join(
+                        schedule_entry.work_dirpath, log.filename.format(guestname=schedule_entry.guest.artemis_id)
+                    )
+                    log_href = artifacts_location(self, log_filepath)
+                    test_suite.logs.append(Log(href=log_href, name=log.name))
 
         if schedule_entry.tmt_reproducer_filepath:
             href = artifacts_location(self, schedule_entry.tmt_reproducer_filepath, logger=schedule_entry.logger)

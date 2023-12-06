@@ -22,7 +22,7 @@ from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestSche
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from gluetool_modules_framework.libs.guest import NetworkedGuest
 from gluetool_modules_framework.libs.results import TestSuite, Results
-from gluetool_modules_framework.provision.artemis import ArtemisGuest, ArtemisProvisioner
+from gluetool_modules_framework.provision.artemis import ArtemisGuest, ArtemisProvisioner, ArtemisGuestLog
 
 from . import create_module
 from . import patch_shared
@@ -50,7 +50,9 @@ def fixture_module_runner():
 
 @pytest.fixture(name='module_artemis_provisioner')
 def fixture_module_artemis_provisioner():
-    return create_module(ArtemisProvisioner)[1]
+    module = create_module(ArtemisProvisioner)[1]
+    module.api = MagicMock()
+    return module
 
 
 def clone_mock(logger=None, prefix=None):
@@ -272,11 +274,17 @@ def test_serialize_test_schedule_entry_results(module_runner, module_artemis_pro
     schedule_entry.work_dirpath = 'some/work-dirpath'
     schedule_entry.guest = ArtemisGuest(
         module_artemis_provisioner,
-        'name',
+        '11bbebc3-7029-4154-98ac-b18544181714',
         'hostname',
         environment=TestingEnvironment(arch='x86_64', compose='rhel-9')
     )
-    schedule_entry.guest.console_log_file = 'console-11bbebc3-7029-4154-98ac-b18544181714.log'
+    schedule_entry.guest.guest_logs = [ArtemisGuestLog(
+        name='console.log',
+        type='some-type',
+        filename='console-{guestname}.log',
+        datetime_filename='console-{guestname}-{datetime}.log'
+    )]
+
     schedule_entry.testing_environment = TestingEnvironment(arch='x86_64', compose='rhel-9')
     schedule_entry.results = schedule_entry_results
     schedule_entry.runner_capability = 'sti'

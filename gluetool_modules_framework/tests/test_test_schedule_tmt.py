@@ -22,7 +22,7 @@ from gluetool_modules_framework.libs.sut_installation import INSTALL_COMMANDS_FI
 from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 from gluetool_modules_framework.libs.results import TestSuite
 from gluetool_modules_framework.libs.git import SecretGitUrl
-from gluetool_modules_framework.provision.artemis import ArtemisGuest
+from gluetool_modules_framework.provision.artemis import ArtemisGuest, ArtemisGuestLog
 from gluetool_modules_framework.testing.test_schedule_tmt import (gather_plan_results, TestScheduleEntry, TMTPlan,
                                                                   TMTPlanProvision, TMTPlanPrepare)
 from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact
@@ -83,7 +83,12 @@ def fixture_guest(module):
         key='mockkey0'
     )
     guest.execute = MagicMock(return_value=MagicMock(stdout='', stderr=''))
-    guest.console_log_file = 'console-5b926c73-d868-4b3a-aad0-e85718a556aa.log'
+    guest.guest_logs = [ArtemisGuestLog(
+        name='console.log',
+        type='some-type',
+        filename='console-{guestname}.log',
+        datetime_filename='console-{guestname}-{datetime}.log'
+    )]
     return guest
 
 

@@ -393,10 +393,13 @@ sut     ansible_host={} ansible_user=root {}
             return
 
         if schedule_entry.work_dirpath and isinstance(schedule_entry.guest, ArtemisGuest) \
-                and schedule_entry.guest.console_log_file:
-            console_log_filepath = os.path.join(schedule_entry.work_dirpath, schedule_entry.guest.console_log_file)
-            console_log_href = artifacts_location(self, console_log_filepath)
-            test_suite.logs.append(Log(href=console_log_href, name='console.log'))
+                and schedule_entry.guest.guest_logs:
+            for guest_log in schedule_entry.guest.guest_logs:
+                guest_log_filepath = os.path.join(
+                    schedule_entry.work_dirpath, guest_log.filename.format(guestname=schedule_entry.guest.artemis_id)
+                )
+                guest_log_href = artifacts_location(self, guest_log_filepath)
+                test_suite.logs.append(Log(href=guest_log_href, name=guest_log.name))
 
         for task in schedule_entry.results:
             test_case = TestCase(name=task.name, result=task.result)

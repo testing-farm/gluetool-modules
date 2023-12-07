@@ -395,7 +395,7 @@ def gather_plan_results(
     # load test results from `results.yaml` which is created in tmt's execute step
     # https://tmt.readthedocs.io/en/latest/spec/steps.html#execute
     try:
-        results = load_yaml(results_yaml, unserialize=gluetool.utils.create_cattrs_unserializer(List[TMTResult]))
+        results = load_yaml(results_yaml, unserializer=gluetool.utils.create_cattrs_unserializer(List[TMTResult]))
         log_dict(schedule_entry.debug, "loaded results from '{}'".format(results_yaml), results)
 
     except GlueError as error:

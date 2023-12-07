@@ -442,7 +442,7 @@ def gather_plan_results(
         TMTResult.register_hooks(converter)
         results = load_yaml(
             results_yaml,
-            unserialize=gluetool.utils.create_cattrs_unserializer(List[TMTResult], converter=converter)
+            unserializer=gluetool.utils.create_cattrs_unserializer(List[TMTResult], converter=converter)
         )
         log_dict(schedule_entry.debug, "loaded results from '{}'".format(results_yaml), results)
     except GlueError as error:
@@ -450,7 +450,7 @@ def gather_plan_results(
         return TestScheduleResult.ERROR, test_results, guests
 
     try:
-        guests = load_yaml(guests_yaml, unserialize=gluetool.utils.create_cattrs_unserializer(Dict[str, TMTGuest]))
+        guests = load_yaml(guests_yaml, unserializer=gluetool.utils.create_cattrs_unserializer(Dict[str, TMTGuest]))
         log_dict(schedule_entry.debug, "loaded guests from '{}'".format(guests_yaml), guests)
     except GlueError as error:
         schedule_entry.warn('Could not load guests.yaml file: {}'.format(error))

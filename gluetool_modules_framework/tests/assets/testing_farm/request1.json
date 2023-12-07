@@ -47,5 +47,10 @@
             "icon": "https://example.com/icon.png",
             "name": "Example"
         }
+    },
+    "settings": {
+        "pipeline": {
+            "provision-error-failed-result": true
+        }
     }
 }

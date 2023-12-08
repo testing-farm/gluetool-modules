@@ -376,6 +376,11 @@ class TestingFarmRequest(LoggerMixin, object):
         user = self._api.get_user(request['user_id'], self._api_key)
         self.request_username = user['name']
 
+        # TFT-2202 - provide a flag to indicate the provisioning errors should be treated as failed tests
+        self.failed_if_provision_error = False
+        if ((request.get('settings') or {}).get('pipeline') or {}).get('provision-error-failed-result'):
+            self.failed_if_provision_error = True
+
     def webhook(self) -> Any:
         """
         Post to webhook, as defined in the API.
@@ -588,9 +593,10 @@ class TestingFarmRequestModule(gluetool.Module):
         return render_template(option, **self.shared('eval_context'))
 
     @property
-    def eval_context(self) -> Dict[str, Optional[Union[str, SecretGitUrl]]]:
+    def eval_context(self) -> Dict[str, Optional[Union[bool, str, SecretGitUrl]]]:
         if not self._tf_request:
             return {}
+
         return {
             # common for all artifact providers
             'TESTING_FARM_REQUEST_ID': self._tf_request.id,
@@ -600,7 +606,8 @@ class TestingFarmRequestModule(gluetool.Module):
             'TESTING_FARM_REQUEST_TEST_URL': self._tf_request.url._dangerous_extract(),
             'TESTING_FARM_REQUEST_TEST_REF': self._tf_request.ref,
             'TESTING_FARM_REQUEST_USERNAME': self._tf_request.request_username,
-            'TESTING_FARM_REQUEST_MERGE': self._tf_request.merge
+            'TESTING_FARM_REQUEST_MERGE': self._tf_request.merge,
+            'TESTING_FARM_FAILED_IF_PROVISION_ERROR': self._tf_request.failed_if_provision_error
         }
 
     def testing_farm_request(self) -> Optional[TestingFarmRequest]:

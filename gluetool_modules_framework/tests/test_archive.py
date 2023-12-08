@@ -57,6 +57,7 @@ def test_sanity(module):
 
 
 def test_destroy_ssh(monkeypatch, module):
+    module._config['enable-parallel-archiving'] = False
 
     mock_command_init = MagicMock(return_value=None)
     mock_command_run = MagicMock(return_value='Ok')
@@ -73,6 +74,9 @@ def test_destroy_ssh(monkeypatch, module):
         return False
 
     monkeypatch.setattr(os.path, 'isdir', _isdir)
+
+    # run execute to test directory creation
+    module.execute()
 
     module.destroy()
 

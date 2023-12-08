@@ -218,8 +218,6 @@ class Archive(gluetool.Module):
         )
 
     def archive(self) -> None:
-        if self.option('rsync-mode') == 'ssh':
-            self.create_archive_directory()
 
         for entry in self.source_destination_map():
             options = []
@@ -247,6 +245,9 @@ class Archive(gluetool.Module):
         if self.option('disable-archiving'):
             self.info('Archiving is disabled, skipping')
             return
+
+        if self.option('rsync-mode') == 'ssh':
+            self.create_archive_directory()
 
         if self.option('enable-parallel-archiving'):
             self.info('Starting parallel archiving')

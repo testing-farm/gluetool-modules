@@ -44,6 +44,7 @@ readme = "README.rst"
 citool = "gluetool_modules_framework.tools.citool:run"
 
 [tool.poetry.plugins."gluetool.modules"]
+archive = "gluetool_modules_framework.helpers.archive:Archive"
 ansible = "gluetool_modules_framework.helpers.ansible:Ansible"
 artemis = "gluetool_modules_framework.provision.artemis:ArtemisProvisioner"
 brew-builder = "gluetool_modules_framework.testing.pull_request_builder.brew_builder:BrewBuilder"

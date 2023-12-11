@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from glob import glob
 
 import gluetool
 from gluetool.glue import GlueError
@@ -220,7 +221,6 @@ class Archive(gluetool.Module):
     def archive(self) -> None:
 
         for entry in self.source_destination_map():
-            options = []
 
             if entry.get('source') is None:
                 raise GlueError('Source path must be specified in source-destination-map')
@@ -229,17 +229,21 @@ class Archive(gluetool.Module):
                 self.warn('Source path "{}" does not exist, skipping.'.format(entry['source']))
                 continue
 
-            source = entry['source']
+            sources = entry['source']
             destination = entry.get('destination', '')
             permissions = entry.get('permissions', None)
 
-            if os.path.isdir(source):
-                options.append('--recursive')
+            # If the entry['source'] is a wildcard, we need to use glob to find all the files
+            for source in glob(sources):
+                options = []
 
-            if permissions:
-                options.append('--chmod={}'.format(permissions))
+                if os.path.isdir(source):
+                    options.append('--recursive')
 
-            self.run_rsync(source, destination, options=options or None)
+                if permissions:
+                    options.append('--chmod={}'.format(permissions))
+
+                self.run_rsync(source, destination, options=options or None)
 
     def execute(self) -> None:
         if self.option('disable-archiving'):

@@ -865,6 +865,10 @@ class TestScheduleTMT(Module):
             tmt_output = Command(command).run(cwd=repodir)
 
         except GlueCommandError as exc:
+            # It can happen that test discovery will report `No plans found`
+            if exc.output.stderr and 'No plans found' in exc.output.stderr:
+                return True
+
             log_blob(
                 self.error,
                 "Failed to discover tests",
@@ -997,6 +1001,7 @@ class TestScheduleTMT(Module):
                 tmt_env_file = self._prepare_tmt_env_file(tec, plan, repodir)
 
                 if self._is_plan_empty(plan, repodir, context_files, tec, tmt_env_file):
+                    self.debug("ignoring empty plan '{}'".format(plan))
                     continue
 
                 exported_plan = self.export_plan(repodir, plan, context_files, tmt_env_file, tec)

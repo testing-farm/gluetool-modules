@@ -641,7 +641,7 @@ def test_apply_test_filter(module, monkeypatch):
     ])
 
 
-def test_is_plan_empty(module, monkeypatch):
+def test_is_plan_empty(module, monkeypatch, log):
     repodir = 'foo'
     context_files = []
     testing_environment = TestingEnvironment('x86_64')
@@ -670,6 +670,29 @@ def test_is_plan_empty(module, monkeypatch):
     # Empty plan
     mock_output = MagicMock(exit_code=0, stdout='', stderr='warning: No tests found, finishing plan.')
     mock_command_run = MagicMock(return_value=mock_output)
+    mock_command = MagicMock(return_value=MagicMock(run=mock_command_run))
+    monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt, 'Command', mock_command)
+
+    assert module._is_plan_empty('plan1', repodir, context_files, testing_environment, 'tmt-env-file') == True
+
+    mock_command.assert_called_once_with([
+        'dummytmt',
+        '--root',
+        'some-tmt-root',
+        'run',
+        '-e',
+        '@tmt-env-file',
+        'discover',
+        'plan',
+        '--name',
+        'plan1',
+    ])
+
+    # No plans found
+    mock_command_run = MagicMock(side_effect=gluetool.glue.GlueCommandError(
+        cmd=['some-command'],
+        output=MagicMock(stderr='No plans found')
+    ))
     mock_command = MagicMock(return_value=MagicMock(run=mock_command_run))
     monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt, 'Command', mock_command)
 

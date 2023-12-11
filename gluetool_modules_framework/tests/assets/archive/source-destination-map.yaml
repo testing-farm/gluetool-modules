@@ -1,12 +1,14 @@
 ---
 
-- source: /source
+- source: /archive-source
   destination: dest
 
-- source: /source
+- source: /archive-source
 
-- source: /source
+- source: /archive-source
   destination: dest
   permissions: "666"
 
-- source: /dir-source
+- source: /dir-archive-source
+
+- source: /archive-source/*

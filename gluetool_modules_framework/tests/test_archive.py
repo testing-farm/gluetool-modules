@@ -2,12 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import glob
 import time
 import pytest
 import logging
 from mock import MagicMock, call
 
 import gluetool
+import gluetool_modules_framework.helpers.archive
 from gluetool_modules_framework.helpers.archive import Archive
 
 from . import create_module, check_loadable, patch_shared
@@ -32,9 +34,18 @@ def fixture_module(monkeypatch):
         'testing_farm_request': lambda: MagicMock(id='request-id'),
     })
 
-    os.environ['SOURCE_DESTINATION_MAP'] = '/env-source:env-dest:666#/env-source2::'
+    os.environ['SOURCE_DESTINATION_MAP'] = '/env-archive-source:env-dest:666#/env-archive-source2::'
 
     return module
+
+
+def _mock_glob(path):
+    if '*' in path:
+        return ['/archive-source/1', '/archive-source/2', '/archive-source/3']
+    if 'archive-source' in path:
+        return [path]
+
+    return glob.glob(path)
 
 
 def test_sanity(module):
@@ -68,12 +79,14 @@ def test_destroy_ssh(monkeypatch, module):
     monkeypatch.setattr(os.path, 'exists', lambda x: True)
 
     def _isdir(path):
-        if path == '/dir-source':
+        if path == '/dir-archive-source':
             return True
 
         return False
 
     monkeypatch.setattr(os.path, 'isdir', _isdir)
+
+    monkeypatch.setattr(gluetool_modules_framework.helpers.archive, 'glob', _mock_glob)
 
     # run execute to test directory creation
     module.execute()
@@ -83,17 +96,31 @@ def test_destroy_ssh(monkeypatch, module):
     calls = [
         call(['ssh', 'https://artifacts.example.com', 'mkdir', '-p',
               '/artifacts-root/request-id'], logger=module.logger),
-        call(['rsync', '--rsync-option', '/source',
+        call(['rsync', '--rsync-option', '/archive-source',
               'https://artifacts.example.com:/artifacts-root/request-id/dest'], logger=module.logger),
-        call(['rsync', '--rsync-option', '/source',
+
+        call(['rsync', '--rsync-option', '/archive-source',
               'https://artifacts.example.com:/artifacts-root/request-id/'], logger=module.logger),
-        call(['rsync', '--rsync-option', '--chmod=666', '/source',
+
+        call(['rsync', '--rsync-option', '--chmod=666', '/archive-source',
               'https://artifacts.example.com:/artifacts-root/request-id/dest'], logger=module.logger),
-        call(['rsync', '--rsync-option', '--recursive', '/dir-source',
+
+        call(['rsync', '--rsync-option', '--recursive', '/dir-archive-source',
               'https://artifacts.example.com:/artifacts-root/request-id/'], logger=module.logger),
-        call(['rsync', '--rsync-option', '--chmod=666', '/env-source',
+
+        call(['rsync', '--rsync-option', '/archive-source/1',
+              'https://artifacts.example.com:/artifacts-root/request-id/'], logger=module.logger),
+
+        call(['rsync', '--rsync-option', '/archive-source/2',
+              'https://artifacts.example.com:/artifacts-root/request-id/'], logger=module.logger),
+
+        call(['rsync', '--rsync-option', '/archive-source/3',
+              'https://artifacts.example.com:/artifacts-root/request-id/'], logger=module.logger),
+
+        call(['rsync', '--rsync-option', '--chmod=666', '/env-archive-source',
               'https://artifacts.example.com:/artifacts-root/request-id/env-dest'], logger=module.logger),
-        call(['rsync', '--rsync-option', '/env-source2',
+
+        call(['rsync', '--rsync-option', '/env-archive-source2',
               'https://artifacts.example.com:/artifacts-root/request-id/'], logger=module.logger),
     ]
 
@@ -112,27 +139,35 @@ def test_destroy_daemon(monkeypatch, module):
     monkeypatch.setattr(os.path, 'exists', lambda x: True)
 
     def _isdir(path):
-        if path == '/dir-source':
+        if path == '/dir-archive-source':
             return True
 
         return False
 
     monkeypatch.setattr(os.path, 'isdir', _isdir)
 
+    monkeypatch.setattr(gluetool_modules_framework.helpers.archive, 'glob', _mock_glob)
+
     module.destroy()
 
     calls = [
-        call(['rsync', '--rsync-option', '/source',
+        call(['rsync', '--rsync-option', '/archive-source',
               'rsync://artifacts-rsync.example.com/request-id/dest'], logger=module.logger),
-        call(['rsync', '--rsync-option', '/source',
+        call(['rsync', '--rsync-option', '/archive-source',
               'rsync://artifacts-rsync.example.com/request-id/'], logger=module.logger),
-        call(['rsync', '--rsync-option', '--chmod=666', '/source',
+        call(['rsync', '--rsync-option', '--chmod=666', '/archive-source',
               'rsync://artifacts-rsync.example.com/request-id/dest'], logger=module.logger),
-        call(['rsync', '--rsync-option', '--recursive', '/dir-source',
+        call(['rsync', '--rsync-option', '--recursive', '/dir-archive-source',
               'rsync://artifacts-rsync.example.com/request-id/'], logger=module.logger),
-        call(['rsync', '--rsync-option', '--chmod=666', '/env-source',
+        call(['rsync', '--rsync-option', '/archive-source/1',
+              'rsync://artifacts-rsync.example.com/request-id/'], logger=module.logger),
+        call(['rsync', '--rsync-option', '/archive-source/2',
+              'rsync://artifacts-rsync.example.com/request-id/'], logger=module.logger),
+        call(['rsync', '--rsync-option', '/archive-source/3',
+              'rsync://artifacts-rsync.example.com/request-id/'], logger=module.logger),
+        call(['rsync', '--rsync-option', '--chmod=666', '/env-archive-source',
               'rsync://artifacts-rsync.example.com/request-id/env-dest'], logger=module.logger),
-        call(['rsync', '--rsync-option', '/env-source2',
+        call(['rsync', '--rsync-option', '/env-archive-source2',
               'rsync://artifacts-rsync.example.com/request-id/'], logger=module.logger),
     ]
 
@@ -149,12 +184,15 @@ def test_parallel_archiving(monkeypatch, module, log):
     monkeypatch.setattr(os.path, 'exists', lambda x: True)
 
     def _isdir(path):
-        if path == '/dir-source':
+        if path == '/dir-archive-source':
             return True
 
         return False
 
     monkeypatch.setattr(os.path, 'isdir', _isdir)
+
+    monkeypatch.setattr(gluetool_modules_framework.helpers.archive, 'glob', _mock_glob)
+
     module._config['enable-parallel-archiving'] = True
     module._config['parallel-archiving-tick'] = 0.1
 

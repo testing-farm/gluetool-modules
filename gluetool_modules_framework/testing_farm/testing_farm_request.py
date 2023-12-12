@@ -77,6 +77,7 @@ class PipelineState(str, Enum):
     queued = 'queued'
     running = 'running'
     complete = 'complete'
+    error = 'error'
     cancel_requested = 'cancel-requested'
     canceled = 'canceled'
 

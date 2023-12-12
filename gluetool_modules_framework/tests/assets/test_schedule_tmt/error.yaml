@@ -3,6 +3,7 @@ outcome: FAILED
 results:
   - name: /install
     result: passed
+    duration: 01:23:45
     artifacts:
       - name: log_dir
         path: error/execute/logs/install
@@ -10,6 +11,7 @@ results:
         path: error/execute/logs/install/out.log
   - name: /update
     result: failed
+    duration: 01:23:45
     artifacts:
       - name: log_dir
         path: error/execute/logs/update
@@ -17,6 +19,7 @@ results:
         path: error/execute/logs/update/out.log
   - name: /remove
     result: error
+    duration:
     artifacts:
       - name: log_dir
         path: error/execute/logs/remove

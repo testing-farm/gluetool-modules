@@ -9,6 +9,7 @@ from gluetool_modules_framework.infrastructure.koji_fedora import KojiTask
 from gluetool_modules_framework.infrastructure.copr import CoprTask
 
 import attrs
+import datetime
 
 from typing import List, Dict, Optional, Union
 
@@ -61,11 +62,9 @@ class TestCase:
     error: Union[bool, str] = False
     system_out: List[str] = attrs.field(factory=list)
     checks: List[TestCaseCheck] = attrs.field(factory=list)
+    duration: Optional[datetime.timedelta] = None
 
     # Properties used in BaseOS CI results.xml
-    # TODO: float would be a more suitable type, fix this when we add time property also to Testing Farm results, str
-    # should be only on the next level - classes representing the XML layer
-    time: Optional[str] = None
     parameters: List[str] = attrs.field(factory=list)
     phases: List[Phase] = attrs.field(factory=list)
     packages: Optional[List[str]] = None

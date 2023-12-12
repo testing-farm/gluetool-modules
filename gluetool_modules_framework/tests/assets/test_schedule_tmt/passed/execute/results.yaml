@@ -4,6 +4,7 @@
   log:
     - logs/tests/core/docs/out.log
     - logs/tests/core/docs/journal.txt
+  duration: 01:23:45
   serial-number: 1
   guest:
     name: default-0
@@ -14,6 +15,7 @@
   note: 'original result: fail'
   log:
     - logs/tests/core/dry/out.log
+  duration:
   serial-number: 2
   guest:
     name: default-0

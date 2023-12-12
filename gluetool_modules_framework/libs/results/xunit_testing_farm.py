@@ -209,7 +209,7 @@ class XUnitTFTestCaseChecks:
 class XUnitTFTestCase:
     name: str = attrs.field(metadata={'type': 'Attribute'})
     result: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
-    time: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})  # Property used in BaseOS CI result
+    time: Optional[int] = attrs.field(default=None, metadata={'type': 'Attribute'})
     note: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
 
     properties: Optional[XUnitTFProperties]
@@ -256,7 +256,7 @@ class XUnitTFTestCase:
             if test_case.failure is not False else None,
             error=XUnitTFFailure(message=test_case.error if isinstance(test_case.error, str) else None)
             if test_case.error is not False else None,
-            time=test_case.time,
+            time=int(test_case.duration.total_seconds()) if test_case.duration is not None else None,
             parameters=XUnitTFParameters.construct(test_case.parameters) if test_case.parameters else None,
             phases=XUnitTFPhases.construct(test_case.phases) if test_case.phases else None,
             # When `test_case.packages` is `None`, do not display the element, when it is `[]`, display <packages/>.

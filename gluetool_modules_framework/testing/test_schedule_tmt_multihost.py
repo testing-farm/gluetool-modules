@@ -7,6 +7,7 @@ import os.path
 import stat
 import sys
 import tempfile
+import datetime
 
 import enum
 import six
@@ -129,6 +130,7 @@ class TestResult:
     checks: List[TestCaseCheck]
     guest: Optional['TMTResultGuest'] = None
     serial_number: Optional[int] = None
+    duration: Optional[datetime.timedelta] = None
 
 
 @attrs.define
@@ -188,17 +190,26 @@ class TMTResult:
         iterable_validator=attrs.validators.instance_of(list)
     ))
     serial_number: Optional[int] = attrs.field(validator=attrs.validators.optional(attrs.validators.instance_of(int)))
+    duration: Optional[datetime.timedelta] = attrs.field(
+        validator=attrs.validators.optional(attrs.validators.instance_of(datetime.timedelta)),
+    )
 
     @classmethod
     def _structure(cls, data: Dict[str, Any], converter: cattrs.Converter) -> 'TMTResult':
+        duration = None
+        if data['duration'] is not None:
+            hours, minutes, seconds = map(int, data['duration'].split(':'))
+            duration = datetime.timedelta(hours=hours, minutes=minutes, seconds=seconds)
+
         return TMTResult(
             name=data['name'],
             result=data['result'],
             log=data['log'],
             guest=converter.structure(data['guest'], TMTResultGuest),
             note=data.get('note'),
-            check=data['check'],
+            check=converter.structure(data['check'], List[TMTResultCheck]),
             serial_number=data.get('serial-number'),
+            duration=duration
         )
 
 
@@ -378,6 +389,7 @@ def gather_plan_results(
             guest=result.guest,
             checks=checks,
             note=result.note,
+            duration=result.duration,
             serial_number=result.serial_number
         ))
 
@@ -1087,6 +1099,7 @@ class TestScheduleTMTMultihost(Module):
                 result=task.result,
                 note=task.note,
                 checks=task.checks,
+                duration=task.duration,
                 guest=Guest(
                     name=task.guest.name,
                     role=task.guest.role,

@@ -47,13 +47,15 @@ class XUnitTestCase:
     # Ignore PEP8Bear  # Coala doesn't like this line for some reason
     classname: str = attrs.field(default='tests', metadata={'type': 'Attribute'})
     failure: Optional[XUnitFailure] = attrs.field(default=None)
+    time: Optional[int] = attrs.field(default=None, metadata={'type': 'Attribute'})
 
     @classmethod
     def construct(cls, test_case: 'TestCase') -> 'XUnitTestCase':
         return XUnitTestCase(
             name=test_case.name,
             system_out=_xml_friendly_encode(test_case.system_out),
-            failure=XUnitFailure.construct(test_case) if test_case.failure or test_case.error else None
+            failure=XUnitFailure.construct(test_case) if test_case.failure or test_case.error else None,
+            time=int(test_case.duration.total_seconds()) if test_case.duration is not None else None,
         )
 
 

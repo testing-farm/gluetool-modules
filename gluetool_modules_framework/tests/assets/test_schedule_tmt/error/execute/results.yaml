@@ -3,6 +3,7 @@
   result: pass
   log:
     - logs/install/out.log
+  duration: 01:23:45
   serial-number: 1
   guest:
     name: default-0
@@ -12,6 +13,7 @@
   result: fail
   log:
     - logs/update/out.log
+  duration: 01:23:45
   serial-number: 2
   guest:
     name: default-0
@@ -21,6 +23,7 @@
   result: error
   log:
     - logs/remove/out.log
+  duration:
   serial-number: 3
   guest:
     name: default-0

@@ -7,6 +7,7 @@ import os.path
 import stat
 import sys
 import tempfile
+import datetime
 
 import enum
 import six
@@ -132,6 +133,7 @@ class TestResult:
     artifacts: List[TestArtifact]
     note: Optional[str] = None
     checks: List[TestCaseCheck]
+    duration: Optional[datetime.timedelta] = None
 
 
 @attrs.define
@@ -171,6 +173,25 @@ class TMTResult:
         member_validator=attrs.validators.instance_of(TMTResultCheck),
         iterable_validator=attrs.validators.instance_of(list)
     ))
+    duration: Optional[datetime.timedelta] = attrs.field(
+        validator=attrs.validators.optional(attrs.validators.instance_of(datetime.timedelta)),
+    )
+
+    @classmethod
+    def _structure(cls, data: Dict[str, Any], converter: cattrs.Converter) -> 'TMTResult':
+        duration = None
+        if data['duration'] is not None:
+            hours, minutes, seconds = map(int, data['duration'].split(':'))
+            duration = datetime.timedelta(hours=hours, minutes=minutes, seconds=seconds)
+
+        return TMTResult(
+            name=data['name'],
+            result=data['result'],
+            log=data['log'],
+            note=data.get('note'),
+            check=converter.structure(data['check'], List[TMTResultCheck]),
+            duration=duration
+        )
 
 
 @attrs.define
@@ -397,7 +418,9 @@ def gather_plan_results(
     # load test results from `results.yaml` which is created in tmt's execute step
     # https://tmt.readthedocs.io/en/latest/spec/steps.html#execute
     try:
-        results = load_yaml(results_yaml, unserializer=gluetool.utils.create_cattrs_unserializer(List[TMTResult]))
+        converter = gluetool.utils.create_cattrs_converter(prefer_attrib_converters=True)
+        results = load_yaml(results_yaml, unserializer=gluetool.utils.create_cattrs_unserializer(List[TMTResult],
+                                                                                                 converter=converter))
         log_dict(schedule_entry.debug, "loaded results from '{}'".format(results_yaml), results)
 
     except GlueError as error:
@@ -461,7 +484,8 @@ def gather_plan_results(
             result=outcome,
             artifacts=artifacts,
             note=result.note,
-            checks=checks
+            checks=checks,
+            duration=result.duration
         ))
 
     # count the maximum result weight encountered, i.e. the overall result
@@ -1424,7 +1448,8 @@ class TestScheduleTMT(Module):
                 name=task.name,
                 result=task.result,
                 note=task.note,
-                checks=task.checks
+                checks=task.checks,
+                duration=task.duration,
             )
 
             if task.result == 'failed':

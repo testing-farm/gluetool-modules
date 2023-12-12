@@ -3,6 +3,7 @@ outcome: SKIPPED
 results:
   - name: /tests/core/docs
     result: not_applicable
+    duration: 01:23:45
     artifacts:
       - name: log_dir
         path: skipped/execute/logs/tests/core/docs
@@ -12,6 +13,7 @@ results:
         path: skipped/execute/logs/tests/core/docs/journal.txt
   - name: /tests/core/dry
     result: not_applicable
+    duration: 01:23:45
     artifacts:
       - name: log_dir
         path: skipped/execute/logs/tests/core/dry

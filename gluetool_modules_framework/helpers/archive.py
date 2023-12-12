@@ -193,7 +193,7 @@ class Archive(gluetool.Module):
                 os.path.join(request_id, destination)
             )
             cmd.append(full_destination)
-            self.info('syncing {} to {}'.format(source, full_destination))
+            self.debug('syncing {} to {}'.format(source, full_destination))
 
         else:
             full_destination = '{}:{}'.format(
@@ -201,7 +201,7 @@ class Archive(gluetool.Module):
                 os.path.join(self.artifacts_root, request_id, destination)
             )
             cmd.append(full_destination)
-            self.info('syncing {} to {}'.format(source, full_destination))
+            self.debug('syncing {} to {}'.format(source, full_destination))
 
         def _run_rsync() -> Result[bool, bool]:
             try:

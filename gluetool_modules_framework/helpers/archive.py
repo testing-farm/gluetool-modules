@@ -225,10 +225,6 @@ class Archive(gluetool.Module):
             if entry.get('source') is None:
                 raise GlueError('Source path must be specified in source-destination-map')
 
-            if not os.path.exists(entry['source']):
-                self.warn('Source path "{}" does not exist, skipping.'.format(entry['source']))
-                continue
-
             sources = entry['source']
             destination = entry.get('destination', '')
             permissions = entry.get('permissions', None)

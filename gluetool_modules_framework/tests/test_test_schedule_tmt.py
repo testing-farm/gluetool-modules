@@ -1011,26 +1011,29 @@ TMT_PLANS = ['''
         - prep2_exclude2
 ''']
 
+EMPTY_PROVISION_STEP = TMTPlanProvision(hardware=None, kickstart=None, watchdog_dispatch_delay=None,
+                                        watchdog_period_delay=None)
+
 
 @pytest.mark.parametrize('tf_request, mock_output, context_files, tec, expected_command, expected_plan', [
     (None, MagicMock(stdout=TMT_PLANS[0]), [], TestingEnvironment(),
      ['dummytmt', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
-     TMTPlan(name='some-plan', provision=[TMTPlanProvision()], prepare=[])),
+     TMTPlan(name='some-plan', provision=[EMPTY_PROVISION_STEP], prepare=[])),
     (MagicMock(tmt=MagicMock(path='some-tmt-root')), MagicMock(stdout=TMT_PLANS[0]), [], TestingEnvironment(),
      ['dummytmt', '--root', 'some-tmt-root', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
-     TMTPlan(name='some-plan', provision=[TMTPlanProvision()], prepare=[])),
+     TMTPlan(name='some-plan', provision=[EMPTY_PROVISION_STEP], prepare=[])),
     (None, MagicMock(stdout=TMT_PLANS[1]), ['file1', 'file 2'], TestingEnvironment(),
      ['dummytmt', '--context=@file1', '--context=@file 2', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
-     TMTPlan(name='some-plan', provision=[TMTPlanProvision()],
+     TMTPlan(name='some-plan', provision=[EMPTY_PROVISION_STEP],
              prepare=[TMTPlanPrepare(how='somehow', exclude=['exclude1', 'exclude2'])])),
     (None, MagicMock(stdout=TMT_PLANS[1]), ['file1', 'file 2'], TestingEnvironment(tmt={'context': {'foo': 'bar'}}),
      ['dummytmt', '--context=@file1', '--context=@file 2', '-c', 'foo=bar',
          'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
-     TMTPlan(name='some-plan', provision=[TMTPlanProvision()],
+     TMTPlan(name='some-plan', provision=[EMPTY_PROVISION_STEP],
              prepare=[TMTPlanPrepare(how='somehow', exclude=['exclude1', 'exclude2'])])),
     (None, MagicMock(stdout=TMT_PLANS[2]), [], TestingEnvironment(),
      ['dummytmt', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
-     TMTPlan(name='some-plan', provision=[TMTPlanProvision()],
+     TMTPlan(name='some-plan', provision=[EMPTY_PROVISION_STEP],
              prepare=[TMTPlanPrepare(how='somehow1', exclude=['prep1_exclude1', 'prep1_exclude2']),
                       TMTPlanPrepare(how='somehow2', exclude=['prep2_exclude1', 'prep2_exclude2'])])),
     (None, MagicMock(stdout='[]'), [], TestingEnvironment(),

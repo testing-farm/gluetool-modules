@@ -18,13 +18,10 @@ from gluetool import GlueError, GlueCommandError, Module
 from gluetool.action import Action
 from gluetool.log import Logging, format_blob, log_blob, log_dict
 from gluetool.log import ContextAdapter, LoggingFunctionType  # Ignore PyUnusedCodeBear
-from gluetool.utils import Command, dict_update, from_yaml, load_yaml, new_xml_element, create_cattrs_converter
+from gluetool.utils import Command, from_yaml, load_yaml, create_cattrs_unserializer
 
-from gluetool_modules_framework.infrastructure.static_guest import StaticLocalhostGuest
-from gluetool_modules_framework.libs import create_inspect_callback, sort_children
+from gluetool_modules_framework.libs import create_inspect_callback
 from gluetool_modules_framework.libs.artifacts import artifacts_location
-from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
-from gluetool_modules_framework.libs.sut_installation import INSTALL_COMMANDS_FILE
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleResult, TestScheduleEntryOutput, \
     TestScheduleEntryStage, TestScheduleEntryAdapter
@@ -34,12 +31,10 @@ from gluetool_modules_framework.libs.git import RemoteGitRepository
 from gluetool_modules_framework.provision.artemis import ArtemisGuest
 
 # Type annotations
-from typing import cast, Any, Callable, Dict, List, Optional, Tuple, Union  # noqa
+from typing import cast, Any, Dict, List, Optional, Tuple, Union  # noqa
 
 from gluetool_modules_framework.libs.results import TestSuite, Log, TestCase, TestCaseCheck, Guest
 from secret_type import Secret
-
-from cattrs.gen import make_dict_unstructure_fn, make_dict_structure_fn, override
 
 # TMT run log file
 TMT_LOG = 'tmt-run.log'
@@ -187,32 +182,24 @@ class TMTResult:
         iterable_validator=attrs.validators.instance_of(list)
     ))
     guest: TMTResultGuest = attrs.field(validator=attrs.validators.instance_of(TMTResultGuest))
-    note: Optional[str] = attrs.field(
-        default=None,
-        validator=attrs.validators.optional(attrs.validators.instance_of(str))
-    )
+    note: Optional[str] = attrs.field(validator=attrs.validators.optional(attrs.validators.instance_of(str)))
     check: List[TMTResultCheck] = attrs.field(validator=attrs.validators.deep_iterable(
         member_validator=attrs.validators.instance_of(TMTResultCheck),
         iterable_validator=attrs.validators.instance_of(list)
     ))
-    serial_number: Optional[int] = attrs.field(
-        default=None,
-        validator=attrs.validators.optional(attrs.validators.instance_of(int))
-    )
+    serial_number: Optional[int] = attrs.field(validator=attrs.validators.optional(attrs.validators.instance_of(int)))
 
-    # We need to map the yaml attributes containing dashes to Python variables
     @classmethod
-    def register_hooks(cls, converter: cattrs.Converter) -> None:
-        converter.register_structure_hook(TMTResult, make_dict_structure_fn(
-            TMTResult,
-            converter,
-            serial_number=override(rename='serial-number')
-        ))
-        converter.register_unstructure_hook(TMTResult, make_dict_unstructure_fn(
-            TMTResult,
-            converter,
-            serial_number=override(rename='serial-number')
-        ))
+    def _structure(cls, data: Dict[str, Any], converter: cattrs.Converter) -> 'TMTResult':
+        return TMTResult(
+            name=data['name'],
+            result=data['result'],
+            log=data['log'],
+            guest=converter.structure(data['guest'], TMTResultGuest),
+            note=data.get('note'),
+            check=data['check'],
+            serial_number=data.get('serial-number'),
+        )
 
 
 # https://tmt.readthedocs.io/en/latest/overview.html#exit-codes
@@ -319,12 +306,7 @@ def gather_plan_results(
     # load test results from `results.yaml` which is created in tmt's execute step
     # https://tmt.readthedocs.io/en/latest/spec/steps.html#execute
     try:
-        converter = create_cattrs_converter(prefer_attrib_converters=True)
-        TMTResult.register_hooks(converter)
-        results = load_yaml(
-            results_yaml,
-            unserializer=gluetool.utils.create_cattrs_unserializer(List[TMTResult], converter=converter)
-        )
+        results = load_yaml(results_yaml, unserializer=gluetool.utils.create_cattrs_unserializer(List[TMTResult]))
         log_dict(schedule_entry.debug, "loaded results from '{}'".format(results_yaml), results)
     except GlueError as error:
         schedule_entry.warn('Could not load results.yaml file: {}'.format(error))

@@ -18,10 +18,10 @@ from gluetool import GlueError, GlueCommandError, Module
 from gluetool.action import Action
 from gluetool.log import Logging, format_blob, log_blob, log_dict
 from gluetool.log import ContextAdapter, LoggingFunctionType  # Ignore PyUnusedCodeBear
-from gluetool.utils import Command, dict_update, from_yaml, load_yaml, new_xml_element, create_cattrs_converter
+from gluetool.utils import Command, dict_update, from_yaml, load_yaml, create_cattrs_unserializer
 
 from gluetool_modules_framework.infrastructure.static_guest import StaticLocalhostGuest
-from gluetool_modules_framework.libs import create_inspect_callback, sort_children
+from gluetool_modules_framework.libs import create_inspect_callback
 from gluetool_modules_framework.libs.artifacts import artifacts_location
 from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
 from gluetool_modules_framework.libs.sut_installation import INSTALL_COMMANDS_FILE
@@ -34,12 +34,10 @@ from gluetool_modules_framework.libs.git import RemoteGitRepository
 from gluetool_modules_framework.provision.artemis import ArtemisGuest
 
 # Type annotations
-from typing import cast, Any, Callable, Dict, List, Optional, Tuple, Union  # noqa
+from typing import cast, Any, Dict, List, Optional, Tuple, Union  # noqa
 
 from gluetool_modules_framework.libs.results import TestSuite, Log, TestCase, TestCaseCheck
 from secret_type import Secret
-
-from cattrs.gen import make_dict_unstructure_fn, make_dict_structure_fn, override
 
 # TMT run log file
 TMT_LOG = 'tmt-run.log'
@@ -181,7 +179,6 @@ class TMTPlanProvision:
     Represents the "provision" step of a TMT plan. See :py:class:`TMTPlan` for more information.
     """
     hardware: Optional[Dict[str, Any]] = attrs.field(
-        default=None,
         validator=attrs.validators.optional(attrs.validators.deep_mapping(
             key_validator=attrs.validators.instance_of(str),
             value_validator=attrs.validators.instance_of(object),  # Anything should pass
@@ -189,7 +186,6 @@ class TMTPlanProvision:
         ))
     )
     kickstart: Optional[Dict[str, str]] = attrs.field(
-        default=None,
         validator=attrs.validators.optional(attrs.validators.deep_mapping(
             key_validator=attrs.validators.instance_of(str),
             value_validator=attrs.validators.instance_of(str),
@@ -197,29 +193,20 @@ class TMTPlanProvision:
         ))
     )
     watchdog_dispatch_delay: Optional[int] = attrs.field(
-        default=None,
         validator=attrs.validators.optional(attrs.validators.instance_of(int))
     )
     watchdog_period_delay: Optional[int] = attrs.field(
-        default=None,
         validator=attrs.validators.optional(attrs.validators.instance_of(int))
     )
 
-    # We need to map the yaml attributes containing dashes to Python variables
     @classmethod
-    def register_hooks(cls, converter: cattrs.Converter) -> None:
-        converter.register_structure_hook(TMTPlanProvision, make_dict_structure_fn(
-            TMTPlanProvision,
-            converter,
-            watchdog_dispatch_delay=override(rename='watchdog-dispatch-delay'),
-            watchdog_period_delay=override(rename='watchdog-period-delay')
-        ))
-        converter.register_unstructure_hook(TMTPlanProvision, make_dict_unstructure_fn(
-            TMTPlanProvision,
-            converter,
-            watchdog_dispatch_delay=override(rename='watchdog-dispatch-delay'),
-            watchdog_period_delay=override(rename='watchdog-period-delay')
-        ))
+    def _structure(cls, data: Dict[str, Any]) -> 'TMTPlanProvision':
+        return TMTPlanProvision(
+            hardware=data.get('hardware'),
+            kickstart=data.get('kickstart'),
+            watchdog_dispatch_delay=data.get('watchdog-dispatch-delay'),
+            watchdog_period_delay=data.get('watchdog-period-delay'),
+        )
 
 
 @attrs.define
@@ -236,25 +223,6 @@ class TMTPlanPrepare:
         ))
     )
 
-    def converter(prepare_step: Any) -> List['TMTPlanPrepare']:
-        """
-        In a TMT plan, the "prepare" step can be defined either as a single "prepare" element or a list of "prepare"
-        elements. This converter does the job of converting both possible shapes into a single one - list of
-        :py:class:`TMTPlanPrepare` instances.
-
-        See the docs for more information about the "prepare" step:
-        * https://tmt.readthedocs.io/en/stable/spec/plans.html#prepare
-        """
-        prepare_steps = prepare_step if isinstance(prepare_step, list) else [prepare_step]
-        try:
-            # Try to convert a list of dicts into a list of `TMTPlanPrepare` objects
-            return [TMTPlanPrepare(**{field.name: prepare_step.get(field.name)
-                                      for field in attrs.fields(TMTPlanPrepare)})
-                    for prepare_step in prepare_steps]
-        except AttributeError:
-            # Assume that `prepare_steps` is already a list of `TMTPlanPrepare` objects, so don't do anything
-            return prepare_steps
-
 
 @attrs.define
 class TMTPlan:
@@ -268,20 +236,38 @@ class TMTPlan:
     """
     name: str = attrs.field(validator=attrs.validators.instance_of(str))
     provision: List[TMTPlanProvision] = attrs.field(
-        factory=list,
         validator=attrs.validators.deep_iterable(
             member_validator=attrs.validators.instance_of(TMTPlanProvision),
             iterable_validator=attrs.validators.instance_of(list)
         )
     )
     prepare: List[TMTPlanPrepare] = attrs.field(
-        factory=list,
         validator=attrs.validators.deep_iterable(
             member_validator=attrs.validators.instance_of(TMTPlanPrepare),
             iterable_validator=attrs.validators.instance_of(list)
-        ),
-        converter=TMTPlanPrepare.converter  # type: ignore[misc]  # mypy wrongly complains about unsupported converter
+        )
     )
+
+    @classmethod
+    def _structure(cls, data: Dict[str, Any], converter: cattrs.Converter) -> 'TMTPlan':
+        """
+        In a TMT plan, the "prepare" and "provision" steps can be defined either as a single element or a list of
+        elements. This converter does the job of converting both possible shapes into a single one - list of
+        :py:class:`TMTPlanPrepare` or :py:class:`TMTPlanProvision` instances.
+
+        See the docs for more information about the "prepare" step:
+        * https://tmt.readthedocs.io/en/stable/spec/plans.html#prepare
+        """
+
+        provision = data.get('provision', []) \
+            if isinstance(data.get('provision', []), list) \
+            else [data.get('provision')]
+        prepare = data.get('prepare', []) if isinstance(data.get('prepare', []), list) else [data.get('prepare')]
+        return TMTPlan(
+            name=data['name'],
+            provision=converter.structure(provision, List[TMTPlanProvision]),
+            prepare=converter.structure(prepare, List[TMTPlanPrepare])
+        )
 
     def excludes(self, logger: Optional[ContextAdapter] = None) -> List[str]:
         """
@@ -924,9 +910,7 @@ class TestScheduleTMT(Module):
         assert output
 
         try:
-            converter = create_cattrs_converter(prefer_attrib_converters=True)
-            TMTPlanProvision.register_hooks(converter)
-            exported_plans = converter.structure(from_yaml(output), List[TMTPlan])
+            exported_plans = from_yaml(output, unserializer=create_cattrs_unserializer(List[TMTPlan]))
             log_dict(self.debug, "loaded exported plan yaml", exported_plans)
 
         except GlueError as error:

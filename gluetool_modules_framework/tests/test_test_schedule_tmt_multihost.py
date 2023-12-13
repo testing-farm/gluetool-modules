@@ -23,8 +23,7 @@ from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 from gluetool_modules_framework.libs.results import TestSuite
 from gluetool_modules_framework.libs.git import SecretGitUrl
 from gluetool_modules_framework.provision.artemis import ArtemisGuest, ArtemisGuestLog
-from gluetool_modules_framework.testing.test_schedule_tmt_multihost import (gather_plan_results, TestScheduleEntry,
-                                                                            TMTPlan, TMTPlanProvision, TMTPlanPrepare)
+from gluetool_modules_framework.testing.test_schedule_tmt_multihost import gather_plan_results, TestScheduleEntry
 from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact
 
 from . import create_module, check_loadable, patch_shared
@@ -730,71 +729,6 @@ def test_plans_from_git_filter_from_request(module, monkeypatch):
     mock_command.assert_called_once_with(['dummytmt', '--root', 'some-tmt-root', 'plan', 'ls', '--filter', 'filter1'])
 
 
-@pytest.mark.parametrize('plan, expected', [
-        (   # no excludes
-            {
-                'name': 'plan',
-                'prepare': {
-                    'how': 'install',
-                    'package': ['a', 'b']
-                }
-            },
-            []
-        ),
-        (   # excludes, prepare is not a list
-            {
-                'name': 'plan',
-                'prepare': {
-                    'how': 'install',
-                    'exclude': ['package1', 'package2']
-                }
-            },
-            ['package1', 'package2']
-        ),
-        (   # excludes, prepare is a list
-            {
-                'name': 'plan',
-                'prepare': [{
-                    'name': 'Install packages',
-                    'how': 'install',
-                    'exclude': ['package3', 'package4']
-                }]
-            },
-            ['package3', 'package4']
-        ),
-        (   # excludes, multiple prepare steps, multiple install excludes
-            {
-                'name': 'plan',
-                'prepare': [
-                    {
-                        'name': 'Install packages',
-                        'how': 'install',
-                        'exclude': ['package1', 'package2']
-                    },
-                    {
-                        'name': 'Shell prepare step',
-                        'how': 'shell',
-                        'script': 'do-something',
-                    },
-                    {
-                        'name': 'Install packages',
-                        'how': 'install',
-                        'exclude': ['package3', 'package4']
-                    }
-                ]
-            },
-            ['package1', 'package2', 'package3', 'package4']
-        ),
-
-    ],
-    ids=['no_excludes', 'excludes', 'prepare_list', 'multiple_steps']
-)
-def test_excludes(module, plan, expected):
-    plan.update({'provision': [{'hardware': None}]})
-    plan = gluetool.utils.create_cattrs_converter(prefer_attrib_converters=True).structure(plan, TMTPlan)
-    assert plan.excludes() == expected
-
-
 @pytest.mark.parametrize('clone_url, expected_clone_url', [
     (SecretGitUrl('http://example.com/git/myproject'), 'http://example.com/git/myproject'),
     (SecretGitUrl('http://username:secret@example.com/git/myproject'), 'http://*****@example.com/git/myproject')
@@ -994,38 +928,6 @@ TMT_PLANS = ['''
         - prep2_exclude1
         - prep2_exclude2
 ''']
-
-
-@pytest.mark.parametrize('tf_request, mock_output, tec, expected_command, expected_plan', [
-    (None, MagicMock(stdout=TMT_PLANS[0]), TestingEnvironment(),
-     ['dummytmt', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
-     TMTPlan(name='some-plan', provision=[TMTPlanProvision()], prepare=[])),
-    (MagicMock(tmt=MagicMock(path='some-tmt-root')), MagicMock(stdout=TMT_PLANS[0]), TestingEnvironment(),
-     ['dummytmt', '--root', 'some-tmt-root', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
-     TMTPlan(name='some-plan', provision=[TMTPlanProvision()], prepare=[])),
-    (None, MagicMock(stdout=TMT_PLANS[1]), TestingEnvironment(),
-     ['dummytmt', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
-     TMTPlan(name='some-plan', provision=[TMTPlanProvision()],
-             prepare=[TMTPlanPrepare(how='somehow', exclude=['exclude1', 'exclude2'])])),
-    (None, MagicMock(stdout=TMT_PLANS[2]), TestingEnvironment(),
-     ['dummytmt', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
-     TMTPlan(name='some-plan', provision=[TMTPlanProvision()],
-             prepare=[TMTPlanPrepare(how='somehow1', exclude=['prep1_exclude1', 'prep1_exclude2']),
-                      TMTPlanPrepare(how='somehow2', exclude=['prep2_exclude1', 'prep2_exclude2'])])),
-    (None, MagicMock(stdout='[]'), TestingEnvironment(),
-     ['dummytmt', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
-     None),
-])
-def test_export(monkeypatch, module, tf_request, tec, mock_output, expected_command, expected_plan):
-    patch_shared(monkeypatch, module, {'testing_farm_request': tf_request})
-    mock_command_run = MagicMock(return_value=mock_output)
-    mock_command = MagicMock(return_value=MagicMock(run=mock_command_run))
-    monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt_multihost, 'Command', mock_command)
-
-    plan = module.export_plan('some-repo', 'some-plan', 'tmt-env-file', tec)
-    assert plan == expected_plan
-
-    mock_command.assert_called_once_with(expected_command)
 
 
 TMT_EXPORTED_PLANS = [

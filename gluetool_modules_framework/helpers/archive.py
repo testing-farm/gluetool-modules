@@ -16,6 +16,9 @@ DEFAULT_RETRY_TIMEOUT = 30
 DEFAULT_RETRY_TICK = 10
 DEFAULT_PARALLEL_ARCHIVING_TICK = 30
 
+ARCHIVE_STAGES = ['execute', 'progress', 'destroy']
+SOURCE_DESTINATION_ENTRY_KEYS = ['source', 'destination', 'permissions']
+
 
 class Archive(gluetool.Module):
     """
@@ -23,7 +26,7 @@ class Archive(gluetool.Module):
 
     The module supports SOURCE_DESTINATION_MAP environment variable which can be used to specify
     additional source-destination mappings. The variable is a string of the following format:
-    <SOURCE>:[<DESTINATION>]:[<PERMISSIONS>][#<SOURCE>:[<DESTINATION>]:[<PERMISSIONS>]]...
+    <SOURCE>:[<DESTINATION>]:[<PERMISSIONS>]:[<STAGE>][#<SOURCE>:[<DESTINATION>]:[<PERMISSIONS>][<STAGE>]]...
     """
 
     name = 'archive'
@@ -109,21 +112,37 @@ class Archive(gluetool.Module):
         if additional_map_var:
             for entry in additional_map_var.split('#'):
 
-                source, destination, permissions = entry.split(':')
-                source_destination_map.append({
+                source, destination, permissions, stage = entry.split(':')
+
+                if stage not in ARCHIVE_STAGES:
+                    raise GlueError('Invalid stage "{}" in SOURCE_DESTINATION_MAP env'.format(stage))
+
+                source_destination_map[stage].append({
                     'source': source,
                     'destination': destination or '',
                     'permissions': permissions or None
                 })
 
         # Render all templates in the map
+        # and check everything is set correct
         context = self.shared('eval_context')
-        for dict_entry in source_destination_map:
-            for key, value in dict_entry.items():
-                if value is not None:
-                    dict_entry[key] = render_template(
-                        value, logger=self.logger, **context
-                    )
+
+        for stage_name, map_stage in source_destination_map.items():
+            if stage_name not in ARCHIVE_STAGES:
+                raise GlueError('Invalid stage "{}" in source-destination-map'.format(stage_name))
+
+            for dict_entry in map_stage:
+                if dict_entry.get('source') is None:
+                    raise GlueError('Source path must be specified in source-destination-map entry')
+
+                for key, value in dict_entry.items():
+                    if key not in SOURCE_DESTINATION_ENTRY_KEYS:
+                        raise GlueError('Invalid key "{}" in source-destination-map entry'.format(key))
+
+                    if value is not None:
+                        dict_entry[key] = render_template(
+                            value, logger=self.logger, **context
+                        )
 
         return source_destination_map
 
@@ -218,10 +237,12 @@ class Archive(gluetool.Module):
             tick=self.option('retry-tick')
         )
 
-    def archive(self) -> None:
+    # The stage is default to progress because we want to use the function
+    # in the parallel archiving timer without calling it
+    def archive_stage(self, stage: str = 'progress') -> None:
+        map_stage = self.source_destination_map().get(stage, [])
 
-        for entry in self.source_destination_map():
-
+        for entry in map_stage:
             if entry.get('source') is None:
                 raise GlueError('Source path must be specified in source-destination-map')
 
@@ -249,13 +270,15 @@ class Archive(gluetool.Module):
         if self.option('rsync-mode') == 'ssh':
             self.create_archive_directory()
 
+        self.archive_stage('execute')
+
         if self.option('enable-parallel-archiving'):
             self.info('Starting parallel archiving')
 
             parallel_archiving_tick = self.option('parallel-archiving-tick')
             self._archive_timer = RepeatTimer(
                 parallel_archiving_tick,
-                self.archive
+                self.archive_stage
             )
 
             self.debug('Starting parallel archiving, run every {} seconds'.format(parallel_archiving_tick))
@@ -273,4 +296,4 @@ class Archive(gluetool.Module):
                 self._archive_timer.cancel()
                 self._archive_timer = None
 
-        self.archive()
+        self.archive_stage('destroy')

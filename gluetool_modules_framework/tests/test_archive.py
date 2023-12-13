@@ -34,7 +34,7 @@ def fixture_module(monkeypatch):
         'testing_farm_request': lambda: MagicMock(id='request-id'),
     })
 
-    os.environ['SOURCE_DESTINATION_MAP'] = '/env-archive-source:env-dest:666#/env-archive-source2::'
+    os.environ['SOURCE_DESTINATION_MAP'] = '/env-archive-source:env-dest:666:destroy#/env-archive-source2:::execute'
 
     return module
 
@@ -67,7 +67,7 @@ def test_sanity(module):
         module.sanity()
 
 
-def test_destroy_ssh(monkeypatch, module):
+def test_execute_destroy_ssh(monkeypatch, module):
     module._config['enable-parallel-archiving'] = False
 
     mock_command_init = MagicMock(return_value=None)
@@ -96,6 +96,10 @@ def test_destroy_ssh(monkeypatch, module):
     calls = [
         call(['ssh', 'https://artifacts.example.com', 'mkdir', '-p',
               '/artifacts-root/request-id'], logger=module.logger),
+
+        call(['rsync', '--rsync-option', '/archive-source-execute',
+              'https://artifacts.example.com:/artifacts-root/request-id/'], logger=module.logger),
+
         call(['rsync', '--rsync-option', '/archive-source',
               'https://artifacts.example.com:/artifacts-root/request-id/dest'], logger=module.logger),
 
@@ -167,8 +171,6 @@ def test_destroy_daemon(monkeypatch, module):
               'rsync://artifacts-rsync.example.com/request-id/'], logger=module.logger),
         call(['rsync', '--rsync-option', '--chmod=666', '/env-archive-source',
               'rsync://artifacts-rsync.example.com/request-id/env-dest'], logger=module.logger),
-        call(['rsync', '--rsync-option', '/env-archive-source2',
-              'rsync://artifacts-rsync.example.com/request-id/'], logger=module.logger),
     ]
 
     mock_command_init.assert_has_calls(calls, any_order=True)
@@ -201,8 +203,10 @@ def test_parallel_archiving(monkeypatch, module, log):
     assert log.records[-1].message == 'Starting parallel archiving, run every 0.1 seconds'
 
     # make sure the timer runs
-    time.sleep(0.2)
+    time.sleep(0.5)
 
     module.destroy()
 
     assert log.match(levelno=logging.INFO, message='Stopping parallel archiving')
+    assert log.match(levelno=logging.DEBUG,
+                     message='syncing /archive-source-progress to https://artifacts.example.com:/artifacts-root/request-id/')

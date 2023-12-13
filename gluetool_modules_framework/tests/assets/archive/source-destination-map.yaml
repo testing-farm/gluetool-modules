@@ -1,14 +1,21 @@
 ---
 
-- source: /archive-source
-  destination: dest
+execute:
+  - source: /archive-source-execute
 
-- source: /archive-source
+progress:
+  - source: /archive-source-progress
 
-- source: /archive-source
-  destination: dest
-  permissions: "666"
+destroy:
+  - source: /archive-source
+    destination: dest
 
-- source: /dir-archive-source
+  - source: /archive-source
 
-- source: /archive-source/*
+  - source: /archive-source
+    destination: dest
+    permissions: "666"
+
+  - source: /dir-archive-source
+
+  - source: /archive-source/*

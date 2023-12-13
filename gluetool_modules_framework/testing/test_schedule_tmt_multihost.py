@@ -1014,7 +1014,7 @@ class TestScheduleTMTMultihost(Module):
             ])
 
         command.extend([
-            'provision', '-h', 'artemis', '--update',
+            'provision', '-h', 'artemis', '--update-missing',
             '-k', artemis_ssh_key,
             '--api-url', artemis_api_url,
             '--api-version', artemis_api_version,

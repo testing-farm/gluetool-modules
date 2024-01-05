@@ -156,7 +156,10 @@ class TMTGuest:
     """
 
     image: str = attrs.field(validator=attrs.validators.instance_of(str))
-    arch: str = attrs.field(validator=attrs.validators.instance_of(str))
+    arch: Optional[str] = attrs.field(
+        default=None,
+        validator=attrs.validators.optional(attrs.validators.instance_of(str))
+    )
 
 
 @attrs.define
@@ -210,6 +213,53 @@ class TMTResult:
             check=converter.structure(data['check'], List[TMTResultCheck]),
             serial_number=data.get('serial-number'),
             duration=duration
+        )
+
+
+@attrs.define
+class TMTPlanProvision:
+    """
+    Represents the "provision" step of a TMT plan. See :py:class:`TMTPlan` for more information.
+    """
+    how: Optional[str] = attrs.field(
+        default=None,
+        validator=attrs.validators.optional(attrs.validators.instance_of(str))
+    )
+
+
+@attrs.define
+class TMTPlan:
+    """
+    Represents a single TMT plan. The actual plan may contain more items, this class lists only those that are used in
+    the gluetool module.
+
+    For the complete definition of the TMT plans format, see:
+      * https://tmt.readthedocs.io/en/stable/spec/plans.html
+      * https://github.com/teemtee/tmt/blob/main/tmt/schemas/plan.yaml
+    """
+    name: str = attrs.field(validator=attrs.validators.instance_of(str))
+    provision: List[TMTPlanProvision] = attrs.field(
+        factory=list,
+        validator=attrs.validators.deep_iterable(
+            member_validator=attrs.validators.instance_of(TMTPlanProvision),
+            iterable_validator=attrs.validators.instance_of(list)
+        )
+    )
+
+    @classmethod
+    def _structure(cls, data: Dict[str, Any], converter: cattrs.Converter) -> 'TMTPlan':
+        """
+        In a TMT plan, the "provision" step can be defined either as a single element or a list of
+        elements. This converter does the job of converting both possible shapes into a single one - list of
+        :py:class:`TMTPlanProvision` instances.
+        """
+
+        provision = data.get('provision', []) \
+            if isinstance(data.get('provision', []), list) \
+            else [data.get('provision')]
+        return TMTPlan(
+            name=data['name'],
+            provision=converter.structure(provision, List[TMTPlanProvision]),
         )
 
 
@@ -747,6 +797,54 @@ class TestScheduleTMTMultihost(Module):
 
         return False
 
+    def export_plan(self,
+                    repodir: str,
+                    plan: str,
+                    tmt_env_file: Optional[str],
+                    testing_environment: TestingEnvironment) -> Optional[TMTPlan]:
+        command: List[str] = [self.option('command')]
+        command.extend(self._root_option)
+
+        if testing_environment.tmt and 'context' in testing_environment.tmt:
+            command.extend(self._tmt_context_to_options(testing_environment.tmt['context']))
+
+        command.extend(['plan', 'export'])
+
+        if tmt_env_file:
+            env_options = [
+                '-e', '@{}'.format(tmt_env_file)
+            ]
+            command.extend(env_options)
+
+        command.extend(['^{}$'.format(re.escape(plan))])
+
+        try:
+            tmt_output = Command(command).run(cwd=repodir)
+
+        except GlueCommandError as exc:
+            # workaround until tmt prints errors properly to stderr
+            log_dict(self.error, "Failed to get list of plans", {
+                'command': ' '.join(command),
+                'exception': exc.output.stderr
+            })
+            six.reraise(*sys.exc_info())
+
+        output = tmt_output.stdout
+        assert output
+
+        try:
+            exported_plans = from_yaml(output, unserializer=create_cattrs_unserializer(List[TMTPlan]))
+            log_dict(self.debug, "loaded exported plan yaml", exported_plans)
+
+        except GlueError as error:
+            raise GlueError('Could not load exported plan yaml: {}'.format(error))
+
+        if not exported_plans or len(exported_plans) != 1:
+            self.warn('exported plan is not a single item, cowardly skipping extracting hardware')
+            return None
+
+        return exported_plans[0]
+
     def create_test_schedule(
         self,
         testing_environment_constraints: Optional[List[TestingEnvironment]] = None
@@ -810,6 +908,13 @@ class TestScheduleTMTMultihost(Module):
                 if self._is_plan_empty(plan, repodir, tec, tmt_env_file):
                     self.debug("ignoring empty plan '{}'".format(plan))
                     continue
+
+                exported_plan = self.export_plan(repodir, plan, tmt_env_file, tec)
+
+                if exported_plan:
+                    for provision_phase in exported_plan.provision:
+                        if provision_phase.how == 'artemis':
+                            self.warn('The `how` key in provision phase should not be `artemis`.')
 
                 schedule_entry = TestScheduleEntry(
                     root_logger,
@@ -1016,7 +1121,10 @@ class TestScheduleTMTMultihost(Module):
             ])
 
         command.extend([
-            'provision', '-h', 'artemis', '--update-missing',
+            'provision',
+            '-h', 'artemis',
+            '--update-missing',
+            '--allowed-how', 'container|artemis',
             '-k', artemis_ssh_key,
             '--api-url', artemis_api_url,
             '--api-version', artemis_api_version,

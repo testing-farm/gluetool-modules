@@ -24,6 +24,8 @@ from gluetool_modules_framework.libs.results import TestSuite
 from gluetool_modules_framework.libs.git import SecretGitUrl
 from gluetool_modules_framework.provision.artemis import ArtemisGuest, ArtemisGuestLog
 from gluetool_modules_framework.testing.test_schedule_tmt_multihost import gather_plan_results, TestScheduleEntry
+from gluetool_modules_framework.testing.test_schedule_tmt_multihost import (gather_plan_results, TestScheduleEntry,
+                                                                            TMTPlan, TMTPlanProvision)
 from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact
 
 from . import create_module, check_loadable, patch_shared
@@ -274,7 +276,7 @@ def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest
             {},
             TestingEnvironment('x86_64', 'rhel-9'),
             '''# tmt reproducer
-dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key''',  # noqa
+dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key''',  # noqa
             None,
             None
         ),
@@ -283,7 +285,7 @@ dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic
             {},
             TestingEnvironment('x86_64', 'rhel-9'),
             '''# tmt reproducer
-dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key''',  # noqa
+dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key''',  # noqa
             None,
             None
         ),
@@ -301,7 +303,7 @@ dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic
             ),
             """# tmt reproducer
 curl -LO tmt-environment-lan1.yaml
-dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations -e @tmt-environment-lan1.yaml plan --name ^plan1$ provision -h artemis --update-missing -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key""",  # noqa
+dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations -e @tmt-environment-lan1.yaml plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key""",  # noqa
             """user_variable1: user_value1
 user_variable2: user_value2
 user_variable3: user_value3
@@ -315,7 +317,7 @@ secret_variable2: secret_value2
             {},
             TestingEnvironment('x86_64', 'rhel-9', tmt={'context': {'distro': 'rhel', 'trigger': 'push'}}),
             """# tmt reproducer
-dummytmt --root some-tmt-root -c distro=rhel -c trigger=push run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key""",  # noqa
+dummytmt --root some-tmt-root -c distro=rhel -c trigger=push run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key""",  # noqa
             None,
             None
         ),
@@ -327,7 +329,7 @@ dummytmt --root some-tmt-root -c distro=rhel -c trigger=push run --all --id {wor
             TestingEnvironment('x86_64', 'rhel-9', tmt={'environment': {'VARIABLE1': 'VALUE1', 'VARIABLE2': 'VALUE2'}}),
             """# tmt reproducer
 export VARIABLE1=***** VARIABLE2=*****
-dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key""",  # noqa
+dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key""",  # noqa
 
             None,
             None
@@ -340,7 +342,7 @@ dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic
             TestingEnvironment('x86_64', 'rhel-9', tmt={'environment': {'VARIABLE1': 'VALUE1', 'VARIABLE2': 'VALUE2'}}),
             """# tmt reproducer
 export VARIABLE1=***** VARIABLE2=*****
-dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key""",  # noqa
+dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key""",  # noqa
 
             None,
             (gluetool.glue.GlueError, "Environment variable 'VARIABLE2' is not allowed to be exposed to the tmt process")
@@ -425,7 +427,7 @@ def test_tmt_output_dir(
             r'''# tmt reproducer
 git clone --depth 1 -b myfix http://example.com/git/myproject testcode
 cd testcode
-dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^myfix$ provision -h artemis --update-missing -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key'''  # noqa
+dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^myfix$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key'''  # noqa
 
         ),
         (  # Test case no. 2
@@ -435,7 +437,7 @@ dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --
             r'''# tmt reproducer
 git clone --depth 1 -b myfix http://example.com/git/myproject testcode
 cd testcode
-dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^myfix$ provision -h artemis --update-missing -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key'''  # noqa
+dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^myfix$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key'''  # noqa
 
         ),
         (  # Test case no. 3
@@ -445,7 +447,7 @@ dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --
             r'''# tmt reproducer
 git clone --depth 1 -b myfix http://*****@example.com/git/myproject testcode
 cd testcode
-dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^myfix$ provision -h artemis --update-missing -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key'''  # noqa
+dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^myfix$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key'''  # noqa
         ),
     ]
 )
@@ -827,7 +829,7 @@ git -C testcode config --add remote.origin.fetch +refs/pull/*:refs/remotes/origi
 git -C testcode fetch {expected_clone_url} myfix:gluetool/myfix
 git -C testcode checkout gluetool/myfix
 cd testcode
-dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key'''
+dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key'''
 
 
 @pytest.mark.parametrize('clone_url, expected_clone_url', [
@@ -915,7 +917,7 @@ git -C testcode config --add remote.origin.fetch +refs/pull/*:refs/remotes/origi
 git -C testcode fetch {expected_clone_url} myfix:gluetool/myfix
 git -C testcode checkout gluetool/myfix
 cd testcode
-dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key'''
+dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key'''
 
 
 TMT_PLANS = ['''
@@ -946,20 +948,51 @@ TMT_PLANS = ['''
         - prep2_exclude2
 ''']
 
+EMPTY_PROVISION_STEP = TMTPlanProvision(how=None)
+
+
+@pytest.mark.parametrize('tf_request, mock_output, tec, expected_command, expected_plan', [
+    (None, MagicMock(stdout=TMT_PLANS[0]), TestingEnvironment(),
+     ['dummytmt', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
+     TMTPlan(name='some-plan', provision=[EMPTY_PROVISION_STEP])),
+    (MagicMock(tmt=MagicMock(path='some-tmt-root')), MagicMock(stdout=TMT_PLANS[0]), TestingEnvironment(),
+     ['dummytmt', '--root', 'some-tmt-root', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
+     TMTPlan(name='some-plan', provision=[EMPTY_PROVISION_STEP])),
+    (None, MagicMock(stdout=TMT_PLANS[1]), TestingEnvironment(),
+     ['dummytmt', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
+     TMTPlan(name='some-plan', provision=[EMPTY_PROVISION_STEP])),
+    (None, MagicMock(stdout=TMT_PLANS[2]), TestingEnvironment(),
+     ['dummytmt', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
+     TMTPlan(name='some-plan', provision=[EMPTY_PROVISION_STEP])),
+    (None, MagicMock(stdout='[]'), TestingEnvironment(),
+     ['dummytmt', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
+     None),
+])
+def test_export(monkeypatch, module, tf_request, tec, mock_output, expected_command, expected_plan):
+    patch_shared(monkeypatch, module, {'testing_farm_request': tf_request})
+    mock_command_run = MagicMock(return_value=mock_output)
+    mock_command = MagicMock(return_value=MagicMock(run=mock_command_run))
+    monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt_multihost, 'Command', mock_command)
+
+    plan = module.export_plan('some-repo', 'some-plan', 'tmt-env-file', tec)
+    assert plan == expected_plan
+
+    mock_command.assert_called_once_with(expected_command)
+
+
 TMT_EXPORTED_PLANS = [
     # single_provision_phase
     '''
     - name: plan1
       provision:
         - name: default-0
-          how: virtual
     ''',
     # single_provision_phase_with_hardware
     '''
     - name: plan1
       provision:
         - name: default-0
-          how: virtual
+          how: container
           hardware:
             tpm:
               version: '2'
@@ -969,7 +1002,6 @@ TMT_EXPORTED_PLANS = [
     - name: plan1
       provision:
         - name: default-0
-          how: virtual
           kickstart:
             script: some-script
             metadata: some-metadata
@@ -979,9 +1011,8 @@ TMT_EXPORTED_PLANS = [
     - name: plan1
       provision:
         - name: default-0
-          how: virtual
+          how: container
         - name: default-1
-          how: virtual
     ''',
 ]
 
@@ -1032,7 +1063,7 @@ TMT_EXPORTED_PLANS = [
         'single_provision_phase',
         'single_provision_phase_with_hardware',
         'single_provision_phase_with_kickstart',
-        'multiple_provision_phases'
+        'multiple_provision_phases',
     ]
 )
 def test_tmt_plan_export(module, monkeypatch, exported_plan, expected_environment, expected_exception, tmpdir):
@@ -1063,6 +1094,4 @@ def test_tmt_plan_export(module, monkeypatch, exported_plan, expected_environmen
         schedules = module.create_test_schedule([TestingEnvironment('x86_64')])
 
     if not expected_exception:
-        print(schedules)
-        print(schedules[0])
         assert schedules[0].testing_environment == expected_environment

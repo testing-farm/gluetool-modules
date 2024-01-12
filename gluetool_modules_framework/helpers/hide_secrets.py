@@ -23,7 +23,7 @@ class HideSecrets(gluetool.Module):
             'default': '.'
         }
     }
-    shared_functions = ['add_additional_secrets']
+    shared_functions = ['add_additional_secrets', 'hide_secrets']
 
     def add_additional_secrets(self, secret: str) -> None:
         self.additional_secrets.append(secret)
@@ -32,7 +32,7 @@ class HideSecrets(gluetool.Module):
         super(HideSecrets, self).__init__(*args, **kwargs)
         self.additional_secrets: List[str] = []
 
-    def destroy(self, failure: Optional[Any] = None) -> None:
+    def hide_secrets(self) -> None:
         testing_farm_request = cast(TestingFarmRequest, self.shared('testing_farm_request'))
         if not testing_farm_request:
             return
@@ -81,3 +81,6 @@ class HideSecrets(gluetool.Module):
             )
         else:
             self.warn("No secrets to hide, all secrets had empty values")
+
+    def destroy(self, failure: Optional[Any] = None) -> None:
+        self.hide_secrets()

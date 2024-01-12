@@ -240,6 +240,10 @@ class Archive(gluetool.Module):
     # The stage is default to progress because we want to use the function
     # in the parallel archiving timer without calling it
     def archive_stage(self, stage: str = 'progress') -> None:
+
+        # Before we start archiving, we need to hide secrets in files
+        self.shared('hide_secrets')
+
         map_stage = self.source_destination_map().get(stage, [])
 
         for entry in map_stage:

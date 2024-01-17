@@ -367,25 +367,6 @@ class GuestSetup(gluetool.Module):
 
         log_dict(logger.debug, 'playbook variables', variables)
 
-        # Detect Python interpreter for Ansible - this depends on the guest, it cannot be based
-        # just on the artifact properties (some artifacts may need to be tested on a mixture
-        # of different composes with different Python interpreters), therefore detect - unless,
-        # of course, told otherwise by the caller.
-        #
-        # Also if user is specifying it's own playbooks, always autodetect ansible_python_interpreter
-        if 'ansible_python_interpreter' not in variables:
-            logger.debug('ansible interpreter not specified, trying to autodetect one')
-
-            guest_interpreters = self.shared('detect_ansible_interpreter', guest)
-
-            log_dict(logger.debug, 'detected interpreters', guest_interpreters)
-
-            if not guest_interpreters:
-                logger.warning('Cannot deduce Python interpreter for Ansible', sentry=True)
-
-            else:
-                variables['ansible_python_interpreter'] = guest_interpreters[0]
-
         log_dict(logger.debug, 'final playbook variables', variables)
 
         log_dict(logger.info, 'setting up with playbooks', playbooks)

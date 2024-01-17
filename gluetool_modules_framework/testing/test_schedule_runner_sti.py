@@ -198,15 +198,10 @@ class STIRunner(gluetool.Module):
 
         schedule_entry.info("working directory '{}'".format(work_dir))
 
-        # try to detect ansible interpreter
-        interpreters = self.shared('detect_ansible_interpreter', schedule_entry.guest)
-
-        # inventory file contents
-        ansible_interpreter = 'ansible_python_interpreter={}'.format(interpreters[0]) if interpreters else ''
         inventory_content = """
 [localhost]
-sut     ansible_host={} ansible_user=root {}
-""".format(schedule_entry.guest.hostname, ansible_interpreter)
+sut     ansible_host={} ansible_user=root
+""".format(schedule_entry.guest.hostname)
 
         with tempfile.NamedTemporaryFile(delete=False, dir=work_dir, prefix='inventory-') as inventory:
             log_blob(schedule_entry.info, 'using inventory', inventory_content)

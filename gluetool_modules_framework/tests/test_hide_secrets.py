@@ -45,13 +45,8 @@ qui officia deserunt mollit anim id est laborum.
     (MagicMock(environments_requested=[TestingEnvironment(secrets={'secret': r"''''"})])),
     (MagicMock(environments_requested=[TestingEnvironment(secrets={'secret': r'\a\b\c\d\n'})])),
     (MagicMock(environments_requested=[TestingEnvironment(secrets={})])),
-    (MagicMock(environments_requested=[TestingEnvironment(tmt={'environment': {'secret': 'abc'}})])),
-    (MagicMock(environments_requested=[TestingEnvironment(tmt={'environment': {
-        'secret': 'hallo*wurld',
-        'another': r'\x\y\z\w\h.'
-    }})])),
+    (MagicMock(environments_requested=[TestingEnvironment(tmt={'environment': {'var': 'abc'}})])),
     (MagicMock(environments_requested=[TestingEnvironment(tmt={'environment': None})]))
-    (MagicMock(environments_requested=[TestingEnvironment(tmt={'environment': {}})]))
 ])
 def test_hide_secrets(monkeypatch, module, testing_farm_request):
     with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
@@ -64,10 +59,6 @@ def test_hide_secrets(monkeypatch, module, testing_farm_request):
         for environment in testing_farm_request.environments_requested:
             if environment.secrets:
                 secret_values += [secret_value for secret_value in environment.secrets.values() if secret_value]
-            if environment.tmt and environment.tmt.get('environment') and environment.tmt['environment']:
-                secret_values += [
-                    secret_value for secret_value in environment.tmt['environment'].values() if secret_value
-                ]
 
         # Create a file containing some secrets
         secret_value = secret_values[0] if len(secret_values) > 0 else 'no secret'

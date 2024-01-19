@@ -5,7 +5,7 @@ import os
 
 import gluetool
 
-from typing import Any, Optional, cast, List  # noqa
+from typing import Any, Optional, cast, List, Union  # noqa
 
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
 
@@ -25,8 +25,11 @@ class HideSecrets(gluetool.Module):
     }
     shared_functions = ['add_additional_secrets', 'hide_secrets']
 
-    def add_additional_secrets(self, secret: str) -> None:
-        self.additional_secrets.append(secret)
+    def add_additional_secrets(self, secret: Union[str, List[str]]) -> None:
+        if isinstance(secret, list):
+            self.additional_secrets.extend(secret)
+        else:
+            self.additional_secrets.append(secret)
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(HideSecrets, self).__init__(*args, **kwargs)
@@ -42,11 +45,6 @@ class HideSecrets(gluetool.Module):
             # hide environment.secrets
             if environment.secrets:
                 secret_values += [secret_value for secret_value in environment.secrets.values() if secret_value]
-            # hide values of enviornments.tmt.environment which can contain secrets
-            if environment.tmt and environment.tmt.get('environment') and environment.tmt['environment']:
-                secret_values += [
-                    secret_value for secret_value in environment.tmt['environment'].values() if secret_value
-                ]
 
         # POSIX.2 Basic Regular Expressions (BREs) have a specific set of characters
         # that you need to escape to use them as literals.

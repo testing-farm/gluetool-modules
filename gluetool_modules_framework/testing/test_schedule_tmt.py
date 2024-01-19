@@ -547,6 +547,16 @@ class TestScheduleTMT(Module):
                         """,
                 'action': 'append',
                 'default': []
+            },
+            'accepted-environment-secrets': {
+                'help': """
+                        A comma delimited list of accepted environment variable names for the ``tmt`` process.
+                        In case an environment a variable is provided, which does not match this list, the execution
+                        is aborted. These variables are intended for storing secrets and with the use of hide-secrets
+                        module, they will be hidden in artifacts.
+                        """,
+                'action': 'append',
+                'default': []
             }
         }),
         ('Result options', {
@@ -574,6 +584,10 @@ class TestScheduleTMT(Module):
     @gluetool.utils.cached_property
     def accepted_environment_variables(self) -> List[str]:
         return gluetool.utils.normalize_multistring_option(self.option('accepted-environment-variables'))
+
+    @gluetool.utils.cached_property
+    def accepted_environment_secrets(self) -> List[str]:
+        return gluetool.utils.normalize_multistring_option(self.option('accepted-environment-secrets'))
 
     @gluetool.utils.cached_property
     def test_filter(self) -> Optional[str]:
@@ -1287,7 +1301,7 @@ class TestScheduleTMT(Module):
 
         def _check_accepted_environment_variables(variables: Dict[str, str]) -> None:
             for key, _ in six.iteritems(variables):
-                if key not in self.accepted_environment_variables:
+                if key not in self.accepted_environment_variables + self.accepted_environment_secrets:
                     raise GlueError(
                         "Environment variable '{}' is not allowed to be exposed to the tmt process".format(key)
                     )
@@ -1301,6 +1315,10 @@ class TestScheduleTMT(Module):
             tmt_process_environment = tmt['environment']
 
             _check_accepted_environment_variables(tmt_process_environment)
+
+            if self.has_shared('add_additional_secrets'):
+                self.shared('add_additional_secrets', [value for key, value in tmt_process_environment.items()
+                                                       if value and key in self.accepted_environment_secrets])
 
             schedule_entry.tmt_reproducer.append(
                 'export {}'.format(

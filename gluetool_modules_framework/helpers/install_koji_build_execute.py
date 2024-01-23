@@ -138,7 +138,7 @@ class InstallKojiBuildExecute(gluetool.Module):
                 'tee rpms-list'
             ).format(
                 'egrep -v "({})" | '.format(excluded_packages_regexp) if excluded_packages_regexp else '',
-                ''.join(['egrep -v "$(cat {})" | '.format(rpm) for rpm in rpms_lists_to_skip_install]),
+                ''.join(['grep -Fv "$(cat {})" | '.format(rpm) for rpm in rpms_lists_to_skip_install]),
                 'egrep -v "i686" | ' if arch == 'x86_64' and self.option('download-i686-builds') else '',
             )
         )

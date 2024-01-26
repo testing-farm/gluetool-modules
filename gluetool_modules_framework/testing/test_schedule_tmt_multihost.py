@@ -530,6 +530,9 @@ class TestScheduleTMTMultihost(Module):
         # add secrets
         variables.update(testing_environment_constraints.secrets or {})
 
+        if testing_environment_constraints.tmt and 'environment' in testing_environment_constraints.tmt:
+            variables.update(testing_environment_constraints.tmt['environment'] or {})
+
         if variables:
             # we MUST use a dedicated env file for each plan, to mitigate race conditions
             # plans are handled in threads ...
@@ -997,7 +1000,6 @@ class TestScheduleTMTMultihost(Module):
                 cwd=schedule_entry.repodir,
                 inspect=True,
                 inspect_callback=create_inspect_callback(schedule_entry.logger),
-                env=tmt_process_environment or None
             )
 
         except GlueCommandError as exc:

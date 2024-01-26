@@ -310,9 +310,12 @@ dummytmt --root some-tmt-root -c distro=rhel -c trigger=push run --all --verbose
             {},
             TestingEnvironment('x86_64', 'rhel-9', tmt={'environment': {'VARIABLE1': 'VALUE1', 'VARIABLE2': 'VALUE2'}}),
             """# tmt reproducer
+curl -LO tmt-environment-lan1.yaml
 export VARIABLE1=***** VARIABLE2=*****
-dummytmt --root some-tmt-root run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
-            None,
+dummytmt --root some-tmt-root run --all --verbose -e @tmt-environment-lan1.yaml provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+            """VARIABLE1: VALUE1
+VARIABLE2: VALUE2
+""",
             None
         ),
         (  # with tmt process environment variables, variables not accepted

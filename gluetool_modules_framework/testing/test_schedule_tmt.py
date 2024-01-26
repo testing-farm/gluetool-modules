@@ -685,6 +685,9 @@ class TestScheduleTMT(Module):
         # variables from rules-engine's user variables, rendered with the evaluation context
         variables.update(self.shared('user_variables', logger=self.logger, context=eval_context) or {})
 
+        if testing_environment_constraints.tmt and 'environment' in testing_environment_constraints.tmt:
+            variables.update(testing_environment_constraints.tmt['environment'] or {})
+
         # add secrets
         variables.update(testing_environment_constraints.secrets or {})
 
@@ -1350,7 +1353,6 @@ class TestScheduleTMT(Module):
                 cwd=schedule_entry.repodir,
                 inspect=True,
                 inspect_callback=create_inspect_callback(schedule_entry.logger),
-                env=tmt_process_environment or None
             )
 
         except GlueCommandError as exc:

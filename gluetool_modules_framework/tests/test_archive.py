@@ -155,9 +155,13 @@ def test_destroy_daemon(monkeypatch, module):
 
     monkeypatch.setattr(gluetool_modules_framework.helpers.archive, 'glob', _mock_glob)
 
+    module.execute()
+
     module.destroy()
 
     calls = [
+        call(['rsync', '--rsync-option', '/dev/null',
+              'rsync://artifacts-rsync.example.com/request-id/'], logger=module.logger),
         call(['rsync', '--rsync-option', '/archive-source',
               'rsync://artifacts-rsync.example.com/request-id/dest'], logger=module.logger),
         call(['rsync', '--rsync-option', '/archive-source',
@@ -166,6 +170,8 @@ def test_destroy_daemon(monkeypatch, module):
               'rsync://artifacts-rsync.example.com/request-id/dest'], logger=module.logger),
         call(['rsync', '--rsync-option', '--recursive', '/dir-archive-source',
               'rsync://artifacts-rsync.example.com/request-id/dir-archive-source'], logger=module.logger),
+        call(['rsync', '--rsync-option', '/dev/null',
+              'rsync://artifacts-rsync.example.com/request-id/archive-source/'], logger=module.logger),
         call(['rsync', '--rsync-option', '/archive-source/1',
               'rsync://artifacts-rsync.example.com/request-id/archive-source/1'], logger=module.logger),
         call(['rsync', '--rsync-option', '/archive-source/2',

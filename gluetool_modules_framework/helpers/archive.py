@@ -183,9 +183,9 @@ class Archive(gluetool.Module):
             for option in options
         ]
 
-    def create_archive_directory_ssh(self, directory: Optional[str] = None) -> None:
+    def create_archive_directory(self, directory: Optional[str] = None) -> None:
         """
-        Creates directory on the host with ssh where artifacts will be stored.
+        Creates directory on the host where artifacts will be stored.
         If directory is not set, it will create the root directory.
         """
         request_id = self.shared('testing_farm_request').id
@@ -206,34 +206,6 @@ class Archive(gluetool.Module):
         ]
 
         Command(cmd, logger=self.logger).run()
-        self._created_directories.append(path)
-
-    def create_archive_directory_rsync(self, directory: Optional[str] = None) -> None:
-        """
-        Creates directory on the host with rsync where artifacts will be stored.
-        If directory is not set, it will create the root directory.
-        """
-        path = self.shared('testing_farm_request').id
-
-        if directory:
-            path = os.path.join(path, directory)
-
-        if path in self._created_directories:
-            return
-
-        cmd = ['rsync']
-
-        cmd += self.rsync_options
-
-        cmd.append('/dev/null')
-
-        cmd.append('rsync://{}/{}/'.format(
-                self.artifacts_rsync_host,
-                path
-        ))
-
-        Command(cmd, logger=self.logger).run()
-
         self._created_directories.append(path)
 
     def run_rsync(self, source: str, destination: str, options: Optional[List[str]] = None) -> None:
@@ -257,10 +229,6 @@ class Archive(gluetool.Module):
             destination = destination.lstrip('/')
 
         if self.option('rsync-mode') == 'daemon':
-            dirname = os.path.dirname(destination)
-            if dirname and dirname not in ['/', '.']:
-                self.create_archive_directory_rsync(os.path.dirname(destination))
-
             full_destination = 'rsync://{}/{}'.format(
                 self.artifacts_rsync_host,
                 os.path.join(request_id, destination)
@@ -271,7 +239,7 @@ class Archive(gluetool.Module):
         else:
             dirname = os.path.dirname(destination)
             if dirname and dirname not in ['/', '.']:
-                self.create_archive_directory_ssh(os.path.dirname(destination))
+                self.create_archive_directory(os.path.dirname(destination))
 
             full_destination = '{}:{}'.format(
                 self.artifacts_host,
@@ -330,9 +298,7 @@ class Archive(gluetool.Module):
             return
 
         if self.option('rsync-mode') == 'ssh':
-            self.create_archive_directory_ssh()
-        else:
-            self.create_archive_directory_rsync()
+            self.create_archive_directory()
 
         self.archive_stage('execute')
 

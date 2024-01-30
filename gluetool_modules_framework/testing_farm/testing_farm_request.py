@@ -374,8 +374,9 @@ class TestingFarmRequest(LoggerMixin, object):
         except (KeyError, TypeError):
             pass
 
-        user = self._api.get_user(request['user_id'], self._api_key)
-        self.request_username = user['name']
+        # TODO: fix in TFT-2433
+        # user = self._api.get_user(request['user_id'], self._api_key)
+        # self.request_username = user['name']
 
         # TFT-2202 - provide a flag to indicate the provisioning errors should be treated as failed tests
         self.failed_if_provision_error = False
@@ -606,7 +607,8 @@ class TestingFarmRequestModule(gluetool.Module):
             # does not know how to work with `secret_type.Secret[str]`
             'TESTING_FARM_REQUEST_TEST_URL': self._tf_request.url._dangerous_extract(),
             'TESTING_FARM_REQUEST_TEST_REF': self._tf_request.ref,
-            'TESTING_FARM_REQUEST_USERNAME': self._tf_request.request_username,
+            # TODO: removed in 2024-01.1 release - TFT-2433
+            # 'TESTING_FARM_REQUEST_USERNAME': self._tf_request.request_username,
             'TESTING_FARM_REQUEST_MERGE': self._tf_request.merge,
             'TESTING_FARM_FAILED_IF_PROVISION_ERROR': self._tf_request.failed_if_provision_error
         }

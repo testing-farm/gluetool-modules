@@ -92,9 +92,6 @@ class Archive(gluetool.Module):
         super(Archive, self).__init__(*args, **kwargs)
 
         self._archive_timer: Optional[RepeatTimer] = None
-        # List of created directories on the host.
-        # We need to keep track of them to avoid creating them multiple times.
-        self._created_directories: List[str] = []
 
     def sanity(self) -> None:
         if self.option('rsync-mode') not in ('daemon', 'ssh'):
@@ -183,30 +180,18 @@ class Archive(gluetool.Module):
             for option in options
         ]
 
-    def create_archive_directory(self, directory: Optional[str] = None) -> None:
-        """
-        Creates directory on the host where artifacts will be stored.
-        If directory is not set, it will create the root directory.
-        """
+    def create_archive_directory(self) -> None:
         request_id = self.shared('testing_farm_request').id
-
-        path = os.path.join(self.artifacts_root, request_id)
-        if directory:
-            path = os.path.join(path, directory)
-
-        if path in self._created_directories:
-            return
 
         cmd: List[str] = [
             'ssh',
             self.artifacts_host,
             'mkdir',
             '-p',
-            path
+            '{}/{}'.format(self.artifacts_root, request_id)
         ]
 
         Command(cmd, logger=self.logger).run()
-        self._created_directories.append(path)
 
     def run_rsync(self, source: str, destination: str, options: Optional[List[str]] = None) -> None:
         options = options or []
@@ -221,13 +206,6 @@ class Archive(gluetool.Module):
 
         cmd.append(source)
 
-        # Reuse source as destination if destination is not set
-        # This is useful when we want to sync particular files
-        # from the source directory without losing the directory structure
-        if not destination:
-            destination = os.path.normpath(source)
-            destination = destination.lstrip('/')
-
         if self.option('rsync-mode') == 'daemon':
             full_destination = 'rsync://{}/{}'.format(
                 self.artifacts_rsync_host,
@@ -237,10 +215,6 @@ class Archive(gluetool.Module):
             self.debug('syncing {} to {}'.format(source, full_destination))
 
         else:
-            dirname = os.path.dirname(destination)
-            if dirname and dirname not in ['/', '.']:
-                self.create_archive_directory(os.path.dirname(destination))
-
             full_destination = '{}:{}'.format(
                 self.artifacts_host,
                 os.path.join(self.artifacts_root, request_id, destination)
@@ -277,8 +251,8 @@ class Archive(gluetool.Module):
                 raise GlueError('Source path must be specified in source-destination-map')
 
             sources = entry['source']
-            destination = entry.get('destination')
-            permissions = entry.get('permissions')
+            destination = entry.get('destination', '')
+            permissions = entry.get('permissions', None)
 
             # If the entry['source'] is a wildcard, we need to use glob to find all the files
             for source in glob(sources):

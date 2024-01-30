@@ -242,7 +242,8 @@ class Archive(gluetool.Module):
     def archive_stage(self, stage: str = 'progress') -> None:
 
         # Before we start archiving, we need to hide secrets in files
-        self.shared('hide_secrets')
+        # NOTE: disabled, breaks secrets :) we need to be picky about the files it hides
+        # self.shared('hide_secrets')
 
         map_stage = self.source_destination_map().get(stage, [])
 

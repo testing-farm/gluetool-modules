@@ -87,6 +87,7 @@ Initialized with 1:
     "plan_filter": "<not applicable>",
     "ref": "testref",
     "test_filter": "<not applicable>",
+    "test_name": "<not applicable>",
     "type": "fmf",
     "url": "testurl",
     "webhook_url": "webhookurl"

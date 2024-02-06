@@ -634,12 +634,20 @@ class TestScheduleTMTMultihost(Module):
                            tmt_env_file: Optional[str],
                            repodir: str,
                            testing_environment: TestingEnvironment,
-                           test_filter: Optional[str] = None) -> bool:
+                           test_filter: Optional[str] = None,
+                           test_name: Optional[str] = None) -> bool:
         """
         Return ``False`` if plan would have no tests after applying test filter, otherwise return ``True``.
         """
 
         test_filter = test_filter or self.test_filter
+        if not test_name:
+            tf_request = cast(Optional[TestingFarmRequest], self.shared('testing_farm_request'))
+            if tf_request and tf_request.tmt and tf_request.tmt.test_name:
+                test_name = tf_request.tmt.test_name
+
+        if not any([test_filter, test_name]):
+            return True
 
         command = [
             self.option('command')
@@ -658,8 +666,13 @@ class TestScheduleTMTMultihost(Module):
             ]
             command.extend(env_options)
 
-        command.extend(['discover', 'plan', '--name', plan, 'test', '--filter', test_filter])
+        command.extend(['discover', 'plan', '--name', plan, 'test'])
 
+        if test_filter:
+            command.extend(['--filter', test_filter])
+
+        if test_name:
+            command.extend(['--name', test_name])
         try:
             tmt_output = Command(command).run(cwd=repodir)
 
@@ -790,10 +803,9 @@ class TestScheduleTMTMultihost(Module):
             for plan in plans:
                 tmt_env_file = self._prepare_tmt_env_file(tec, plan, repodir)
 
-                if self.test_filter:
-                    if not self._apply_test_filter(plan, tmt_env_file, repodir, tec):
-                        self.debug("Plan '{}' has no tests after applying test filters, skipping".format(plan))
-                        continue
+                if not self._apply_test_filter(plan, tmt_env_file, repodir, tec):
+                    self.debug("Plan '{}' has no tests after applying test filters, skipping".format(plan))
+                    continue
 
                 if self._is_plan_empty(plan, repodir, tec, tmt_env_file):
                     self.debug("ignoring empty plan '{}'".format(plan))

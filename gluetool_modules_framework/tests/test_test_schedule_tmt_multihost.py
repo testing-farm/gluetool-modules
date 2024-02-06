@@ -56,7 +56,7 @@ def fixture_module(monkeypatch):
         {
             'testing_farm_request': MagicMock(
                 environments_requested=[{}],
-                tmt=MagicMock(plan=None, plan_filter=None, path="some-tmt-root", test_filter=None),
+                tmt=MagicMock(plan=None, plan_filter=None, path="some-tmt-root", test_filter=None, test_name=None),
                 plans=None),
             'artemis_api_options': {
                 'api-url': 'http://artemis.example.com/v0.0.56',
@@ -628,10 +628,36 @@ def test_plans_from_git_filter(module, monkeypatch):
     mock_command.assert_called_once_with(['dummytmt', '--root', 'some-tmt-root', 'plan', 'ls', '--filter', 'filter1'])
 
 
-def test_apply_test_filter(module, monkeypatch, tmpdir):
+@pytest.mark.parametrize('test_filter, test_name, expected_command', [
+        (
+            'filter1',
+            None,
+            [
+                'dummytmt', '--root', 'some-tmt-root', 'run', '-e', '@tmt-environment-lan1.yaml', 'discover', 'plan',
+                '--name', 'plan1', 'test', '--filter', 'filter1'
+            ]
+        ),
+        (
+            None,
+            'name1',
+            [
+                'dummytmt', '--root', 'some-tmt-root', 'run', '-e', '@tmt-environment-lan1.yaml', 'discover', 'plan',
+                '--name', 'plan1', 'test', '--name', 'name1'
+            ]
+        ),
+        (
+            'filter1',
+            'name1',
+            [
+                'dummytmt', '--root', 'some-tmt-root', 'run', '-e', '@tmt-environment-lan1.yaml', 'discover', 'plan',
+                '--name', 'plan1', 'test', '--filter', 'filter1', '--name', 'name1'
+            ]
+        ),
+    ]
+)
+def test_apply_test_filter(module, monkeypatch, tmpdir, test_filter, test_name, expected_command):
     repodir = 'foo'
     testing_environment = TestingEnvironment('x86_64',  variables={'variable1': 'value1'})
-    test_filter = 'filter1'
 
     mock_output = MagicMock(exit_code=0, stdout='', stderr='plan1')
     mock_command_run = MagicMock(return_value=mock_output)
@@ -639,22 +665,11 @@ def test_apply_test_filter(module, monkeypatch, tmpdir):
     monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt_multihost, 'Command', mock_command)
 
     tmt_env_file = module._prepare_tmt_env_file(testing_environment, 'plan1', tmpdir)
-    assert module._apply_test_filter('plan1', tmt_env_file, repodir, testing_environment, test_filter=test_filter)
+    assert module._apply_test_filter(
+        'plan1', tmt_env_file, repodir, testing_environment, test_filter=test_filter, test_name=test_name
+    )
 
-    mock_command.assert_called_once_with([
-        'dummytmt',
-        '--root',
-        'some-tmt-root',
-        'run',
-        '-e', '@tmt-environment-lan1.yaml',
-        'discover',
-        'plan',
-        '--name',
-        'plan1',
-        'test',
-        '--filter',
-        'filter1'
-    ])
+    mock_command.assert_called_once_with(expected_command)
 
 
 def test_is_plan_empty(module, monkeypatch):

@@ -227,6 +227,7 @@ class TestingFarmRequestTMT():
     name: Optional[str] = None
     settings: Optional[Dict[str, Any]] = None
     plan_filter: Optional[str] = None
+    test_name: Optional[str] = None
     test_filter: Optional[str] = None
 
     @property
@@ -694,6 +695,7 @@ class TestingFarmRequestModule(gluetool.Module):
             'type': request.type,
             'plan': request.tmt.plan if request.tmt and request.tmt.plan else '<not applicable>',
             'plan_filter': request.tmt.plan_filter if request.tmt and request.tmt.plan_filter else '<not applicable>',
+            'test_name': request.tmt.test_name if request.tmt and request.tmt.test_name else '<not applicable>',
             'test_filter': request.tmt.test_filter if request.tmt and request.tmt.test_filter else '<not applicable>',
             'url': request.url,
             'ref': request.ref,

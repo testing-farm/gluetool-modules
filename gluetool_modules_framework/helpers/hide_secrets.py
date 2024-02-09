@@ -35,7 +35,9 @@ class HideSecrets(gluetool.Module):
         super(HideSecrets, self).__init__(*args, **kwargs)
         self.additional_secrets: List[str] = []
 
-    def hide_secrets(self) -> None:
+    def hide_secrets(self, search_path: Optional[str] = None) -> None:
+        search_path = search_path or self.option('search-path')
+
         testing_farm_request = cast(TestingFarmRequest, self.shared('testing_farm_request'))
         if not testing_farm_request:
             return
@@ -73,9 +75,9 @@ class HideSecrets(gluetool.Module):
 
         # NOTE: We will deprecate this crazy module once TFT-1813
         if sed_expr:
-            self.info("Hiding secrets from all files under '{}' path".format(self.option('search-path')))
+            self.debug("Hiding secrets from all files under '{}' path".format(search_path))
             os.system("find '{}' -type f | xargs -I##### sed -i $'{}' '#####'".format(
-                self.option('search-path'), sed_expr)
+                search_path, sed_expr)
             )
         else:
             self.warn("No secrets to hide, all secrets had empty values")

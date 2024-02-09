@@ -310,9 +310,6 @@ class Archive(gluetool.Module):
     # in the parallel archiving timer without calling it
     def archive_stage(self, stage: str = 'progress') -> None:
 
-        # Before we start archiving, we need to hide secrets in files
-        self.shared('hide_secrets')
-
         map_stage = self.source_destination_map().get(stage, [])
 
         for entry in map_stage:
@@ -325,6 +322,10 @@ class Archive(gluetool.Module):
 
             # If the entry['source'] is a wildcard, we need to use glob to find all the files
             for source in glob(sources):
+
+                # Before we start archiving, we need to hide secrets in files
+                self.shared('hide_secrets', search_path=source)
+
                 options = []
 
                 if os.path.isdir(source):

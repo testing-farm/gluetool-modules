@@ -105,3 +105,33 @@ def test_hide_secrets_multiple(monkeypatch, module):
         # Check all secrets are now '*****'
         with open(os.path.join(tmpdir, 'testfile.txt'), 'r') as f:
             assert f.read() == file_contents_censored
+
+
+def test_hide_secrets_argument(monkeypatch, module):
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        testing_farm_request = MagicMock(environments_requested=[
+            TestingEnvironment(secrets={'secret1': 'foo', 'secret2': 'bar'}),
+            TestingEnvironment(secrets={'secret3': 'baz'})
+        ])
+        file_contents = 'foo hello bar world baz'
+        file_contents_censored = '***** hello ***** world *****'
+
+        module._config['search-path'] = "not a real path"
+        patch_shared(monkeypatch, module, {
+            'testing_farm_request': testing_farm_request
+        })
+
+        # Create a file containing some secrets
+        with open(os.path.join(tmpdir, 'testfile.txt'), 'w') as f:
+            f.write(file_contents)
+
+        # Check the file was created successfully
+        with open(os.path.join(tmpdir, 'testfile.txt'), 'r') as f:
+            assert f.read() == file_contents
+
+        # Replace all secrets with '*****'
+        module.hide_secrets(search_path=tmpdir)
+
+        # Check all secrets are now '*****'
+        with open(os.path.join(tmpdir, 'testfile.txt'), 'r') as f:
+            assert f.read() == file_contents_censored

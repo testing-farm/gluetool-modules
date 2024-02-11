@@ -103,7 +103,7 @@ command:
   tmt --version:
     exit-status: 0
     stdout:
-      - "tmt version: 1.30.0"
+      - "tmt version: 1.31.0"
     timeout: 100000
 
   tmt run report -h polarion:
@@ -116,4 +116,4 @@ command:
     exit-status: 2
     stderr:
       - "how: reportportal"
-      - "No ReportPortal server url provided."
+      - "No ReportPortal endpoint url provided."

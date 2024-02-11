@@ -628,9 +628,9 @@ def test_plans_from_git_filter(module, monkeypatch):
     mock_command.assert_called_once_with(['dummytmt', '--root', 'some-tmt-root', 'plan', 'ls', '--filter', 'filter1'])
 
 
-def test_apply_test_filter(module, monkeypatch):
+def test_apply_test_filter(module, monkeypatch, tmpdir):
     repodir = 'foo'
-    testing_environment = TestingEnvironment('x86_64')
+    testing_environment = TestingEnvironment('x86_64',  variables={'variable1': 'value1'})
     test_filter = 'filter1'
 
     mock_output = MagicMock(exit_code=0, stdout='', stderr='plan1')
@@ -638,13 +638,15 @@ def test_apply_test_filter(module, monkeypatch):
     mock_command = MagicMock(return_value=MagicMock(run=mock_command_run))
     monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt_multihost, 'Command', mock_command)
 
-    module._apply_test_filter(['plan1'], repodir, testing_environment, test_filter=test_filter)
+    tmt_env_file = module._prepare_tmt_env_file(testing_environment, 'plan1', tmpdir)
+    assert module._apply_test_filter('plan1', tmt_env_file, repodir, testing_environment, test_filter=test_filter)
 
     mock_command.assert_called_once_with([
         'dummytmt',
         '--root',
         'some-tmt-root',
         'run',
+        '-e', '@tmt-environment-lan1.yaml',
         'discover',
         'plan',
         '--name',

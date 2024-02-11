@@ -630,53 +630,56 @@ class TestScheduleTMTMultihost(Module):
         return plans
 
     def _apply_test_filter(self,
-                           plans: List[str],
+                           plan: str,
+                           tmt_env_file: Optional[str],
                            repodir: str,
                            testing_environment: TestingEnvironment,
-                           test_filter: Optional[str] = None) -> List[str]:
+                           test_filter: Optional[str] = None) -> bool:
         """
-        Return list of plans which still have tests after applying test filter.
+        Return ``False`` if plan would have no tests after applying test filter, otherwise return ``True``.
         """
 
         test_filter = test_filter or self.test_filter
 
-        # As the loop will remove the items in the list, the copy of the
-        # list needs to be created, otherwise a single element would be always skipped after each removed one.
-        for plan in plans[:]:
-            command = [
-                self.option('command')
+        command = [
+            self.option('command')
+        ]
+
+        command.extend(self._root_option)
+
+        if testing_environment.tmt and 'context' in testing_environment.tmt:
+            command.extend(self._tmt_context_to_options(testing_environment.tmt['context']))
+
+        command.append('run')
+
+        if tmt_env_file:
+            env_options = [
+                '-e', '@{}'.format(tmt_env_file)
             ]
+            command.extend(env_options)
 
-            command.extend(self._root_option)
+        command.extend(['discover', 'plan', '--name', plan, 'test', '--filter', test_filter])
 
-            if testing_environment.tmt and 'context' in testing_environment.tmt:
-                command.extend(self._tmt_context_to_options(testing_environment.tmt['context']))
+        try:
+            tmt_output = Command(command).run(cwd=repodir)
 
-            command.extend(['run', 'discover', 'plan', '--name', plan, 'test', '--filter', test_filter])
+        except GlueCommandError as exc:
+            log_blob(
+                self.error,
+                "Failed to discover tests",
+                exc.output.stderr or exc.output.stdout or '<no output>'
+            )
+            raise GlueError('Failed to discover tests, TMT metadata are absent or corrupted.')
 
-            try:
-                tmt_output = Command(command).run(cwd=repodir)
+        if not tmt_output.stderr:
+            raise GlueError("Did not find any plans. Command used '{}'.".format(' '.join(command)))
 
-            except GlueCommandError as exc:
-                log_blob(
-                    self.error,
-                    "Failed to discover tests",
-                    exc.output.stderr or exc.output.stdout or '<no output>'
-                )
-                raise GlueError('Failed to discover tests, TMT metadata are absent or corrupted.')
+        output_lines = [line.strip() for line in tmt_output.stderr.splitlines()]
 
-            if not tmt_output.stderr:
-                raise GlueError("Did not find any plans. Command used '{}'.".format(' '.join(command)))
+        if any(['No tests found' in line for line in output_lines]):
+            return False
 
-            output_lines = [line.strip() for line in tmt_output.stderr.splitlines()]
-
-            if any(['No tests found' in line for line in output_lines]):
-                plans.remove(plan)
-
-        if not plans:
-            raise GlueError('No plans to execute after applying test/plan filters. Cowardly refusing to continue.')
-
-        return plans
+        return True
 
     def _is_plan_empty(self,
                        plan: str,
@@ -710,6 +713,10 @@ class TestScheduleTMTMultihost(Module):
             tmt_output = Command(command).run(cwd=repodir)
 
         except GlueCommandError as exc:
+            # It can happen that test discovery will report `No plans found`
+            if exc.output.stderr and 'No plans found' in exc.output.stderr:
+                return True
+
             log_blob(
                 self.error,
                 "Failed to discover tests",
@@ -780,14 +787,16 @@ class TestScheduleTMTMultihost(Module):
 
             plans = self._plans_from_git(repodir, tec, self.option('plan-filter'))
 
-            if self.test_filter:
-                plans = self._apply_test_filter(plans, repodir, tec)
-
             for plan in plans:
-
                 tmt_env_file = self._prepare_tmt_env_file(tec, plan, repodir)
 
+                if self.test_filter:
+                    if not self._apply_test_filter(plan, tmt_env_file, repodir, tec):
+                        self.debug("Plan '{}' has no tests after applying test filters, skipping".format(plan))
+                        continue
+
                 if self._is_plan_empty(plan, repodir, tec, tmt_env_file):
+                    self.debug("ignoring empty plan '{}'".format(plan))
                     continue
 
                 schedule_entry = TestScheduleEntry(
@@ -820,7 +829,10 @@ class TestScheduleTMTMultihost(Module):
                 schedule.append(schedule_entry)
 
             if not schedule:
-                raise GlueError('No plans to execute after removing empty plans. Cowardly refusing to continue.')
+                raise GlueError((
+                    'No plans to execute after applying filters and removing empty plans. '
+                    'Cowardly refusing to continue.'
+                ))
 
         schedule.log(self.debug, label='complete schedule')
 

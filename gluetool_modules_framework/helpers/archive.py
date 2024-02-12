@@ -15,6 +15,7 @@ from typing import List, Optional, Any
 DEFAULT_RETRY_TIMEOUT = 30
 DEFAULT_RETRY_TICK = 10
 DEFAULT_PARALLEL_ARCHIVING_TICK = 30
+DEFAULT_RSYNC_TIMEOUT = 120
 
 ARCHIVE_STAGES = ['execute', 'progress', 'destroy']
 SOURCE_DESTINATION_ENTRY_KEYS = ['source', 'destination', 'permissions']
@@ -73,6 +74,12 @@ class Archive(gluetool.Module):
             'metavar': 'RETRY_TIMEOUT',
             'type': int,
             'default': DEFAULT_RETRY_TIMEOUT,
+        },
+        'rsync-timeout': {
+            'help': 'Timeout for the rsync command. (default: %(default)s)',
+            'metavar': 'RCYNC_TIMEOUT',
+            'type': int,
+            'default': DEFAULT_RSYNC_TIMEOUT,
         },
         'enable-parallel-archiving': {
             'help': 'Enable archiving which runs in parallel with the pipeline execution.',
@@ -178,10 +185,14 @@ class Archive(gluetool.Module):
 
         options = gluetool.utils.normalize_multistring_option(self.option('rsync-options'))
 
-        return [
+        rendered_options = [
             render_template(option, logger=self.logger, **self.shared('eval_context'))
             for option in options
         ]
+
+        rendered_options.append('--timeout={}'.format(self.option('rsync-timeout')))
+
+        return rendered_options
 
     def create_archive_directory_ssh(self, directory: Optional[str] = None) -> None:
         """

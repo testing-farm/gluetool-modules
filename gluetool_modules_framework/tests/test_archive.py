@@ -29,6 +29,7 @@ def fixture_module(monkeypatch):
     module._config['rsync-options'] = '--rsync-option'
     module._config['retry-tick'] = 1
     module._config['retry-timeout'] = 5
+    module._config['rsync-timeout'] = 10
 
     patch_shared(monkeypatch, module, {}, callables={
         'testing_farm_request': lambda: MagicMock(id='request-id'),
@@ -97,37 +98,37 @@ def test_execute_destroy_ssh(monkeypatch, module):
         call(['ssh', 'https://artifacts.example.com', 'mkdir', '-p',
               '/artifacts-root/request-id'], logger=module.logger),
 
-        call(['rsync', '--rsync-option', '/archive-source-execute',
+        call(['rsync', '--rsync-option', '--timeout=10', '/archive-source-execute',
               'https://artifacts.example.com:/artifacts-root/request-id/archive-source-execute'], logger=module.logger),
 
-        call(['rsync', '--rsync-option', '/archive-source',
+        call(['rsync', '--rsync-option', '--timeout=10', '/archive-source',
               'https://artifacts.example.com:/artifacts-root/request-id/dest'], logger=module.logger),
 
-        call(['rsync', '--rsync-option', '/archive-source',
+        call(['rsync', '--rsync-option', '--timeout=10', '/archive-source',
               'https://artifacts.example.com:/artifacts-root/request-id/archive-source'], logger=module.logger),
 
-        call(['rsync', '--rsync-option', '--chmod=666', '/archive-source',
+        call(['rsync', '--rsync-option', '--timeout=10', '--chmod=666', '/archive-source',
               'https://artifacts.example.com:/artifacts-root/request-id/dest'], logger=module.logger),
 
-        call(['rsync', '--rsync-option', '--recursive', '/dir-archive-source',
+        call(['rsync', '--rsync-option', '--timeout=10', '--recursive', '/dir-archive-source',
               'https://artifacts.example.com:/artifacts-root/request-id/dir-archive-source'], logger=module.logger),
 
         call(['ssh', 'https://artifacts.example.com', 'mkdir', '-p',
               '/artifacts-root/request-id/archive-source'], logger=module.logger),
 
-        call(['rsync', '--rsync-option', '/archive-source/1',
+        call(['rsync', '--rsync-option', '--timeout=10', '/archive-source/1',
               'https://artifacts.example.com:/artifacts-root/request-id/archive-source/1'], logger=module.logger),
 
-        call(['rsync', '--rsync-option', '/archive-source/2',
+        call(['rsync', '--rsync-option', '--timeout=10', '/archive-source/2',
               'https://artifacts.example.com:/artifacts-root/request-id/archive-source/2'], logger=module.logger),
 
-        call(['rsync', '--rsync-option', '/archive-source/3',
+        call(['rsync', '--rsync-option', '--timeout=10', '/archive-source/3',
               'https://artifacts.example.com:/artifacts-root/request-id/archive-source/3'], logger=module.logger),
 
-        call(['rsync', '--rsync-option', '--chmod=666', '/env-archive-source',
+        call(['rsync', '--rsync-option', '--timeout=10', '--chmod=666', '/env-archive-source',
               'https://artifacts.example.com:/artifacts-root/request-id/env-dest'], logger=module.logger),
 
-        call(['rsync', '--rsync-option', '/env-archive-source2',
+        call(['rsync', '--rsync-option', '--timeout=10', '/env-archive-source2',
               'https://artifacts.example.com:/artifacts-root/request-id/env-archive-source2'], logger=module.logger),
     ]
 
@@ -160,25 +161,25 @@ def test_destroy_daemon(monkeypatch, module):
     module.destroy()
 
     calls = [
-        call(['rsync', '--rsync-option', '/dev/null',
+        call(['rsync', '--rsync-option', '--timeout=10', '/dev/null',
               'rsync://artifacts-rsync.example.com/request-id/'], logger=module.logger),
-        call(['rsync', '--rsync-option', '/archive-source',
+        call(['rsync', '--rsync-option', '--timeout=10', '/archive-source',
               'rsync://artifacts-rsync.example.com/request-id/dest'], logger=module.logger),
-        call(['rsync', '--rsync-option', '/archive-source',
+        call(['rsync', '--rsync-option', '--timeout=10', '/archive-source',
               'rsync://artifacts-rsync.example.com/request-id/archive-source'], logger=module.logger),
-        call(['rsync', '--rsync-option', '--chmod=666', '/archive-source',
+        call(['rsync', '--rsync-option', '--timeout=10', '--chmod=666', '/archive-source',
               'rsync://artifacts-rsync.example.com/request-id/dest'], logger=module.logger),
-        call(['rsync', '--rsync-option', '--recursive', '/dir-archive-source',
+        call(['rsync', '--rsync-option', '--timeout=10', '--recursive', '/dir-archive-source',
               'rsync://artifacts-rsync.example.com/request-id/dir-archive-source'], logger=module.logger),
-        call(['rsync', '--rsync-option', '/dev/null',
+        call(['rsync', '--rsync-option', '--timeout=10', '/dev/null',
               'rsync://artifacts-rsync.example.com/request-id/archive-source/'], logger=module.logger),
-        call(['rsync', '--rsync-option', '/archive-source/1',
+        call(['rsync', '--rsync-option', '--timeout=10', '/archive-source/1',
               'rsync://artifacts-rsync.example.com/request-id/archive-source/1'], logger=module.logger),
-        call(['rsync', '--rsync-option', '/archive-source/2',
+        call(['rsync', '--rsync-option', '--timeout=10', '/archive-source/2',
               'rsync://artifacts-rsync.example.com/request-id/archive-source/2'], logger=module.logger),
-        call(['rsync', '--rsync-option', '/archive-source/3',
+        call(['rsync', '--rsync-option', '--timeout=10', '/archive-source/3',
               'rsync://artifacts-rsync.example.com/request-id/archive-source/3'], logger=module.logger),
-        call(['rsync', '--rsync-option', '--chmod=666', '/env-archive-source',
+        call(['rsync', '--rsync-option', '--timeout=10', '--chmod=666', '/env-archive-source',
               'rsync://artifacts-rsync.example.com/request-id/env-dest'], logger=module.logger),
     ]
 

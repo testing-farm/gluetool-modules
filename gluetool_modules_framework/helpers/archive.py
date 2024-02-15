@@ -260,36 +260,33 @@ class Archive(gluetool.Module):
 
         cmd.append(source)
 
-        # Reuse source as destination if destination is not set
+        # Reuse source directory name as destination if destination is not set
         # This is useful when we want to sync particular files
         # from the source directory without losing the directory structure
         if not destination:
-            destination = os.path.normpath(source)
+            destination = os.path.dirname(source)
             destination = destination.lstrip('/')
 
-        if self.option('rsync-mode') == 'daemon':
-            dirname = os.path.dirname(destination)
-            if dirname and dirname not in ['/', '.']:
-                self.create_archive_directory_rsync(os.path.dirname(destination))
+        if os.path.isdir(destination) and destination not in ['/', '.']:
+            if self.option('rsync-mode') == 'daemon':
+                self.create_archive_directory_rsync(destination)
+            else:
+                self.create_archive_directory_ssh(destination)
 
+        if self.option('rsync-mode') == 'daemon':
             full_destination = 'rsync://{}/{}'.format(
                 self.artifacts_rsync_host,
                 os.path.join(request_id, destination)
             )
-            cmd.append(full_destination)
-            self.debug('syncing {} to {}'.format(source, full_destination))
 
         else:
-            dirname = os.path.dirname(destination)
-            if dirname and dirname not in ['/', '.']:
-                self.create_archive_directory_ssh(os.path.dirname(destination))
-
             full_destination = '{}:{}'.format(
                 self.artifacts_host,
                 os.path.join(self.artifacts_root, request_id, destination)
             )
-            cmd.append(full_destination)
-            self.debug('syncing {} to {}'.format(source, full_destination))
+
+        cmd.append(full_destination)
+        self.debug('syncing {} to {}'.format(source, full_destination))
 
         def _run_rsync() -> Result[bool, bool]:
             try:

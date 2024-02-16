@@ -80,7 +80,7 @@ class HideSecrets(gluetool.Module):
                 search_path, sed_expr)
             )
         else:
-            self.warn("No secrets to hide, all secrets had empty values")
+            self.debug("No secrets to hide, all secrets had empty values")
 
     def destroy(self, failure: Optional[Any] = None) -> None:
         self.hide_secrets()

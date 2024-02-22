@@ -102,7 +102,7 @@ def test_execute(module, monkeypatch):
 def test_execute_destroy_if_fail(module, monkeypatch):
     module._config['reuse-guests'] = True
     module._config['destroy-if-fail'] = True
-    module._config['max-parallel'] = 1
+    module._config['parallel-limit'] = 1
     guest_mock = GuestMock(
         hostname='foo',
         environment=TestingEnvironment(arch='x86_64', compose='Fedora37'),
@@ -138,7 +138,7 @@ def test_execute_destroy_if_fail(module, monkeypatch):
 
 def test_execute_reuse_guests(module, monkeypatch):
     module._config['reuse-guests'] = True
-    module._config['max-parallel'] = 1
+    module._config['parallel-limit'] = 1
     guest_mock = GuestMock(
         hostname='foo',
         environment=TestingEnvironment(arch='x86_64', compose='Fedora37'),
@@ -286,3 +286,19 @@ def test_execute_schedule_entry_attribute_map(module, monkeypatch):
     assert test_schedule[0].stage == TSEntryStage.COMPLETE
     assert test_schedule[0].state == TSEntryState.OK
     assert test_schedule[0].result == TSResult.UNDEFINED
+
+
+@pytest.mark.parametrize('option, expected', [
+    ("10", 10),
+    ("{{ MAX }}", 20)
+], ids=['string', 'template'])
+def test_parallel_limit(module, option, expected, monkeypatch):
+    module._config['parallel-limit'] = option
+
+    patch_shared(monkeypatch, module, {
+        'eval_context': {
+            'MAX': 20
+        }
+    })
+
+    assert module.parallel_limit == expected

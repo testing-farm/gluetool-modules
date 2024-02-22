@@ -21,6 +21,9 @@ ENV GLUETOOL_TRACING_DISABLE=1
 ENV ANSIBLE_PIPELINING=1
 ENV ANSIBLE_SSH_PIPELINING=1
 
+# Make sure python does not buffer output
+ENV PYTHONUNBUFFERED=1
+
 # Virtual environment bin path
 ENV PATH="/opt/gluetool/bin:$PATH"
 

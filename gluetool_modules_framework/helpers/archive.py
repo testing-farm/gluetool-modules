@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import shutil
 from glob import glob
 
 import gluetool
@@ -247,8 +248,16 @@ class Archive(gluetool.Module):
 
         self._created_directories.append(path)
 
-    def run_rsync(self, source: str, destination: str, options: Optional[List[str]] = None) -> None:
+    def run_rsync(
+        self,
+        source: str,
+        destination: str,
+        options: Optional[List[str]] = None,
+        source_copy: bool = False
+    ) -> None:
         options = options or []
+        original_source = source
+
         request_id = self.shared('testing_farm_request').id
 
         cmd = ['rsync']
@@ -258,13 +267,31 @@ class Archive(gluetool.Module):
         if options:
             cmd += options
 
+        # Used in cases when we need to work with a source copy to mitigate breaking of "live" logs
+        if source_copy:
+            # get rid of a possible slash at the end, it would cause issues
+            original_source = original_source.rstrip('/')
+            source = '{}.copy'.format(original_source)
+            if os.path.isdir(original_source):
+                shutil.copytree(
+                    original_source, source,
+                    # preserve symlinks
+                    symlinks=True,
+                    # ignore dangling symlinks, if they would exist
+                    ignore_dangling_symlinks=True,
+                    # this should not be needed, but rather setting it to mitigate certain corner cases
+                    dirs_exist_ok=True
+                )
+            else:
+                shutil.copy2(original_source, source, follow_symlinks=False)
+
         cmd.append(source)
 
         # Reuse source directory name as destination if destination is not set
         # This is useful when we want to sync particular files
         # from the source directory without losing the directory structure
         if not destination:
-            destination = os.path.dirname(source)
+            destination = os.path.dirname(original_source)
             destination = destination.lstrip('/')
 
         if os.path.isdir(destination) and destination not in ['/', '.']:
@@ -272,6 +299,12 @@ class Archive(gluetool.Module):
                 self.create_archive_directory_rsync(destination)
             else:
                 self.create_archive_directory_ssh(destination)
+
+        # In case we are working with a copy, the destination must be set to the original source,
+        # because the source and destination are different
+        if source_copy:
+            destination = original_source
+            destination = destination.lstrip('/')
 
         if self.option('rsync-mode') == 'daemon':
             full_destination = 'rsync://{}/{}'.format(
@@ -284,6 +317,9 @@ class Archive(gluetool.Module):
                 self.artifacts_host,
                 os.path.join(self.artifacts_root, request_id, destination)
             )
+
+        # Before we start archiving, we need to hide secrets in files
+        self.shared('hide_secrets', search_path=source)
 
         cmd.append(full_destination)
         self.debug('syncing {} to {}'.format(source, full_destination))
@@ -303,6 +339,14 @@ class Archive(gluetool.Module):
             tick=self.option('retry-tick')
         )
 
+        # make sure to remove source copy if it was created
+        if source_copy:
+            self.debug('removing source copy {}'.format(source))
+            if os.path.isdir(source):
+                shutil.rmtree(source)
+            else:
+                os.unlink(source)
+
     # The stage is default to progress because we want to use the function
     # in the parallel archiving timer without calling it
     def archive_stage(self, stage: str = 'progress') -> None:
@@ -320,9 +364,6 @@ class Archive(gluetool.Module):
             # If the entry['source'] is a wildcard, we need to use glob to find all the files
             for source in glob(sources):
 
-                # Before we start archiving, we need to hide secrets in files
-                self.shared('hide_secrets', search_path=source)
-
                 options = []
 
                 if os.path.isdir(source):
@@ -331,7 +372,15 @@ class Archive(gluetool.Module):
                 if permissions:
                     options.append('--chmod={}'.format(permissions))
 
-                self.run_rsync(source, destination, options=options or None)
+                # In case of syncing 'progress' items, make sure we work with a copy. This is a workaround
+                # for the problem of the source file being overwritten with hide-secrets module. In that
+                # module 'sed -i' is used and the inode of the source file would change, effectively breaking
+                # the saving of the "live" logs like 'progress.log'.
+                self.run_rsync(
+                    source, destination,
+                    options=options or None,
+                    source_copy=True if stage == 'progress' else False
+                )
 
     def execute(self) -> None:
         if self.option('disable-archiving'):

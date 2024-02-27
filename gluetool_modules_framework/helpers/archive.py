@@ -18,7 +18,7 @@ DEFAULT_PARALLEL_ARCHIVING_TICK = 30
 DEFAULT_RSYNC_TIMEOUT = 120
 
 ARCHIVE_STAGES = ['execute', 'progress', 'destroy']
-SOURCE_DESTINATION_ENTRY_KEYS = ['source', 'destination', 'permissions']
+SOURCE_DESTINATION_ENTRY_KEYS = ['source', 'destination', 'permissions', 'sensitive']
 
 
 class Archive(gluetool.Module):
@@ -316,12 +316,15 @@ class Archive(gluetool.Module):
             sources = entry['source']
             destination = entry.get('destination')
             permissions = entry.get('permissions')
+            sensitive = entry.get('sensitive', True)
 
             # If the entry['source'] is a wildcard, we need to use glob to find all the files
             for source in glob(sources):
 
                 # Before we start archiving, we need to hide secrets in files
-                self.shared('hide_secrets', search_path=source)
+                # Ignore files which are not sensitive
+                if sensitive:
+                    self.shared('hide_secrets', search_path=source)
 
                 options = []
 

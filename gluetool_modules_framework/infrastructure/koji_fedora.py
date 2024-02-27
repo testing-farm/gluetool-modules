@@ -24,7 +24,7 @@ from gluetool.utils import cached_property, dict_update, wait, normalize_multist
 from gluetool.utils import IncompatibleOptionsError
 
 from typing import Any, Dict, List, NamedTuple, Optional, Union, Tuple, Callable, Type, cast, overload  # noqa
-from typing_extensions import TypedDict, Literal
+from typing_extensions import TypedDict, Literal, NotRequired
 from gluetool_modules_framework.helpers.rules_engine import ContextType
 
 InitDetailsType = TypedDict(
@@ -145,7 +145,8 @@ TaskInfoType = TypedDict(
         'state': str,
         'waiting': bool,
         'owner': int,
-        'arch': str
+        'arch': str,
+        'label': NotRequired[str]
     }
 )
 
@@ -586,6 +587,25 @@ class KojiTask(LoggerMixin, object):
 
         if arches is not None:
             return TaskArches(False, [arch.strip() for arch in arches.split(' ')])
+
+        children = self._build_arch_subtasks
+        child_arches = []
+
+        # Workarond for TFT-2460
+        # If there is a noarch build subtask, or noarch label, we can assume that the task is noarch
+        # even if task arch is not noarch
+        for child in children:
+
+            child_request = child.get('request')
+            if isinstance(child_request, BuildArchTaskRequest):
+
+                request_arch = child_request.arch
+
+                if child.get('label') == request_arch == 'noarch':
+                    child_arches.append('noarch')
+
+            if child_arches:
+                return TaskArches(True, child_arches)
 
         return TaskArches(True, [child['arch'] for child in self._build_arch_subtasks])
 

@@ -4,6 +4,7 @@ execute:
   - source: /archive-source-execute
 
 progress:
+  - source: /archive-source-another-progress/
   - source: /archive-source-progress
 
 destroy:

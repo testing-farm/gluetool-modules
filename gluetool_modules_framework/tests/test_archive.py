@@ -6,6 +6,7 @@ import glob
 import time
 import pytest
 import logging
+import shutil
 from mock import MagicMock, call
 
 import gluetool
@@ -198,14 +199,26 @@ def test_destroy_daemon(monkeypatch, module):
 def test_parallel_archiving(monkeypatch, module, log):
     mock_command_init = MagicMock(return_value=None)
     mock_command_run = MagicMock(return_value='Ok')
+    mock_shutil_copytree = MagicMock()
+    mock_shutil_copy2 = MagicMock()
+    mock_shutil_rmtree = MagicMock()
+    mock_os_unlink = MagicMock()
 
     monkeypatch.setattr(gluetool.utils.Command, '__init__', mock_command_init)
     monkeypatch.setattr(gluetool.utils.Command, 'run', mock_command_run)
+    monkeypatch.setattr(shutil, 'copytree', mock_shutil_copytree)
+    monkeypatch.setattr(shutil, 'copy2', mock_shutil_copy2)
+    monkeypatch.setattr(shutil, 'rmtree', mock_shutil_rmtree)
+    monkeypatch.setattr(os, 'unlink', mock_os_unlink)
 
     monkeypatch.setattr(os.path, 'exists', lambda x: True)
 
     def _isdir(path):
-        if path == '/dir-archive-source':
+        if path in [
+            '/dir-archive-source',
+            '/archive-source-another-progress',
+            '/archive-source-another-progress.copy'
+        ]:
             return True
 
         return False
@@ -227,5 +240,22 @@ def test_parallel_archiving(monkeypatch, module, log):
     module.destroy()
 
     assert log.match(levelno=logging.INFO, message='Stopping parallel archiving')
-    assert log.match(levelno=logging.DEBUG,
-                     message='syncing /archive-source-progress to https://artifacts.example.com:/artifacts-root/request-id/')
+    assert log.match(
+        levelno=logging.DEBUG,
+        message='syncing /archive-source-progress.copy to https://artifacts.example.com:/artifacts-root/request-id/archive-source-progress'  # Ignore PEP8Bear
+    )
+    assert log.match(
+        levelno=logging.DEBUG,
+        message='syncing /archive-source-another-progress.copy to https://artifacts.example.com:/artifacts-root/request-id/archive-source-another-progress'  # Ignore PEP8Bear
+    )
+
+    mock_shutil_copytree.assert_called_with(
+        '/archive-source-another-progress', '/archive-source-another-progress.copy',
+        symlinks=True, ignore_dangling_symlinks=True, dirs_exist_ok=True
+    )
+    mock_shutil_rmtree.assert_called_with('/archive-source-another-progress.copy')
+
+    mock_shutil_copy2.assert_called_with(
+        '/archive-source-progress', '/archive-source-progress.copy', follow_symlinks=False
+    )
+    mock_os_unlink.assert_called_with('/archive-source-progress.copy')

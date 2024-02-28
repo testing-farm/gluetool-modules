@@ -7,6 +7,7 @@ import gluetool
 
 from typing import Any, Optional, cast, List, Union  # noqa
 
+from gluetool.log import log_blob
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
 
 
@@ -74,13 +75,21 @@ class HideSecrets(gluetool.Module):
         sed_expr = ';'.join('s|{}|*****|g'.format(_posix_bre_escaped(value)) for value in secret_values)
 
         # NOTE: We will deprecate this crazy module once TFT-1813
-        if sed_expr:
-            self.debug("Hiding secrets from all files under '{}' path".format(search_path))
-            os.system("find '{}' -type f | xargs -I##### sed -i $'{}' '#####'".format(
-                search_path, sed_expr)
-            )
-        else:
+        if not sed_expr:
             self.debug("No secrets to hide, all secrets had empty values")
+            return
+
+        self.debug("Hiding secrets from all files under '{}' path".format(search_path))
+
+        command = "find '{}' -type f | xargs -i##### sed -i $'{}' '#####'".format(search_path, sed_expr)
+        wait_status = os.system(command)
+
+        if os.waitstatus_to_exitcode(wait_status) != 0:
+            log_blob(self.debug, "hide command", command)
+            self.warn('Failed to hide secrets, please report an issue!', sentry=True)
+
+        self.debug("Running sync for '{}'".format(search_path))
+        os.system('sync {}'.format(search_path))
 
     def destroy(self, failure: Optional[Any] = None) -> None:
         self.hide_secrets()

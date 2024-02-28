@@ -128,11 +128,12 @@ def fixture_module_api(requests_mock):
 
 
 @pytest.fixture(name='request1')
-def fixture_request1(module):
+def fixture_request1(module, monkeypatch):
     module._config.update({'request-id': '1'})
     module._tf_api = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmAPI(
         module, module.option('api-url')
     )
+    patch_shared(monkeypatch, module, {}, callables={'add_secrets': MagicMock(return_value=None)})
     module._tf_request = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmRequest(module)
 
 
@@ -288,7 +289,7 @@ def test_webhook_http_error(module, requests_mock, request2, log):
 
 
 # TestingFarmRequestModule class tests
-def test_eval_context(module, request1):
+def test_eval_context(module, monkeypatch, request1):
     assert module.eval_context == {
         'TESTING_FARM_REQUEST_ID': '1',
         'TESTING_FARM_REQUEST_TEST_TYPE': 'fmf',
@@ -305,7 +306,7 @@ def test_eval_context_empty(module):
     assert module.eval_context == {}
 
 
-def test_testing_farm_request(module, request1):
+def test_testing_farm_request(module, monkeypatch, request1):
     request = module.testing_farm_request()
     assert isinstance(request, gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmRequest)
     assert request.type == 'fmf'
@@ -319,8 +320,11 @@ def test_testing_farm_request_empty(module):
     assert request is None
 
 
-def test_execute_request1(module):
+def test_execute_request1(module, monkeypatch):
     module._config.update({'request-id': '1'})
+
+    patch_shared(monkeypatch, module, {}, callables={'add_secrets': MagicMock(return_value=None)})
+
     module.execute()
     request = module.testing_farm_request()
 
@@ -362,8 +366,11 @@ def test_execute_request1(module):
     }
 
 
-def test_execute_log_request1(module, log):
+def test_execute_log_request1(module, monkeypatch, log):
     module._config.update({'request-id': '1'})
+
+    patch_shared(monkeypatch, module, {}, callables={'add_secrets': MagicMock(return_value=None)})
+
     module.execute()
 
     with open(os.path.join(ASSETS_DIR, 'request1-log.log'), 'r') as request1_log_file:
@@ -403,9 +410,9 @@ def test_execute_request2(module):
 def test_execute_request3(module, monkeypatch):
     module._config.update({'request-id': '3', 'arch': 'forced-arch'})
 
-    add_additional_secrets = MagicMock(return_value=None)
+    add_secrets = MagicMock(return_value=None)
 
-    patch_shared(monkeypatch, module, {}, callables={'add_additional_secrets': add_additional_secrets})
+    patch_shared(monkeypatch, module, {}, callables={'add_secrets': add_secrets})
     module.execute()
     request = module.testing_farm_request()
 
@@ -434,7 +441,9 @@ def test_execute_request3(module, monkeypatch):
         pool=None,
         settings=None
     )
-    add_additional_secrets.assert_called_once_with('username:secret')
+    add_secrets.assert_any_call('username:secret')
+    add_secrets.assert_any_call(['secrets'])
+    assert add_secrets.call_count == 2
 
 
 def test_api_url_option(module, monkeypatch):

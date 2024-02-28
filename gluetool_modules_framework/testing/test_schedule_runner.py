@@ -223,6 +223,7 @@ class TestScheduleRunner(gluetool.Module):
             logger=schedule_entry.logger
         ):
             _run_setup(GuestSetupStage.PRE_ARTIFACT_INSTALLATION)
+            self.shared('generate_results', GuestSetupStage.PRE_ARTIFACT_INSTALLATION.value)
 
         with Action(
             'pre-artifact-installation-workarounds guest setup',
@@ -230,6 +231,7 @@ class TestScheduleRunner(gluetool.Module):
             logger=schedule_entry.logger
         ):
             _run_setup(GuestSetupStage.PRE_ARTIFACT_INSTALLATION_WORKAROUNDS)
+            self.shared('generate_results', GuestSetupStage.PRE_ARTIFACT_INSTALLATION_WORKAROUNDS.value)
 
         with Action(
             'artifact-installation guest setup',
@@ -239,6 +241,7 @@ class TestScheduleRunner(gluetool.Module):
             schedule_entry.info('installing the artifact')
 
             _run_setup(GuestSetupStage.ARTIFACT_INSTALLATION)
+            self.shared('generate_results', GuestSetupStage.ARTIFACT_INSTALLATION.value)
 
             schedule_entry.info('artifact installed')
 
@@ -248,6 +251,7 @@ class TestScheduleRunner(gluetool.Module):
             logger=schedule_entry.logger
         ):
             _run_setup(GuestSetupStage.POST_ARTIFACT_INSTALLATION_WORKAROUNDS)
+            self.shared('generate_results', GuestSetupStage.POST_ARTIFACT_INSTALLATION_WORKAROUNDS.value)
 
         with Action(
             'post-artifact-installation guest setup',
@@ -255,6 +259,7 @@ class TestScheduleRunner(gluetool.Module):
             logger=schedule_entry.logger
         ):
             _run_setup(GuestSetupStage.POST_ARTIFACT_INSTALLATION)
+            self.shared('generate_results', GuestSetupStage.POST_ARTIFACT_INSTALLATION.value)
 
     def _destroy_guest(self, schedule_entry: TestScheduleEntry) -> None:
 
@@ -472,6 +477,7 @@ class TestScheduleRunner(gluetool.Module):
 
             elif schedule_entry.stage == TestScheduleEntryStage.RUNNING:
                 schedule_entry.info('test execution finished')
+                self.shared('generate_results', 'test execution finished')
 
                 # Here we should display "test logs are in ..." message like we do for guest-setup,
                 # but leaving that for another patch as we don't have unified "report results"
@@ -523,6 +529,7 @@ class TestScheduleRunner(gluetool.Module):
             _shift(schedule_entry, TestScheduleEntryStage.COMPLETE, new_state=TestScheduleEntryState.ERROR)
 
             _finish_action(schedule_entry)
+            self.shared('generate_results', 'entry error', failure=exc)
 
             if schedule_queue:
                 schedule_queue_entry = schedule_queue.pop(0)

@@ -51,14 +51,14 @@ qui officia deserunt mollit anim id est laborum.
 def test_hide_secrets(monkeypatch, module, testing_farm_request):
     with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
         module._config['search-path'] = tmpdir
-        patch_shared(monkeypatch, module, {
-            'testing_farm_request': testing_farm_request
-        })
 
         secret_values = []
         for environment in testing_farm_request.environments_requested:
             if environment.secrets:
                 secret_values += [secret_value for secret_value in environment.secrets.values() if secret_value]
+
+        # add secret values from requests
+        module.add_secrets(secret_values)
 
         # Create a file containing some secrets
         secret_value = secret_values[0] if len(secret_values) > 0 else 'no secret'
@@ -91,6 +91,13 @@ def test_hide_secrets_multiple(monkeypatch, module):
             'testing_farm_request': testing_farm_request
         })
 
+        # add secret values from request
+        module.add_secrets([
+            value
+            for environment in testing_farm_request.environments_requested
+            for value in environment.secrets.values() if value
+        ])
+
         # Create a file containing some secrets
         with open(os.path.join(tmpdir, 'testfile.txt'), 'w') as f:
             f.write(file_contents)
@@ -120,6 +127,13 @@ def test_hide_secrets_argument(monkeypatch, module):
         patch_shared(monkeypatch, module, {
             'testing_farm_request': testing_farm_request
         })
+
+        # add secret values from request
+        module.add_secrets([
+            value
+            for environment in testing_farm_request.environments_requested
+            for value in environment.secrets.values() if value
+        ])
 
         # Create a file containing some secrets
         with open(os.path.join(tmpdir, 'testfile.txt'), 'w') as f:

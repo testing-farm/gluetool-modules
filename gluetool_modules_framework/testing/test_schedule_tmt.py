@@ -1323,9 +1323,11 @@ class TestScheduleTMT(Module):
 
             _check_accepted_environment_variables(tmt_process_environment)
 
-            if self.has_shared('add_additional_secrets'):
-                self.shared('add_additional_secrets', [value for key, value in tmt_process_environment.items()
-                                                       if value and key in self.accepted_environment_secrets])
+            if self.has_shared('add_secrets'):
+                self.shared('add_secrets', [
+                    value for key, value in tmt_process_environment.items()
+                    if value and key in self.accepted_environment_secrets
+                ])
 
             schedule_entry.tmt_reproducer.append(
                 'export {}'.format(

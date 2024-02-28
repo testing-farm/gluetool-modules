@@ -1,13 +1,11 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
-import os
+import tempfile
 
 import gluetool
 
-from typing import Any, Optional, cast, List, Union  # noqa
-
-from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
+from typing import Any, Optional, List, Set, Union  # noqa
 
 
 class HideSecrets(gluetool.Module):
@@ -23,30 +21,21 @@ class HideSecrets(gluetool.Module):
             'default': '.'
         }
     }
-    shared_functions = ['add_additional_secrets', 'hide_secrets']
+    shared_functions = ['add_secrets', 'hide_secrets']
 
-    def add_additional_secrets(self, secret: Union[str, List[str]]) -> None:
+    def add_secrets(self, secret: Union[str, List[str]]) -> None:
         if isinstance(secret, list):
-            self.additional_secrets.extend(secret)
+            self._secrets.update(secret)
         else:
-            self.additional_secrets.append(secret)
+            self._secrets.add(secret)
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(HideSecrets, self).__init__(*args, **kwargs)
-        self.additional_secrets: List[str] = []
+        self._secrets: Set[str] = set()
 
     def hide_secrets(self, search_path: Optional[str] = None) -> None:
         search_path = search_path or self.option('search-path')
-
-        testing_farm_request = cast(TestingFarmRequest, self.shared('testing_farm_request'))
-        if not testing_farm_request:
-            return
-
-        secret_values = self.additional_secrets
-        for environment in testing_farm_request.environments_requested:
-            # hide environment.secrets
-            if environment.secrets:
-                secret_values += [secret_value for secret_value in environment.secrets.values() if secret_value]
+        assert search_path
 
         # POSIX.2 Basic Regular Expressions (BREs) have a specific set of characters
         # that you need to escape to use them as literals.
@@ -59,28 +48,39 @@ class HideSecrets(gluetool.Module):
         # * Caret '^'
         # * Dollar sign '$'
         #
-        # Note that backslash needs to be escaped with 4 backslashes for sed
+        # Note that backslash needs to be escaped separately
         #
         # We need to also escape:
         # * Pipe '|' - because we use sed with '|' character
-        # * Single quote ' - because we use it in the command
         def _posix_bre_escaped(value: str) -> str:
-            value = value.replace('\\', '\\\\\\\\')
-            for escape in r".*[]^$|'":
+            value = value.replace('\\', '\\\\')
+            for escape in r".*[]^$|":
                 value = value.replace(escape, r'\{}'.format(escape))
             return value
 
-        # TFT-1339 - the value can be empty, make sure to skip it, nothing to hide there
-        sed_expr = ';'.join('s|{}|*****|g'.format(_posix_bre_escaped(value)) for value in secret_values)
+        sed_expr = '\n'.join('s|{}|*****|g'.format(_posix_bre_escaped(value)) for value in self._secrets)
 
         # NOTE: We will deprecate this crazy module once TFT-1813
-        if sed_expr:
-            self.debug("Hiding secrets from all files under '{}' path".format(search_path))
-            os.system("find '{}' -type f | xargs -I##### sed -i $'{}' '#####'".format(
-                search_path, sed_expr)
-            )
-        else:
+        if not sed_expr:
             self.debug("No secrets to hide, all secrets had empty values")
+            return
+
+        self.debug("Hiding secrets from all files under '{}' path".format(search_path))
+
+        with tempfile.NamedTemporaryFile(mode='w', dir='.') as temp:
+            temp.write(sed_expr)
+            temp.flush()
+            command = "find '{}' -type f | xargs -i##### sed -i -f '{}' '#####'".format(search_path, temp.name)
+
+            output = gluetool.utils.Command([command]).run(shell=True)
+
+        output.log(self.logger)
+
+        if output.exit_code != 0:
+            gluetool.GlueError('Failed to hide secrets, secrets could be leaked!')
+
+        # Be paranoic that modified files were written to the disk
+        gluetool.utils.Command(['sync', search_path]).run()
 
     def destroy(self, failure: Optional[Any] = None) -> None:
         self.hide_secrets()

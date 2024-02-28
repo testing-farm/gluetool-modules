@@ -309,11 +309,16 @@ class TestingFarmRequest(LoggerMixin, object):
         assert test
         self.url = test.url
 
+        def check_secrets_support() -> None:
+            if not self._module.has_shared('add_secrets'):
+                raise gluetool.GlueError("The 'hide-secrets' module is required when secrets involved")
+
         # Check whether the git url contains any secrets, if so, store them in hide-secrets module
         with self.url.dangerous_reveal() as url:
             match = re.match(GIT_URL_REGEX, url)
-            if match and self._module.has_shared('add_additional_secrets'):
-                self._module.shared('add_additional_secrets', match.group(2))
+            if match:
+                check_secrets_support()
+                self._module.shared('add_secrets', match.group(2))
 
         # In the context of this class, `self.ref` is a git reference which will be checked out by the
         # RemoteGitRepository library class, `self.merge` is a git reference to be merged into `self.ref`.
@@ -341,17 +346,29 @@ class TestingFarmRequest(LoggerMixin, object):
         }
 
         environments_requested: List[TestingEnvironment] = []
+        environments = request.get('environments_requested')
 
-        if not request['environments_requested']:
+        if not environments:
             raise gluetool.GlueError("No testing environment specified, cannot continue.")
 
-        for environment_raw in request['environments_requested']:
+        for environment_raw in environments:
+            # add secrets from the request
+            secrets = environment_raw.get('secrets')
+
+            if secrets:
+                check_secrets_support()
+
+                # TFT-1339 - the value can be empty, make sure to skip it, nothing to hide there
+                self._module.shared('add_secrets', [
+                    value for value in secrets.values() if value
+                ])
+
             environments_requested.append(TestingEnvironment(
                 arch=environment_raw['arch'],
                 compose=(environment_raw.get('os') or {}).get('compose'),
                 pool=environment_raw.get('pool'),
                 variables=dict_update(environment_raw.get('variables') or {}, testing_farm_env_vars),
-                secrets=environment_raw.get('secrets'),
+                secrets=secrets,
                 artifacts=[Artifact(**artifact) for artifact in (environment_raw.get('artifacts') or [])],
                 hardware=environment_raw.get('hardware'),
                 kickstart=environment_raw.get('kickstart'),

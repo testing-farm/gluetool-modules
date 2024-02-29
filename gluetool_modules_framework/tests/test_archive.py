@@ -74,11 +74,19 @@ def test_execute_destroy_ssh(monkeypatch, module):
 
     mock_command_init = MagicMock(return_value=None)
     mock_command_run = MagicMock(return_value='Ok')
+    mock_shutil_copytree = MagicMock()
+    mock_shutil_copy2 = MagicMock()
+    mock_shutil_rmtree = MagicMock()
+    mock_os_unlink = MagicMock()
 
     monkeypatch.setattr(gluetool.utils.Command, '__init__', mock_command_init)
     monkeypatch.setattr(gluetool.utils.Command, 'run', mock_command_run)
+    monkeypatch.setattr(shutil, 'copytree', mock_shutil_copytree)
+    monkeypatch.setattr(shutil, 'copy2', mock_shutil_copy2)
+    monkeypatch.setattr(shutil, 'rmtree', mock_shutil_rmtree)
+    monkeypatch.setattr(os, 'unlink', mock_os_unlink)
 
-    monkeypatch.setattr(os.path, 'exists', lambda x: True)
+    monkeypatch.setattr(os.path, 'exists', lambda _: True)
 
     def _isdir(path):
         if path in ['/dir-archive-source', 'dir-archive-source']:
@@ -99,8 +107,8 @@ def test_execute_destroy_ssh(monkeypatch, module):
         call(['ssh', 'https://artifacts.example.com', 'mkdir', '-p',
               '/artifacts-root/request-id'], logger=module.logger),
 
-        call(['rsync', '--rsync-option', '--timeout=10', '/archive-source-execute',
-              'https://artifacts.example.com:/artifacts-root/request-id/'], logger=module.logger),
+        call(['rsync', '--rsync-option', '--timeout=10', '/archive-source-execute.copy',
+              'https://artifacts.example.com:/artifacts-root/request-id/archive-source-execute'], logger=module.logger),
 
         call(['rsync', '--rsync-option', '--timeout=10', '/archive-source',
               'https://artifacts.example.com:/artifacts-root/request-id/dest'], logger=module.logger),
@@ -129,8 +137,8 @@ def test_execute_destroy_ssh(monkeypatch, module):
         call(['rsync', '--rsync-option', '--timeout=10', '--chmod=666', '/env-archive-source',
               'https://artifacts.example.com:/artifacts-root/request-id/env-dest'], logger=module.logger),
 
-        call(['rsync', '--rsync-option', '--timeout=10', '/env-archive-source2',
-              'https://artifacts.example.com:/artifacts-root/request-id/'], logger=module.logger),
+        call(['rsync', '--rsync-option', '--timeout=10', '/env-archive-source2.copy',
+              'https://artifacts.example.com:/artifacts-root/request-id/env-archive-source2'], logger=module.logger),
     ]
 
     mock_command_init.assert_has_calls(calls, any_order=True)
@@ -141,11 +149,19 @@ def test_destroy_daemon(monkeypatch, module):
 
     mock_command_init = MagicMock(return_value=None)
     mock_command_run = MagicMock(return_value='Ok')
+    mock_shutil_copytree = MagicMock()
+    mock_shutil_copy2 = MagicMock()
+    mock_shutil_rmtree = MagicMock()
+    mock_os_unlink = MagicMock()
 
     monkeypatch.setattr(gluetool.utils.Command, '__init__', mock_command_init)
     monkeypatch.setattr(gluetool.utils.Command, 'run', mock_command_run)
+    monkeypatch.setattr(shutil, 'copytree', mock_shutil_copytree)
+    monkeypatch.setattr(shutil, 'copy2', mock_shutil_copy2)
+    monkeypatch.setattr(shutil, 'rmtree', mock_shutil_rmtree)
+    monkeypatch.setattr(os, 'unlink', mock_os_unlink)
 
-    monkeypatch.setattr(os.path, 'exists', lambda x: True)
+    monkeypatch.setattr(os.path, 'exists', lambda _: True)
 
     def _isdir(path):
         if path in ['/dir-archive-source', 'dir-archive-source']:
@@ -211,7 +227,7 @@ def test_parallel_archiving(monkeypatch, module, log):
     monkeypatch.setattr(shutil, 'rmtree', mock_shutil_rmtree)
     monkeypatch.setattr(os, 'unlink', mock_os_unlink)
 
-    monkeypatch.setattr(os.path, 'exists', lambda x: True)
+    monkeypatch.setattr(os.path, 'exists', lambda _: True)
 
     def _isdir(path):
         if path in [

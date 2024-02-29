@@ -19,6 +19,8 @@ DEFAULT_PARALLEL_ARCHIVING_TICK = 30
 DEFAULT_RSYNC_TIMEOUT = 120
 
 ARCHIVE_STAGES = ['execute', 'progress', 'destroy']
+# Stages which use a copy for syncing
+ARCHIVE_STAGES_USING_COPY = ['execute', 'progress']
 SOURCE_DESTINATION_ENTRY_KEYS = ['source', 'destination', 'permissions']
 
 
@@ -372,14 +374,14 @@ class Archive(gluetool.Module):
                 if permissions:
                     options.append('--chmod={}'.format(permissions))
 
-                # In case of syncing 'progress' items, make sure we work with a copy. This is a workaround
-                # for the problem of the source file being overwritten with hide-secrets module. In that
-                # module 'sed -i' is used and the inode of the source file would change, effectively breaking
+                # In case of syncing 'progress' and 'execute' stages, make sure we work with a copy.
+                # This is a workaround for the problem of the source file being overwritten with hide-secrets module.
+                # In that module 'sed -i' is used and the inode of the source file would change, effectively breaking
                 # the saving of the "live" logs like 'progress.log'.
                 self.run_rsync(
                     source, destination,
                     options=options or None,
-                    source_copy=True if stage == 'progress' else False
+                    source_copy=True if stage in ARCHIVE_STAGES_USING_COPY else False
                 )
 
     def execute(self) -> None:

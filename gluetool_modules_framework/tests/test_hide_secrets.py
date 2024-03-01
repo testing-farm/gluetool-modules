@@ -44,6 +44,7 @@ qui officia deserunt mollit anim id est laborum.
     )])),
     (MagicMock(environments_requested=[TestingEnvironment(secrets={'secret': r"''''"})])),
     (MagicMock(environments_requested=[TestingEnvironment(secrets={'secret': r'\a\b\c\d\n'})])),
+    (MagicMock(environments_requested=[TestingEnvironment(secrets={'secret': 'a\nb\nc'})])),
     (MagicMock(environments_requested=[TestingEnvironment(secrets={})])),
     (MagicMock(environments_requested=[TestingEnvironment(tmt={'environment': {'var': 'abc'}})])),
     (MagicMock(environments_requested=[TestingEnvironment(tmt={'environment': None})]))
@@ -55,7 +56,10 @@ def test_hide_secrets(monkeypatch, module, testing_farm_request):
         secret_values = []
         for environment in testing_farm_request.environments_requested:
             if environment.secrets:
-                secret_values += [secret_value for secret_value in environment.secrets.values() if secret_value]
+                secret_values += [
+                    secret_value.replace('\n', '\\n')
+                    for secret_value in environment.secrets.values() if secret_value
+                ]
 
         # add secret values from requests
         module.add_secrets(secret_values)

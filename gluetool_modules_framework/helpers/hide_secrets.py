@@ -54,6 +54,7 @@ class HideSecrets(gluetool.Module):
         # * Pipe '|' - because we use sed with '|' character
         def _posix_bre_escaped(value: str) -> str:
             value = value.replace('\\', '\\\\')
+            value = value.replace('\n', '\\n')
             for escape in r".*[]^$|":
                 value = value.replace(escape, r'\{}'.format(escape))
             return value

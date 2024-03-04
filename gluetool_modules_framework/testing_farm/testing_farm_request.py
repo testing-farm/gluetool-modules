@@ -401,6 +401,10 @@ class TestingFarmRequest(LoggerMixin, object):
         if ((request.get('settings') or {}).get('pipeline') or {}).get('provision-error-failed-result'):
             self.failed_if_provision_error = True
 
+        self.parallel_limit = (
+            (request.get('settings') or {}).get('pipeline') or {}
+        ).get('parallel-limit')
+
     def webhook(self) -> Any:
         """
         Post to webhook, as defined in the API.
@@ -628,7 +632,8 @@ class TestingFarmRequestModule(gluetool.Module):
             # TODO: removed in 2024-01.1 release - TFT-2433
             # 'TESTING_FARM_REQUEST_USERNAME': self._tf_request.request_username,
             'TESTING_FARM_REQUEST_MERGE': self._tf_request.merge,
-            'TESTING_FARM_FAILED_IF_PROVISION_ERROR': self._tf_request.failed_if_provision_error
+            'TESTING_FARM_FAILED_IF_PROVISION_ERROR': self._tf_request.failed_if_provision_error,
+            'TESTING_FARM_PARALLEL_LIMIT': self._tf_request.parallel_limit,
         }
 
     def testing_farm_request(self) -> Optional[TestingFarmRequest]:

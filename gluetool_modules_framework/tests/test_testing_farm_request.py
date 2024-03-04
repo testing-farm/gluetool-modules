@@ -146,6 +146,16 @@ def fixture_request2(module):
     module._tf_request = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmRequest(module)
 
 
+@pytest.fixture(name='request3')
+def fixture_request3(module, monkeypatch):
+    module._config.update({'request-id': '3'})
+    module._tf_api = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmAPI(
+        module, module.option('api-url')
+    )
+    patch_shared(monkeypatch, module, {}, callables={'add_secrets': MagicMock(return_value=None)})
+    module._tf_request = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmRequest(module)
+
+
 # TestingFarmAPI class tests
 def test_request_type_error(module_api):
     with pytest.raises(gluetool.GlueError, match='No request type specified'):
@@ -289,7 +299,7 @@ def test_webhook_http_error(module, requests_mock, request2, log):
 
 
 # TestingFarmRequestModule class tests
-def test_eval_context(module, monkeypatch, request1):
+def test_eval_context_request1(module, monkeypatch, request1):
     assert module.eval_context == {
         'TESTING_FARM_REQUEST_ID': '1',
         'TESTING_FARM_REQUEST_TEST_TYPE': 'fmf',
@@ -298,7 +308,22 @@ def test_eval_context(module, monkeypatch, request1):
         # TODO: revert once TFT-2433 done
         # 'TESTING_FARM_REQUEST_USERNAME': 'testuser',
         'TESTING_FARM_REQUEST_MERGE': None,
-        'TESTING_FARM_FAILED_IF_PROVISION_ERROR': True
+        'TESTING_FARM_FAILED_IF_PROVISION_ERROR': True,
+        'TESTING_FARM_PARALLEL_LIMIT': 123,
+    }
+
+
+def test_eval_context_request3(module, monkeypatch, request3):
+    assert module.eval_context == {
+        'TESTING_FARM_REQUEST_ID': '3',
+        'TESTING_FARM_REQUEST_TEST_TYPE': 'sti',
+        'TESTING_FARM_REQUEST_TEST_URL': 'https://username:secret@gitlab.com/namespace/repo',
+        'TESTING_FARM_REQUEST_TEST_REF': 'sha',
+        # TODO: revert once TFT-2433 done
+        # 'TESTING_FARM_REQUEST_USERNAME': 'testuser',
+        'TESTING_FARM_REQUEST_MERGE': 'testref',
+        'TESTING_FARM_FAILED_IF_PROVISION_ERROR': False,
+        'TESTING_FARM_PARALLEL_LIMIT': None,
     }
 
 

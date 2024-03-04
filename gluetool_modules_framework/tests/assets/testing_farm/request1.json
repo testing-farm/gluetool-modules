@@ -50,7 +50,8 @@
     },
     "settings": {
         "pipeline": {
-            "provision-error-failed-result": true
+            "provision-error-failed-result": true,
+            "parallel-limit": 123
         }
     }
 }

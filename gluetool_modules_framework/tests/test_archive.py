@@ -30,10 +30,13 @@ def fixture_module(monkeypatch):
     module._config['rsync-options'] = '--rsync-option'
     module._config['retry-tick'] = 1
     module._config['retry-timeout'] = 5
+    module._config['verify-tick'] = 1
+    module._config['verify-timeout'] = 1
     module._config['rsync-timeout'] = 10
 
     patch_shared(monkeypatch, module, {}, callables={
         'testing_farm_request': lambda: MagicMock(id='request-id'),
+        'artifacts_location': lambda path: 'https://artifacts.example.com/{}'.format(path)
     })
 
     os.environ['SOURCE_DESTINATION_MAP'] = '/env-archive-source:env-dest:666:destroy#/env-archive-source2:::execute'
@@ -78,9 +81,13 @@ def test_execute_destroy_ssh(monkeypatch, module):
     mock_shutil_copy2 = MagicMock()
     mock_shutil_rmtree = MagicMock()
     mock_os_unlink = MagicMock()
+    mock_requests = MagicMock()
+    mock_requests_get = mock_requests.return_value.__enter__.return_value.get
+    mock_requests_get.return_value.status_code = 200
 
     monkeypatch.setattr(gluetool.utils.Command, '__init__', mock_command_init)
     monkeypatch.setattr(gluetool.utils.Command, 'run', mock_command_run)
+    monkeypatch.setattr(gluetool.utils, 'requests', mock_requests)
     monkeypatch.setattr(shutil, 'copytree', mock_shutil_copytree)
     monkeypatch.setattr(shutil, 'copy2', mock_shutil_copy2)
     monkeypatch.setattr(shutil, 'rmtree', mock_shutil_rmtree)
@@ -142,6 +149,7 @@ def test_execute_destroy_ssh(monkeypatch, module):
     ]
 
     mock_command_init.assert_has_calls(calls, any_order=True)
+    mock_requests_get.assert_called_once_with('https://artifacts.example.com/archive-source-execute')
 
 
 def test_destroy_daemon(monkeypatch, module):
@@ -153,9 +161,12 @@ def test_destroy_daemon(monkeypatch, module):
     mock_shutil_copy2 = MagicMock()
     mock_shutil_rmtree = MagicMock()
     mock_os_unlink = MagicMock()
+    mock_requests = MagicMock()
+    mock_requests.return_value.__enter__.return_value.get.return_value.status_code = 200
 
     monkeypatch.setattr(gluetool.utils.Command, '__init__', mock_command_init)
     monkeypatch.setattr(gluetool.utils.Command, 'run', mock_command_run)
+    monkeypatch.setattr(gluetool.utils, 'requests', mock_requests)
     monkeypatch.setattr(shutil, 'copytree', mock_shutil_copytree)
     monkeypatch.setattr(shutil, 'copy2', mock_shutil_copy2)
     monkeypatch.setattr(shutil, 'rmtree', mock_shutil_rmtree)
@@ -219,9 +230,12 @@ def test_parallel_archiving(monkeypatch, module, log):
     mock_shutil_copy2 = MagicMock()
     mock_shutil_rmtree = MagicMock()
     mock_os_unlink = MagicMock()
+    mock_requests = MagicMock()
+    mock_requests.return_value.__enter__.return_value.get.return_value.status_code = 200
 
     monkeypatch.setattr(gluetool.utils.Command, '__init__', mock_command_init)
     monkeypatch.setattr(gluetool.utils.Command, 'run', mock_command_run)
+    monkeypatch.setattr(gluetool.utils, 'requests', mock_requests)
     monkeypatch.setattr(shutil, 'copytree', mock_shutil_copytree)
     monkeypatch.setattr(shutil, 'copy2', mock_shutil_copy2)
     monkeypatch.setattr(shutil, 'rmtree', mock_shutil_rmtree)

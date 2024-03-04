@@ -2,6 +2,7 @@
 
 execute:
   - source: /archive-source-execute
+    verify: "true"
 
 progress:
   - source: /archive-source-another-progress/

@@ -7,7 +7,7 @@ from glob import glob
 
 import gluetool
 from gluetool.glue import GlueError
-from gluetool.utils import Command, render_template
+from gluetool.utils import Command, normalize_bool_option, render_template
 from gluetool.result import Result
 from gluetool_modules_framework.libs.threading import RepeatTimer
 
@@ -17,11 +17,13 @@ DEFAULT_RETRY_TIMEOUT = 30
 DEFAULT_RETRY_TICK = 10
 DEFAULT_PARALLEL_ARCHIVING_TICK = 30
 DEFAULT_RSYNC_TIMEOUT = 120
+DEFAULT_VERIFY_TICK = 5
+DEFAULT_VERIFY_TIMEOUT = 600
 
 ARCHIVE_STAGES = ['execute', 'progress', 'destroy']
 # Stages which use a copy for syncing
 ARCHIVE_STAGES_USING_COPY = ['execute', 'progress']
-SOURCE_DESTINATION_ENTRY_KEYS = ['source', 'destination', 'permissions']
+SOURCE_DESTINATION_ENTRY_KEYS = ['source', 'destination', 'permissions', 'verify']
 
 
 class Archive(gluetool.Module):
@@ -31,6 +33,8 @@ class Archive(gluetool.Module):
     The module supports SOURCE_DESTINATION_MAP environment variable which can be used to specify
     additional source-destination mappings. The variable is a string of the following format:
     <SOURCE>:[<DESTINATION>]:[<PERMISSIONS>]:[<STAGE>][#<SOURCE>:[<DESTINATION>]:[<PERMISSIONS>][<STAGE>]]...
+
+    Use the ``verify`` flag to verify given path on the artifact location provided by the ``coldstore`` module.
     """
 
     name = 'archive'
@@ -67,16 +71,28 @@ class Archive(gluetool.Module):
             'default': []
         },
         'retry-tick': {
-            'help': 'Number of retries for failed rsync operations. (default: %(default)s)',
+            'help': 'Timeout between retries for failed rsync operations. (default: %(default)s)',
             'metavar': 'RETRY_TICK',
             'type': int,
             'default': DEFAULT_RETRY_TICK,
         },
         'retry-timeout': {
-            'help': 'Timeout between rsync retries in seconds. (default: %(default)s)',
+            'help': 'Timeout for rsync retries in seconds. (default: %(default)s)',
             'metavar': 'RETRY_TIMEOUT',
             'type': int,
             'default': DEFAULT_RETRY_TIMEOUT,
+        },
+        'verify-tick': {
+            'help': 'Timeout between archive verification retries. (default: %(default)s)',
+            'metavar': 'VERIFY_TICK',
+            'type': int,
+            'default': DEFAULT_VERIFY_TICK,
+        },
+        'verify-timeout': {
+            'help': 'Timeout for archive verification in seconds. (default: %(default)s)',
+            'metavar': 'VERIFY_TIMEOUT',
+            'type': int,
+            'default': DEFAULT_VERIFY_TIMEOUT,
         },
         'rsync-timeout': {
             'help': 'Timeout for the rsync command. (default: %(default)s)',
@@ -362,6 +378,10 @@ class Archive(gluetool.Module):
             sources = entry['source']
             destination = entry.get('destination')
             permissions = entry.get('permissions')
+            verify = normalize_bool_option(entry.get('verify'))
+
+            if verify:
+                self.require_shared('artifacts_location')
 
             # If the entry['source'] is a wildcard, we need to use glob to find all the files
             for source in glob(sources):
@@ -382,6 +402,30 @@ class Archive(gluetool.Module):
                     source, destination,
                     options=options or None,
                     source_copy=True if stage in ARCHIVE_STAGES_USING_COPY else False
+                )
+
+                if not verify:
+                    continue
+
+                # Verify archivation target
+                target = self.shared('artifacts_location', source.lstrip('/'))
+
+                def _verify_archivation() -> Result[bool, bool]:
+                    with gluetool.utils.requests() as request:
+                        response = request.get(target)
+
+                        if response.status_code == 200:
+                            return Result.Ok(True)
+
+                        return Result.Error(True)
+
+                self.info("Verifying archivation of '{}'".format(target))
+
+                gluetool.utils.wait(
+                    "verify archivation of '{}'".format(target),
+                    _verify_archivation,
+                    timeout=self.option('verify-timeout'),
+                    tick=self.option('verify-tick')
                 )
 
     def execute(self) -> None:
@@ -420,4 +464,9 @@ class Archive(gluetool.Module):
                 self._archive_timer.cancel()
                 self._archive_timer = None
 
-        self.archive_stage('destroy')
+        # Gracefully catch errors, so other destroy functions can get a chance.
+        # Send the error to Sentry so we know this is happening.
+        try:
+            self.archive_stage('destroy')
+        except GlueError as error:
+            self.error(str(error), sentry=True)

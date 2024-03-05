@@ -442,7 +442,7 @@ def test_execute_request3(module, monkeypatch):
     )
     add_secrets.assert_any_call('username:secret')
     add_secrets.assert_any_call(['secrets'])
-    assert add_secrets.call_count == 2
+    assert add_secrets.call_count == 3
 
 
 def test_api_url_option(module, monkeypatch):

@@ -692,6 +692,9 @@ class TestingFarmRequestModule(gluetool.Module):
             self._pipeline_cancellation_timer = None
 
     def execute(self) -> None:
+        if self.has_shared('add_secrets'):
+            self.shared('add_secrets', self.api_key)
+
         self._tf_api = TestingFarmAPI(self, self.api_url)
 
         self.info(

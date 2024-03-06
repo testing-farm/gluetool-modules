@@ -103,7 +103,7 @@ def test_extract_artifacts(module, monkeypatch):
     ]
 
 
-@pytest.mark.parametrize('guest_artifacts, expected_commands, forced_artifact', [
+@pytest.mark.parametrize('guest_artifacts, expected_commands, forced_artifacts', [
     #
     # Test case 1 - install all artifacts
     #
@@ -151,16 +151,16 @@ def test_extract_artifacts(module, monkeypatch):
             r"""if [ ! -z "$(sed 's/\s//g' rpms-list)" ];then dnf -y install --allowerasing $(cat rpms-list);else echo "Nothing to install, rpms-list is empty"; fi""",
             r"""if [ ! -z "$(sed 's/\s//g' rpms-list)" ];then sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\n' | xargs -d'\n' rpm -q;else echo 'Nothing to verify, rpms-list is empty'; fi""",
         ],
-        Artifact(id='forced-artifact', packages=None, type='fedora-koji-build'),
+        [Artifact(id='forced-artifact', packages=None, type='fedora-koji-build')],
     ),
 ])
-def test_guest_setup(module, local_guest, tmpdir, guest_artifacts, expected_commands, forced_artifact):
+def test_guest_setup(module, local_guest, tmpdir, guest_artifacts, expected_commands, forced_artifacts):
     stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
 
     execute_mock = MagicMock(return_value=MagicMock(stdout='', stderr=''))
     guest = mock_guest(execute_mock, artifacts=guest_artifacts)
 
-    module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir), forced_artifact=forced_artifact)
+    module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir), forced_artifacts=forced_artifacts)
 
     calls = [call('command -v dnf')] * 2 + [call(c) for c in expected_commands]
     execute_mock.assert_has_calls(calls, any_order=False)

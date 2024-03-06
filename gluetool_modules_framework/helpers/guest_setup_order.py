@@ -5,8 +5,9 @@ import gluetool
 from gluetool.utils import PatternMap
 from gluetool.glue import GlueError
 from gluetool.result import Ok
-from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupStage
+from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupStage, SetupGuestReturnType
 from gluetool_modules_framework.libs.guest import NetworkedGuest
+from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact
 
 # Type annotations
 from typing import Any, List, Optional  # noqa
@@ -75,6 +76,11 @@ class GuestSetupOrder(gluetool.Module):
             **kwargs
         )
 
+        # We don't want to run artifact installation if there
+        # was an error or if we are not in ARTIFACT_INSTALLATION stage
+        if getattr(r_overloaded_guest_setup_output, 'is_error', None) or stage != GuestSetupStage.ARTIFACT_INSTALLATION:
+            return r_overloaded_guest_setup_output
+
         guest_setup_output = r_overloaded_guest_setup_output or Ok([])
 
         artifacts = []
@@ -84,20 +90,48 @@ class GuestSetupOrder(gluetool.Module):
         if not artifacts:
             return guest_setup_output
 
-        for artifact in sorted(artifacts, key=lambda x: x.order):
+        def _run_guest_setup(
+            guest_setup_output: SetupGuestReturnType,
+            artifacts_group: List[Artifact],
+            artifacts_group_type: str
+        ) -> SetupGuestReturnType:
 
             kwargs['r_overloaded_guest_setup_output'] = guest_setup_output
 
-            guest_setup_name = self.get_guest_setup(artifact.type)
+            guest_setup_name = self.get_guest_setup(artifacts_group_type)
             self.require_shared(guest_setup_name)
 
-            self.info('Running guest setup for {} artifact'.format(artifact.type))
+            self.info('Running guest setup for {} artifact'.format(artifacts_group_type))
             guest_setup_output = self.shared(
                 guest_setup_name,
                 guest,
                 stage=stage,
                 log_dirpath=log_dirpath,
+                forced_artifacts=artifacts_group,
                 **kwargs
             )
+
+            return guest_setup_output
+
+        artifacts_group: List[Artifact] = []
+
+        for artifact in sorted(artifacts, key=lambda x: x.order):
+
+            # Get a type of artifacts group based on first artifact
+            artifacts_group_type = artifacts_group[0].type if artifacts_group else None
+
+            # Append artifacts group if it's empty or if it's the same type
+            if not artifacts_group_type or artifacts_group_type == artifact.type:
+                artifacts_group.append(artifact)
+                continue
+
+            # If it's a different type, execute guest setup for the previous group
+            _run_guest_setup(guest_setup_output, artifacts_group, artifacts_group_type)
+
+            # Reinitialize artifacts group with the current artifact
+            artifacts_group = [artifact]
+
+        # Execute guest setup for the last group
+        _run_guest_setup(guest_setup_output, artifacts_group, artifacts_group[0].type)
 
         return guest_setup_output

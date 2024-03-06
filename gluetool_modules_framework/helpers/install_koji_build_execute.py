@@ -60,7 +60,7 @@ class InstallKojiBuildExecute(gluetool.Module):
         stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
         log_dirpath: Optional[str] = None,
         r_overloaded_guest_setup_output: Optional[SetupGuestReturnType] = None,
-        forced_artifact: Optional[Artifact] = None,
+        forced_artifacts: Optional[List[Artifact]] = None,
         **kwargs: Any
     ) -> SetupGuestReturnType:
 
@@ -73,7 +73,7 @@ class InstallKojiBuildExecute(gluetool.Module):
         if r_overloaded_guest_setup_output.is_error or stage != GuestSetupStage.ARTIFACT_INSTALLATION:
             return r_overloaded_guest_setup_output
 
-        artifacts = [forced_artifact] if forced_artifact else self._extract_artifacts(guest)
+        artifacts = forced_artifacts if forced_artifacts else self._extract_artifacts(guest)
 
         # no artifacts to test
         if not artifacts:

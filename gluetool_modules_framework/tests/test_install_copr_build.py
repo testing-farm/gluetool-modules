@@ -120,7 +120,7 @@ def test_loadable(module):
     check_loadable(module.glue, 'gluetool_modules_framework/helpers/install_copr_build.py', 'InstallCoprBuild')
 
 
-@pytest.mark.parametrize('guest_artifacts, guest_environment, expected_commands, expected_filenames, forced_artifact', [
+@pytest.mark.parametrize('guest_artifacts, guest_environment, expected_commands, expected_filenames, forced_artifacts', [
     (
         #
         # Test case - single artifact
@@ -386,11 +386,11 @@ def test_loadable(module):
             'rpm -q dummy1_rpm_name2',
         ],
         None,  # No expected generated files - use the default ones in `assert_log_files()`
-        Artifact(type='fedora-copr-build', id='artifact1')  # This artifact should be installed
+        [Artifact(type='fedora-copr-build', id='artifact1')]  # This artifact should be installed
     ),
 
 ], ids=['single-artifact', 'multiple-artifacts', 'with-excludes', 'all-excluded', 'with-install-false', 'forced-artifact'])
-def test_setup_guest(module_shared_patched, tmpdir, guest_artifacts, guest_environment, expected_commands, expected_filenames, forced_artifact):
+def test_setup_guest(module_shared_patched, tmpdir, guest_artifacts, guest_environment, expected_commands, expected_filenames, forced_artifacts):
 
     module, primary_task_mock = module_shared_patched
 
@@ -398,7 +398,7 @@ def test_setup_guest(module_shared_patched, tmpdir, guest_artifacts, guest_envir
     guest = mock_guest(execute_mock, artifacts=guest_artifacts, environment=guest_environment)
 
     module.setup_guest(guest, stage=GuestSetupStage.ARTIFACT_INSTALLATION,
-                       log_dirpath=str(tmpdir), forced_artifact=forced_artifact)
+                       log_dirpath=str(tmpdir), forced_artifacts=forced_artifacts)
 
     calls = [call('command -v dnf')] * 2 + [call(c) for c in expected_commands]
     execute_mock.assert_has_calls(calls, any_order=False)

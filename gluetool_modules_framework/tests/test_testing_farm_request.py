@@ -318,8 +318,7 @@ def test_eval_context_request3(module, monkeypatch, request3):
         'TESTING_FARM_REQUEST_TEST_TYPE': 'sti',
         'TESTING_FARM_REQUEST_TEST_URL': 'https://username:secret@gitlab.com/namespace/repo',
         'TESTING_FARM_REQUEST_TEST_REF': 'sha',
-        # TODO: revert once TFT-2433 done
-        # 'TESTING_FARM_REQUEST_USERNAME': 'testuser',
+        'TESTING_FARM_REQUEST_USERNAME': 'testuser',
         'TESTING_FARM_REQUEST_MERGE': 'testref',
         'TESTING_FARM_FAILED_IF_PROVISION_ERROR': False,
         'TESTING_FARM_PARALLEL_LIMIT': None,

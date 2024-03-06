@@ -239,7 +239,7 @@ class InstallRepository(gluetool.Module):
         stage: GuestSetupStage = GuestSetupStage.PRE_ARTIFACT_INSTALLATION,
         log_dirpath: Optional[str] = None,
         r_overloaded_guest_setup_output: Optional[SetupGuestReturnType] = None,
-        forced_artifact: Optional[Artifact] = None,
+        forced_artifacts: Optional[List[Artifact]] = None,
         **kwargs: Any
     ) -> SetupGuestReturnType:
 
@@ -258,11 +258,16 @@ class InstallRepository(gluetool.Module):
         repository_file_artifacts: List[Artifact] = []
         repository_artifacts: List[Artifact] = []
 
-        if forced_artifact and forced_artifact.type == REPOSITORY_FILE_ARTIFACT_TYPE:
-            repository_file_artifacts = [forced_artifact]
+        forced_artifacts = forced_artifacts or []
 
-        elif forced_artifact and forced_artifact.type == REPOSITORY_ARTIFACT_TYPE:
-            repository_artifacts = [forced_artifact]
+        if forced_artifacts:
+            for forced_artifact in forced_artifacts:
+
+                if forced_artifact.type == REPOSITORY_FILE_ARTIFACT_TYPE:
+                    repository_file_artifacts.append(forced_artifact)
+
+                elif forced_artifact.type == REPOSITORY_ARTIFACT_TYPE:
+                    repository_artifacts.append(forced_artifact)
 
         else:
             # Get `repository-file` artifacts from TestingEnvironment

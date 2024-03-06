@@ -133,7 +133,7 @@ def test_guest_setup(module, environment_index, tmpdir, monkeypatch):
     execute_mock.assert_has_calls(execute_calls)
 
 
-def test_guest_setup_forced_artifact(module, tmpdir, monkeypatch):
+def test_guest_setup_forced_artifacts(module, tmpdir, monkeypatch):
     module.execute()
 
     stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
@@ -160,8 +160,8 @@ def test_guest_setup_forced_artifact(module, tmpdir, monkeypatch):
     guest.environment = module.shared('testing_farm_request').environments_requested[0]
     guest.environment.excluded_packages = ['dummy2']
 
-    module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir), forced_artifact=Artifact(
-        id='https://example.com/forced-repo', packages=None, type='repository'))
+    module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir), forced_artifacts=[Artifact(
+        id='https://example.com/forced-repo', packages=None, type='repository')])
 
     command_calls = [
         call(['dnf', 'repoquery', '-q', '--queryformat', '"%{{name}}"', '--repofrompath=artifacts-repo,https://example.com/forced-repo', '--repo', 'artifacts-repo', '--location', '--disable-modular-filtering']),  # noqa

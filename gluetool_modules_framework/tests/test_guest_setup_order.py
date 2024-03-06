@@ -28,6 +28,12 @@ def mock_guest(execute_mock, artifacts=None, environment=None):
             type='fedora-koji-build'
         ),
         Artifact(
+            id='345345345',
+            packages=None,
+            order=10,
+            type='fedora-koji-build'
+        ),
+        Artifact(
             id='foo',
             packages=None,
             order=50,

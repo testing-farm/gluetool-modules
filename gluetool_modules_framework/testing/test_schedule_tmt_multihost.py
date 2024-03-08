@@ -554,6 +554,14 @@ class TestScheduleTMTMultihost(Module):
 
         return None
 
+    @gluetool.utils.cached_property
+    def test_name(self) -> Optional[str]:
+        tf_request = cast(Optional[TestingFarmRequest], self.shared('testing_farm_request'))
+        if tf_request and tf_request.tmt and tf_request.tmt.test_name:
+            return tf_request.tmt.test_name
+
+        return None
+
     def _tmt_context_to_options(self, context: Dict[str, str]) -> List[str]:
         if not context:
             return []
@@ -691,10 +699,7 @@ class TestScheduleTMTMultihost(Module):
         """
 
         test_filter = test_filter or self.test_filter
-        if not test_name:
-            tf_request = cast(Optional[TestingFarmRequest], self.shared('testing_farm_request'))
-            if tf_request and tf_request.tmt and tf_request.tmt.test_name:
-                test_name = tf_request.tmt.test_name
+        test_name = test_name or self.test_name
 
         if not any([test_filter, test_name]):
             return True
@@ -1113,12 +1118,12 @@ class TestScheduleTMTMultihost(Module):
             '--name', r'^{}$'.format(re.escape(schedule_entry.plan))
         ])
 
-        if self.test_filter:
-            command.extend([
-                'tests',
-                '--filter',
-                self.test_filter
-            ])
+        if self.test_filter or self.test_name:
+            command.append('tests')
+            if self.test_filter:
+                command.extend(['--filter', self.test_filter])
+            if self.test_name:
+                command.extend(['--name', self.test_name])
 
         command.extend([
             'provision',

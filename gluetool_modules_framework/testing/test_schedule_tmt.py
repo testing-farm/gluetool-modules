@@ -600,6 +600,14 @@ class TestScheduleTMT(Module):
 
         return None
 
+    @gluetool.utils.cached_property
+    def test_name(self) -> Optional[str]:
+        tf_request = cast(Optional[TestingFarmRequest], self.shared('testing_farm_request'))
+        if tf_request and tf_request.tmt and tf_request.tmt.test_name:
+            return tf_request.tmt.test_name
+
+        return None
+
     def _context_templates(self, filepaths: List[str]) -> List[str]:
 
         templates = []
@@ -807,10 +815,7 @@ class TestScheduleTMT(Module):
         """
 
         test_filter = test_filter or self.test_filter
-        if not test_name:
-            tf_request = cast(Optional[TestingFarmRequest], self.shared('testing_farm_request'))
-            if tf_request and tf_request.tmt and tf_request.tmt.test_name:
-                test_name = tf_request.tmt.test_name
+        test_name = test_name or self.test_name
 
         if not any([test_filter, test_name]):
             return True
@@ -965,6 +970,7 @@ class TestScheduleTMT(Module):
         assert output
 
         try:
+            self.info(output)
             exported_plans = from_yaml(output, unserializer=create_cattrs_unserializer(List[TMTPlan]))
             log_dict(self.debug, "loaded exported plan yaml", exported_plans)
 
@@ -1304,17 +1310,15 @@ class TestScheduleTMT(Module):
             '--name', r'^{}$'.format(re.escape(schedule_entry.plan))
         ])
 
-        if self.test_filter:
-            command.extend([
-                'tests',
-                '--filter',
-                self.test_filter
-            ])
-            reproducer.extend([
-                'tests',
-                '--filter',
-                self.test_filter
-            ])
+        if self.test_filter or self.test_name:
+            tests_selector = ['tests']
+            if self.test_filter:
+                tests_selector.extend(['--filter', self.test_filter])
+            if self.test_name:
+                tests_selector.extend(['--name', self.test_name])
+
+            command.extend(tests_selector)
+            reproducer.extend(tests_selector)
 
         # create environment variables for the tmt process
         tmt_process_environment: Dict[str, str] = {}

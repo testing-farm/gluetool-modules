@@ -273,10 +273,15 @@ def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest
         'additional_options, additional_shared, testing_environment, expected_reproducer, expected_environment, exception', [
         (  # virtual provision
             {},
-            {},
+            {
+                'testing_farm_request': MagicMock(
+                    environments_requested=[{}],
+                    tmt=MagicMock(plan=None, plan_filter=None, path="some-tmt-root", test_filter=None, test_name='some-name'),  # noqa
+                    plans=None)
+            },
             TestingEnvironment('x86_64', 'rhel-9'),
             '''# tmt reproducer
-dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key''',  # noqa
+dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ tests --name some-name provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key''',  # noqa
             None,
             None
         ),
@@ -422,12 +427,17 @@ def test_tmt_output_dir(
 @pytest.mark.parametrize('additional_options, additional_shared, clone_url, expected_tmt_reproducer', [
         (  # Test case no. 1
             {},
-            {},
+            {
+                'testing_farm_request': MagicMock(
+                    environments_requested=[{}],
+                    tmt=MagicMock(plan=None, plan_filter=None, path="some-tmt-root", test_filter=None, test_name='some-name'),  # noqa
+                    plans=None)
+            },
             SecretGitUrl('http://example.com/git/myproject'),
             r'''# tmt reproducer
 git clone --depth 1 -b myfix http://example.com/git/myproject testcode
 cd testcode
-dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^myfix$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key'''  # noqa
+dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^myfix$ tests --name some-name provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key'''  # noqa
 
         ),
         (  # Test case no. 2
@@ -467,12 +477,22 @@ def test_tmt_output_distgit(module, guest, monkeypatch, additional_options, addi
     #  The module generates some files in CWD, so change it to one that will be cleaned up
     with monkeypatch.context() as m:
         m.chdir(tmpdir)
-        _set_run_outputs(m,
-                        '',       # git clone
-                        'myfix',  # git show-ref
-                        # '',     # git checkout  # TODO: somehow one of the `git` calls is skipped
-                        'plan1',   # tmt run discover plan --name plan1
-                        r'[{"name": "plan_name", "prepare": [{"how": "foo"}, {"how": "install"}], "provision": {}}]')     # tmt plan export  # noqa
+        run_outputs = [
+            '',       # git clone
+            'myfix',  # git show-ref
+            # '',     # git checkout  # TODO: somehow one of the `git` calls is skipped
+            'plan1',   # tmt run discover plan --name plan1
+        ]
+
+        if (tf_request := module.shared('testing_farm_request')) and tf_request.tmt and tf_request.tmt.test_name:  # noqa
+            run_outputs.append('plan1')     # tmt run discover plan --name plan1
+
+        _set_run_outputs(
+            m,
+            *run_outputs,
+            r'[{"name": "plan_name", "prepare": [{"how": "foo"}, {"how": "install"}], "provision": {}}]'     # tmt plan export  # noqa
+        )
+
         schedule_entry = module.create_test_schedule([guest.environment])[0]
 
     schedule_entry.guest = guest

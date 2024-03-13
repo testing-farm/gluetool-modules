@@ -148,7 +148,7 @@ def test_testing_farm_reporter_destroy_result(module, request_empty, results, ev
     result = module.shared('testing_farm_request')
     assert result == {
         'state': 'complete',
-        'overall_result': 'some-overall-result',
+        'overall_result': 'unknown',
         'xunit': '<?xml version="1.0" encoding="UTF-8"?>\n<testsuites overall-result="some-overall-result"><properties><property name="baseosci.overall-result" value="some-test-schedule-result"/></properties></testsuites>',  # noqa
         'artifacts_url': None,
         'summary': None,

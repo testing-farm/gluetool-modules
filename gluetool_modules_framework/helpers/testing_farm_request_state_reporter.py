@@ -13,6 +13,8 @@ STATE_RUNNING = 'running'
 STATE_COMPLETE = 'complete'
 STATE_ERROR = 'error'
 
+ALLOWED_OVERALL_RESULTS = ['passed', 'failed', 'skipped', 'unknown', 'error']
+
 
 class TestingFarmRequestStateReporter(gluetool.Module):
     name = 'testing-farm-request-state-reporter'
@@ -90,7 +92,11 @@ class TestingFarmRequestStateReporter(gluetool.Module):
         request.update(
             state=self._get_state(failure),
             overall_result=self._get_overall_result(
-                test_results.overall_result if test_results else 'unknown', failure),
+                test_results.overall_result
+                if test_results and test_results.overall_result in ALLOWED_OVERALL_RESULTS
+                else 'unknown',
+                failure
+            ),
             summary=self._get_summary(failure),
             xunit=test_results.xunit_testing_farm.to_xml_string() if test_results else None,
             artifacts_url=self.shared('coldstore_url'),

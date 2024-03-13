@@ -290,10 +290,13 @@ def test_execute_schedule_entry_attribute_map(module, monkeypatch):
 
 @pytest.mark.parametrize('option, expected', [
     ("10", 10),
-    ("{{ MAX }}", 20)
-], ids=['string', 'template'])
+    ("{{ MAX }}", 20),
+    ("0", "parallel-limit must be an integer in the 1 to 64 range"),
+    ("100", "parallel-limit must be an integer in the 1 to 64 range"),
+], ids=['string', 'template', "under limit", "over limit"])
 def test_parallel_limit(module, option, expected, monkeypatch):
     module._config['parallel-limit'] = option
+    module._config['max-parallel-limit'] = 64
 
     patch_shared(monkeypatch, module, {
         'eval_context': {
@@ -301,4 +304,8 @@ def test_parallel_limit(module, option, expected, monkeypatch):
         }
     })
 
-    assert module.parallel_limit == expected
+    if isinstance(expected, str):
+        with pytest.raises(gluetool.GlueError, match=expected):
+            module.parallel_limit
+    else:
+        assert module.parallel_limit == expected

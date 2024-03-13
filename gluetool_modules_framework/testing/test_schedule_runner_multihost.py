@@ -77,6 +77,14 @@ class TestScheduleRunnerMultihost(gluetool.Module):
             'default': '0',
             'metavar': 'NUMBER'
         },
+        'max-parallel-limit': {
+            'help': """
+                Defines an upper bound for --parallel-limit option, which is user-defined.
+            """,
+            'type': int,
+            'default': 64,
+            'metavar': 'NUMBER'
+        },
         'schedule-entry-attribute-map': {
             'help': """Path to file with schedule entry attributes and rules, when to use them. See modules's
                     docstring for more details. (default: %(default)s)""",
@@ -113,7 +121,17 @@ class TestScheduleRunnerMultihost(gluetool.Module):
     @gluetool.utils.cached_property
     def parallel_limit(self) -> int:
         try:
-            return int(gluetool.utils.render_template(self.option('parallel-limit'), **self.shared('eval_context')))
+            parallel_limit = int(gluetool.utils.render_template(
+                self.option('parallel-limit'),
+                **self.shared('eval_context')
+            ))
+
+            if not 0 < parallel_limit <= self.option('max-parallel-limit'):
+                raise GlueError(
+                    'parallel-limit must be an integer in the 1 to {} range'.format(self.option('max-parallel-limit'))
+                )
+
+            return parallel_limit
 
         except ValueError:
             raise GlueError("Could not convert 'parallel-limit' option value to integer")

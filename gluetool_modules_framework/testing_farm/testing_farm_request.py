@@ -154,8 +154,9 @@ class TestingFarmAPI(LoggerMixin, object):
 
                 if not response:
                     error_msg = 'Got unexpected response status code {}'.format(response.status_code)
+                    self.error('{}, see debug log for details.'.format(error_msg))
                     log_dict(
-                        self.error,
+                        self.debug,
                         error_msg,
                         {
                             'post-url': url,

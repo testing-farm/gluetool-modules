@@ -44,13 +44,13 @@ def fixture_module(monkeypatch):
     return module
 
 
-def _mock_glob(path):
+def _mock_glob(path, recursive=False):
     if '*' in path:
         return ['/dir-archive-source/1', '/dir-archive-source/2', '/dir-archive-source/3']
     if 'archive-source' in path:
         return [path]
 
-    return glob.glob(path)
+    return glob.glob(path, recursive=recursive)
 
 
 def test_sanity(module):

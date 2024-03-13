@@ -384,7 +384,7 @@ class Archive(gluetool.Module):
                 self.require_shared('artifacts_location')
 
             # If the entry['source'] is a wildcard, we need to use glob to find all the files
-            for source in glob(sources):
+            for source in glob(sources, recursive=True):
 
                 options = []
 

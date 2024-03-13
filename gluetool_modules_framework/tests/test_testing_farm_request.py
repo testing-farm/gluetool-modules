@@ -57,6 +57,13 @@ class Response409(ResponseMock):
     status_code = 409
 
 
+class Response123(ResponseMock):
+    status_code = 123
+
+    def __bool__(self):
+        return False
+
+
 class ResponseInvalidJSON(ResponseMock):
     def json(self):
         raise ValueError
@@ -77,6 +84,9 @@ class RequestsMock():
 
     def request_409(self, url, json):
         return Response409()
+
+    def request_123(self, url, json):
+        return Response123()
 
     def request_invalid_json(self, url, json):
         return ResponseInvalidJSON()
@@ -188,6 +198,21 @@ def test_put_request_409(module_api):
     module_api._module._config.update({'retry-timeout': 1, 'retry-tick': 1})
     with pytest.raises(RequestConflictError, match=""):
         module_api.put_request('1', 'fakekey')
+
+
+def test_get_request_123(module_api, log):
+    RequestsMock.get = RequestsMock.request_123
+    module_api._module._config.update({'retry-timeout': 1, 'retry-tick': 1})
+    with pytest.raises(gluetool.GlueError, match=""):
+        module_api.get_request('1', 'fakekey')
+
+    assert log.match(levelno=logging.ERROR, message='Got unexpected response status code 123, see debug log for details.')
+    assert log.records[-3].levelno == logging.DEBUG
+    assert '''Got unexpected response status code 123:
+{
+    "payload": "<not available>",
+    "post-url": "dummy-module/v0.1/requests/1?api_key=fakekey",
+    "response": {''' in log.records[-3].message
 
 
 def test_get_request_invalid_json(module_api):

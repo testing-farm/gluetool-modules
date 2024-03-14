@@ -1,6 +1,8 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+import threading
+
 import gluetool
 from gluetool.utils import new_xml_element
 from gluetool.log import log_blob
@@ -91,6 +93,7 @@ class TestScheduleReport(gluetool.Module):
         super(TestScheduleReport, self).__init__(*args, **kwargs)
 
         self._results: Optional[Results] = None
+        self._generate_results_lock = threading.Lock()
 
     def sanity(self) -> None:
         required_polarion_options = [
@@ -312,23 +315,24 @@ class TestScheduleReport(gluetool.Module):
         if not self._schedule:
             return
 
-        if failure:
-            self._schedule.log(
-                self.info,
-                label=label,
-                include_errors=True,
-                include_logs=True,
-                include_connection_info=True,
-                connection_info_docs_link=self.option('docs-link-reservation'),
-                module=self
-            )
+        with self._generate_results_lock:
+            if failure:
+                self._schedule.log(
+                    self.info,
+                    label=label,
+                    include_errors=True,
+                    include_logs=True,
+                    include_connection_info=True,
+                    connection_info_docs_link=self.option('docs-link-reservation'),
+                    module=self
+                )
 
-            self._generate_results()
+                self._generate_results()
 
-        else:
-            self._schedule.log(self.info, label=label)
+            else:
+                self._schedule.log(self.info, label=label)
 
-            self._generate_results()
+                self._generate_results()
 
     def execute(self) -> None:
         self.generate_results('finished schedule')

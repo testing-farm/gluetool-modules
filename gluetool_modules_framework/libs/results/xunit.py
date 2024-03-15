@@ -33,7 +33,8 @@ def _xml_friendly_encode(system_out: List[str]) -> List[str]:
 @attrs.define(kw_only=True)
 class XUnitFailure:
     type: str = attrs.field(metadata={'type': 'Attribute'})
-    message: str = attrs.field(metadata={'type': 'Attribute'})
+    # Do not show message in representation, it can be huge
+    message: str = attrs.field(metadata={'type': 'Attribute'}, repr=False)
 
     @classmethod
     def construct(cls, test_case: 'TestCase') -> 'XUnitFailure':
@@ -43,7 +44,8 @@ class XUnitFailure:
 @attrs.define(kw_only=True)
 class XUnitTestCase:
     name: str = attrs.field(metadata={'type': 'Attribute'})
-    system_out: List[str] = attrs.field(metadata={'name': 'system-out'})
+    # Do not show system_out in representation, it can be huge
+    system_out: List[str] = attrs.field(metadata={'name': 'system-out'}, repr=False)
     # Ignore PEP8Bear  # Coala doesn't like this line for some reason
     classname: str = attrs.field(default='tests', metadata={'type': 'Attribute'})
     failure: Optional[XUnitFailure] = attrs.field(default=None)

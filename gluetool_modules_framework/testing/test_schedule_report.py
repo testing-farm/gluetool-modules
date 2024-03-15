@@ -287,7 +287,25 @@ class TestScheduleReport(gluetool.Module):
     def test_schedule_results(self) -> Optional[Results]:
         return self._results
 
-    def _generate_results(self) -> None:
+    def _create_xunit_testing_farm_file(self) -> None:
+        assert self._results is not None
+
+        with open(gluetool.utils.normalize_path(self.option('xunit-testing-farm-file')), 'w') as f:
+            f.write(self._results.xunit_testing_farm.to_xml_string(pretty_print=True))
+            f.flush()
+
+        self.debug('results saved into {}'.format(self.option('xunit-testing-farm-file')))
+
+    def _create_xunit_file(self) -> None:
+        assert self._results is not None
+
+        with open(gluetool.utils.normalize_path(self.option('xunit-file')), 'w') as f:
+            f.write(self._results.xunit.to_xml_string(pretty_print=True))
+            f.flush()
+
+        self.debug('results saved into {}'.format(self.option('xunit-file')))
+
+    def _generate_results(self, generate_xunit: bool = True, generate_xunit_testing_farm: bool = True) -> None:
 
         self._serialize_results(self._schedule)
 
@@ -295,21 +313,20 @@ class TestScheduleReport(gluetool.Module):
 
         assert self._results is not None
 
-        if self.option('xunit-testing-farm-file'):
-            with open(gluetool.utils.normalize_path(self.option('xunit-testing-farm-file')), 'w') as f:
-                f.write(self._results.xunit_testing_farm.to_xml_string(pretty_print=True))
-                f.flush()
+        if self.option('xunit-testing-farm-file') and generate_xunit_testing_farm:
+            self._create_xunit_testing_farm_file()
 
-            self.debug('results saved into {}'.format(self.option('xunit-testing-farm-file')))
+        if self.option('xunit-file') and generate_xunit:
+            self._create_xunit_file()
 
-        if self.option('xunit-file'):
-            with open(gluetool.utils.normalize_path(self.option('xunit-file')), 'w') as f:
-                f.write(self._results.xunit.to_xml_string(pretty_print=True))
-                f.flush()
+    def generate_results(
+                self,
+                label: str,
+                failure: Optional[Any] = None,
+                generate_xunit: bool = True,
+                generate_xunit_testing_farm: bool = True
+            ) -> None:
 
-            self.debug('results saved into {}'.format(self.option('xunit-file')))
-
-    def generate_results(self, label: str, failure: Optional[Any] = None) -> None:
         self.require_shared('test_schedule')
 
         if not self._schedule:
@@ -326,13 +343,11 @@ class TestScheduleReport(gluetool.Module):
                     connection_info_docs_link=self.option('docs-link-reservation'),
                     module=self
                 )
-
-                self._generate_results()
-
             else:
                 self._schedule.log(self.info, label=label)
 
-                self._generate_results()
+            self._generate_results(
+                generate_xunit=generate_xunit, generate_xunit_testing_farm=generate_xunit_testing_farm)
 
     def execute(self) -> None:
         self.generate_results('finished schedule')

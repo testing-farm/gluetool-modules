@@ -25,8 +25,6 @@ class TestScheduleReport(gluetool.Module):
     """
     Report test results, carried by schedule entries, and prepare serialized version of these results
     in a form of xUnit document.
-    The module can be placed as last to generate results at the end of a pipeline.
-    Or other modules can use the shared function `generate_results` to generate results during pipeline progress.
 
     Optionally, make the xunit polarion friendly.
     """
@@ -84,7 +82,7 @@ class TestScheduleReport(gluetool.Module):
         })
     ]
 
-    shared_functions = ['test_schedule_results', 'results', 'xunit_testing_farm_file', 'generate_results']
+    shared_functions = ['test_schedule_results', 'results', 'xunit_testing_farm_file']
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
 
@@ -297,25 +295,32 @@ class TestScheduleReport(gluetool.Module):
                 f.write(self._results.xunit_testing_farm.to_xml_string(pretty_print=True))
                 f.flush()
 
-            self.debug('results saved into {}'.format(self.option('xunit-testing-farm-file')))
+            self.info('results saved into {}'.format(self.option('xunit-testing-farm-file')))
 
         if self.option('xunit-file'):
             with open(gluetool.utils.normalize_path(self.option('xunit-file')), 'w') as f:
                 f.write(self._results.xunit.to_xml_string(pretty_print=True))
                 f.flush()
 
-            self.debug('results saved into {}'.format(self.option('xunit-file')))
+            self.info('results saved into {}'.format(self.option('xunit-file')))
 
-    def generate_results(self, label: str, failure: Optional[Any] = None) -> None:
+    def execute(self) -> None:
         self.require_shared('test_schedule')
+        self._schedule.log(self.info, label='finished schedule')
+
+        self._generate_results()
+
+    def destroy(self, failure: Optional[Any] = None) -> None:
 
         if not self._schedule:
             return
 
         if failure:
+            self._schedule.log(self.info, label='aborted schedule')
+
             self._schedule.log(
                 self.info,
-                label=label,
+                label='finished schedule',
                 include_errors=True,
                 include_logs=True,
                 include_connection_info=True,
@@ -324,14 +329,3 @@ class TestScheduleReport(gluetool.Module):
             )
 
             self._generate_results()
-
-        else:
-            self._schedule.log(self.info, label=label)
-
-            self._generate_results()
-
-    def execute(self) -> None:
-        self.generate_results('finished schedule')
-
-    def destroy(self, failure: Optional[Any] = None) -> None:
-        self.generate_results('finished schedule', failure=failure)

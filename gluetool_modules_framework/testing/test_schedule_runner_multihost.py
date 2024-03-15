@@ -246,14 +246,12 @@ class TestScheduleRunnerMultihost(gluetool.Module):
 
             if schedule_entry.stage == TestScheduleEntryStage.CREATED:
                 schedule_entry.info('Entry is prepared')
-                self.shared('generate_results', 'Entry is prepared')
 
                 _shift(schedule_entry, TestScheduleEntryStage.PREPARED)
                 engine.enqueue_jobs(_job(schedule_entry, 'running tests', self._run_tests))
 
             elif schedule_entry.stage == TestScheduleEntryStage.RUNNING:
                 schedule_entry.info('test execution finished')
-                self.shared('generate_results', 'test execution finished')
 
                 _shift(schedule_entry, TestScheduleEntryStage.COMPLETE)
 
@@ -280,7 +278,6 @@ class TestScheduleRunnerMultihost(gluetool.Module):
             _shift(schedule_entry, TestScheduleEntryStage.COMPLETE, new_state=TestScheduleEntryState.ERROR)
 
             _finish_action(schedule_entry)
-            self.shared('generate_results', 'entry error', failure=exc)
 
             if schedule_queue:
                 schedule_queue_entry = schedule_queue.pop(0)

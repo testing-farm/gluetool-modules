@@ -69,10 +69,12 @@ class TestScheduleRunnerMultihost(gluetool.Module):
             'default': 'no',
             'metavar': 'yes|no'
         },
-        'max-parallel': {
-            'help': 'Maximum number of entries running in parallel. (default: %(default)s)',
-            'type': int,
-            'default': 0,
+        'parallel-limit': {
+            'help': """
+                Maximum number of entries running in parallel. Value is treated as a template. (default: %(default)s)
+            """,
+            'type': str,
+            'default': '0',
             'metavar': 'NUMBER'
         },
         'schedule-entry-attribute-map': {
@@ -109,25 +111,20 @@ class TestScheduleRunnerMultihost(gluetool.Module):
         return normalize_bool_option(self.option('parallelize'))
 
     @gluetool.utils.cached_property
+    def parallel_limit(self) -> int:
+        try:
+            return int(gluetool.utils.render_template(self.option('parallel-limit'), **self.shared('eval_context')))
+
+        except ValueError:
+            raise GlueError("Could not convert 'parallel-limit' option value to integer")
+
+    @gluetool.utils.cached_property
     def schedule_entry_attribute_map(self) -> Any:
 
         if not self.option('schedule-entry-attribute-map'):
             return []
 
         return load_yaml(self.option('schedule-entry-attribute-map'), logger=self.logger)
-
-    def sanity(self) -> None:
-
-        if normalize_bool_option(self.option('parallelize')):
-            if self.option('max-parallel'):
-                self.info(
-                    'Will run schedule entries in parallel, {} entries at once'.format(self.option('max-parallel'))
-                )
-            else:
-                self.info('Will run schedule entries in parallel')
-
-        else:
-            self.info('Will run schedule entries serially')
 
     def _get_entry_ready(self, schedule_entry: TestScheduleEntry) -> None:
         return
@@ -141,7 +138,7 @@ class TestScheduleRunnerMultihost(gluetool.Module):
 
     def _run_schedule(self, schedule: TestSchedule) -> None:
 
-        schedule_queue = schedule[:] if not self.parallelize or self.option('max-parallel') else None
+        schedule_queue = schedule[:] if not self.parallelize or self.parallel_limit else None
 
         def _job(schedule_entry: TestScheduleEntry, name: str, target: Callable[[TestScheduleEntry], Any]) -> Job:
 
@@ -312,8 +309,8 @@ class TestScheduleRunnerMultihost(gluetool.Module):
         )
 
         if self.parallelize:
-            if self.option('max-parallel'):
-                for _ in range(self.option('max-parallel')):
+            if self.parallel_limit:
+                for _ in range(self.parallel_limit):
 
                     assert schedule_queue is not None
 
@@ -371,6 +368,17 @@ class TestScheduleRunnerMultihost(gluetool.Module):
                     schedule=schedule)
 
     def execute(self) -> None:
+
+        if normalize_bool_option(self.option('parallelize')):
+            if self.option('parallel-limit'):
+                self.info(
+                    'Will run schedule entries in parallel, {} entries at once'.format(self.parallel_limit)
+                )
+            else:
+                self.info('Will run schedule entries in parallel')
+
+        else:
+            self.info('Will run schedule entries serially')
 
         schedule = cast(
             TestSchedule,

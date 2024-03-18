@@ -126,12 +126,17 @@ class GuestSetupOrder(gluetool.Module):
                 continue
 
             # If it's a different type, execute guest setup for the previous group
-            _run_guest_setup(guest_setup_output, artifacts_group, artifacts_group_type)
+            guest_setup_output = _run_guest_setup(
+                guest_setup_output, artifacts_group, artifacts_group_type)
 
             # Reinitialize artifacts group with the current artifact
             artifacts_group = [artifact]
 
+            if guest_setup_output.is_error:
+                return guest_setup_output
+
         # Execute guest setup for the last group
-        _run_guest_setup(guest_setup_output, artifacts_group, artifacts_group[0].type)
+        guest_setup_output = _run_guest_setup(
+            guest_setup_output, artifacts_group, artifacts_group[0].type)
 
         return guest_setup_output

@@ -130,3 +130,19 @@ def test_execute_schedule_entry_attribute_map(module, monkeypatch):
     assert test_schedule[0].stage == TSEntryStage.COMPLETE
     assert test_schedule[0].state == TSEntryState.OK
     assert test_schedule[0].result == TSResult.UNDEFINED
+
+
+@pytest.mark.parametrize('option, expected', [
+    ("10", 10),
+    ("{{ MAX }}", 20)
+], ids=['string', 'template'])
+def test_parallel_limit(module, option, expected, monkeypatch):
+    module._config['parallel-limit'] = option
+
+    patch_shared(monkeypatch, module, {
+        'eval_context': {
+            'MAX': 20
+        }
+    })
+
+    assert module.parallel_limit == expected

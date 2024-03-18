@@ -25,6 +25,7 @@ def fixture_module(monkeypatch):
     module._config['artifacts-host'] = 'https://artifacts.example.com'
     module._config['artifacts-rsync-host'] = 'artifacts-rsync.example.com'
     module._config['artifacts-root'] = '/artifacts-root'
+    module._config['artifacts-cp-root'] = '/artifacts-root'
     module._config['source-destination-map'] = '{}/source-destination-map.yaml'.format(ASSETS_DIR)
     module._config['rsync-mode'] = 'ssh'
     module._config['rsync-options'] = '--rsync-option'
@@ -58,7 +59,7 @@ def test_sanity(module):
 
     module._config['rsync-mode'] = 'invalid'
 
-    with pytest.raises(gluetool.GlueError, match='rsync mode must be either daemon or ssh'):
+    with pytest.raises(gluetool.GlueError, match='rsync mode must be either daemon, ssh or cp'):
         module.sanity()
 
     module._config['rsync-mode'] = 'daemon'
@@ -69,6 +70,11 @@ def test_sanity(module):
     module._config['rsync-mode'] = 'ssh'
     module._config['artifacts-host'] = None
     with pytest.raises(gluetool.GlueError, match='artifacts host must be specified when using ssh mode'):
+        module.sanity()
+
+    module._config['rsync-mode'] = 'cp'
+    module._config['artifacts-cp-root'] = None
+    with pytest.raises(gluetool.GlueError, match='artifacts cp root must be specified when using cp mode'):
         module.sanity()
 
 
@@ -218,6 +224,74 @@ def test_destroy_daemon(monkeypatch, module):
 
         call(['rsync', '--rsync-option', '--timeout=10', '--chmod=666', '/env-archive-source',
               'rsync://artifacts-rsync.example.com/request-id/env-dest'], logger=module.logger),
+    ]
+
+    mock_command_init.assert_has_calls(calls, any_order=True)
+
+
+def test_execute_destroy_cp(monkeypatch, module):
+    module._config['enable-parallel-archiving'] = False
+    module._config['rsync-mode'] = 'cp'
+
+    mock_command_init = MagicMock(return_value=None)
+    mock_command_run = MagicMock(return_value='Ok')
+    mock_shutil_copytree = MagicMock()
+    mock_shutil_copy2 = MagicMock()
+    mock_shutil_rmtree = MagicMock()
+    mock_os_unlink = MagicMock()
+    mock_requests = MagicMock()
+    mock_requests_get = mock_requests.return_value.__enter__.return_value.get
+    mock_requests_get.return_value.status_code = 200
+
+    monkeypatch.setattr(gluetool.utils.Command, '__init__', mock_command_init)
+    monkeypatch.setattr(gluetool.utils.Command, 'run', mock_command_run)
+    monkeypatch.setattr(gluetool.utils, 'requests', mock_requests)
+    monkeypatch.setattr(shutil, 'copytree', mock_shutil_copytree)
+    monkeypatch.setattr(shutil, 'copy2', mock_shutil_copy2)
+    monkeypatch.setattr(shutil, 'rmtree', mock_shutil_rmtree)
+    monkeypatch.setattr(os, 'unlink', mock_os_unlink)
+
+    monkeypatch.setattr(os.path, 'exists', lambda _: True)
+
+    def _isdir(path):
+        if path in ['/dir-archive-source', 'dir-archive-source']:
+            return True
+
+        return False
+
+    monkeypatch.setattr(os.path, 'isdir', _isdir)
+
+    monkeypatch.setattr(gluetool_modules_framework.helpers.archive, 'glob', _mock_glob)
+
+    # run execute to test directory creation
+    module.execute()
+
+    module.destroy()
+
+    calls = [
+        call(['mkdir', '-p', '/artifacts-root/request-id'], logger=module.logger),
+
+        call(['cp', '/archive-source-execute.copy', '/artifacts-root/request-id/archive-source-execute'], logger=module.logger),
+
+        call(['cp', '/env-archive-source2.copy', '/artifacts-root/request-id/env-archive-source2'], logger=module.logger),
+
+        call(['cp', '/archive-source', '/artifacts-root/request-id/dest'], logger=module.logger),
+
+        call(['cp', '/archive-source', '/artifacts-root/request-id/'], logger=module.logger),
+
+        call(['cp', '/archive-source', '/artifacts-root/request-id/dest'], logger=module.logger),
+
+        call(['cp', '-r', '/dir-archive-source', '/artifacts-root/request-id/'], logger=module.logger),
+
+        call(['mkdir', '-p', '/artifacts-root/request-id/dir-archive-source'], logger=module.logger),
+
+        call(['cp', '/dir-archive-source/1', '/artifacts-root/request-id/dir-archive-source'], logger=module.logger),
+
+        call(['cp', '/dir-archive-source/2', '/artifacts-root/request-id/dir-archive-source'], logger=module.logger),
+
+        call(['cp', '/dir-archive-source/3', '/artifacts-root/request-id/dir-archive-source'], logger=module.logger),
+
+        call(['cp', '/env-archive-source', '/artifacts-root/request-id/env-dest'], logger=module.logger)
     ]
 
     mock_command_init.assert_has_calls(calls, any_order=True)

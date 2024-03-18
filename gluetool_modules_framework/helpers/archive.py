@@ -11,7 +11,7 @@ from gluetool.utils import Command, normalize_bool_option, render_template
 from gluetool.result import Result
 from gluetool_modules_framework.libs.threading import RepeatTimer
 
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Tuple
 
 DEFAULT_RETRY_TIMEOUT = 30
 DEFAULT_RETRY_TICK = 10
@@ -33,6 +33,11 @@ class Archive(gluetool.Module):
     The module supports SOURCE_DESTINATION_MAP environment variable which can be used to specify
     additional source-destination mappings. The variable is a string of the following format:
     <SOURCE>:[<DESTINATION>]:[<PERMISSIONS>]:[<STAGE>][#<SOURCE>:[<DESTINATION>]:[<PERMISSIONS>][<STAGE>]]...
+
+    The ``rsync-mode`` option supports three modes: ``daemon``, ``ssh`` and ``cp``:
+    * The ``daemon`` mode uses the rsync daemon to with rsync protocol
+    * The ``ssh`` mode uses rsync with ssh protocol
+    * The ``cp`` mode uses the cp command to copy artifacts locally. This option is meant to be used only for testing.
 
     Use the ``verify`` flag to verify given path on the artifact location provided by the ``coldstore`` module.
     """
@@ -57,13 +62,18 @@ class Archive(gluetool.Module):
             'help': 'Root directory where artifacts will be stored.',
             'type': str,
         },
+        'artifacts-cp-root': {
+            'help': 'Location where artifacts will be stored using cp mode.',
+            'type': str,
+            'default': '/tmp/artifacts'
+        },
         'source-destination-map': {
             'help': 'Mapping of source to destination paths and permissions.',
             'metavar': 'FILE'
         },
         'rsync-mode': {
             'help': 'Rsync mode to use.',
-            'choices': ['daemon', 'ssh'],
+            'choices': ['daemon', 'ssh', 'cp'],
         },
         'rsync-options': {
             'help': 'Rsync options to use.',
@@ -123,14 +133,17 @@ class Archive(gluetool.Module):
         self._created_directories: List[str] = []
 
     def sanity(self) -> None:
-        if self.option('rsync-mode') not in ('daemon', 'ssh'):
-            raise GlueError('rsync mode must be either daemon or ssh')
+        if self.option('rsync-mode') not in ('daemon', 'ssh', 'cp'):
+            raise GlueError('rsync mode must be either daemon, ssh or cp')
 
         if self.option('rsync-mode') == 'daemon' and not self.option('artifacts-rsync-host'):
             raise GlueError('rsync daemon host must be specified when using rsync daemon mode')
 
         if self.option('rsync-mode') == 'ssh' and not self.option('artifacts-host'):
             raise GlueError('artifacts host must be specified when using ssh mode')
+
+        if self.option('rsync-mode') == 'cp' and not self.option('artifacts-cp-root'):
+            raise GlueError('artifacts cp root must be specified when using cp mode')
 
     def source_destination_map(self) -> Any:
         source_destination_map = gluetool.utils.load_yaml(
@@ -195,6 +208,14 @@ class Archive(gluetool.Module):
     def artifacts_root(self) -> str:
         return render_template(
             self.option('artifacts-root'),
+            logger=self.logger,
+            **self.shared('eval_context')
+        )
+
+    @gluetool.utils.cached_property
+    def artifacts_cp_root(self) -> str:
+        return render_template(
+            self.option('artifacts-cp-root'),
             logger=self.logger,
             **self.shared('eval_context')
         )
@@ -266,24 +287,32 @@ class Archive(gluetool.Module):
 
         self._created_directories.append(path)
 
-    def run_rsync(
-        self,
-        source: str,
-        destination: str,
-        options: Optional[List[str]] = None,
-        source_copy: bool = False
-    ) -> None:
-        options = options or []
-        original_source = source
-
+    def create_archive_directory_cp(self, directory: Optional[str] = None) -> None:
+        """
+        Creates directory on the host with cp where artifacts will be stored.
+        """
         request_id = self.shared('testing_farm_request').id
 
-        cmd = ['rsync']
+        path = os.path.join(self.artifacts_cp_root, request_id)
 
-        cmd += self.rsync_options
+        if directory:
+            path = os.path.join(path, directory)
 
-        if options:
-            cmd += options
+        if path in self._created_directories:
+            return
+
+        cmd = [
+            'mkdir',
+            '-p',
+            path
+        ]
+
+        Command(cmd, logger=self.logger).run()
+
+        self._created_directories.append(path)
+
+    def _prepare_source(self, source: str, source_copy: bool) -> Tuple[str, str]:
+        original_source = source
 
         # Used in cases when we need to work with a source copy to mitigate breaking of "live" logs
         if source_copy:
@@ -303,8 +332,11 @@ class Archive(gluetool.Module):
             else:
                 shutil.copy2(original_source, source, follow_symlinks=False)
 
-        cmd.append(source)
+        return source, original_source
 
+    def _prepare_destination(self, original_source: str, destination: str, source_copy: bool) -> str:
+
+        request_id = self.shared('testing_farm_request').id
         # Reuse source directory name as destination if destination is not set
         # This is useful when we want to sync particular files
         # from the source directory without losing the directory structure
@@ -315,8 +347,12 @@ class Archive(gluetool.Module):
         if os.path.isdir(destination) and destination not in ['/', '.']:
             if self.option('rsync-mode') == 'daemon':
                 self.create_archive_directory_rsync(destination)
-            else:
+
+            elif self.option('rsync-mode') == 'ssh':
                 self.create_archive_directory_ssh(destination)
+
+            else:
+                self.create_archive_directory_cp(destination)
 
         # In case we are working with a copy, the destination must be set to the original source,
         # because the source and destination are different
@@ -330,29 +366,41 @@ class Archive(gluetool.Module):
                 os.path.join(request_id, destination)
             )
 
-        else:
+        elif self.option('rsync-mode') == 'ssh':
             full_destination = '{}:{}'.format(
                 self.artifacts_host,
                 os.path.join(self.artifacts_root, request_id, destination)
             )
 
+        else:
+            full_destination = os.path.join(self.artifacts_cp_root, request_id, destination)
+
+        return full_destination
+
+    def _run_archiving_command(self, source: str, destination: str, cmd: List[str], source_copy: bool) -> None:
+
+        source, original_source = self._prepare_source(source, source_copy)
+        cmd.append(source)
+
         # Before we start archiving, we need to hide secrets in files
         self.shared('hide_secrets', search_path=source)
 
+        full_destination = self._prepare_destination(original_source, destination, source_copy)
         cmd.append(full_destination)
+
         self.debug('syncing {} to {}'.format(source, full_destination))
 
-        def _run_rsync() -> Result[bool, bool]:
+        def _run_command() -> Result[bool, bool]:
             try:
                 Command(cmd, logger=self.logger).run()
             except gluetool.GlueCommandError as exc:
-                self.warn('rsync command "{}" failed, retrying: {}'.format(" ".join(cmd), exc))
+                self.warn('The command "{}" failed, retrying: {}'.format(" ".join(cmd), exc))
                 return Result.Error(False)
             return Result.Ok(True)
 
         gluetool.utils.wait(
-            "rsync '{}' to '{}'".format(source, destination),
-            _run_rsync,
+            "archiving '{}' to '{}'".format(source, destination),
+            _run_command,
             timeout=self.option('retry-timeout'),
             tick=self.option('retry-tick')
         )
@@ -364,6 +412,40 @@ class Archive(gluetool.Module):
                 shutil.rmtree(source)
             else:
                 os.unlink(source)
+
+    def run_rsync(
+        self,
+        source: str,
+        destination: str,
+        options: Optional[List[str]] = None,
+        source_copy: bool = False
+    ) -> None:
+        options = options or []
+
+        cmd = ['rsync']
+
+        cmd += self.rsync_options
+
+        if options:
+            cmd += options
+
+        self._run_archiving_command(source, destination, cmd, source_copy)
+
+    def run_cp(
+        self,
+        source: str,
+        destination: str,
+        options: Optional[List[str]] = None,
+        source_copy: bool = False
+    ) -> None:
+        options = options or []
+
+        cmd = ['cp']
+
+        if options:
+            cmd += options
+
+        self._run_archiving_command(source, destination, cmd, source_copy)
 
     # The stage is default to progress because we want to use the function
     # in the parallel archiving timer without calling it
@@ -388,23 +470,34 @@ class Archive(gluetool.Module):
 
                 options = []
 
-                if os.path.isdir(source):
-                    options.append('--recursive')
+                if self.option('rsync-mode') in ['daemon', 'ssh']:
+                    if os.path.isdir(source):
+                        options.append('--recursive')
 
-                if permissions:
-                    options.append('--chmod={}'.format(permissions))
+                    if permissions:
+                        options.append('--chmod={}'.format(permissions))
 
-                # In case of syncing 'progress' and 'execute' stages, make sure we work with a copy.
-                # This is a workaround for the problem of the source file being overwritten with hide-secrets module.
-                # In that module 'sed -i' is used and the inode of the source file would change, effectively breaking
-                # the saving of the "live" logs like 'progress.log'.
-                self.run_rsync(
-                    source, destination,
-                    options=options or None,
-                    source_copy=True if stage in ARCHIVE_STAGES_USING_COPY else False
-                )
+                    # In case of syncing 'progress' and 'execute' stages, make sure we work with a copy.
+                    # This is a workaround for the problem of the source file being overwritten with
+                    # hide-secrets module. In that module 'sed -i' is used and the inode of the source
+                    # file would change, effectively breaking the saving of the "live" logs like 'progress.log'.
+                    self.run_rsync(
+                        source, destination,
+                        options=options or None,
+                        source_copy=True if stage in ARCHIVE_STAGES_USING_COPY else False
+                    )
 
-                if not verify:
+                else:
+                    if os.path.isdir(source):
+                        options.append('-r')
+
+                    self.run_cp(
+                        source, destination,
+                        options=options or None,
+                        source_copy=True if stage in ARCHIVE_STAGES_USING_COPY else False
+                    )
+
+                if not verify or self.option('rsync-mode') == 'cp':
                     continue
 
                 # Verify archivation target
@@ -435,8 +528,10 @@ class Archive(gluetool.Module):
 
         if self.option('rsync-mode') == 'ssh':
             self.create_archive_directory_ssh()
-        else:
+        elif self.option('rsync-mode') == 'daemon':
             self.create_archive_directory_rsync()
+        else:
+            self.create_archive_directory_cp()
 
         self.archive_stage('execute')
 

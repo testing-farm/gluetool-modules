@@ -34,6 +34,11 @@ class Archive(gluetool.Module):
     additional source-destination mappings. The variable is a string of the following format:
     <SOURCE>:[<DESTINATION>]:[<PERMISSIONS>]:[<STAGE>][#<SOURCE>:[<DESTINATION>]:[<PERMISSIONS>][<STAGE>]]...
 
+    The ``rsync-mode`` option supports three modes: ``daemon``, ``ssh`` and ``local``:
+    * The ``daemon`` mode uses the rsync daemon to with rsync protocol
+    * The ``ssh`` mode uses rsync with ssh protocol
+    * The ``local`` mode copies files locally with rsync. It should be used only for testing and development.
+
     Use the ``verify`` flag to verify given path on the artifact location provided by the ``coldstore`` module.
     """
 
@@ -57,13 +62,17 @@ class Archive(gluetool.Module):
             'help': 'Root directory where artifacts will be stored.',
             'type': str,
         },
+        'artifacts-local-root': {
+            'help': 'Root directory where artifacts will be stored locally.',
+            'type': str,
+        },
         'source-destination-map': {
             'help': 'Mapping of source to destination paths and permissions.',
             'metavar': 'FILE'
         },
         'rsync-mode': {
             'help': 'Rsync mode to use.',
-            'choices': ['daemon', 'ssh'],
+            'choices': ['daemon', 'ssh', 'local'],
         },
         'rsync-options': {
             'help': 'Rsync options to use.',
@@ -123,14 +132,17 @@ class Archive(gluetool.Module):
         self._created_directories: List[str] = []
 
     def sanity(self) -> None:
-        if self.option('rsync-mode') not in ('daemon', 'ssh'):
-            raise GlueError('rsync mode must be either daemon or ssh')
+        if self.option('rsync-mode') not in ('daemon', 'ssh', 'local'):
+            raise GlueError('rsync mode must be either daemon, ssh or local')
 
         if self.option('rsync-mode') == 'daemon' and not self.option('artifacts-rsync-host'):
             raise GlueError('rsync daemon host must be specified when using rsync daemon mode')
 
         if self.option('rsync-mode') == 'ssh' and not self.option('artifacts-host'):
             raise GlueError('artifacts host must be specified when using ssh mode')
+
+        if self.option('rsync-mode') == 'local' and not self.option('artifacts-local-root'):
+            raise GlueError('artifacts local root must be specified when using local mode')
 
     def source_destination_map(self) -> Any:
         source_destination_map = gluetool.utils.load_yaml(
@@ -195,6 +207,14 @@ class Archive(gluetool.Module):
     def artifacts_root(self) -> str:
         return render_template(
             self.option('artifacts-root'),
+            logger=self.logger,
+            **self.shared('eval_context')
+        )
+
+    @gluetool.utils.cached_property
+    def artifacts_local_root(self) -> str:
+        return render_template(
+            self.option('artifacts-local-root'),
             logger=self.logger,
             **self.shared('eval_context')
         )
@@ -266,6 +286,30 @@ class Archive(gluetool.Module):
 
         self._created_directories.append(path)
 
+    def create_archive_directory_local(self, directory: Optional[str] = None) -> None:
+        """
+        Creates directory on the local host.
+        """
+        request_id = self.shared('testing_farm_request').id
+
+        path = os.path.join(self.artifacts_local_root, request_id)
+
+        if directory:
+            path = os.path.join(path, directory)
+
+        if path in self._created_directories:
+            return
+
+        cmd = [
+            'mkdir',
+            '-p',
+            path
+        ]
+
+        Command(cmd, logger=self.logger).run()
+
+        self._created_directories.append(path)
+
     def run_rsync(
         self,
         source: str,
@@ -315,8 +359,10 @@ class Archive(gluetool.Module):
         if os.path.isdir(destination) and destination not in ['/', '.']:
             if self.option('rsync-mode') == 'daemon':
                 self.create_archive_directory_rsync(destination)
-            else:
+            elif self.option('rsync-mode') == 'ssh':
                 self.create_archive_directory_ssh(destination)
+            else:
+                self.create_archive_directory_local(destination)
 
         # In case we are working with a copy, the destination must be set to the original source,
         # because the source and destination are different
@@ -330,11 +376,14 @@ class Archive(gluetool.Module):
                 os.path.join(request_id, destination)
             )
 
-        else:
+        elif self.option('rsync-mode') == 'ssh':
             full_destination = '{}:{}'.format(
                 self.artifacts_host,
                 os.path.join(self.artifacts_root, request_id, destination)
             )
+
+        else:
+            full_destination = os.path.join(self.artifacts_local_root, request_id, destination)
 
         # Before we start archiving, we need to hide secrets in files
         self.shared('hide_secrets', search_path=source)
@@ -404,7 +453,7 @@ class Archive(gluetool.Module):
                     source_copy=True if stage in ARCHIVE_STAGES_USING_COPY else False
                 )
 
-                if not verify:
+                if not verify or self.option('rsync-mode') == 'local':
                     continue
 
                 # Verify archivation target
@@ -435,8 +484,10 @@ class Archive(gluetool.Module):
 
         if self.option('rsync-mode') == 'ssh':
             self.create_archive_directory_ssh()
-        else:
+        elif self.option('rsync-mode') == 'daemon':
             self.create_archive_directory_rsync()
+        else:
+            self.create_archive_directory_local()
 
         self.archive_stage('execute')
 

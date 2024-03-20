@@ -1113,6 +1113,9 @@ class ArtemisProvisioner(gluetool.Module):
             'key': self.option('key'),
             'post-install-script': self.post_install_script,
             'skip-prepare-verify-ssh': self.option('skip-prepare-verify-ssh'),
+            'ready-timeout': self.option('ready-timeout'),
+            'ready-tick': self.option('ready-tick'),
+            'api-call-timeout': self.option('api-call-timeout'),
         }
 
     @property

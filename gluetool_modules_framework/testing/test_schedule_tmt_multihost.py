@@ -1093,6 +1093,9 @@ class TestScheduleTMTMultihost(Module):
         artemis_key = artemis_options['key']
         artemis_post_install_script = artemis_options['post-install-script']
         artemis_skip_prepare_verify_ssh = artemis_options['skip-prepare-verify-ssh']
+        artemis_provision_timeout = artemis_options['ready-timeout']
+        artemis_provision_tick = artemis_options['ready-tick']
+        artemis_api_timeout = artemis_options['api-call-timeout']
 
         command.extend(['run', '--all', '--id', os.path.abspath(work_dirpath)])
         command.extend(gluetool.utils.normalize_multistring_option(self.option('tmt-run-options')))
@@ -1134,6 +1137,9 @@ class TestScheduleTMTMultihost(Module):
             '--api-url', artemis_api_url,
             '--api-version', artemis_api_version,
             '--keyname', artemis_key,
+            '--provision-timeout', str(artemis_provision_timeout),
+            '--provision-tick', str(artemis_provision_tick),
+            '--api-timeout', str(artemis_api_timeout),
         ])
 
         # add tmt reproducer suitable for local execution
@@ -1143,6 +1149,8 @@ class TestScheduleTMTMultihost(Module):
             command.extend(['--image', cast(str, schedule_entry.testing_environment.compose)])
         if schedule_entry.testing_environment.arch:
             command.extend(['--arch', cast(str, schedule_entry.testing_environment.arch)])
+        if schedule_entry.testing_environment.pool:
+            command.extend(['--pool', schedule_entry.testing_environment.pool])
         if artemis_skip_prepare_verify_ssh:
             command.extend(['--skip-prepare-verify-ssh'])
         if artemis_post_install_script:

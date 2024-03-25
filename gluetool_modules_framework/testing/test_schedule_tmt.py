@@ -455,6 +455,10 @@ def gather_plan_results(
                 name='log_dir',
                 path=os.path.join(artifacts_dir, os.path.dirname(logs[0]))
             ))
+            artifacts.append(TestArtifact(
+                name='data',
+                path=os.path.join(artifacts_dir, os.path.dirname(logs[0]), 'data')
+            ))
 
             # the first log is the main one for developers, traditionally called "testout.log"
             testout = logs.pop(0)
@@ -1470,6 +1474,15 @@ class TestScheduleTMT(Module):
             tmt_log_filepath = os.path.join(schedule_entry.work_dirpath, TMT_LOG)
             tmt_log_href = artifacts_location(self, tmt_log_filepath, logger=schedule_entry.logger)
             test_suite.logs.append(Log(href=tmt_log_href, name='tmt-log'))
+
+            test_suite.logs.append(Log(
+                href=artifacts_location(
+                    self,
+                    os.path.join(schedule_entry.work_dirpath, safe_name(schedule_entry.plan[1:]), 'data'),
+                    logger=schedule_entry.logger
+                ),
+                name='data'
+            ))
 
             if isinstance(schedule_entry.guest, ArtemisGuest) and schedule_entry.guest.guest_logs:
                 for log in schedule_entry.guest.guest_logs:

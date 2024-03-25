@@ -7,6 +7,8 @@ results:
     artifacts:
       - name: log_dir
         path: error/execute/logs/install
+      - name: data
+        path: error/execute/logs/install/data
       - name: testout.log
         path: error/execute/logs/install/out.log
   - name: /update
@@ -15,6 +17,8 @@ results:
     artifacts:
       - name: log_dir
         path: error/execute/logs/update
+      - name: data
+        path: error/execute/logs/update/data
       - name: testout.log
         path: error/execute/logs/update/out.log
   - name: /remove
@@ -23,5 +27,7 @@ results:
     artifacts:
       - name: log_dir
         path: error/execute/logs/remove
+      - name: data
+        path: error/execute/logs/remove/data
       - name: testout.log
         path: error/execute/logs/remove/out.log

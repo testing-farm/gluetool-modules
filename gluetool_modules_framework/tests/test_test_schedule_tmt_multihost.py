@@ -202,22 +202,26 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     assert testcase_docs.name == '/tests/core/docs'
     assert testcase_docs.result == 'passed'
     # expecting log_dir, testout.log, and journal.txt, in exactly that order
-    assert len(testcase_docs.logs) == 3
+    assert len(testcase_docs.logs) == 4
     assert testcase_docs.logs[0].name == 'log_dir'
     assert testcase_docs.logs[0].href.endswith('/passed/execute/logs/tests/core/docs')
-    assert testcase_docs.logs[1].name == 'testout.log'
-    assert testcase_docs.logs[1].href.endswith('/passed/execute/logs/tests/core/docs/out.log')
-    assert testcase_docs.logs[2].name == 'journal.txt'
-    assert testcase_docs.logs[2].href.endswith('/passed/execute/logs/tests/core/docs/journal.txt')
+    assert testcase_docs.logs[1].name == 'data'
+    assert testcase_docs.logs[1].href.endswith('/passed/execute/logs/tests/core/docs/data')
+    assert testcase_docs.logs[2].name == 'testout.log'
+    assert testcase_docs.logs[2].href.endswith('/passed/execute/logs/tests/core/docs/out.log')
+    assert testcase_docs.logs[3].name == 'journal.txt'
+    assert testcase_docs.logs[3].href.endswith('/passed/execute/logs/tests/core/docs/journal.txt')
 
     assert testcase_dry.name == '/tests/core/dry'
     assert testcase_dry.result == 'passed'
     assert testcase_dry.note == 'original result: fail'
-    assert len(testcase_dry.logs) == 2
+    assert len(testcase_dry.logs) == 3
     assert testcase_dry.logs[0].name == 'log_dir'
     assert testcase_dry.logs[0].href.endswith('/passed/execute/logs/tests/core/dry')
-    assert testcase_dry.logs[1].name == 'testout.log'
-    assert testcase_dry.logs[1].href.endswith('/passed/execute/logs/tests/core/dry/out.log')
+    assert testcase_dry.logs[1].name == 'data'
+    assert testcase_dry.logs[1].href.endswith('/passed/execute/logs/tests/core/dry/data')
+    assert testcase_dry.logs[2].name == 'testout.log'
+    assert testcase_dry.logs[2].href.endswith('/passed/execute/logs/tests/core/dry/out.log')
 
     shutil.rmtree(schedule_entry.work_dirpath)
 
@@ -260,11 +264,12 @@ def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest
     test_suite = TestSuite(name='some-suite', result='some-result')
     module.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
 
-    assert len(test_suite.logs) == 4
+    assert len(test_suite.logs) == 5
     assert test_suite.logs[0].name == 'workdir'
     assert test_suite.logs[1].name == 'tmt-log'
-    assert test_suite.logs[2].name == 'console.log'
-    assert test_suite.logs[3].name == 'tmt-reproducer'
+    assert test_suite.logs[2].name == 'data'
+    assert test_suite.logs[3].name == 'console.log'
+    assert test_suite.logs[4].name == 'tmt-reproducer'
 
     shutil.rmtree(schedule_entry.work_dirpath)
 

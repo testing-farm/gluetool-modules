@@ -7,6 +7,8 @@ results:
     artifacts:
       - name: log_dir
         path: passed/execute/logs/tests/core/docs
+      - name: data
+        path: passed/execute/logs/tests/core/docs/data
       - name: testout.log
         path: passed/execute/logs/tests/core/docs/out.log
       - name: journal.txt
@@ -17,5 +19,7 @@ results:
     artifacts:
       - name: log_dir
         path: passed/execute/logs/tests/core/dry
+      - name: data
+        path: passed/execute/logs/tests/core/dry/data
       - name: testout.log
         path: passed/execute/logs/tests/core/dry/out.log

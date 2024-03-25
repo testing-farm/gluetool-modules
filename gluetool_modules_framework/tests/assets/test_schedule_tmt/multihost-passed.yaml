@@ -6,6 +6,8 @@ results:
     artifacts:
       - name: log_dir
         path: multihost-passed/execute/data/guest/server/server-setup/testing-farm/tests/multihost/A-1
+      - name: data
+        path: multihost-passed/execute/data/guest/server/server-setup/testing-farm/tests/multihost/A-1/data
       - name: testout.log
         path: multihost-passed/execute/data/guest/server/server-setup/testing-farm/tests/multihost/A-1/output.txt
   - name: /tests/testing-farm/tests/multihost/B
@@ -13,6 +15,8 @@ results:
     artifacts:
       - name: log_dir
         path: multihost-passed/execute/data/guest/server/tests/testing-farm/tests/multihost/B-2
+      - name: data
+        path: multihost-passed/execute/data/guest/server/tests/testing-farm/tests/multihost/B-2/data
       - name: testout.log
         path: multihost-passed/execute/data/guest/server/tests/testing-farm/tests/multihost/B-2/output.txt
   - name: /tests/testing-farm/tests/multihost/B
@@ -20,6 +24,8 @@ results:
     artifacts:
       - name: log_dir
         path: multihost-passed/execute/data/guest/client/tests/testing-farm/tests/multihost/B-2
+      - name: data
+        path: multihost-passed/execute/data/guest/client/tests/testing-farm/tests/multihost/B-2/data
       - name: testout.log
         path: multihost-passed/execute/data/guest/client/tests/testing-farm/tests/multihost/B-2/output.txt
   - name: /tests/testing-farm/tests/multihost/C
@@ -27,6 +33,8 @@ results:
     artifacts:
       - name: log_dir
         path: multihost-passed/execute/data/guest/server/tests/testing-farm/tests/multihost/C-3
+      - name: data
+        path: multihost-passed/execute/data/guest/server/tests/testing-farm/tests/multihost/C-3/data
       - name: testout.log
         path: multihost-passed/execute/data/guest/server/tests/testing-farm/tests/multihost/C-3/output.txt
   - name: /tests/testing-farm/tests/multihost/C
@@ -34,5 +42,7 @@ results:
     artifacts:
       - name: log_dir
         path: multihost-passed/execute/data/guest/client/tests/testing-farm/tests/multihost/C-3
+      - name: data
+        path: multihost-passed/execute/data/guest/client/tests/testing-farm/tests/multihost/C-3/data
       - name: testout.log
         path: multihost-passed/execute/data/guest/client/tests/testing-farm/tests/multihost/C-3/output.txt

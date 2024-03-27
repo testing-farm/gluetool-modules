@@ -12,6 +12,7 @@ from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath,
     SetupGuestReturnType
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
 from gluetool_modules_framework.libs.guest import NetworkedGuest
+from gluetool_modules_framework.libs.repo import create_repo
 from gluetool_modules_framework.libs.test_schedule import TestScheduleEntry
 from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact
 
@@ -136,6 +137,8 @@ class InstallCoprBuild(gluetool.Module):
                     'curl -sL --retry 5 --remote-name-all -w "Downloaded: %{{url_effective}}\\n" {}'
                 ).format(download_path, ' '.join(build.rpm_urls + build.srpm_urls))
             )
+
+            create_repo(sut_installation, 'test-artifacts', download_path)
 
             if artifact.install is False:
                 continue

@@ -11,6 +11,8 @@ import shutil
 import copy
 from mock import MagicMock
 from mock import call
+from gluetool_modules_framework.tests.test_libs_repo import generate_calls as generate_createrepo_calls
+from gluetool_modules_framework.tests.test_libs_repo import generate_cmds as generate_createrepo_cmds
 import gluetool_modules_framework.libs.sut_installation
 from gluetool_modules_framework.helpers.install_copr_build import InstallCoprBuild
 from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
@@ -39,9 +41,11 @@ def assert_log_files(guest, log_dirpath, file_names=None):
             '0-Create-artifacts-directory.txt',
             '1-Download-copr-repository.txt',
             '2-Download-rpms-from-copr.txt',
-            '3-Reinstall-packages.txt',
-            '4-Install-packages.txt',
-            '5-Verify-packages-installed.txt'
+            '3-Create-repository.txt',
+            '4-Add-repository.txt',
+            '5-Reinstall-packages.txt',
+            '6-Install-packages.txt',
+            '7-Verify-packages-installed.txt'
         ]
 
     installation_log_dir = os.path.join(
@@ -139,6 +143,7 @@ def test_loadable(module):
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm '
                 'https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
             ),
+            *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'dnf -y reinstall https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm || true',
             'dnf -y reinstall https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm || true',
             'dnf -y install --allowerasing https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm',
@@ -170,6 +175,7 @@ def test_loadable(module):
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm '
                 'https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
             ),
+            *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'dnf -y reinstall https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm || true',
             'dnf -y reinstall https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm || true',
             'curl -v dummy2_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project2-2.repo',
@@ -180,6 +186,7 @@ def test_loadable(module):
                 'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm '
                 'https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm'
             ),
+            *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'dnf -y reinstall https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm || true',
             'dnf -y reinstall https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm || true',
             'curl -v dummy3_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project3-3.repo',
@@ -190,6 +197,7 @@ def test_loadable(module):
                 'https://example.com/dummy3_rpm_name1-1.0.1-el7.src.rpm '
                 'https://example.com/dummy3_rpm_name2-1.0.1-el7.src.rpm'
             ),
+            *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'dnf -y reinstall https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm || true',
             'dnf -y reinstall https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm || true',
             (
@@ -212,17 +220,23 @@ def test_loadable(module):
             '0-Create-artifacts-directory.txt',
             '1-Download-copr-repository.txt',
             '2-Download-rpms-from-copr.txt',
-            '3-Reinstall-packages.txt',
-            '4-Download-copr-repository.txt',
-            '5-Download-rpms-from-copr.txt',
-            '6-Reinstall-packages.txt',
-            '7-Download-copr-repository.txt',
-            '8-Download-rpms-from-copr.txt',
-            '9-Reinstall-packages.txt',
-            '10-Install-packages.txt',
-            '11-Verify-packages-installed.txt',
-            '12-Verify-packages-installed.txt',
-            '13-Verify-packages-installed.txt',
+            '3-Create-repository.txt',
+            '4-Add-repository.txt',
+            '5-Reinstall-packages.txt',
+            '6-Download-copr-repository.txt',
+            '7-Download-rpms-from-copr.txt',
+            '8-Create-repository.txt',
+            '9-Add-repository.txt',
+            '10-Reinstall-packages.txt',
+            '11-Download-copr-repository.txt',
+            '12-Download-rpms-from-copr.txt',
+            '13-Create-repository.txt',
+            '14-Add-repository.txt',
+            '15-Reinstall-packages.txt',
+            '16-Install-packages.txt',
+            '17-Verify-packages-installed.txt',
+            '18-Verify-packages-installed.txt',
+            '19-Verify-packages-installed.txt',
         ],
         None
     ),
@@ -248,18 +262,21 @@ def test_loadable(module):
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
             ),
+            *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'curl -v dummy2_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project2-2.repo',
             (
                 'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
                 'https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm '
                 'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm'
             ),
+            *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'curl -v dummy3_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project3-3.repo',
             (
                 'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
                 'https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm '
                 'https://example.com/dummy3_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.src.rpm'
             ),
+            *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'dnf -y reinstall https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm || true',
             'dnf -y reinstall https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm || true',
             (
@@ -273,13 +290,19 @@ def test_loadable(module):
             '0-Create-artifacts-directory.txt',
             '1-Download-copr-repository.txt',
             '2-Download-rpms-from-copr.txt',
-            '3-Download-copr-repository.txt',
-            '4-Download-rpms-from-copr.txt',
+            '3-Create-repository.txt',
+            '4-Add-repository.txt',
             '5-Download-copr-repository.txt',
             '6-Download-rpms-from-copr.txt',
-            '7-Reinstall-packages.txt',
-            '8-Install-packages.txt',
-            '9-Verify-packages-installed.txt'
+            '7-Create-repository.txt',
+            '8-Add-repository.txt',
+            '9-Download-copr-repository.txt',
+            '10-Download-rpms-from-copr.txt',
+            '11-Create-repository.txt',
+            '12-Add-repository.txt',
+            '13-Reinstall-packages.txt',
+            '14-Install-packages.txt',
+            '15-Verify-packages-installed.txt'
         ],
         None
     ),
@@ -302,19 +325,25 @@ def test_loadable(module):
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
             ),
+            *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'curl -v dummy2_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project2-2.repo',
             (
                 'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
                 'https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm '
                 'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm'
-            )
+            ),
+            *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path')
         ],
         [  # Expected generated files
             '0-Create-artifacts-directory.txt',
             '1-Download-copr-repository.txt',
             '2-Download-rpms-from-copr.txt',
-            '3-Download-copr-repository.txt',
-            '4-Download-rpms-from-copr.txt'
+            '3-Create-repository.txt',
+            '4-Add-repository.txt',
+            '5-Download-copr-repository.txt',
+            '6-Download-rpms-from-copr.txt',
+            '7-Create-repository.txt',
+            '8-Add-repository.txt'
         ],
         None
     ),
@@ -335,12 +364,14 @@ def test_loadable(module):
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
             ),
+            *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'curl -v dummy2_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project2-2.repo',
             (
                 'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
                 'https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm '
                 'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm'
             ),
+            *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'dnf -y reinstall https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm || true',
             'dnf -y reinstall https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm || true',
             'dnf -y install --allowerasing https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm',
@@ -351,11 +382,15 @@ def test_loadable(module):
             '0-Create-artifacts-directory.txt',
             '1-Download-copr-repository.txt',
             '2-Download-rpms-from-copr.txt',
-            '3-Download-copr-repository.txt',
-            '4-Download-rpms-from-copr.txt',
-            '5-Reinstall-packages.txt',
-            '6-Install-packages.txt',
-            '7-Verify-packages-installed.txt'
+            '3-Create-repository.txt',
+            '4-Add-repository.txt',
+            '5-Download-copr-repository.txt',
+            '6-Download-rpms-from-copr.txt',
+            '7-Create-repository.txt',
+            '8-Add-repository.txt',
+            '9-Reinstall-packages.txt',
+            '10-Install-packages.txt',
+            '11-Verify-packages-installed.txt'
         ],
         None
     ),
@@ -379,6 +414,7 @@ def test_loadable(module):
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm '
                 'https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
             ),
+            *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'dnf -y reinstall https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm || true',
             'dnf -y reinstall https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm || true',
             'dnf -y install --allowerasing https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm',
@@ -435,6 +471,7 @@ def test_no_dnf(module_shared_patched, tmpdir):
             'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm '
             'https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
         ),
+        *generate_createrepo_calls(repo_name='test-artifacts', repo_path='some-download-path'),
         call('yum -y reinstall https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm'),
         call('yum -y reinstall https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm'),
         call('yum -y downgrade https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm'),
@@ -444,15 +481,17 @@ def test_no_dnf(module_shared_patched, tmpdir):
     ]
 
     execute_mock.assert_has_calls(calls, any_order=False)
-    assert execute_mock.call_count == 11
+    assert execute_mock.call_count == 13
     assert_log_files(guest, str(tmpdir), file_names=[
         '0-Create-artifacts-directory.txt',
         '1-Download-copr-repository.txt',
         '2-Download-rpms-from-copr.txt',
-        '3-Reinstall-packages.txt',
-        '4-Downgrade-packages.txt',
-        '5-Install-packages.txt',
-        '6-Verify-packages-installed.txt'
+        '3-Create-repository.txt',
+        '4-Add-repository.txt',
+        '5-Reinstall-packages.txt',
+        '6-Downgrade-packages.txt',
+        '7-Install-packages.txt',
+        '8-Verify-packages-installed.txt'
         ])
 
 

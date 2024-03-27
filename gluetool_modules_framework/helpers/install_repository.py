@@ -21,6 +21,7 @@ from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath,
     SetupGuestReturnType
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
 from gluetool_modules_framework.libs.guest import NetworkedGuest
+from gluetool_modules_framework.libs.repo import create_repo
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest, Artifact
 
 from typing import Any, cast, List, Optional
@@ -197,6 +198,9 @@ class InstallRepository(gluetool.Module):
                                   'cd {}; cat {} | xargs -n1 curl -sO'.format(
                                       download_path, download_packages_filename),
                                   ignore_exception=True)
+
+        # Create a repository with all the artifacts
+        create_repo(sut_installation, 'test-artifacts', download_path)
 
         # Remove .src.rpm packages
         packages = [package for package in packages if ".src.rpm" not in package]

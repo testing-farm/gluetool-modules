@@ -186,6 +186,27 @@ class InstallRepository(gluetool.Module):
                                   'cd {}; echo {} | xargs -n1 curl -sO'.format(download_path, ' '.join(packages)),
                                   ignore_exception=True)
 
+        # Create a repository with all the artifacts
+        sut_installation.add_step('Create repository',
+                                  'dnf -y install createrepo; createrepo {}'.format(download_path),
+                                  ignore_exception=True)
+
+        # Create a repository with all the artifacts
+        sut_installation.add_step(
+            'Add test-artifacts repository',
+            (
+                'echo -e "'
+                '[test-artifacts]\n'
+                'name=test-artifacts\n'
+                'description=Test artifacts repository\n'
+                'baseurl=file:///{}\n'
+                'priority=1\n'
+                'enabled=1\n'
+                'gpgcheck=0'
+                '" > /etc/yum.repos.d/test-artifacts.repo'
+            ).format(download_path),
+            ignore_exception=True)
+
         # Remove .src.rpm packages
         packages = [package for package in packages if ".src.rpm" not in package]
 

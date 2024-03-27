@@ -7,10 +7,12 @@ from gluetool.action import Action
 from gluetool.log import log_dict
 from gluetool.result import Ok, Error
 
+from gluetool_modules_framework.libs.artifacts import DEFAULT_DOWNLOAD_PATH
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage, \
     SetupGuestReturnType
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
 from gluetool_modules_framework.libs.guest import NetworkedGuest
+from gluetool_modules_framework.libs.repo import create_repo
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest, Artifact
 
 from typing import Any, List, Optional, cast, Dict  # noqa
@@ -39,6 +41,11 @@ class InstallKojiBuildExecute(gluetool.Module):
         'download-i686-builds': {
             'help': 'If set, download both x86_64 and i686 packages on x86_64 guest',
             'action': 'store_true'
+        },
+        'download-path': {
+            'help': 'Path of the directory where all the packages will be downloaded to (default: %(default)s).',
+            'type': str,
+            'default': DEFAULT_DOWNLOAD_PATH
         }
     }
 
@@ -72,6 +79,8 @@ class InstallKojiBuildExecute(gluetool.Module):
 
         if r_overloaded_guest_setup_output.is_error or stage != GuestSetupStage.ARTIFACT_INSTALLATION:
             return r_overloaded_guest_setup_output
+
+        download_path = cast(str, self.option('download-path'))
 
         artifacts = forced_artifacts if forced_artifacts else self._extract_artifacts(guest)
 
@@ -123,6 +132,14 @@ class InstallKojiBuildExecute(gluetool.Module):
 
             if artifact.install is False:
                 rpms_lists_to_skip_install.append('rpms-list-{}'.format(artifact.id))
+
+        # Copy all rpms to the destination directory and make them available in a repo. The files are duplicated to
+        # avoid breaking anything relying on them being present under the original path.
+        sut_installation.add_step(
+            'Copy rpms to the repo directory',
+            f'mkdir -pv {download_path}; cat rpms-list-* | xargs cp -t {download_path}'
+        )
+        create_repo(sut_installation, 'test-artifacts', download_path)
 
         excluded_packages_regexp = '|'.join(['^{} '.format(package) for package in excluded_packages])
 

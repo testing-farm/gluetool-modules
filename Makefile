@@ -18,7 +18,7 @@ push:  ## Push gluetool-modules container image to quay.io
 ##@ Test
 
 test-image:  ## Test container image via dgoss
-	cd container && dgoss run -t --entrypoint bash $(IMAGE):$(IMAGE_TAG)
+	cd container && dgoss run --stop-timeout 0 -t --entrypoint bash $(IMAGE):$(IMAGE_TAG)
 
 ##@ Utility
 
@@ -26,7 +26,7 @@ clean:  ## Remove gluetool-modules container image
 	buildah rmi $(IMAGE):$(IMAGE_TAG)
 
 edit-image-test:  ## Edit goss file via dgoss
-	cd container && dgoss edit -t --entrypoint bash $(IMAGE):$(IMAGE_TAG)
+	cd container && dgoss edit --stop-timeout 0 --entrypoint bash $(IMAGE):$(IMAGE_TAG)
 
 install-cs9:  ## Install required system dependencies in CentOS Stream 9
 	sudo dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \

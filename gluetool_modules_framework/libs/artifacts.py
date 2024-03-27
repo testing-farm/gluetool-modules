@@ -10,6 +10,9 @@ if TYPE_CHECKING:
     from gluetool.log import ContextAdapter  # noqa
 
 
+DEFAULT_DOWNLOAD_PATH = '/var/share/test-artifacts'
+
+
 class NoArtifactsError(gluetool.glue.SoftGlueError):
     """
     Raised when the artifact (e.g. Brew task or MBS build) contain no artifacts anymore.

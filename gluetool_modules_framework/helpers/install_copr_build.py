@@ -8,10 +8,12 @@ import gluetool
 from gluetool.log import log_dict
 from gluetool.result import Ok, Error
 from gluetool_modules_framework.infrastructure.copr import CoprTask
+from gluetool_modules_framework.libs.artifacts import DEFAULT_DOWNLOAD_PATH
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage, \
     SetupGuestReturnType
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
 from gluetool_modules_framework.libs.guest import NetworkedGuest
+from gluetool_modules_framework.libs.repo import create_repo
 from gluetool_modules_framework.libs.test_schedule import TestScheduleEntry
 from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact
 
@@ -20,9 +22,6 @@ from typing import cast, Any, List, Optional  # noqa
 
 # accepted artifact types from testing farm request
 TESTING_FARM_ARTIFACT_TYPES = ['fedora-copr-build']
-
-# Default path to downloading the packages
-DEFAULT_DOWNLOAD_PATH = "/var/share/test-artifacts"
 
 
 class InstallCoprBuild(gluetool.Module):
@@ -136,6 +135,8 @@ class InstallCoprBuild(gluetool.Module):
                     'curl -sL --retry 5 --remote-name-all -w "Downloaded: %{{url_effective}}\\n" {}'
                 ).format(download_path, ' '.join(build.rpm_urls + build.srpm_urls))
             )
+
+            create_repo(sut_installation, 'test-artifacts', download_path)
 
             if artifact.install is False:
                 continue

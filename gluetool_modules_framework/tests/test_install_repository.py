@@ -5,6 +5,7 @@ import pytest
 import tempfile
 
 from mock import MagicMock, call
+from gluetool_modules_framework.tests.test_libs_repo import generate_calls as generate_createrepo_calls
 
 from gluetool import GlueError
 from gluetool.utils import Command
@@ -147,6 +148,7 @@ def test_guest_setup(module, environment_index, tmpdir, monkeypatch):
         call('curl --output /etc/yum.repos.d/repo4.repo.repo -LO https://example.com/repo4.repo'),
         call('mkdir -pv dummy-path'),
         call('cd dummy-path; cat dummy.txt | xargs -n1 curl -sO'),
+        *generate_createrepo_calls(repo_name='test-artifacts', repo_path='dummy-path'),
         call('dnf -y reinstall $(cat dummy.txt)'),
         call('dnf -y downgrade --allowerasing $(cat dummy.txt)'),
         call('dnf -y update --allowerasing $(cat dummy.txt)'),
@@ -218,6 +220,7 @@ def test_guest_setup_forced_artifacts(module, tmpdir, monkeypatch):
         call('command -v dnf'),
         call('mkdir -pv dummy-path'),
         call('cd dummy-path; cat dummy.txt | xargs -n1 curl -sO'),
+        *generate_createrepo_calls(repo_name='test-artifacts', repo_path='dummy-path'),
         call('dnf -y reinstall $(cat dummy.txt)'),
         call('dnf -y downgrade --allowerasing $(cat dummy.txt)'),
         call('dnf -y update --allowerasing $(cat dummy.txt)'),

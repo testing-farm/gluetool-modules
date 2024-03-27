@@ -16,11 +16,12 @@ from gluetool.result import Ok, Error
 from gluetool.utils import Command
 from gluetool.glue import GlueCommandError, GlueError
 
-from gluetool_modules_framework.libs.artifacts import splitFilename
+from gluetool_modules_framework.libs.artifacts import DEFAULT_DOWNLOAD_PATH, splitFilename
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage, \
     SetupGuestReturnType
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
 from gluetool_modules_framework.libs.guest import NetworkedGuest
+from gluetool_modules_framework.libs.repo import create_repo
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest, Artifact
 
 from typing import Any, cast, List, Optional
@@ -28,9 +29,6 @@ from typing import Any, cast, List, Optional
 # accepted artifact types from testing farm request
 REPOSITORY_ARTIFACT_TYPE = 'repository'
 REPOSITORY_FILE_ARTIFACT_TYPE = 'repository-file'
-
-# Default path to downloading the packages
-DEFAULT_DOWNLOAD_PATH = "/var/share/test-artifacts"
 
 
 @dataclass
@@ -197,6 +195,9 @@ class InstallRepository(gluetool.Module):
                                   'cd {}; cat {} | xargs -n1 curl -sO'.format(
                                       download_path, download_packages_filename),
                                   ignore_exception=True)
+
+        # Create a repository with all the artifacts
+        create_repo(sut_installation, 'test-artifacts', download_path)
 
         # Remove .src.rpm packages
         packages = [package for package in packages if ".src.rpm" not in package]

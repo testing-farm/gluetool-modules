@@ -12,6 +12,8 @@ from typing import List
 import pytest
 import logging
 
+from gluetool_modules_framework.tests.test_libs_repo import generate_cmds as generate_createrepo_cmds
+
 import gluetool
 from gluetool.utils import normalize_multistring_option
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
@@ -1099,16 +1101,20 @@ def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir, cl
 
     # ... and is shown in sut_install_commands.sh
     with open(os.path.join(tmpdir, 'artifact-installation-guest0', INSTALL_COMMANDS_FILE)) as f:
-        assert f.read() == '''\
+        assert f.read() == '\n'.join([
+            '''\
 mkdir -pv some-download-path
 curl -v http://copr/project.repo --retry 5 --output /etc/yum.repos.d/copr_build-owner_project-1.repo
-cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" http://copr/project/one.rpm http://copr/project/two.rpm http://copr/project/one.src.rpm http://copr/project/two.src.rpm
+cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" http://copr/project/one.rpm http://copr/project/two.rpm http://copr/project/one.src.rpm http://copr/project/two.src.rpm''',
+            *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
+            '''\
 dnf -y reinstall http://copr/project/one.rpm || true
 dnf -y reinstall http://copr/project/two.rpm || true
 dnf -y install --allowerasing http://copr/project/one.rpm http://copr/project/two.rpm
 rpm -q one
 rpm -q two
 '''
+        ])
 
     # ... and is pulled into the reproducer
     with open(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
@@ -1133,6 +1139,7 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir, cl
     # install-koji-build-execute module
     module_koji = create_module(InstallKojiBuildExecute)[1]
     module_koji._config['log-dir-name'] = 'artifact-installation'
+    module_koji._config['download-path'] = 'some-download-path'
 
     guest.environment = TestingEnvironment(
         compose='guest-compose',
@@ -1194,12 +1201,16 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir, cl
 
     # ... and is shown in sut_install_commands.sh
     with open(os.path.join(tmpdir, 'artifact-installation-guest0', INSTALL_COMMANDS_FILE)) as f:
-        assert f.read() == r'''( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123 || koji download-task --arch noarch --arch x86_64 --arch src 123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123
-ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\1 \0/" | awk "{print \$2}" | tee rpms-list
+        assert f.read() == '\n'.join([
+            r'''( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123 || koji download-task --arch noarch --arch x86_64 --arch src 123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123
+mkdir -pv some-download-path; cat rpms-list-* | xargs cp -t some-download-path''',
+            *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
+            r'''ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\1 \0/" | awk "{print \$2}" | tee rpms-list
 dnf -y reinstall $(cat rpms-list) || true
 if [ ! -z "$(sed 's/\s//g' rpms-list)" ];then dnf -y install --allowerasing $(cat rpms-list);else echo "Nothing to install, rpms-list is empty"; fi
 if [ ! -z "$(sed 's/\s//g' rpms-list)" ];then sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\n' | xargs -d'\n' rpm -q;else echo 'Nothing to verify, rpms-list is empty'; fi
 '''
+        ])
 
     # ... and is pulled into the reproducer
     with open(os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:

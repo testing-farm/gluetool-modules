@@ -69,12 +69,12 @@ def test_hide_secrets(monkeypatch, module, testing_farm_request):
         with open(os.path.join(tmpdir, 'testfile.txt'), 'r') as f:
             assert f.read() == FILE_CONTENTS.format(*[secret_value]*3)
 
-        # Replace all secrets with '*****'
+        # Replace all secrets with 'hidden'
         module.destroy()
 
-        # Check all secrets are now '*****' or 'no secret' if there are no secrets
+        # Check all secrets are now 'hidden' or 'no secret' if there are no secrets
         with open(os.path.join(tmpdir, 'testfile.txt'), 'r') as f:
-            assert f.read() == FILE_CONTENTS.format(*['*****' if len(secret_values) > 0 else 'no secret']*3)
+            assert f.read() == FILE_CONTENTS.format(*['hidden' if len(secret_values) > 0 else 'no secret']*3)
 
 
 def test_hide_secrets_multiple(monkeypatch, module):
@@ -84,7 +84,7 @@ def test_hide_secrets_multiple(monkeypatch, module):
             TestingEnvironment(secrets={'secret3': 'baz'})
         ])
         file_contents = 'foo hello bar world baz'
-        file_contents_censored = '***** hello ***** world *****'
+        file_contents_censored = 'hidden hello hidden world hidden'
 
         module._config['search-path'] = tmpdir
         patch_shared(monkeypatch, module, {
@@ -106,10 +106,10 @@ def test_hide_secrets_multiple(monkeypatch, module):
         with open(os.path.join(tmpdir, 'testfile.txt'), 'r') as f:
             assert f.read() == file_contents
 
-        # Replace all secrets with '*****'
+        # Replace all secrets with 'hidden'
         module.destroy()
 
-        # Check all secrets are now '*****'
+        # Check all secrets are now 'hidden'
         with open(os.path.join(tmpdir, 'testfile.txt'), 'r') as f:
             assert f.read() == file_contents_censored
 
@@ -121,7 +121,7 @@ def test_hide_secrets_argument(monkeypatch, module):
             TestingEnvironment(secrets={'secret3': 'baz'})
         ])
         file_contents = 'foo hello bar world baz'
-        file_contents_censored = '***** hello ***** world *****'
+        file_contents_censored = 'hidden hello hidden world hidden'
 
         module._config['search-path'] = "not a real path"
         patch_shared(monkeypatch, module, {
@@ -143,9 +143,9 @@ def test_hide_secrets_argument(monkeypatch, module):
         with open(os.path.join(tmpdir, 'testfile.txt'), 'r') as f:
             assert f.read() == file_contents
 
-        # Replace all secrets with '*****'
+        # Replace all secrets with 'hidden'
         module.hide_secrets(search_path=tmpdir)
 
-        # Check all secrets are now '*****'
+        # Check all secrets are now 'hidden'
         with open(os.path.join(tmpdir, 'testfile.txt'), 'r') as f:
             assert f.read() == file_contents_censored

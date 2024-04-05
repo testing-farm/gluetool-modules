@@ -333,7 +333,7 @@ dummytmt --root some-tmt-root -c distro=rhel -c trigger=push run --all --id {wor
             {},
             TestingEnvironment('x86_64', 'rhel-9', tmt={'environment': {'VARIABLE1': 'VALUE1', 'VARIABLE2': 'VALUE2'}}),
             """# tmt reproducer
-export VARIABLE1=***** VARIABLE2=*****
+export VARIABLE1=hidden VARIABLE2=hidden
 dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key""",  # noqa
 
             None,
@@ -346,7 +346,7 @@ dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic
             {},
             TestingEnvironment('x86_64', 'rhel-9', tmt={'environment': {'VARIABLE1': 'VALUE1', 'VARIABLE2': 'VALUE2'}}),
             """# tmt reproducer
-export VARIABLE1=***** VARIABLE2=*****
+export VARIABLE1=hidden VARIABLE2=hidden
 dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key""",  # noqa
 
             None,
@@ -455,7 +455,7 @@ dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --
             {},
             SecretGitUrl('http://username:secret@example.com/git/myproject'),
             r'''# tmt reproducer
-git clone --depth 1 -b myfix http://*****@example.com/git/myproject testcode
+git clone --depth 1 -b myfix http://hidden@example.com/git/myproject testcode
 cd testcode
 dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^myfix$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key'''  # noqa
         ),
@@ -770,7 +770,7 @@ def test_plans_from_git_filter_from_request(module, monkeypatch):
 
 @pytest.mark.parametrize('clone_url, expected_clone_url', [
     (SecretGitUrl('http://example.com/git/myproject'), 'http://example.com/git/myproject'),
-    (SecretGitUrl('http://username:secret@example.com/git/myproject'), 'http://*****@example.com/git/myproject')
+    (SecretGitUrl('http://username:secret@example.com/git/myproject'), 'http://hidden@example.com/git/myproject')
 ])
 def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir, clone_url, expected_clone_url):
     # install-copr-build module
@@ -854,7 +854,7 @@ dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpa
 
 @pytest.mark.parametrize('clone_url, expected_clone_url', [
     (SecretGitUrl('http://example.com/git/myproject'), 'http://example.com/git/myproject'),
-    (SecretGitUrl('http://username:secret@example.com/git/myproject'), 'http://*****@example.com/git/myproject')
+    (SecretGitUrl('http://username:secret@example.com/git/myproject'), 'http://hidden@example.com/git/myproject')
 ])
 def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir, clone_url, expected_clone_url):
     # install-koji-build-execute module

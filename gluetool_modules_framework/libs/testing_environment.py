@@ -107,12 +107,12 @@ class TestingEnvironment(object):
 
             if hide_secrets and field_value is not None:
                 if field_name == 'secrets':
-                    field_value = '******'
+                    field_value = 'hidden'
 
                 elif field_name == 'tmt' and field_value.get('environment'):
                     field_value = copy.deepcopy(field_value)
                     for key in field_value['environment']:
-                        field_value['environment'][key] = '******'
+                        field_value['environment'][key] = 'hidden'
 
             fields.append((field_name, field_value))
 
@@ -123,7 +123,7 @@ class TestingEnvironment(object):
         Serialize testing environment to comma-separated list of keys and their values, representing
         the environment.
 
-        :param bool hide_secrets: show secret values in the resulting output as '******'
+        :param bool hide_secrets: show secret values in the resulting output as 'hidden'
         :param bool show_none_fields: do not show values which are None
         :rtype: str
         :returns: testing environemnt properties in ``key1=value1,...`` form.
@@ -138,7 +138,7 @@ class TestingEnvironment(object):
         """
         Serialize testing environment to a JSON dictionary.
 
-        :param bool hide_secrets: show secret values in the resulting output as '******'
+        :param bool hide_secrets: show secret values in the resulting output as 'hidden'
         :param bool show_none_fields: do not show values which are None
         :rtype: dict(str, object)
         """

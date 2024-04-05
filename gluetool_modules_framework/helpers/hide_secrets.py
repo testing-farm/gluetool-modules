@@ -59,7 +59,7 @@ class HideSecrets(gluetool.Module):
                 value = value.replace(escape, r'\{}'.format(escape))
             return value
 
-        sed_expr = '\n'.join('s|{}|*****|g'.format(_posix_bre_escaped(value)) for value in self._secrets)
+        sed_expr = '\n'.join('s|{}|hidden|g'.format(_posix_bre_escaped(value)) for value in self._secrets)
 
         # NOTE: We will deprecate this crazy module once TFT-1813
         if not sed_expr:

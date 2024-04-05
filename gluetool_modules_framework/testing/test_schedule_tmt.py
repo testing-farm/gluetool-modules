@@ -1362,7 +1362,7 @@ class TestScheduleTMT(Module):
                     )
 
         def _sanitize_environment_variables(variables: Dict[str, str]) -> str:
-            return ' '.join(["{}=*****".format(key) for key, _ in six.iteritems(variables)])
+            return ' '.join(["{}=hidden".format(key) for key, _ in six.iteritems(variables)])
 
         # using `# noqa` because flake8 and coala are confused by the walrus operator
         # Ignore PEP8Bear

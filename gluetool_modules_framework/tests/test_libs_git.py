@@ -328,7 +328,7 @@ def test_clone_obeys_ref(self_ref, ref, expected, remote_git_repository, monkeyp
     (
         git_module.SecretGitUrl(
             'https://username:secret@gitlab.com/namespace/repo'), None, 'refs/merge-requests/15/head',
-        '<RemoteGitRepository(clone_url=https://*****@gitlab.com/namespace/repo, branch=not specified, ref=refs/merge-requests/15/head)>',
+        '<RemoteGitRepository(clone_url=https://hidden@gitlab.com/namespace/repo, branch=not specified, ref=refs/merge-requests/15/head)>',
         'git-refs-merge-requests-15-head'
     )
 ])

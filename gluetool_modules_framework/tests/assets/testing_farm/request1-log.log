@@ -4,7 +4,7 @@ Initialized with 1:
         {
             "arch": "x86_64",
             "artifacts": [],
-            "secrets": "******",
+            "secrets": "hidden",
             "snapshots": false,
             "tmt": {
                 "context": {
@@ -55,7 +55,7 @@ Initialized with 1:
                 "pre-install": "some-pre-install",
                 "script": "some-script"
             },
-            "secrets": "******",
+            "secrets": "hidden",
             "settings": {
                 "pipeline": {
                     "skip_guest_setup": true
@@ -70,8 +70,8 @@ Initialized with 1:
                     "some": "context"
                 },
                 "environment": {
-                    "bar": "******",
-                    "foo": "******"
+                    "bar": "hidden",
+                    "foo": "hidden"
                 }
             },
             "variables": {

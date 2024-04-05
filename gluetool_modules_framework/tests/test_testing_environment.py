@@ -23,10 +23,10 @@ def test_serialize():
     )
 
     # Calling str(TestingEnvironment(...)) directly results in a call to TestingEnvironment.__str__()
-    assert str(env) == "arch=foo,compose=bar,secrets=******,snapshots=False,tmt={'environment': {'foo': '******', 'bar': '******'}}"  # noqa
+    assert str(env) == "arch=foo,compose=bar,secrets=hidden,snapshots=False,tmt={'environment': {'foo': 'hidden', 'bar': 'hidden'}}"  # noqa
 
     # Nesting the object into a list and calling str() results in a call to TestingEnvironment.__repr__()
-    assert str([env]) == "[<TestingEnvironment(arch=foo,compose=bar,secrets=******,snapshots=False,tmt={'environment': {'foo': '******', 'bar': '******'}})>]"  # noqa
+    assert str([env]) == "[<TestingEnvironment(arch=foo,compose=bar,secrets=hidden,snapshots=False,tmt={'environment': {'foo': 'hidden', 'bar': 'hidden'}})>]"  # noqa
 
     expected_serialized_string = (
            "arch=foo,artifacts=None,compose=bar,hardware=None,"

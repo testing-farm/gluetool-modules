@@ -61,7 +61,7 @@ class SecretGitUrl(Secret[str]):
     """
 
     def _hide_secrets(self, url: str) -> str:
-        return re.sub(GIT_URL_REGEX, r"\1*****@\3", url)
+        return re.sub(GIT_URL_REGEX, r"\1hidden@\3", url)
 
     def __str__(self) -> str:
         return self._hide_secrets(self._dangerous_extract())

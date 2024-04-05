@@ -3,16 +3,16 @@
 .PHONY := build push clean edit-image-test test-image help
 
 # default image tag set to current user name
-IMAGE := quay.io/testing-farm/worker
+IMAGE := quay.io/testing-farm/gluetool-modules
 IMAGE_TAG ?= ${USER}
 
 ##@ Image
 
-build:  ## Build worker container image
+build:  ## Build gluetool-modules container image
 	poetry build
 	buildah bud --layers -t $(IMAGE):$(IMAGE_TAG) -f container/Dockerfile .
 
-push:  ## Push worker container image to quay.io
+push:  ## Push gluetool-modules container image to quay.io
 	buildah push $(IMAGE):$(IMAGE_TAG)
 
 ##@ Test
@@ -22,7 +22,7 @@ test-image:  ## Test container image via dgoss
 
 ##@ Utility
 
-clean:  ## Remove worker container image
+clean:  ## Remove gluetool-modules container image
 	buildah rmi quay.io/testing-farm/cli:$(IMAGE_TAG)
 
 edit-image-test:  ## Edit goss file via dgoss

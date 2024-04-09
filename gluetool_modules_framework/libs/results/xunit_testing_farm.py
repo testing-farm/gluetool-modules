@@ -210,6 +210,8 @@ class XUnitTFTestCase:
     name: str = attrs.field(metadata={'type': 'Attribute'})
     result: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
     time: Optional[int] = attrs.field(default=None, metadata={'type': 'Attribute'})
+    start_time: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute', 'name': 'start-time'})
+    end_time: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute', 'name': 'end-time'})
     note: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
 
     properties: Optional[XUnitTFProperties]
@@ -257,6 +259,8 @@ class XUnitTFTestCase:
             error=XUnitTFFailure(message=test_case.error if isinstance(test_case.error, str) else None)
             if test_case.error is not False else None,
             time=int(test_case.duration.total_seconds()) if test_case.duration is not None else None,
+            start_time=test_case.start_time,
+            end_time=test_case.end_time,
             parameters=XUnitTFParameters.construct(test_case.parameters) if test_case.parameters else None,
             phases=XUnitTFPhases.construct(test_case.phases) if test_case.phases else None,
             # When `test_case.packages` is `None`, do not display the element, when it is `[]`, display <packages/>.

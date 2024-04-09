@@ -134,6 +134,8 @@ class TestResult:
     note: Optional[str] = None
     checks: List[TestCaseCheck]
     duration: Optional[datetime.timedelta] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
 
 
 @attrs.define
@@ -176,6 +178,8 @@ class TMTResult:
     duration: Optional[datetime.timedelta] = attrs.field(
         validator=attrs.validators.optional(attrs.validators.instance_of(datetime.timedelta)),
     )
+    start_time: Optional[str] = attrs.field(validator=attrs.validators.optional(attrs.validators.instance_of(str)))
+    end_time: Optional[str] = attrs.field(validator=attrs.validators.optional(attrs.validators.instance_of(str)))
 
     @classmethod
     def _structure(cls, data: Dict[str, Any], converter: cattrs.Converter) -> 'TMTResult':
@@ -190,7 +194,9 @@ class TMTResult:
             log=data['log'],
             note=data.get('note'),
             check=converter.structure(data['check'], List[TMTResultCheck]),
-            duration=duration
+            duration=duration,
+            start_time=data['start-time'],
+            end_time=data['end-time'],
         )
 
 
@@ -489,7 +495,9 @@ def gather_plan_results(
             artifacts=artifacts,
             note=result.note,
             checks=checks,
-            duration=result.duration
+            duration=result.duration,
+            start_time=result.start_time,
+            end_time=result.end_time,
         ))
 
     # count the maximum result weight encountered, i.e. the overall result
@@ -1536,6 +1544,8 @@ class TestScheduleTMT(Module):
                 note=task.note,
                 checks=task.checks,
                 duration=task.duration,
+                start_time=task.start_time,
+                end_time=task.end_time,
             )
 
             if task.result == 'failed':

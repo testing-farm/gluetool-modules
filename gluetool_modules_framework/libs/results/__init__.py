@@ -64,6 +64,8 @@ class TestCase:
     system_out: List[str] = attrs.field(factory=list, repr=False)
     checks: List[TestCaseCheck] = attrs.field(factory=list)
     duration: Optional[datetime.timedelta] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
 
     # Properties used in BaseOS CI results.xml
     parameters: List[str] = attrs.field(factory=list)

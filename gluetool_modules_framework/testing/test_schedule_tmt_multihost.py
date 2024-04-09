@@ -131,6 +131,8 @@ class TestResult:
     guest: Optional['TMTResultGuest'] = None
     serial_number: Optional[int] = None
     duration: Optional[datetime.timedelta] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
 
 
 @attrs.define
@@ -196,6 +198,8 @@ class TMTResult:
     duration: Optional[datetime.timedelta] = attrs.field(
         validator=attrs.validators.optional(attrs.validators.instance_of(datetime.timedelta)),
     )
+    start_time: Optional[str] = attrs.field(validator=attrs.validators.optional(attrs.validators.instance_of(str)))
+    end_time: Optional[str] = attrs.field(validator=attrs.validators.optional(attrs.validators.instance_of(str)))
 
     @classmethod
     def _structure(cls, data: Dict[str, Any], converter: cattrs.Converter) -> 'TMTResult':
@@ -212,7 +216,9 @@ class TMTResult:
             note=data.get('note'),
             check=converter.structure(data['check'], List[TMTResultCheck]),
             serial_number=data.get('serial-number'),
-            duration=duration
+            duration=duration,
+            start_time=data['start-time'],
+            end_time=data['end-time'],
         )
 
 
@@ -444,6 +450,8 @@ def gather_plan_results(
             checks=checks,
             note=result.note,
             duration=result.duration,
+            start_time=result.start_time,
+            end_time=result.end_time,
             serial_number=result.serial_number
         ))
 
@@ -1306,6 +1314,8 @@ class TestScheduleTMTMultihost(Module):
                 note=task.note,
                 checks=task.checks,
                 duration=task.duration,
+                start_time=task.start_time,
+                end_time=task.end_time,
                 guest=Guest(
                     name=task.guest.name,
                     role=task.guest.role,

@@ -5,6 +5,8 @@
     - logs/tests/core/docs/out.log
     - logs/tests/core/docs/journal.txt
   duration: 01:23:45
+  start-time: '2024-04-09T13:09:02.727749+00:00'
+  end-time: '2024-04-09T13:09:02.744369+00:00'
   serial-number: 1
   guest:
     name: default-0
@@ -16,6 +18,8 @@
   log:
     - logs/tests/core/dry/out.log
   duration:
+  start-time:
+  end-time:
   serial-number: 2
   guest:
     name: default-0

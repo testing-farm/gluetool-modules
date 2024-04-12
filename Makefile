@@ -23,7 +23,7 @@ test-image:  ## Test container image via dgoss
 ##@ Utility
 
 clean:  ## Remove gluetool-modules container image
-	buildah rmi quay.io/testing-farm/cli:$(IMAGE_TAG)
+	buildah rmi $(IMAGE):$(IMAGE_TAG)
 
 edit-image-test:  ## Edit goss file via dgoss
 	cd container && dgoss edit -t --entrypoint bash $(IMAGE):$(IMAGE_TAG)

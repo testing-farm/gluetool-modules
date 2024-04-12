@@ -53,7 +53,10 @@ API_FEATURE_VERSIONS: Dict[str, str] = {
     'hw-constraints-kickstart': '0.0.53',
     'fixed-hw-validation': '0.0.55',
     'user-defined-watchdog-delay': '0.0.56',
-    'fixed-hw-virtualization-hypervisor': '0.0.58'
+    'fixed-hw-virtualization-hypervisor': '0.0.58',
+    'hw-constraints-cpu-flag': '0.0.67',
+    'hw-constraints-zcrypt': '0.0.69',
+    'hw-constraints-disk-model-name': '0.0.69'
 }
 
 SUPPORTED_API_VERSIONS: Set[str] = set(API_FEATURE_VERSIONS.values())

@@ -116,7 +116,7 @@ testing-farm:
   script:
     - testing-farm request --git-ref $CI_MERGE_REQUEST_REF_PATH --git-url $CI_MERGE_REQUEST_PROJECT_URL
 
-# Run worker integration tests against staging environment and Artemis CI instance
+# Run gluetool-modules integration tests against staging environment and Artemis CI instance
 # Note that we spin a new Artemis instance so the localhost get's access to Artemis API and guests
 integration:
   extends: .merge-request
@@ -131,8 +131,8 @@ integration:
     INFRA_REPO: https://gitlab.com/testing-farm/infrastructure
     INFRA_PATH: infrastructure
     INFRA_BRANCH: main
-    # Use the worker image build in the "container" step
-    WORKER_IMAGE: quay.io/testing-farm/worker:$CI_PIPELINE_ID
+    # Use the gluetool-modules image build in the "container" step
+    WORKER_IMAGE: quay.io/testing-farm/gluetool-modules:$CI_PIPELINE_ID
     CI_ARTIFACT_URL_PREFIX: "https://testing-farm.gitlab.io/-/gluetool-modules/-/jobs/$CI_JOB_ID/artifacts"
   before_script:
     # Use public nameservers to mitigate the EKS cluster to be reolved locally.
@@ -204,7 +204,7 @@ py39-generate-docs:
 #
 # DEPLOY steps
 #
-publish/container:
+publish/container/latest:
   stage: deploy
   image: quay.io/buildah/stable:$BUILDAH_TAG
   script:
@@ -214,3 +214,14 @@ publish/container:
     - IMAGE_TAG=latest make push
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
+
+publish/container/tag:
+  stage: deploy
+  image: quay.io/buildah/stable:$BUILDAH_TAG
+  script:
+    - dnf -y install make poetry python3.9
+    - buildah login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
+    - IMAGE_TAG=${CI_COMMIT_TAG#release/} make build
+    - IMAGE_TAG=${CI_COMMIT_TAG#release/} make push
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^release\/.*/

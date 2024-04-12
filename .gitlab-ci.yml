@@ -221,7 +221,7 @@ publish/container/tag:
   script:
     - dnf -y install make poetry python3.9
     - buildah login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
-    - IMAGE_TAG=$CI_COMMIT_TAG make build
-    - IMAGE_TAG=$CI_COMMIT_TAG make push
+    - IMAGE_TAG=${CI_COMMIT_TAG#release/} make build
+    - IMAGE_TAG=${CI_COMMIT_TAG#release/} make push
   rules:
-    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_TAG =~ /^release\/.*/

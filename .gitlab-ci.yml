@@ -118,7 +118,7 @@ testing-farm:
 
 # Run gluetool-modules integration tests against staging environment and Artemis CI instance
 # Note that we spin a new Artemis instance so the localhost get's access to Artemis API and guests
-integration:
+.integration:
   extends: .merge-request
   stage: test
   needs:
@@ -166,12 +166,6 @@ integration:
     - dnf -y install direnv libffi libffi-devel podman buildah
     - echo -n "$INFRA_VAULT_PASSWORD" > .vault_pass
     - podman login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
-  script:
-    - direnv allow
-    - eval "$(direnv export bash)"
-    - make staging/apply/artemis/ci
-    - make generate/staging/citool-config/ci
-    - make test/staging/pipeline/ci
   artifacts:
     paths:
       - $INFRA_PATH/.pytest
@@ -185,6 +179,24 @@ integration:
     - eval "$(direnv export bash)"
     # NOTE: this leaks secrets, rather hide it
     - make staging/destroy/artemis/ci &> /dev/null
+
+integration:
+  extends: [.integration]
+  script:
+    - direnv allow
+    - eval "$(direnv export bash)"
+    - make staging/apply/artemis/ci
+    - make generate/staging/citool-config/ci
+    - make test/staging/pipeline/ci
+
+integration/container:
+  extends: [.integration]
+  script:
+    - direnv allow
+    - eval "$(direnv export bash)"
+    - make staging/apply/artemis/ci
+    - make generate/staging/citool-config/ci
+    - make test/staging/pipeline/container/ci
 
 # Generate documentation from the sources
 #

@@ -192,13 +192,12 @@ class ArtemisAPI(object):
 
             except requests.exceptions.ConnectionError as error:
                 error_string = str(error)
-                # Artemis API can go down in the middle of the request sending, and that
-                # might be unavoidable, we need to retry. In this case request
-                # raises ConnectionError with 'Connection aborted' string in the message.
-                # https://urllib3.readthedocs.io/en/latest/reference/#urllib3.exceptions.ProtocolError
-                if 'Connection aborted' in error_string:
-                    return Result.Error(error_string)
-                six.reraise(*sys.exc_info())
+                # Handle cases where:
+                # * Artemis API can go down in the middle of the request sending, and that might be unavoidable.
+                # * DNS might be unstable
+                # Just retry on connection errors, we should really retry here in all cases
+                self.module.debug('Retrying due to ConnectionError: {}'.format(error_string), sentry=True)
+                return Result.Error(error_string)
 
             finally:
                 if self.module.pipeline_cancelled and not self.module.destroying:

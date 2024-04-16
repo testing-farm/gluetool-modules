@@ -43,11 +43,14 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       postgresql-devel python3.9 python3-libselinux \
                       redhat-rpm-config koji python3-virtualenv standard-test-roles \
                       rsync beakerlib-libraries rpm-build rpm-devel \
-    && dnf copr -y enable @teemtee/tmt \
-    && dnf -y install tmt-1.31.0-1.fc38.noarch \
-                      tmt+provision-container-1.31.0-1.fc38.noarch \
-                      tmt+provision-virtual-1.31.0-1.fc38.noarch \
-                      tmt+report-polarion-1.31.0-1.fc38.noarch \
+    # Copr disabled to install tmt-1.31 from URLs
+    #&& dnf copr -y enable @teemtee/tmt \
+    && dnf -y install https://kojipkgs.fedoraproject.org//packages/tmt/1.31.0/1.fc38/noarch/tmt-1.31.0-1.fc38.noarch.rpm \
+                      https://kojipkgs.fedoraproject.org//packages/tmt/1.31.0/1.fc38/noarch/tmt+provision-container-1.31.0-1.fc38.noarch.rpm \
+                      https://kojipkgs.fedoraproject.org//packages/tmt/1.31.0/1.fc38/noarch/tmt+provision-virtual-1.31.0-1.fc38.noarch.rpm \
+                      https://kojipkgs.fedoraproject.org//packages/tmt/1.31.0/1.fc38/noarch/tmt+report-polarion-1.31.0-1.fc38.noarch.rpm \
+		      https://kojipkgs.fedoraproject.org/packages/tmt/1.31.0/1.fc38/noarch/tmt+report-junit-1.31.0-1.fc38.noarch.rpm \
+		      https://kojipkgs.fedoraproject.org//packages/tmt/1.31.0/1.fc38/noarch/tmt+export-polarion-1.31.0-1.fc38.noarch.rpm \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \

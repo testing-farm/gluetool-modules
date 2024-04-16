@@ -219,11 +219,15 @@ def test_api_call(monkeypatch, module, log):
         message="check failed with 'Connection aborted dude', assuming failure"
     )
 
-    monkeypatch.setattr(requests, 'get', MagicMock(side_effect=requests.exceptions.ConnectionError('some-error')))
+    monkeypatch.setattr(
+        requests,
+        'get',
+        MagicMock(side_effect=requests.exceptions.ConnectionError('some-other-error'))
+    )
 
     with pytest.raises(
-        ConnectionError,
-        match="some-error"
+        GlueError,
+        match="Artemis API call failed: Condition 'api_call' failed to pass within given time"
     ):
         module.api.api_call('some-url')
 

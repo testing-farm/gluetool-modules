@@ -968,7 +968,11 @@ class KojiTask(LoggerMixin, object):
         :rtype: str
         """
         try:
-            return six.ensure_str(self._task_request.source.split('#')[1].encode('ascii'))
+            # In case the detected source is a branch, make sure we remove the remote `origin/`.
+            # It causes issues when being used during cloning.
+            return six.ensure_str(
+                self._task_request.source.split('#')[1].encode('ascii')
+            ).removeprefix('origin/')
         except IndexError:
             self.debug('Distgit ref not found')
         return None

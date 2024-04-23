@@ -28,3 +28,4 @@ image_full_names:
   - registry-proxy.example.com/rh-osbs/rhel9-tang@sha256:0a4d321c3dd8678d31b5ff4017fc9051e4538dbb6163f39d6ec6500f808365d0
   - registry-proxy.example.com/rh-osbs/rhel9-tang:1-104
 image_id: sha256:0a4d321c3dd8678d31b5ff4017fc9051e4538dbb6163f39d6ec6500f808365d0
+distgit_ref: rhel-9.0.0

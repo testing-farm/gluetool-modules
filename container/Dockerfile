@@ -44,10 +44,12 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       redhat-rpm-config koji python3-virtualenv standard-test-roles \
                       rsync beakerlib-libraries rpm-build rpm-devel \
     && dnf copr -y enable @teemtee/tmt \
-    && dnf -y install tmt-1.32.1 \
-                      tmt+provision-container-1.32.1 \
-                      tmt+provision-virtual-1.32.1 \
-                      tmt+report-polarion-1.32.1 \
+    # dropped version to pick latest pre-release
+    # TODO: add 1.33 before release + update goss test
+    && dnf -y install tmt \
+                      tmt+provision-container \
+                      tmt+provision-virtual \
+                      tmt+report-polarion \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \

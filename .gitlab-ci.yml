@@ -178,23 +178,25 @@ testing-farm:
     - direnv allow
     - eval "$(direnv export bash)"
     # NOTE: this leaks secrets, rather hide it
-    - make staging/destroy/artemis/ci &> /dev/null
+    - make staging/destroy/ci &> /dev/null
 
 integration:
   extends: [.integration]
   script:
     - direnv allow
     - eval "$(direnv export bash)"
-    - make staging/apply/artemis/ci
+    - make staging/apply/ci
     - make generate/staging/citool-config/ci
     - make test/staging/pipeline/ci
 
 integration/container:
   extends: [.integration]
+  variables:
+    PYTEST_PARALLEL_RUNS: 1
   script:
     - direnv allow
     - eval "$(direnv export bash)"
-    - make staging/apply/artemis/ci
+    - make staging/apply/ci
     - make generate/staging/citool-config/ci
     - make test/staging/pipeline/container/ci
 

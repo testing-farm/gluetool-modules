@@ -1277,14 +1277,15 @@ class TestScheduleTMT(Module):
 
         if isinstance(schedule_entry.guest, StaticLocalhostGuest):
             local_command = [
-                # `provision` step
-                'provision'
+                # `provision` step for container based execution
+                'provision',
+                '--how', 'container'
             ]
             command += local_command
             reproducer += local_command
 
         else:
-            # `provision` step
+            # `provision` step for Artemis based execution
             assert schedule_entry.guest.environment is not None
             assert isinstance(schedule_entry.guest.environment.compose, str)
             reproducer.extend([

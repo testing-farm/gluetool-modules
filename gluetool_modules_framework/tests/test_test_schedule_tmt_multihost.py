@@ -336,12 +336,16 @@ dummytmt --root some-tmt-root -c distro=rhel -c trigger=push run --all --id {wor
         ),
         (  # with tmt process environment variables
             {
-                'accepted-environment-variables': 'VARIABLE1,VARIABLE2'
+                'accepted-environment-variables': 'VARIABLE1,VARIABLE2,VARIABLE3,VARIABLE4,VARIABLE5',
+                'environment-variables': [
+                    'VARIABLE3=VAL3,VARIABLE4=VAL4',
+                    'VARIABLE5=VAL5'
+                ]
             },
             {},
             TestingEnvironment('x86_64', 'rhel-9', tmt={'environment': {'VARIABLE1': 'VALUE1', 'VARIABLE2': 'VALUE2'}}),
             """# tmt reproducer
-export VARIABLE1=***** VARIABLE2=*****
+export VARIABLE1=***** VARIABLE2=***** VARIABLE3=***** VARIABLE4=***** VARIABLE5=*****
 dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script echo hello""",  # noqa
 
             None,

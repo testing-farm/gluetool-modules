@@ -561,6 +561,15 @@ class TestScheduleTMT(Module):
                         """,
                 'action': 'append',
                 'default': []
+            },
+            'environment-variables': {
+                'help': """
+                        A comma delimited list of additional environment variables and their values
+                        for the ``tmt`` process.
+                        """,
+                'action': 'append',
+                'default': [],
+                'metavar': 'KEY1=VAL1,KEY2=VAL2'
             }
         }),
         ('Result options', {
@@ -592,6 +601,21 @@ class TestScheduleTMT(Module):
     @gluetool.utils.cached_property
     def accepted_environment_secrets(self) -> List[str]:
         return gluetool.utils.normalize_multistring_option(self.option('accepted-environment-secrets'))
+
+    @gluetool.utils.cached_property
+    def environment_variables(self) -> Dict[str, Any]:
+        if not self.option('environment-variables'):
+            return {}
+
+        rendered_options = [
+            gluetool.utils.render_template(option, **self.shared('eval_context'))
+            for option in self.option('environment-variables')
+        ]
+
+        return {
+            keyval.split('=')[0]: keyval.split('=')[1]
+            for keyval in gluetool.utils.normalize_multistring_option(rendered_options)
+        }
 
     @gluetool.utils.cached_property
     def test_filter(self) -> Optional[str]:
@@ -1341,6 +1365,7 @@ class TestScheduleTMT(Module):
         # Ignore PEP8Bear
         if (tmt := schedule_entry.testing_environment.tmt) and 'environment' in tmt and tmt['environment']:  # noqa: E203 E231 E501
             tmt_process_environment = tmt['environment']
+            tmt_process_environment.update(self.environment_variables)
 
             _check_accepted_environment_variables(tmt_process_environment)
 

@@ -315,12 +315,16 @@ dummytmt --root some-tmt-root -c distro=rhel -c trigger=push run --all --verbose
         ),
         (  # with tmt process environment variables
             {
-                'accepted-environment-variables': 'VARIABLE1,VARIABLE2'
+                'accepted-environment-variables': 'VARIABLE1,VARIABLE2,VARIABLE3,VARIABLE4,VARIABLE5',
+                'environment-variables': [
+                    'VARIABLE3=VAL3,VARIABLE4=VAL4',
+                    'VARIABLE5=VAL5'
+                ]
             },
             {},
             TestingEnvironment('x86_64', 'rhel-9', tmt={'environment': {'VARIABLE1': 'VALUE1', 'VARIABLE2': 'VALUE2'}}),
             """# tmt reproducer
-export VARIABLE1=***** VARIABLE2=*****
+export VARIABLE1=***** VARIABLE2=***** VARIABLE3=***** VARIABLE4=***** VARIABLE5=*****
 dummytmt --root some-tmt-root run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
             None,
             None

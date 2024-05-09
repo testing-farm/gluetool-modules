@@ -56,7 +56,8 @@ API_FEATURE_VERSIONS: Dict[str, str] = {
     'fixed-hw-virtualization-hypervisor': '0.0.58',
     'hw-constraints-cpu-flag': '0.0.67',
     'hw-constraints-zcrypt': '0.0.69',
-    'hw-constraints-disk-model-name': '0.0.69'
+    'hw-constraints-disk-model-name': '0.0.69',
+    'guest-log-blobs': '0.0.70'
 }
 
 SUPPORTED_API_VERSIONS: Set[str] = set(API_FEATURE_VERSIONS.values())
@@ -802,23 +803,51 @@ class ArtemisGuest(NetworkedGuest):
             )
             return
 
-        latest_guest_log = response.json().get('blob')
+        if self.module.api and self.module.api.version >= API_FEATURE_VERSIONS['guest-log-blobs']:
+            blobs: List[Dict[str, str]] = response.json().get('blobs', [])
 
-        if not latest_guest_log:
-            # Do not save empty log of requested
-            if not log.save_empty:
-                return
-            latest_guest_log = '<no {} available>'.format(log.name)
+            if not blobs:
+                # Do not save empty log of requested
+                if not log.save_empty:
+                    return
+
+                content = '<no {} available>'.format(log.name)
+
+            else:
+                content_components: List[str] = []
+
+                for blob in blobs:
+                    content_components += [
+                        f'# -- Acquired at {blob["ctime"]} --',
+                        '',
+                        blob['content'],
+                        ''
+                    ]
+
+                content = '\n'.join(content_components)
+
+        else:
+            blob: Optional[str] = response.json().get('blob')
+
+            if not blob:
+                # Do not save empty log of requested
+                if not log.save_empty:
+                    return
+
+                content = '<no {} available>'.format(log.name)
+
+            else:
+                content = blob
 
         # nothing todo in case there is no change in the guest log
-        if latest_guest_log == log.content:
+        if content == log.content:
             return
 
         # save main guest log
-        log_blob(self.debug, 'saving latest {}'.format(log.name), latest_guest_log)
-        log.content = latest_guest_log
+        log_blob(self.debug, 'saving latest {}'.format(log.name), content)
+        log.content = content
         guest_log_file = log.filename.format(guestname=self.artemis_id)
-        self._save_guest_log(guest_log_file, latest_guest_log)
+        self._save_guest_log(guest_log_file, content)
 
         updated = response.json().get('updated')
         if not updated:
@@ -831,7 +860,7 @@ class ArtemisGuest(NetworkedGuest):
                 guestname=self.artemis_id,
                 datetime=log_datetime
             ),
-            latest_guest_log
+            content
         )
 
     def gather_guest_logs(self) -> None:

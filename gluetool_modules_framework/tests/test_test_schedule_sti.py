@@ -358,7 +358,11 @@ def test_serialize_to_junit_non_printable_characters(monkeypatch, module_runner)
 ])
 def test_gather_results_empty(log, workdir, expected_message, expected_results):
     results = gather_test_results(
-        gluetool.log.Logging.get_logger(),
+        TestScheduleEntry(
+            gluetool.log.Logging.get_logger(),
+            "some-playbook",
+            {}
+        ),
         workdir
     )
     assert log.match(levelno=logging.WARN, message=expected_message)

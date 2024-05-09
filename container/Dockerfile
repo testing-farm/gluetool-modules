@@ -45,11 +45,10 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       rsync beakerlib-libraries rpm-build rpm-devel \
     && dnf copr -y enable @teemtee/tmt \
     # dropped version to pick latest pre-release
-    # TODO: add 1.33 before release + update goss test
-    && dnf -y install tmt \
-                      tmt+provision-container \
-                      tmt+provision-virtual \
-                      tmt+report-polarion \
+    && dnf -y install tmt-1.33.0 \
+                      tmt+provision-container-1.33.0 \
+                      tmt+provision-virtual-1.33.0 \
+                      tmt+report-polarion-1.33.0 \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \

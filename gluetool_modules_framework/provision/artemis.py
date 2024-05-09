@@ -804,9 +804,9 @@ class ArtemisGuest(NetworkedGuest):
             return
 
         if self.module.api and self.module.api.version >= API_FEATURE_VERSIONS['guest-log-blobs']:
-            blobs: List[Dict[str, str]] = response.json().get('blobs', [])
+            blob_infos: List[Dict[str, str]] = response.json().get('blobs', [])
 
-            if not blobs:
+            if not blob_infos:
                 # Do not save empty log of requested
                 if not log.save_empty:
                     return
@@ -816,11 +816,11 @@ class ArtemisGuest(NetworkedGuest):
             else:
                 content_components: List[str] = []
 
-                for blob in blobs:
+                for blob_info in blob_infos:
                     content_components += [
-                        f'# -- Acquired at {blob["ctime"]} --',
+                        f'# -- Acquired at {blob_info["ctime"]} --',
                         '',
-                        blob['content'],
+                        blob_info['content'],
                         ''
                     ]
 

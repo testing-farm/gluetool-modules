@@ -91,6 +91,12 @@ command:
       - GLUETOOL_TRACING_DISABLE=1
       - /PATH=.*/opt/gluetool/bin/
 
+  gluetool --version:
+    exit-status: 0
+    timeout: 100000
+    stderr:
+      - gluetool 2.9
+
   koji version:
     exit-status: 0
     timeout: 100000

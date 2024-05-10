@@ -60,7 +60,8 @@ class TestCase:
     # True can be used just to display a blank failure element, string can be specified as a failure message
     failure: Union[bool, str] = False
     error: Union[bool, str] = False
-    system_out: List[str] = attrs.field(factory=list)
+    # Do not show system_out in representation, it can be huge
+    system_out: List[str] = attrs.field(factory=list, repr=False)
     checks: List[TestCaseCheck] = attrs.field(factory=list)
     duration: Optional[datetime.timedelta] = None
 

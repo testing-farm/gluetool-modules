@@ -749,7 +749,7 @@ class TestScheduleTMTMultihost(Module):
             ]
             command.extend(env_options)
 
-        command.extend(['discover', 'plan', '--name', plan, 'test'])
+        command.extend(['discover', 'plan', '--name', '^{}$'.format(plan), 'test'])
 
         if test_filter:
             command.extend(['--filter', test_filter])
@@ -803,7 +803,7 @@ class TestScheduleTMTMultihost(Module):
             ]
             command.extend(env_options)
 
-        command.extend(['discover', 'plan', '--name', plan])
+        command.extend(['discover', 'plan', '--name', '^{}$'.format(plan)])
 
         try:
             tmt_output = Command(command).run(cwd=repodir)

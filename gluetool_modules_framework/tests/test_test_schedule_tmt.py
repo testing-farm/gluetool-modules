@@ -646,7 +646,7 @@ def test_plans_from_git_filter(module, monkeypatch):
             None,
             [
                 'dummytmt', '--root', 'some-tmt-root', 'run', '-e', '@tmt-environment-lan1.yaml', 'discover', 'plan',
-                '--name', 'plan1', 'test', '--filter', 'filter1'
+                '--name', '^plan1$', 'test', '--filter', 'filter1'
             ]
         ),
         (
@@ -654,7 +654,7 @@ def test_plans_from_git_filter(module, monkeypatch):
             'name1',
             [
                 'dummytmt', '--root', 'some-tmt-root', 'run', '-e', '@tmt-environment-lan1.yaml', 'discover', 'plan',
-                '--name', 'plan1', 'test', '--name', 'name1'
+                '--name', '^plan1$', 'test', '--name', 'name1'
             ]
         ),
         (
@@ -662,7 +662,7 @@ def test_plans_from_git_filter(module, monkeypatch):
             'name1',
             [
                 'dummytmt', '--root', 'some-tmt-root', 'run', '-e', '@tmt-environment-lan1.yaml', 'discover', 'plan',
-                '--name', 'plan1', 'test', '--filter', 'filter1', '--name', 'name1'
+                '--name', '^plan1$', 'test', '--filter', 'filter1', '--name', 'name1'
             ]
         ),
     ]
@@ -708,7 +708,7 @@ def test_is_plan_empty(module, monkeypatch, log):
         'discover',
         'plan',
         '--name',
-        'plan1',
+        '^plan1$',
     ])
 
     # Empty plan
@@ -729,7 +729,7 @@ def test_is_plan_empty(module, monkeypatch, log):
         'discover',
         'plan',
         '--name',
-        'plan1',
+        '^plan1$',
     ])
 
     # No plans found
@@ -752,7 +752,7 @@ def test_is_plan_empty(module, monkeypatch, log):
         'discover',
         'plan',
         '--name',
-        'plan1',
+        '^plan1$',
     ])
 
 

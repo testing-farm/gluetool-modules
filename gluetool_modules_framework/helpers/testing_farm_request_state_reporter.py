@@ -76,12 +76,6 @@ class TestingFarmRequestStateReporter(gluetool.Module):
 
         test_results = self.shared('results')
 
-        # In case of failure, we need to get the results from the shared context
-        # The shared function is not available because the test-schedule-report
-        # module was not executed.
-        if not test_results:
-            test_results = self.shared('eval_context').get('RESULTS')
-
         if failure:
             self.info('pipeline failure')
         elif not test_results:

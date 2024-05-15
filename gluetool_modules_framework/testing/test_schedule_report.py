@@ -108,17 +108,6 @@ class TestScheduleReport(gluetool.Module):
         if not self.option('enable-polarion') and any(self.option(option) for option in required_polarion_options):
             self.warn("polarion options have no effect because 'enable-polarion' was not specified.")
 
-    @property
-    def eval_context(self) -> Dict[str, Any]:
-
-        __content__ = {  # noqa
-            'RESULTS': """
-                             Results of test schedule.
-                             """
-        }
-
-        return {'RESULTS': self._results}
-
     @gluetool.utils.cached_property
     def _overall_result_instructions(self) -> List[Dict[str, Any]]:
 

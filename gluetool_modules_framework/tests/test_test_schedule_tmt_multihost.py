@@ -334,7 +334,22 @@ dummytmt --root some-tmt-root -c distro=rhel -c trigger=push run --all --id {wor
             None,
             None
         ),
-        (  # with tmt process environment variables
+        (  # with tmt process environment variables from options only
+            {
+                'accepted-environment-variables': 'VARIABLE1',
+                'environment-variables': [
+                    'VARIABLE1=VAL1'
+                ]
+            },
+            {},
+            TestingEnvironment('x86_64', 'rhel-9'),
+            """# tmt reproducer
+export VARIABLE1=*****
+dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script echo hello""",  # noqa
+            None,
+            None
+        ),
+        (  # with tmt process environment variables from both sources
             {
                 'accepted-environment-variables': 'VARIABLE1,VARIABLE2,VARIABLE3,VARIABLE4,VARIABLE5',
                 'environment-variables': [
@@ -345,7 +360,7 @@ dummytmt --root some-tmt-root -c distro=rhel -c trigger=push run --all --id {wor
             {},
             TestingEnvironment('x86_64', 'rhel-9', tmt={'environment': {'VARIABLE1': 'VALUE1', 'VARIABLE2': 'VALUE2'}}),
             """# tmt reproducer
-export VARIABLE1=***** VARIABLE2=***** VARIABLE3=***** VARIABLE4=***** VARIABLE5=*****
+export VARIABLE3=***** VARIABLE4=***** VARIABLE5=***** VARIABLE1=***** VARIABLE2=*****
 dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script echo hello""",  # noqa
 
             None,
@@ -365,7 +380,10 @@ dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --
             (gluetool.glue.GlueError, "Environment variable 'VARIABLE2' is not allowed to be exposed to the tmt process")
         ),
     ],
-    ids=['virtual', 'local', 'variables', 'tmt_context', 'tmt_process_environment', 'tmt_process_environment_not_accepted']
+    ids=[
+        'virtual', 'local', 'variables', 'tmt_context',
+        'tmt_process_environment_options_only', 'tmt_process_environment', 'tmt_process_environment_not_accepted'
+    ]
 )
 def test_tmt_output_dir(
     module, monkeypatch, tmpdir,

@@ -313,7 +313,22 @@ dummytmt --root some-tmt-root -c distro=rhel -c trigger=push run --all --verbose
             None,
             None
         ),
-        (  # with tmt process environment variables
+        (  # with tmt process environment variables from options only
+            {
+                'accepted-environment-variables': 'VARIABLE1',
+                'environment-variables': [
+                    'VARIABLE1=VAL1'
+                ]
+            },
+            {},
+            TestingEnvironment('x86_64', 'rhel-9'),
+            """# tmt reproducer
+export VARIABLE1=*****
+dummytmt --root some-tmt-root run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+            None,
+            None
+        ),
+        (  # with tmt process environment variables from both sources
             {
                 'accepted-environment-variables': 'VARIABLE1,VARIABLE2,VARIABLE3,VARIABLE4,VARIABLE5',
                 'environment-variables': [
@@ -324,7 +339,7 @@ dummytmt --root some-tmt-root -c distro=rhel -c trigger=push run --all --verbose
             {},
             TestingEnvironment('x86_64', 'rhel-9', tmt={'environment': {'VARIABLE1': 'VALUE1', 'VARIABLE2': 'VALUE2'}}),
             """# tmt reproducer
-export VARIABLE1=***** VARIABLE2=***** VARIABLE3=***** VARIABLE4=***** VARIABLE5=*****
+export VARIABLE3=***** VARIABLE4=***** VARIABLE5=***** VARIABLE1=***** VARIABLE2=*****
 dummytmt --root some-tmt-root run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
             None,
             None
@@ -342,7 +357,10 @@ dummytmt --root some-tmt-root run --all --verbose provision --how virtual --imag
             (gluetool.glue.GlueError, "Environment variable 'VARIABLE2' is not allowed to be exposed to the tmt process")
         ),
     ],
-    ids=['virtual', 'local', 'variables', 'tmt_context', 'tmt_process_environment', 'tmt_process_environment_not_accepted']
+    ids=[
+        'virtual', 'local', 'variables', 'tmt_context',
+        'tmt_process_environment_options_only', 'tmt_process_environment', 'tmt_process_environment_not_accepted'
+    ]
 )
 def test_tmt_output_dir(
     module, guest, monkeypatch, tmpdir,

@@ -558,17 +558,19 @@ class TestScheduleTMTMultihost(Module):
 
     @gluetool.utils.cached_property
     def environment_variables(self) -> Dict[str, Any]:
-        if not self.option('environment-variables'):
+        options = gluetool.utils.normalize_multistring_option(self.option('environment-variables'))
+
+        if not options:
             return {}
 
         rendered_options = [
             gluetool.utils.render_template(option, **self.shared('eval_context'))
-            for option in self.option('environment-variables')
+            for option in options
         ]
 
         return {
             keyval.split('=')[0]: keyval.split('=')[1]
-            for keyval in gluetool.utils.normalize_multistring_option(rendered_options)
+            for keyval in rendered_options
         }
 
     @gluetool.utils.cached_property
@@ -1054,8 +1056,8 @@ class TestScheduleTMTMultihost(Module):
             tmt_context = self._tmt_context_to_options(schedule_entry.testing_environment.tmt['context'])
             command.extend(tmt_context)
 
-        # create environment variables for the tmt process
-        tmt_process_environment: Dict[str, str] = {}
+        # create environment variables for the tmt process, start with options coming from options
+        tmt_process_environment = self.environment_variables.copy()
 
         def _check_accepted_environment_variables(variables: Dict[str, str]) -> None:
             for key, _ in six.iteritems(variables):
@@ -1070,8 +1072,11 @@ class TestScheduleTMTMultihost(Module):
         # using `# noqa` because flake8 and coala are confused by the walrus operator
         # Ignore PEP8Bear
         if (tmt := schedule_entry.testing_environment.tmt) and 'environment' in tmt and tmt['environment']:  # noqa: E203 E231 E501
-            tmt_process_environment = tmt['environment']
-            tmt_process_environment.update(self.environment_variables)
+
+            # add environment variables from testing environment
+            tmt_process_environment.update(tmt['environment'])
+
+        if tmt_process_environment:
 
             _check_accepted_environment_variables(tmt_process_environment)
 
@@ -1083,7 +1088,7 @@ class TestScheduleTMTMultihost(Module):
 
             schedule_entry.tmt_reproducer.append(
                 'export {}'.format(
-                    _sanitize_environment_variables(tmt['environment'])
+                    _sanitize_environment_variables(tmt_process_environment)
                 )
             )
 

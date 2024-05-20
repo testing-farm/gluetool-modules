@@ -2,8 +2,10 @@
 
 stages:
   - build
+  - build-worker-public  # worker-public build needs to happen after gluetool-modules build
   - test
   - deploy
+  - deploy-worker-public  # worker-public deploy needs to happen after gluetool-modules deploy
 
 # Use our custom image. See https://gitlab.com/testing-farm/images/-/tree/master/python-ci-image
 image: "quay.io/testing-farm/python-ci-image:2023-09-21-f3e8c41e"
@@ -55,6 +57,15 @@ container:
     - IMAGE_TAG=$CI_PIPELINE_ID make build
     - IMAGE_TAG=$CI_PIPELINE_ID make test-image
     - IMAGE_TAG=$CI_PIPELINE_ID make push
+
+container-worker-public:
+  extends: .merge-request
+  stage: build-worker-public
+  variables:
+    GM_TAG: $CI_PIPELINE_ID
+    IMAGE_TAG: $CI_PIPELINE_ID
+  trigger:
+    project: testing-farm/worker-public
 
 
 # Run unit tests
@@ -230,6 +241,16 @@ publish/container/latest:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
 
+publish/container-worker-public/latest:
+  stage: deploy-worker-public
+  variables:
+    GM_TAG: latest
+    IMAGE_TAG: latest
+  trigger:
+    project: testing-farm/worker-public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
+
 publish/container/tag:
   stage: deploy
   image: quay.io/buildah/stable:$BUILDAH_TAG
@@ -238,5 +259,15 @@ publish/container/tag:
     - buildah login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
     - IMAGE_TAG=${CI_COMMIT_TAG#release/} make build
     - IMAGE_TAG=${CI_COMMIT_TAG#release/} make push
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^release\/.*/
+
+publish/container-worker-public/tag:
+  stage: deploy-worker-public
+  variables:
+    GM_TAG: $CI_COMMIT_TAG
+    IMAGE_TAG: $CI_COMMIT_TAG
+  trigger:
+    project: testing-farm/worker-public
   rules:
     - if: $CI_COMMIT_TAG =~ /^release\/.*/

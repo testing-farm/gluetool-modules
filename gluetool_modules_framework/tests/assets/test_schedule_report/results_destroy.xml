@@ -9,7 +9,7 @@
   <property name="polarion-lookup-method" value="polarion lookup method"/>
   <property name="polarion-project-id" value="polarion project id"/>
  </properties>
- <testsuite name="plan" result="passed" tests="0">
+ <testsuite name="plan" result="passed" tests="0" stage="complete">
   <logs>
    <log guest-setup-stage="artifact_installation" href="logpath" name="schedule entry #0: ARTIFACT_INSTALLATION" schedule-stage="guest-setup"/>
    <log guest-setup-stage="post_artifact_installation" href="logpath" name="schedule entry #0: POST_ARTIFACT_INSTALLATION" schedule-stage="guest-setup"/>
@@ -21,7 +21,7 @@
    <property name="baseosci.result" value="passed"/>
   </properties>
  </testsuite>
- <testsuite name="plan" result="failed" tests="0">
+ <testsuite name="plan" result="failed" tests="0" stage="complete">
   <logs>
    <log guest-setup-stage="artifact_installation" href="logpath" name="schedule entry #1: ARTIFACT_INSTALLATION" schedule-stage="guest-setup"/>
    <log guest-setup-stage="post_artifact_installation" href="logpath" name="schedule entry #1: POST_ARTIFACT_INSTALLATION" schedule-stage="guest-setup"/>
@@ -33,7 +33,7 @@
    <property name="baseosci.result" value="failed"/>
   </properties>
  </testsuite>
- <testsuite name="plan" result="error" tests="0">
+ <testsuite name="plan" result="error" tests="0" stage="complete">
   <logs>
    <log guest-setup-stage="artifact_installation" href="logpath" name="schedule entry #2: ARTIFACT_INSTALLATION" schedule-stage="guest-setup"/>
    <log guest-setup-stage="post_artifact_installation" href="logpath" name="schedule entry #2: POST_ARTIFACT_INSTALLATION" schedule-stage="guest-setup"/>

@@ -106,6 +106,7 @@ class TestSuite:
     requested_environment: Optional[TestingEnvironment] = None
     provisioned_environment: Optional[TestingEnvironment] = None
     guests: List[Guest] = attrs.field(factory=list)
+    stage: Optional[str] = None
 
     @property
     def test_count(self) -> int:

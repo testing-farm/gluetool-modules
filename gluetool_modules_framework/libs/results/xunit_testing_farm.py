@@ -280,6 +280,7 @@ class XUnitTFTestSuite:
     name: str = attrs.field(metadata={'type': 'Attribute'})
     result: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
     tests: str = attrs.field(metadata={'type': 'Attribute'})
+    stage: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
     logs: Optional[XUnitTFLogs] = None
     properties: Optional[XUnitTFProperties] = None
     testcase: List[XUnitTFTestCase] = attrs.field(factory=list)
@@ -302,6 +303,7 @@ class XUnitTFTestSuite:
             name=test_suite.name,
             result=test_suite.result,
             tests=str(test_suite.test_count),
+            stage=test_suite.stage,
             logs=XUnitTFLogs.construct(test_suite.logs) if test_suite.logs else None,
             properties=XUnitTFProperties.construct(test_suite.properties) if test_suite.properties else None,
             testcase=[XUnitTFTestCase.construct(test_case) for test_case in test_suite.test_cases],

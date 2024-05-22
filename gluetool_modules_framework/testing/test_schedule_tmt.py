@@ -1368,24 +1368,22 @@ class TestScheduleTMT(Module):
         # Ignore PEP8Bear
         if (tmt := schedule_entry.testing_environment.tmt) and 'environment' in tmt and tmt['environment']:  # noqa: E203 E231 E501
 
-            # add environment variables from testing environment
-            tmt_process_environment.update(tmt['environment'])
-
-        if tmt_process_environment:
-
-            _check_accepted_environment_variables(tmt_process_environment)
-
-            if self.has_shared('add_secrets'):
-                self.shared('add_secrets', [
-                    value for key, value in tmt_process_environment.items()
-                    if value and key in self.accepted_environment_secrets
-                ])
+            _check_accepted_environment_variables(tmt['environment'])
 
             schedule_entry.tmt_reproducer.append(
                 'export {}'.format(
-                    _sanitize_environment_variables(tmt_process_environment)
+                    _sanitize_environment_variables(tmt['environment'])
                 )
             )
+
+            if self.has_shared('add_secrets'):
+                self.shared('add_secrets', [
+                    value for key, value in tmt['environment'].items()
+                    if value and key in self.accepted_environment_secrets
+                ])
+
+            # add environment variables from testing environment
+            tmt_process_environment.update(tmt['environment'])
 
         # add tmt reproducer suitable for local execution: run until provisioning
         schedule_entry.tmt_reproducer.append(' '.join(reproducer))

@@ -11,6 +11,7 @@ import pytest
 import logging
 
 import gluetool
+from gluetool.utils import normalize_multistring_option
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 import gluetool_modules_framework.testing.test_schedule_tmt
 from gluetool_modules_framework.infrastructure.distgit import DistGit, DistGitRepository
@@ -42,7 +43,9 @@ def _load_assets(name):
 def _set_run_outputs(monkeypatch, *outputs):
     '''Monkey-patch gluetools.utils.Command.run to return given output'''
     returns = map(lambda o: MagicMock(exit_code=0, stdout=o, stderr=o, return_value=o), outputs)
-    monkeypatch.setattr(gluetool.utils.Command, 'run', MagicMock(side_effect=returns))
+    run_mock = MagicMock(side_effect=returns)
+    monkeypatch.setattr(gluetool.utils.Command, 'run', run_mock)
+    return run_mock
 
 
 @pytest.fixture(name='module')
@@ -323,7 +326,6 @@ dummytmt --root some-tmt-root -c distro=rhel -c trigger=push run --all --verbose
             {},
             TestingEnvironment('x86_64', 'rhel-9'),
             """# tmt reproducer
-export VARIABLE1=*****
 dummytmt --root some-tmt-root run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
             None,
             None
@@ -339,7 +341,7 @@ dummytmt --root some-tmt-root run --all --verbose provision --how virtual --imag
             {},
             TestingEnvironment('x86_64', 'rhel-9', tmt={'environment': {'VARIABLE1': 'VALUE1', 'VARIABLE2': 'VALUE2'}}),
             """# tmt reproducer
-export VARIABLE3=***** VARIABLE4=***** VARIABLE5=***** VARIABLE1=***** VARIABLE2=*****
+export VARIABLE1=***** VARIABLE2=*****
 dummytmt --root some-tmt-root run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
             None,
             None
@@ -393,7 +395,7 @@ def test_tmt_output_dir(
 
     with monkeypatch.context() as m:
         # tmt run
-        _set_run_outputs(m, 'dummy test done')
+        run_mock = _set_run_outputs(m, 'dummy test done')
 
         with monkeypatch.context() as m:
             m.chdir(tmpdir)
@@ -434,6 +436,17 @@ def test_tmt_output_dir(
             assert c == expected_environment
     else:
         assert not os.path.exists(tmt_environment_file)
+
+    expected_tmt_environment = {}
+
+    if 'environment-variables' in additional_options:
+        expected_tmt_environment.update(module.environment_variables)
+
+    if testing_environment.tmt and 'environment' in testing_environment.tmt:
+        expected_tmt_environment.update(testing_environment.tmt['environment'])
+
+    if expected_tmt_environment:
+        run_mock.call_args.kwargs['env'] = expected_tmt_environment
 
 
 @pytest.mark.parametrize('additional_options, additional_shared, clone_url, expected_tmt_reproducer_regex', [

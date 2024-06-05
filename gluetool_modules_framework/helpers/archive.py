@@ -461,7 +461,7 @@ class Archive(gluetool.Module):
 
                 def _verify_archivation() -> Result[bool, bool]:
                     with gluetool.utils.requests() as request:
-                        response = request.get(target)
+                        response = request.head(target)
 
                         if response.status_code == 200:
                             return Result.Ok(True)

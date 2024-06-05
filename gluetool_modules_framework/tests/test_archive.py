@@ -88,8 +88,8 @@ def test_execute_destroy_ssh(monkeypatch, module):
     mock_shutil_rmtree = MagicMock()
     mock_os_unlink = MagicMock()
     mock_requests = MagicMock()
-    mock_requests_get = mock_requests.return_value.__enter__.return_value.get
-    mock_requests_get.return_value.status_code = 200
+    mock_requests_head = mock_requests.return_value.__enter__.return_value.head
+    mock_requests_head.return_value.status_code = 200
 
     monkeypatch.setattr(gluetool.utils.Command, '__init__', mock_command_init)
     monkeypatch.setattr(gluetool.utils.Command, 'run', mock_command_run)
@@ -155,7 +155,7 @@ def test_execute_destroy_ssh(monkeypatch, module):
     ]
 
     mock_command_init.assert_has_calls(calls, any_order=True)
-    mock_requests_get.assert_called_once_with('https://artifacts.example.com/archive-source-execute')
+    mock_requests_head.assert_called_once_with('https://artifacts.example.com/archive-source-execute')
 
 
 def test_destroy_daemon(monkeypatch, module):
@@ -168,7 +168,8 @@ def test_destroy_daemon(monkeypatch, module):
     mock_shutil_rmtree = MagicMock()
     mock_os_unlink = MagicMock()
     mock_requests = MagicMock()
-    mock_requests.return_value.__enter__.return_value.get.return_value.status_code = 200
+    mock_requests_head = mock_requests.return_value.__enter__.return_value.head
+    mock_requests_head.return_value.status_code = 200
 
     monkeypatch.setattr(gluetool.utils.Command, '__init__', mock_command_init)
     monkeypatch.setattr(gluetool.utils.Command, 'run', mock_command_run)
@@ -240,8 +241,8 @@ def test_execute_destroy_local(monkeypatch, module):
     mock_shutil_rmtree = MagicMock()
     mock_os_unlink = MagicMock()
     mock_requests = MagicMock()
-    mock_requests_get = mock_requests.return_value.__enter__.return_value.get
-    mock_requests_get.return_value.status_code = 200
+    mock_requests_head = mock_requests.return_value.__enter__.return_value.head
+    mock_requests_head.return_value.status_code = 200
 
     monkeypatch.setattr(gluetool.utils.Command, '__init__', mock_command_init)
     monkeypatch.setattr(gluetool.utils.Command, 'run', mock_command_run)
@@ -309,7 +310,8 @@ def test_parallel_archiving(monkeypatch, module, log):
     mock_shutil_rmtree = MagicMock()
     mock_os_unlink = MagicMock()
     mock_requests = MagicMock()
-    mock_requests.return_value.__enter__.return_value.get.return_value.status_code = 200
+    mock_requests_head = mock_requests.return_value.__enter__.return_value.head
+    mock_requests_head.return_value.status_code = 200
 
     monkeypatch.setattr(gluetool.utils.Command, '__init__', mock_command_init)
     monkeypatch.setattr(gluetool.utils.Command, 'run', mock_command_run)

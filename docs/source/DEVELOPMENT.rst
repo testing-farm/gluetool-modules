@@ -158,7 +158,7 @@ to run against a local VM. First, check out the production configuration:
 
 .. code-block:: bash
 
-    git clone -b testing-farm https://gitlab.com/testing-farm/infrastructure/
+    git clone https://gitlab.com/testing-farm/infrastructure/
 
 Then pick a particular request, e.g one with a COPR installation, and run a pipeline with the `static-guest` provisioner.
 

@@ -14,8 +14,8 @@ import gluetool
 import gluetool.utils
 import gluetool_modules_framework.libs
 import requests
+import urllib3.exceptions
 from simplejson import JSONDecodeError
-from urllib3.exceptions import NewConnectionError
 
 from gluetool import GlueError, SoftGlueError
 from gluetool.log import log_blob, log_dict, LoggerMixin
@@ -188,20 +188,15 @@ class ArtemisAPI(object):
             try:
                 response = _request('{}v{}/{}'.format(self.url, self.version, endpoint), json=data)
 
-            except NewConnectionError as error:
-                # TFT-1755 - added to workaround DNS problems with podman
-                # send this to Sentry to understand the scope
-                self.module.debug('Retrying due to NewConnectionError', sentry=True)
-                return Result.Error('NewConnectionError: {}'.format(str(error)))
-
-            except requests.exceptions.ConnectionError as error:
-                error_string = str(error)
-                # Handle cases where:
-                # * Artemis API can go down in the middle of the request sending, and that might be unavoidable.
-                # * DNS might be unstable
-                # Just retry on connection errors, we should really retry here in all cases
-                self.module.debug('Retrying due to ConnectionError: {}'.format(error_string), sentry=True)
-                return Result.Error(error_string)
+            # Catch all urllib3 and requests exceptions
+            # https://urllib3.readthedocs.io/en/latest/reference/urllib3.exceptions.html#urllib3.exceptions.HTTPError
+            # https://requests.readthedocs.io/en/latest/api/#exceptions
+            # TFT-1755 - Added to workaround DNS problems with podman
+            # TFT-2656 - Fix retrying of all possible HTTP errors when talking to Artemis
+            except (urllib3.exceptions.HTTPError, requests.exceptions.RequestException) as error:
+                fqcn = '{}.{}'.format(error.__module__, error.__class__.__qualname__)
+                self.module.debug('Retrying Artemis API call due to {} exception'.format(fqcn), sentry=True)
+                return Result.Error('{}: {}'.format(fqcn, str(error)))
 
             finally:
                 if self.module.pipeline_cancelled and not self.module.destroying:

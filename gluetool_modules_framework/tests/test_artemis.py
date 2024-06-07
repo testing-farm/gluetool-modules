@@ -9,8 +9,8 @@ from gluetool.glue import Module
 
 import pytest
 import requests
+import urllib3.exceptions
 from requests.exceptions import ConnectionError
-from urllib3.exceptions import NewConnectionError
 from mock import MagicMock
 
 from gluetool import GlueError
@@ -216,7 +216,7 @@ def test_api_call(monkeypatch, module, log):
 
     assert log.match(
         levelno=logging.DEBUG,
-        message="check failed with 'Connection aborted dude', assuming failure"
+        message="check failed with 'requests.exceptions.ConnectionError: Connection aborted dude', assuming failure"
     )
 
     monkeypatch.setattr(
@@ -267,8 +267,13 @@ def test_pipeline_cancelled_before_provision_finished(module, scenario, log):
     assert log.match(levelno=logging.INFO, message='successfully released')
 
 
-def test_new_connection_error(module, monkeypatch, log):
-    monkeypatch.setattr(requests, 'get', MagicMock(side_effect=NewConnectionError('', '')))
+@pytest.mark.parametrize('exception', [
+    urllib3.exceptions.HTTPError(),
+    urllib3.exceptions.ProtocolError(),
+    urllib3.exceptions.NewConnectionError('', ''),
+], ids=lambda exception: exception)
+def test_api_call_exceptions(module, monkeypatch, log, exception):
+    monkeypatch.setattr(requests, 'get', MagicMock(side_effect=exception))
 
     with pytest.raises(
         GlueError,
@@ -276,7 +281,12 @@ def test_new_connection_error(module, monkeypatch, log):
     ):
         module.execute()
 
-    assert log.match(levelno=logging.DEBUG, message="Retrying due to NewConnectionError")
+    assert log.match(
+        levelno=logging.DEBUG,
+        message="Retrying Artemis API call due to {}.{} exception".format(
+            exception.__module__, exception.__class__.__qualname__
+        )
+    )
 
 
 @pytest.mark.parametrize('constraint, expected', [

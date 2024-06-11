@@ -155,7 +155,10 @@ def test_execute_destroy_ssh(monkeypatch, module):
     ]
 
     mock_command_init.assert_has_calls(calls, any_order=True)
-    mock_requests_head.assert_called_once_with('https://artifacts.example.com/archive-source-execute')
+    mock_requests_head.assert_called_once_with(
+        'https://artifacts.example.com/archive-source-execute',
+        allow_redirects=True
+    )
 
 
 def test_destroy_daemon(monkeypatch, module):

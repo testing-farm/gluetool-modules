@@ -461,7 +461,9 @@ class Archive(gluetool.Module):
 
                 def _verify_archivation() -> Result[bool, bool]:
                     with gluetool.utils.requests() as request:
-                        response = request.head(target)
+                        # For HEAD method we need to enable redirects explicitely
+                        # https://requests.readthedocs.io/en/latest/user/quickstart/#redirection-and-history
+                        response = request.head(target, allow_redirects=True)
 
                         if response.status_code == 200:
                             return Result.Ok(True)

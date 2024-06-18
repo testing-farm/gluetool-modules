@@ -10,8 +10,6 @@ from gluetool.utils import render_template, from_yaml, cached_property
 # Type annotations
 from typing import cast, Any, Callable, Dict, List, Optional, Tuple, Union, NamedTuple, Set  # noqa
 
-PlatformType = List[Dict[str, Any]]
-
 
 class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkinsJobMixin, gluetool.Module):
     """
@@ -121,9 +119,8 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
         return mapping
 
     def test_pull_request(self) -> bool:
-        primary_task = self.shared('primary_task')
-
         # Check if 'citest' comment exists and author is collaborator
+        primary_task = self.shared('primary_task')
         if primary_task.comment:
             return '[citest' in primary_task.comment \
                 and primary_task.comment_author_is_collaborator
@@ -135,13 +132,44 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
         return False
 
     @cached_property
-    def parse_platforms_from_meta(self) -> Optional[PlatformType]:
-
+    def parse_platforms_from_meta(self) -> Set[str]:
+        """
+        Implement https://issues.redhat.com/browse/SYSROLES-38
+        'Fedora', 'EL', etc. without a version means all versions
+        """
         meta_file = from_yaml(
             self.shared('primary_task').get_file_from_pull_request(self.option('metadata-path'))
         )
 
-        return cast(Optional[PlatformType], meta_file['galaxy_info'].get('platforms', None))
+        rv = set()
+        have_specific_version = set()
+        for platform in meta_file['galaxy_info'].get('platforms', []):
+            lower_name = platform['name'].lower()
+            rv.add(lower_name)
+            for version in platform.get('versions', []):
+                if version == 'all':
+                    continue
+                rv.add(lower_name + '-' + version)
+                # we have a specific version of something e.g. 'fedora-40'
+                # instead of just 'fedora'
+                have_specific_version.add(lower_name)
+        for tag in meta_file['galaxy_info'].get('galaxy_tags', []):
+            lower_tag = tag.lower()
+            rv.add(lower_tag)
+            match = re.match(r'(.+)-\d+$', lower_tag)
+            if match:
+                # we have a specific version of something e.g. 'fedora-40'
+                # instead of just 'fedora'
+                have_specific_version.add(match.group(1))
+        for tag in have_specific_version:
+            # if we have both 'fedora' and 'fedora-40' in the list, remove
+            # 'fedora' - that is - the role doesn't support all versions of
+            # 'fedora', just the specific versions listed
+            if tag in rv:
+                rv.remove(tag)
+
+        self.debug('SystemRolesJob:platforms supported by role {}'.format(rv))
+        return rv  # e.g. fedora, el-8, el-9, el-10
 
     def get_short_rhel_compose(self, compose: str) -> str:
         """
@@ -154,48 +182,35 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
         # If failed, return original string
         return compose
 
-    @cached_property
-    def get_transformed_platforms(self) -> Optional[PlatformType]:
-        """
-        In Ansible the 'EL' platform means both RHEL and CentOS.
-        It is needed to be transformed to simplify compose check.
-        The method replaces `EL` platform with `RHEL` and `CentOS`
-        and `CentOS-Stream`.
-        """
-        platforms = self.parse_platforms_from_meta
-        if not platforms:
-            return None
-
-        transformed_platforms = []
-        for platform in platforms:
-            if platform['name'] == 'EL':
-                transformed_platforms.append({'name': 'RHEL', 'versions': platform['versions']})
-                transformed_platforms.append({'name': 'CentOS', 'versions': platform['versions']})
-                transformed_platforms.append({'name': 'CentOS-Stream', 'versions': platform['versions']})
-            else:
-                transformed_platforms.append(platform)
-        return transformed_platforms
-
     def is_compose_supported(self, compose: str) -> bool:
         """
-        Check if compose is supported. The method tries to find
-        `name-version` substring in compose name where name is a distribution name
-        and version is a major version of the distribution.
+        Check if compose is supported. The method first gets a list of
+        role_platforms (including versions), then normalizes the given
+        compose string to the Ansible meta format, then sees if that
+        compose is in the list of supported role platforms.
+        role_platforms is normalized to lower case - do the same with
+        compose_platform
         """
-        platforms = self.get_transformed_platforms
+        role_platforms = self.parse_platforms_from_meta
         # If no platform is specified, the role supports all platforms
-        if not platforms:
+        if not role_platforms:
             return True
 
-        for platform in platforms:
-            for version in platform['versions']:
-                if version == 'all':
-                    if platform['name'] in compose:
-                        return True
-                else:
-                    if '{}-{}'.format(platform['name'], version) in compose:
-                        return True
-        return False
+        # convert compose platform, version to ansible meta format
+        match = re.match(r'CentOS-Stream-(\d+)', compose)
+        if match:
+            compose_platform = 'el'
+            compose_version = match.group(1)
+        else:
+            # should be of the form PLATFORMNAME-MAJORVERSION
+            match = re.match(r'([^-]+)-(\d+)', compose)
+            if match:
+                compose_platform = match.group(1).lower()
+                compose_version = match.group(2)
+                if compose_platform in ['rhel', 'centos']:
+                    compose_platform = 'el'
+
+        return compose_platform in role_platforms or compose_platform + '-' + compose_version in role_platforms
 
     def execute(self) -> None:
 
@@ -218,7 +233,6 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
             return
 
         primary_task = self.shared('primary_task')
-
         for compose_ansible_dict in self.composes_ansibles_matrix():
 
             compose = compose_ansible_dict['compose']

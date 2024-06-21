@@ -321,8 +321,8 @@ def test_execute_destroy_s3(monkeypatch, module):
     mock_shutil_rmtree = MagicMock()
     mock_os_unlink = MagicMock()
     mock_requests = MagicMock()
-    mock_requests_get = mock_requests.return_value.__enter__.return_value.get
-    mock_requests_get.return_value.status_code = 200
+    mock_requests_head = mock_requests.return_value.__enter__.return_value.head
+    mock_requests_head.return_value.status_code = 200
 
     monkeypatch.setattr(gluetool.utils.Command, '__init__', mock_command_init)
     monkeypatch.setattr(gluetool.utils.Command, 'run', mock_command_run)

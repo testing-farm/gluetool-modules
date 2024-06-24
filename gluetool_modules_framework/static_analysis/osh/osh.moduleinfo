@@ -1,0 +1,16 @@
+---
+
+name: osh
+description: Run OpenScanHub
+dependencies:
+  repo:
+    - name: osh-epel-9.repo
+      description: OpenScanHub repository
+      baseurl: https://coprbe.devel.redhat.com/results/@osh/osh/epel-9-$basearch
+  yum:
+    - osh-client
+    - libcurl-devel
+    - python2-kerberos
+    - python2-dateutil
+    - python2-lxml
+    - python2-requests

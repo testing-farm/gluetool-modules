@@ -1,0 +1,5 @@
+---
+
+- '(?:rhel|RHEL)-([67]).[0-9]+(?:-z)?-candidate|rhel-(7).1-ppc64le(?:-z)?-candidate|staging-rhel-([67])-candidate':
+    - 'rhel-\\1-x86_64'
+    - 'rhel-\\1-x86_64-basescan'

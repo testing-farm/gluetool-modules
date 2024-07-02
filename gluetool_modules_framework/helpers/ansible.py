@@ -481,7 +481,7 @@ class Ansible(gluetool.Module):
             }
         ):
             try:
-                ansible_call = Command(cmd, logger=logger).run(cwd=cwd, env=env)
+                ansible_call = Command(cmd, logger=logger).run(cwd=cwd, env=env, stdin=subprocess.DEVNULL)
 
             except gluetool.GlueCommandError as exc:
                 ansible_call = exc.output

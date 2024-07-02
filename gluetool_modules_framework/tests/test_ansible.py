@@ -4,6 +4,7 @@
 import os
 import json
 import tempfile
+import subprocess
 
 import pytest
 
@@ -95,7 +96,7 @@ def test_run_playbook_json(module, local_guest, monkeypatch, assert_output):
     env_variables.update({'ANSIBLE_STDOUT_CALLBACK': 'json', 'ANSIBLE_PIPELINING': 'True'})
     env_variables.update({'ENV1': 'VAL1', 'ENV2': 'VAL2'})
 
-    mock_command_run.assert_called_once_with(cwd=None, env=env_variables)
+    mock_command_run.assert_called_once_with(cwd=None, env=env_variables, stdin=subprocess.DEVNULL)
 
 
 def test_run_playbook_plaintext(module, local_guest, monkeypatch, assert_output):
@@ -125,7 +126,7 @@ def test_run_playbook_plaintext(module, local_guest, monkeypatch, assert_output)
     env_variables.update({'ANSIBLE_STDOUT_CALLBACK': 'debug', 'ANSIBLE_PIPELINING': 'True'})
     env_variables.update({'ENV1': 'VAL1', 'ENV2': 'VAL2'})
 
-    mock_command_run.assert_called_once_with(cwd=None, env=env_variables)
+    mock_command_run.assert_called_once_with(cwd=None, env=env_variables, stdin=subprocess.DEVNULL)
 
 
 def test_run_playbooks(module, local_guest, monkeypatch, assert_output):
@@ -162,7 +163,7 @@ def test_run_playbooks(module, local_guest, monkeypatch, assert_output):
     env_variables.update({'ANSIBLE_STDOUT_CALLBACK': 'debug', 'ANSIBLE_PIPELINING': 'True'})
     env_variables.update({'ENV1': 'VAL1', 'ENV2': 'VAL2'})
 
-    mock_command_run.assert_called_once_with(cwd=None, env=env_variables)
+    mock_command_run.assert_called_once_with(cwd=None, env=env_variables, stdin=subprocess.DEVNULL)
 
 
 @pytest.mark.parametrize('config, expected', [
@@ -217,7 +218,7 @@ def test_change_ansible_playbook_filepath_option(module, local_guest, monkeypatc
     env_variables.update({'ANSIBLE_STDOUT_CALLBACK': 'debug', 'ANSIBLE_PIPELINING': 'True'})
     env_variables.update({'ENV1': 'VAL1', 'ENV2': 'VAL2'})
 
-    mock_command_run.assert_called_once_with(cwd=None, env=env_variables)
+    mock_command_run.assert_called_once_with(cwd=None, env=env_variables, stdin=subprocess.DEVNULL)
 
 
 def test_change_ansible_playbook_filepath_argument(module, local_guest, monkeypatch, assert_output):
@@ -253,7 +254,7 @@ def test_change_ansible_playbook_filepath_argument(module, local_guest, monkeypa
     env_variables.update({'ANSIBLE_STDOUT_CALLBACK': 'debug', 'ANSIBLE_PIPELINING': 'True'})
     env_variables.update({'ENV1': 'VAL1', 'ENV2': 'VAL2'})
 
-    mock_command_run.assert_called_once_with(cwd=None, env=env_variables)
+    mock_command_run.assert_called_once_with(cwd=None, env=env_variables, stdin=subprocess.DEVNULL)
 
 
 def test_error(log, module, local_guest, monkeypatch, assert_output):
@@ -305,7 +306,7 @@ def test_extra_vars(module, local_guest, monkeypatch, assert_output):
     env_variables.update({'ANSIBLE_STDOUT_CALLBACK': 'debug', 'ANSIBLE_PIPELINING': 'True'})
     env_variables.update({'ENV1': 'VAL1', 'ENV2': 'VAL2'})
 
-    mock_command_run.assert_called_once_with(cwd='foo', env=env_variables)
+    mock_command_run.assert_called_once_with(cwd='foo', env=env_variables, stdin=subprocess.DEVNULL)
 
 
 def test_dryrun(module, local_guest, monkeypatch, assert_output):
@@ -335,7 +336,7 @@ def test_dryrun(module, local_guest, monkeypatch, assert_output):
     env_variables.update({'ANSIBLE_STDOUT_CALLBACK': 'debug', 'ANSIBLE_PIPELINING': 'True'})
     env_variables.update({'ENV1': 'VAL1', 'ENV2': 'VAL2'})
 
-    mock_command_run.assert_called_once_with(cwd=None, env=env_variables)
+    mock_command_run.assert_called_once_with(cwd=None, env=env_variables, stdin=subprocess.DEVNULL)
 
 
 def test_additonal_options(module, local_guest, monkeypatch, assert_output):

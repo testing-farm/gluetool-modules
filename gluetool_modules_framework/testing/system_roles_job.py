@@ -150,19 +150,20 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
                 if version == 'all':
                     continue
                 rv.add(lower_name + '-' + version)
-                # we have a specific version of something e.g. 'fedora-40'
+                # we have a specific version of something e.g. 'fedora40'
                 # instead of just 'fedora'
                 have_specific_version.add(lower_name)
         for tag in meta_file['galaxy_info'].get('galaxy_tags', []):
-            lower_tag = tag.lower()
-            rv.add(lower_tag)
-            match = re.match(r'(.+)-\d+$', lower_tag)
+            match = re.match(r'([a-z]+)(\d+)$', tag)
             if match:
-                # we have a specific version of something e.g. 'fedora-40'
+                # we have a specific version of something e.g. 'fedora40'
                 # instead of just 'fedora'
+                rv.add(match.group(1) + '-' + match.group(2))
                 have_specific_version.add(match.group(1))
+            else:
+                rv.add(tag)
         for tag in have_specific_version:
-            # if we have both 'fedora' and 'fedora-40' in the list, remove
+            # if we have both 'fedora' and 'fedora40' in the list, remove
             # 'fedora' - that is - the role doesn't support all versions of
             # 'fedora', just the specific versions listed
             if tag in rv:
@@ -209,6 +210,12 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
                 compose_version = match.group(2)
                 if compose_platform in ['rhel', 'centos']:
                     compose_platform = 'el'
+            elif compose == 'Fedora-Rawhide':
+                compose_platform = 'fedora'
+                compose_version = ''
+            else:
+                compose_platform = compose.lower()  # not sure what this could be
+                compose_version = ''
 
         return compose_platform in role_platforms or compose_platform + '-' + compose_version in role_platforms
 

@@ -27,13 +27,18 @@ def fixture_module(monkeypatch):
     module._config['artifacts-root'] = '/artifacts-root'
     module._config['artifacts-local-root'] = '/artifacts-root'
     module._config['source-destination-map'] = '{}/source-destination-map.yaml'.format(ASSETS_DIR)
-    module._config['rsync-mode'] = 'ssh'
+    module._config['archive-mode'] = 'ssh'
     module._config['rsync-options'] = '--rsync-option'
     module._config['retry-tick'] = 1
     module._config['retry-timeout'] = 5
     module._config['verify-tick'] = 1
     module._config['verify-timeout'] = 1
     module._config['rsync-timeout'] = 10
+    module._config['aws-access-key-id'] = 'aws-access-key-id'
+    module._config['aws-secret-access-key'] = 'aws-secret'
+    module._config['aws-region'] = 'aws-region'
+    module._config['aws-s3-bucket'] = 'aws-s3-bucket'
+    module._config['aws-options'] = '--aws-option'
 
     patch_shared(monkeypatch, module, {}, callables={
         'testing_farm_request': lambda: MagicMock(id='request-id'),
@@ -57,22 +62,22 @@ def _mock_glob(path, recursive=False):
 def test_sanity(module):
     check_loadable(module.glue, 'gluetool_modules_framework/helpers/archive.py', 'Archive')
 
-    module._config['rsync-mode'] = 'invalid'
+    module._config['archive-mode'] = 'invalid'
 
-    with pytest.raises(gluetool.GlueError, match='rsync mode must be either daemon, ssh or local'):
+    with pytest.raises(gluetool.GlueError, match='rsync mode must be either daemon, ssh, local or s3'):
         module.sanity()
 
-    module._config['rsync-mode'] = 'daemon'
+    module._config['archive-mode'] = 'daemon'
     module._config['artifacts-rsync-host'] = None
     with pytest.raises(gluetool.GlueError, match='rsync daemon host must be specified when using rsync daemon mode'):
         module.sanity()
 
-    module._config['rsync-mode'] = 'ssh'
+    module._config['archive-mode'] = 'ssh'
     module._config['artifacts-host'] = None
     with pytest.raises(gluetool.GlueError, match='artifacts host must be specified when using ssh mode'):
         module.sanity()
 
-    module._config['rsync-mode'] = 'local'
+    module._config['archive-mode'] = 'local'
     module._config['artifacts-local-root'] = None
     with pytest.raises(gluetool.GlueError, match='artifacts local root must be specified when using local mode'):
         module.sanity()
@@ -162,7 +167,7 @@ def test_execute_destroy_ssh(monkeypatch, module):
 
 
 def test_destroy_daemon(monkeypatch, module):
-    module._config['rsync-mode'] = 'daemon'
+    module._config['archive-mode'] = 'daemon'
 
     mock_command_init = MagicMock(return_value=None)
     mock_command_run = MagicMock(return_value='Ok')
@@ -235,7 +240,7 @@ def test_destroy_daemon(monkeypatch, module):
 
 def test_execute_destroy_local(monkeypatch, module):
     module._config['enable-parallel-archiving'] = False
-    module._config['rsync-mode'] = 'local'
+    module._config['archive-mode'] = 'local'
 
     mock_command_init = MagicMock(return_value=None)
     mock_command_run = MagicMock(return_value='Ok')
@@ -300,6 +305,80 @@ def test_execute_destroy_local(monkeypatch, module):
 
         call(['rsync', '--rsync-option', '--timeout=10', '--chmod=666', '/env-archive-source',
               '/artifacts-root/request-id/env-dest'], logger=module.logger),
+    ]
+
+    mock_command_init.assert_has_calls(calls, any_order=True)
+
+
+def test_execute_destroy_s3(monkeypatch, module):
+    module._config['enable-parallel-archiving'] = False
+    module._config['archive-mode'] = 's3'
+
+    mock_command_init = MagicMock(return_value=None)
+    mock_command_run = MagicMock(return_value='Ok')
+    mock_shutil_copytree = MagicMock()
+    mock_shutil_copy2 = MagicMock()
+    mock_shutil_rmtree = MagicMock()
+    mock_os_unlink = MagicMock()
+    mock_requests = MagicMock()
+    mock_requests_head = mock_requests.return_value.__enter__.return_value.head
+    mock_requests_head.return_value.status_code = 200
+
+    monkeypatch.setattr(gluetool.utils.Command, '__init__', mock_command_init)
+    monkeypatch.setattr(gluetool.utils.Command, 'run', mock_command_run)
+    monkeypatch.setattr(gluetool.utils, 'requests', mock_requests)
+    monkeypatch.setattr(shutil, 'copytree', mock_shutil_copytree)
+    monkeypatch.setattr(shutil, 'copy2', mock_shutil_copy2)
+    monkeypatch.setattr(shutil, 'rmtree', mock_shutil_rmtree)
+    monkeypatch.setattr(os, 'unlink', mock_os_unlink)
+
+    monkeypatch.setattr(os.path, 'exists', lambda _: True)
+
+    def _isdir(path):
+        if path in ['/dir-archive-source', 'dir-archive-source']:
+            return True
+
+        return False
+
+    monkeypatch.setattr(os.path, 'isdir', _isdir)
+
+    monkeypatch.setattr(gluetool_modules_framework.helpers.archive, 'glob', _mock_glob)
+
+    # run execute to test directory creation
+    module.execute()
+
+    module.destroy()
+
+    calls = [
+        call(['aws', 's3', 'cp', '--aws-option', '/archive-source',
+              's3://aws-s3-bucket/artifacts-root/request-id/dest'], logger=module.logger),
+
+        call(['aws', 's3', 'cp', '--aws-option', '/archive-source',
+              's3://aws-s3-bucket/artifacts-root/request-id/archive-source'], logger=module.logger),
+
+        call(['aws', 's3', 'cp', '--aws-option', '/archive-source',
+              's3://aws-s3-bucket/artifacts-root/request-id/dest'], logger=module.logger),
+
+        call(['aws', 's3', 'sync', '--aws-option', '/dir-archive-source',
+              's3://aws-s3-bucket/artifacts-root/request-id/dir-archive-source'], logger=module.logger),
+
+        call(['aws', 's3', 'cp', '--aws-option', '/dir-archive-source/1',
+              's3://aws-s3-bucket/artifacts-root/request-id/dir-archive-source/1'], logger=module.logger),
+
+        call(['aws', 's3', 'cp', '--aws-option', '/dir-archive-source/2',
+              's3://aws-s3-bucket/artifacts-root/request-id/dir-archive-source/2'], logger=module.logger),
+
+        call(['aws', 's3', 'cp', '--aws-option', '/dir-archive-source/3',
+              's3://aws-s3-bucket/artifacts-root/request-id/dir-archive-source/3'], logger=module.logger),
+
+        call(['aws', 's3', 'cp', '--aws-option', '/env-archive-source',
+              's3://aws-s3-bucket/artifacts-root/request-id/env-dest'], logger=module.logger),
+
+        call(['aws', 's3', 'cp', '--aws-option', '/archive-source-execute.copy',
+              's3://aws-s3-bucket/artifacts-root/request-id/archive-source-execute'], logger=module.logger),
+
+        call(['aws', 's3', 'cp', '--aws-option', '/env-archive-source2.copy',
+              's3://aws-s3-bucket/artifacts-root/request-id/env-archive-source2'], logger=module.logger),
     ]
 
     mock_command_init.assert_has_calls(calls, any_order=True)

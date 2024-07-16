@@ -46,7 +46,7 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       libpq-devel libtool libxml2-devel make openssl-devel popt-devel \
                       postgresql-devel python3.9 python3-libselinux \
                       redhat-rpm-config koji python3-virtualenv standard-test-roles \
-                      rsync beakerlib-libraries rpm-build rpm-devel \
+                      rsync beakerlib-libraries rpm-build rpm-devel awscli \
     && dnf copr -y enable @teemtee/tmt \
     # dropped version to pick latest pre-release
     && dnf -y install tmt-1.34.0 \

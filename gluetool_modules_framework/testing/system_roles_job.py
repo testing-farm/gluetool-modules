@@ -237,6 +237,7 @@ class SystemRolesJob(gluetool_modules_framework.libs.dispatch_job.DispatchJenkin
 
         # Do nothing if branch or comment author is not a collaborator or [citest skip]
         if not self.test_pull_request():
+            self.warning('Author is not a collaborator or [citest skip] used')
             return
 
         primary_task = self.shared('primary_task')

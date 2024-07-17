@@ -1679,6 +1679,27 @@ class BrewTask(KojiTask):
         return archives
 
     @cached_property
+    def build_archives_sha(self) -> Dict[str, str]:
+        """
+        A map of build arches and build archive SHAs
+        """
+        build_archives_sha = {}
+        for archive in self.build_archives:
+            arch = archive.get('extra', {}).get('image', {}).get('arch', {})
+            if not arch:
+                continue
+            if 'docker-image-sha256' not in archive['filename']:
+                continue
+            re_sha = re.match(r'docker-image-sha256:([a-f0-9]+)\.', archive['filename'])
+            if not re_sha:
+                continue
+            build_archives_sha[arch] = re_sha.group(1)
+
+        self.debug('Build arches and their SHAs: {}'.format(build_archives_sha))
+
+        return build_archives_sha
+
+    @cached_property
     def image_repositories(self) -> List[ImageRepository]:
         """
         A list of Docker image repositories build by the task.

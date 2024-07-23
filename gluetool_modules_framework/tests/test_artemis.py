@@ -323,6 +323,63 @@ def test_hw_constraints(module, constraint, expected):
         module.hw_constraints
 
 
+@pytest.mark.parametrize('options, expected', [
+    (
+        {
+            'kickstart-pre-install': 'pre-install\nscript',
+            'kickstart-script': 'main script',
+            'kickstart-post-install': 'post-install',
+            'kickstart-metadata': 'metadata',
+            'kickstart-kernel-options': 'kernel options',
+            'kickstart-kernel-options-post': 'kernel options post'
+        },
+        {
+            'pre-install': 'pre-install\nscript',
+            'script': 'main script',
+            'post-install': 'post-install',
+            'metadata': 'metadata',
+            'kernel-options': 'kernel options',
+            'kernel-options-post': 'kernel options post'
+        }
+    ),
+    (
+        {
+            'kickstart-pre-install': 'pre-install script',
+            'kickstart-script': 'main script'
+        },
+        {
+            'pre-install': 'pre-install script',
+            'script': 'main script'
+        }
+    ),
+    (
+        {},
+        {}
+    ),
+    (
+        {
+            'kickstart-pre-install': '',
+            'kickstart-script': None,
+            'kickstart-post-install': '  ',
+            'kickstart-metadata': '\n',
+            'kickstart-kernel-options': '\t',
+            'kickstart-kernel-options-post': ' \n '
+        },
+        {
+            'post-install': '  ',
+            'metadata': '\n',
+            'kernel-options': '\t',
+            'kernel-options-post': ' \n '
+        }
+    )
+])
+def test_kickstart(module, options, expected):
+    for key, value in options.items():
+        module._config[key] = value
+
+    assert module.kickstart == expected
+
+
 @pytest.mark.parametrize('filename, context, expected', [
     (
         'user_data.yaml',

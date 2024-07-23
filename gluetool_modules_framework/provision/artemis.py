@@ -329,7 +329,7 @@ class ArtemisAPI(object):
             raise GlueError('unsupported API version {}'.format(self.version))
 
         if self.version >= API_FEATURE_VERSIONS['hw-constraints-kickstart']:
-            data['environment']['kickstart'] = kickstart or {}
+            data['environment']['kickstart'] = kickstart or self.module.kickstart or {}
 
         if self.version >= API_FEATURE_VERSIONS['user-defined-watchdog-delay']:
             if watchdog_dispatch_delay is not None:
@@ -990,10 +990,29 @@ class ArtemisProvisioner(gluetool.Module):
                 'action': 'append',
                 'default': []
             },
-            'kickstart': {
-                'help': 'Specify parameters for kickstart that modifies the installation of a guest',
+            'kickstart-pre-install': {
+                'help': 'Pre installation part, corresponding to `%pre` in ks file.',
                 'type': str,
-                'default': None
+            },
+            'kickstart-script': {
+                'help': 'Main body of a kickstart file.',
+                'type': str,
+            },
+            'kickstart-post-install': {
+                'help': 'Post installation part, corresponding to `%post` in ks file.',
+                'type': str,
+            },
+            'kickstart-metadata': {
+                'help': 'Specified metadata can change the interpretation of the ks file.',
+                'type': str,
+            },
+            'kickstart-kernel-options': {
+                'help': 'Options to be passed to the kernel command line when the installer is booted.',
+                'type': str,
+            },
+            'kickstart-kernel-options-post': {
+                'help': 'Options to be passed to the kernel command line after the installation.',
+                'type': str,
             },
             'pool': {
                 'help': 'Desired pool',
@@ -1169,6 +1188,29 @@ class ArtemisProvisioner(gluetool.Module):
     @property
     def post_install_script(self) -> str:
         return self.expand_post_install_script(self.option('post-install-script'))
+
+    @property
+    def kickstart(self) -> Dict[str, str]:
+        kickstart = {}
+        if self.option('kickstart-pre-install'):
+            kickstart['pre-install'] = self.option('kickstart-pre-install')
+
+        if self.option('kickstart-script'):
+            kickstart['script'] = self.option('kickstart-script')
+
+        if self.option('kickstart-post-install'):
+            kickstart['post-install'] = self.option('kickstart-post-install')
+
+        if self.option('kickstart-metadata'):
+            kickstart['metadata'] = self.option('kickstart-metadata')
+
+        if self.option('kickstart-kernel-options'):
+            kickstart['kernel-options'] = self.option('kickstart-kernel-options')
+
+        if self.option('kickstart-kernel-options-post'):
+            kickstart['kernel-options-post'] = self.option('kickstart-kernel-options-post')
+
+        return kickstart
 
     @gluetool.utils.cached_property
     def hw_constraints(self) -> Optional[Dict[str, Any]]:
@@ -1486,7 +1528,8 @@ class ArtemisProvisioner(gluetool.Module):
         provision_count = self.option('provision')
         arch = self.option('arch')
         compose = self.option('compose')
-        kickstart = self.option('kickstart')
+
+        kickstart = self.kickstart
 
         environment = TestingEnvironment(arch=arch,
                                          compose=compose,

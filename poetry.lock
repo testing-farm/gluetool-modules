@@ -3002,4 +3002,4 @@ development = ["ipdb"]
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.9"
-content-hash = "f966a2f3df60cdcd9c22cfac5e8d1a6ba70d1943749516746886a2bc099b3809"
+content-hash = "06a47c18f8c4995201792d69336433e33104c916a843f0da51ae4580ec4d3cb3"

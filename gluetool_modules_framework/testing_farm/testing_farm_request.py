@@ -119,7 +119,8 @@ class TestingFarmAPI(LoggerMixin, object):
         self._get_request = partial(self._request, type='get')
         self._delete_request = partial(self._request, type='delete')
 
-    def _request(self, endpoint: str, payload: Optional[Dict[str, Any]] = None, type: Optional[str] = None) -> Any:
+    def _request(self, endpoint: str, payload: Optional[Dict[str, Any]] = None, type: Optional[str] = None,
+                 headers: Optional[Dict[str, str]] = None) -> Any:
         """
         Post payload to the given API endpoint. Retry if failed to mitigate connection/service
         instabilities.
@@ -131,6 +132,8 @@ class TestingFarmAPI(LoggerMixin, object):
         if type in ['post', 'put'] and not payload:
             raise gluetool.GlueError("payload is required for 'post' and 'put' requests")
 
+        headers = headers or {}
+
         # construct post URL
         url = urljoin(self._api_url, endpoint)  # type: ignore
         log_dict(self.debug, "posting following payload to url '{}'".format(url), payload)
@@ -139,7 +142,7 @@ class TestingFarmAPI(LoggerMixin, object):
             assert type is not None
             try:
                 with requests() as req:
-                    response = getattr(req, type)(url, json=payload)
+                    response = getattr(req, type)(url, json=payload, headers=headers)
 
                 try:
                     response_data = response.json()
@@ -196,11 +199,15 @@ class TestingFarmAPI(LoggerMixin, object):
 
         return cast(RequestType, response.json())
 
+    # TODO: this endpoint got renamed to tokens, it should be renamed also in gluetool-modules code
     def get_user(self, user_id: str, api_key: str) -> UserType:
-        request = self._get_request('v0.1/users/{}?api_key={}'.format(user_id, api_key))
+        request = self._get_request(
+            'v0.1/tokens/{}'.format(user_id),
+            headers={'Authorization': 'Bearer {}'.format(api_key)}
+        )
 
         if not request:
-            raise gluetool.GlueError("Request '{}' was not found".format(user_id))
+            raise gluetool.GlueError("Token '{}' was not found".format(user_id))
 
         return cast(UserType, request.json())
 
@@ -272,10 +279,12 @@ class TestingFarmRequest(LoggerMixin, object):
         super(TestingFarmRequest, self).__init__(module.logger)
 
         assert module._tf_api is not None
+        assert module._tf_api_public is not None
 
         self._module = module
         self._api_key = module.api_key
         self._api = module._tf_api
+        self._api_public = module._tf_api_public
 
         self.id = cast(str, self._module.option('request-id'))
 
@@ -393,7 +402,7 @@ class TestingFarmRequest(LoggerMixin, object):
         except (KeyError, TypeError):
             pass
 
-        user = self._api.get_user(request['user_id'], self._api_key)
+        user = self._api_public.get_user(request['user_id'], self._api_key)
         self.request_username = user['name']
 
         # TFT-2202 - provide a flag to indicate the provisioning errors should be treated as failed tests
@@ -602,6 +611,7 @@ class TestingFarmRequestModule(gluetool.Module):
         super(TestingFarmRequestModule, self).__init__(*args, **kwargs)
         self._tf_request: Optional[TestingFarmRequest] = None
         self._tf_api: Optional[TestingFarmAPI] = None
+        self._tf_api_public: Optional[TestingFarmAPI] = None
         self._pipeline_cancellation_timer: Optional[RepeatTimer] = None
 
     @property
@@ -699,6 +709,8 @@ class TestingFarmRequestModule(gluetool.Module):
 
     def execute(self) -> None:
         self._tf_api = TestingFarmAPI(self, self.api_url)
+        # TODO: remove this hack
+        self._tf_api_public = TestingFarmAPI(self, self.api_url.replace('internal.', ''))
 
         self.info(
             "Connected to Testing Farm Service '{}'".format(

@@ -70,28 +70,28 @@ class ResponseInvalidJSON(ResponseMock):
 
 
 class RequestsMock():
-    def get(self, url, json):
+    def get(self, url, json, headers=None):
         return ResponseMock()
 
-    def put(self, url, json):
+    def put(self, url, json, headers=None):
         return ResponseMock()
 
-    def post(self, url, json):
+    def post(self, url, json, headers=None):
         return ResponseMock()
 
-    def request_404(self, url, json):
+    def request_404(self, url, json, headers=None):
         return Response404()
 
-    def request_409(self, url, json):
+    def request_409(self, url, json, headers=None):
         return Response409()
 
-    def request_123(self, url, json):
+    def request_123(self, url, json, headers=None):
         return Response123()
 
-    def request_invalid_json(self, url, json):
+    def request_invalid_json(self, url, json, headers=None):
         return ResponseInvalidJSON()
 
-    def request_http_error(self, url, json):
+    def request_http_error(self, url, json, headers=None):
         raise HTTPError
 
 
@@ -143,6 +143,10 @@ def fixture_request1(module, monkeypatch):
     module._tf_api = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmAPI(
         module, module.option('api-url')
     )
+    # TODO: remove hack
+    module._tf_api_public = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmAPI(
+        module, module.option('api-url').replace('internal.', '')
+    )
     patch_shared(monkeypatch, module, {}, callables={'add_secrets': MagicMock(return_value=None)})
     module._tf_request = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmRequest(module)
 
@@ -153,6 +157,11 @@ def fixture_request2(module):
     module._tf_api = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmAPI(
         module, module.option('api-url')
     )
+    # TODO: remove hack
+    module._tf_api_public = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmAPI(
+        module, module.option('api-url').replace('internal.', '')
+    )
+
     module._tf_request = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmRequest(module)
 
 
@@ -162,6 +171,11 @@ def fixture_request3(module, monkeypatch):
     module._tf_api = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmAPI(
         module, module.option('api-url')
     )
+    # TODO: remove hack
+    module._tf_api_public = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmAPI(
+        module, module.option('api-url').replace('internal.', '')
+    )
+
     patch_shared(monkeypatch, module, {}, callables={'add_secrets': MagicMock(return_value=None)})
     module._tf_request = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmRequest(module)
 

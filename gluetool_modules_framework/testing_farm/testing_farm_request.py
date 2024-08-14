@@ -278,12 +278,12 @@ class TestingFarmRequest(LoggerMixin, object):
     def __init__(self, module: 'TestingFarmRequestModule') -> None:
         super(TestingFarmRequest, self).__init__(module.logger)
 
-        assert module._tf_api is not None
+        assert module._tf_api_internal is not None
         assert module._tf_api_public is not None
 
         self._module = module
         self._api_key = module.api_key
-        self._api = module._tf_api
+        self._api = module._tf_api_internal
         self._api_public = module._tf_api_public
 
         self.id = cast(str, self._module.option('request-id'))
@@ -563,9 +563,15 @@ class TestingFarmRequestModule(gluetool.Module):
                         `eval_context` shared method.
                         ''',
             },
-            'api-url': {
+            'internal-api-url': {
                 'help': '''
                         Root of Nucleus internal API endpoint. Accepts also Jinja templates which will be rendered using
+                        `eval_context` shared method.
+                        ''',
+            },
+            'public-api-url': {
+                'help': '''
+                        Root of Nucleus public API endpoint. Accepts also Jinja templates which will be rendered using
                         `eval_context` shared method.
                         ''',
             },
@@ -604,19 +610,25 @@ class TestingFarmRequestModule(gluetool.Module):
         }),
     ]
 
-    required_options = ('api-url', 'api-key', 'request-id')
+    required_options = ('public-api-url', 'internal-api-url', 'api-key', 'request-id')
     shared_functions = ['testing_farm_request']
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(TestingFarmRequestModule, self).__init__(*args, **kwargs)
         self._tf_request: Optional[TestingFarmRequest] = None
-        self._tf_api: Optional[TestingFarmAPI] = None
+        self._tf_api_internal: Optional[TestingFarmAPI] = None
         self._tf_api_public: Optional[TestingFarmAPI] = None
         self._pipeline_cancellation_timer: Optional[RepeatTimer] = None
 
     @property
-    def api_url(self) -> str:
-        option = self.option('api-url')
+    def internal_api_url(self) -> str:
+        option = self.option('internal-api-url')
+
+        return render_template(option, **self.shared('eval_context'))
+
+    @property
+    def public_api_url(self) -> str:
+        option = self.option('public-api-url')
 
         return render_template(option, **self.shared('eval_context'))
 
@@ -652,10 +664,10 @@ class TestingFarmRequestModule(gluetool.Module):
         """
         Return pipeline state represented as :py:class:`PipelineState` enum.
         """
-        assert self._tf_api
+        assert self._tf_api_internal
         assert self._tf_request
 
-        request = self._tf_api.get_request(self._tf_request.id, self.api_key)
+        request = self._tf_api_internal.get_request(self._tf_request.id, self.api_key)
 
         return PipelineState(request['state'])
 
@@ -692,7 +704,7 @@ class TestingFarmRequestModule(gluetool.Module):
         Handle requested pipeline cancellation from the user via the `cancel-requested` state.
         """
 
-        assert self._tf_api
+        assert self._tf_api_internal
         assert self._tf_request
 
         pipeline_state = self.get_pipeline_state()
@@ -708,13 +720,12 @@ class TestingFarmRequestModule(gluetool.Module):
             self._pipeline_cancellation_timer = None
 
     def execute(self) -> None:
-        self._tf_api = TestingFarmAPI(self, self.api_url)
-        # TODO: remove this hack
-        self._tf_api_public = TestingFarmAPI(self, self.api_url.replace('internal.', ''))
+        self._tf_api_internal = TestingFarmAPI(self, self.internal_api_url)
+        self._tf_api_public = TestingFarmAPI(self, self.public_api_url)
 
         self.info(
-            "Connected to Testing Farm Service '{}'".format(
-                self.api_url,
+            "Connected to Testing Farm Service '{}', '{}'".format(
+                self.public_api_url, self.internal_api_url,
             )
         )
 

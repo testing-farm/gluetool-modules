@@ -111,7 +111,8 @@ def fixture_module():
     api.put_request = lambda _, id, payload: PUT_REQUESTS.update({id: payload})
     module = create_module(gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmRequestModule)[1]
     module._config.update({
-        'api-url': 'fakeurl',
+        'internal-api-url': 'fake-internal-url',
+        'public-api-url': 'fake-public-url',
         'api-key': 'fakekey',
         'retry-tick': 10,
     })
@@ -140,12 +141,11 @@ def fixture_module_api(requests_mock):
 @pytest.fixture(name='request1')
 def fixture_request1(module, monkeypatch):
     module._config.update({'request-id': '1'})
-    module._tf_api = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmAPI(
-        module, module.option('api-url')
+    module._tf_api_internal = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmAPI(
+        module, module.option('internal-api-url')
     )
-    # TODO: remove hack
     module._tf_api_public = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmAPI(
-        module, module.option('api-url').replace('internal.', '')
+        module, module.option('public-api-url')
     )
     patch_shared(monkeypatch, module, {}, callables={'add_secrets': MagicMock(return_value=None)})
     module._tf_request = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmRequest(module)
@@ -154,12 +154,11 @@ def fixture_request1(module, monkeypatch):
 @pytest.fixture(name='request2')
 def fixture_request2(module):
     module._config.update({'request-id': '2'})
-    module._tf_api = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmAPI(
-        module, module.option('api-url')
+    module._tf_api_internal = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmAPI(
+        module, module.option('internal-api-url')
     )
-    # TODO: remove hack
     module._tf_api_public = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmAPI(
-        module, module.option('api-url').replace('internal.', '')
+        module, module.option('public-api-url')
     )
 
     module._tf_request = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmRequest(module)
@@ -168,12 +167,11 @@ def fixture_request2(module):
 @pytest.fixture(name='request3')
 def fixture_request3(module, monkeypatch):
     module._config.update({'request-id': '3'})
-    module._tf_api = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmAPI(
-        module, module.option('api-url')
+    module._tf_api_internal = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmAPI(
+        module, module.option('internal-api-url')
     )
-    # TODO: remove hack
     module._tf_api_public = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmAPI(
-        module, module.option('api-url').replace('internal.', '')
+        module, module.option('public-api-url')
     )
 
     patch_shared(monkeypatch, module, {}, callables={'add_secrets': MagicMock(return_value=None)})
@@ -283,10 +281,10 @@ def test_update(module, request2, monkeypatch):
 def test_update_conflict(module, request2, monkeypatch, log):
     patch_shared(monkeypatch, module, {'xunit_testing_farm_file': 'xunitfile'})
     request = module._tf_request
-    module._tf_api.put_request = MagicMock(side_effect=RequestConflictError('some-message', MagicMock()))
+    module._tf_api_internal.put_request = MagicMock(side_effect=RequestConflictError('some-message', MagicMock()))
 
     # state is not canceled but request failed to update, that is unexpected and the update should blow up
-    module._tf_api.get_request = MagicMock(return_value={'state': 'running'})
+    module._tf_api_internal.get_request = MagicMock(return_value={'state': 'running'})
     with pytest.raises(RequestConflictError, match='some-message'):
         request.update(
             state='error',
@@ -297,7 +295,7 @@ def test_update_conflict(module, request2, monkeypatch, log):
     )
 
     # state is canceled, that should be handled gracefully
-    module._tf_api.get_request = MagicMock(return_value={'state': 'canceled'})
+    module._tf_api_internal.get_request = MagicMock(return_value={'state': 'canceled'})
     request.update(
         state='error',
     )
@@ -308,7 +306,7 @@ def test_update_conflict(module, request2, monkeypatch, log):
 
     # state is cancel-requested, that should be handled gracefully with a pipeline cancellation
     module.cancel_pipeline = MagicMock()
-    module._tf_api.get_request = MagicMock(return_value={'state': 'cancel-requested'})
+    module._tf_api_internal.get_request = MagicMock(return_value={'state': 'cancel-requested'})
     request.update(
         state='error',
         destroying=True
@@ -508,10 +506,15 @@ def test_execute_request3(module, monkeypatch):
     assert add_secrets.call_count == 2
 
 
-def test_api_url_option(module, monkeypatch):
-    module._config['api-url'] = '{{ some_api_url_template }}'
-    patch_shared(monkeypatch, module, {'eval_context': {'some_api_url_template': 'foo'}})
-    assert module.api_url == 'foo'
+def test_api_url_options(module, monkeypatch):
+    module._config['internal-api-url'] = '{{ some_api_url_template }}'
+    module._config['public-api-url'] = '{{ another_api_url_template }}'
+    patch_shared(monkeypatch, module, {'eval_context': {
+        'some_api_url_template': 'foo',
+        'another_api_url_template': 'bar'
+    }})
+    assert module.internal_api_url == 'foo'
+    assert module.public_api_url == 'bar'
 
 
 def test_api_key_option(module, monkeypatch):

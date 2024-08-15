@@ -5,6 +5,8 @@ import pytest
 import os
 import tempfile
 
+from gluetool.utils import dump_yaml
+
 from gluetool_modules_framework.helpers.hide_secrets import HideSecrets
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 
@@ -29,6 +31,9 @@ qui officia deserunt mollit anim id est laborum.
 
 {}
 """
+
+
+LONG_SECRET = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip exea commodo consequat. Duis auteirure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa  ui officia deserunt mollit anim id est laborum."
 
 
 @pytest.mark.parametrize('testing_farm_request', [
@@ -79,6 +84,31 @@ def test_hide_secrets(monkeypatch, module, testing_farm_request):
         # Check all secrets are now 'hidden' or 'no secret' if there are no secrets
         with open(os.path.join(tmpdir, 'testfile.txt'), 'r') as f:
             assert f.read() == FILE_CONTENTS.format(*['hidden' if len(secret_values) > 0 else 'no secret']*3)
+
+
+def test_hide_secrets_yaml_dump_long_string(monkeypatch, module):
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        testing_farm_request = MagicMock(
+            environments_requested=[TestingEnvironment(secrets={'secret': LONG_SECRET})])
+
+        module._config['search-path'] = tmpdir
+
+        # add secret values from requests
+        module.add_secrets([LONG_SECRET])
+
+        dump_yaml(
+            {
+                'test': 'foo',
+                'secret': LONG_SECRET
+            },
+            os.path.join(tmpdir, 'testfile.yml')
+        )
+
+        # Replace all secrets with 'hidden'
+        module.destroy()
+
+        with open(os.path.join(tmpdir, 'testfile.yml'), 'r') as f:
+            assert f.read() == 'test: foo\nsecret: hidden\n'
 
 
 def test_hide_secrets_multiple(monkeypatch, module):

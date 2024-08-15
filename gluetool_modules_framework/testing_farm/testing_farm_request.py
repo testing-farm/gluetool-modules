@@ -88,10 +88,11 @@ class RequestType(TypedDict):
     notification: NotRequired[RequestNotificationType]
     settings: NotRequired[Dict[str, Any]]
     user_id: str
+    token_id: str
     state: str
 
 
-class UserType(TypedDict):
+class TokenType(TypedDict):
     id: str
     name: str
 
@@ -199,17 +200,16 @@ class TestingFarmAPI(LoggerMixin, object):
 
         return cast(RequestType, response.json())
 
-    # TODO: this endpoint got renamed to tokens, it should be renamed also in gluetool-modules code
-    def get_user(self, user_id: str, api_key: str) -> UserType:
+    def get_token(self, token_id: str, api_key: str) -> TokenType:
         request = self._get_request(
-            'v0.1/tokens/{}'.format(user_id),
+            'v0.1/tokens/{}'.format(token_id),
             headers={'Authorization': 'Bearer {}'.format(api_key)}
         )
 
         if not request:
-            raise gluetool.GlueError("Token '{}' was not found".format(user_id))
+            raise gluetool.GlueError("Token '{}' was not found".format(token_id))
 
-        return cast(UserType, request.json())
+        return cast(TokenType, request.json())
 
     def put_request(self, request_id: str, payload: Optional[Dict[str, Any]]) -> Any:
         response = self._put_request('v0.1/requests/{}'.format(request_id), payload=payload)
@@ -402,8 +402,8 @@ class TestingFarmRequest(LoggerMixin, object):
         except (KeyError, TypeError):
             pass
 
-        user = self._api_public.get_user(request['user_id'], self._api_key)
-        self.request_username = user['name']
+        token = self._api_public.get_token(request['token_id'], self._api_key)
+        self.request_tokenname = token['name']
 
         # TFT-2202 - provide a flag to indicate the provisioning errors should be treated as failed tests
         self.failed_if_provision_error = False
@@ -651,7 +651,7 @@ class TestingFarmRequestModule(gluetool.Module):
             # does not know how to work with `secret_type.Secret[str]`
             'TESTING_FARM_REQUEST_TEST_URL': self._tf_request.url._dangerous_extract(),
             'TESTING_FARM_REQUEST_TEST_REF': self._tf_request.ref,
-            'TESTING_FARM_REQUEST_USERNAME': self._tf_request.request_username,
+            'TESTING_FARM_REQUEST_TOKENNAME': self._tf_request.request_tokenname,
             'TESTING_FARM_REQUEST_MERGE': self._tf_request.merge,
             'TESTING_FARM_FAILED_IF_PROVISION_ERROR': self._tf_request.failed_if_provision_error,
             'TESTING_FARM_PARALLEL_LIMIT': self._tf_request.parallel_limit,

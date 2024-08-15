@@ -40,7 +40,8 @@
             "url": "webhookurl"
         }
     },
-    "user_id": "user",
+    "user_id": "token",
+    "token_id": "token",
     "user": {
         "webpage": {
             "url": "https://example.com",

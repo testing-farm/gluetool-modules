@@ -34,9 +34,9 @@ REQUESTS = {
 
 PUT_REQUESTS = {}
 
-REQUESTS_USER = {
+REQUESTS_TOKEN = {
     'fakekey': {
-        'user': _load_assets('user'),
+        'token': _load_assets('token'),
     }
 }
 
@@ -107,7 +107,7 @@ def requests_mock():
 def fixture_module():
     api = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmAPI
     api.get_request = lambda _, id, key: REQUESTS[key][id]
-    api.get_user = lambda _, id, key: REQUESTS_USER[key][id]
+    api.get_token = lambda _, id, key: REQUESTS_TOKEN[key][id]
     api.put_request = lambda _, id, payload: PUT_REQUESTS.update({id: payload})
     module = create_module(gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmRequestModule)[1]
     module._config.update({
@@ -342,7 +342,7 @@ def test_eval_context_request1(module, monkeypatch, request1):
         'TESTING_FARM_REQUEST_TEST_TYPE': 'fmf',
         'TESTING_FARM_REQUEST_TEST_URL': 'testurl',
         'TESTING_FARM_REQUEST_TEST_REF': 'testref',
-        'TESTING_FARM_REQUEST_USERNAME': 'testuser',
+        'TESTING_FARM_REQUEST_TOKENNAME': 'testtoken',
         'TESTING_FARM_REQUEST_MERGE': None,
         'TESTING_FARM_FAILED_IF_PROVISION_ERROR': True,
         'TESTING_FARM_PARALLEL_LIMIT': 123,
@@ -355,7 +355,7 @@ def test_eval_context_request3(module, monkeypatch, request3):
         'TESTING_FARM_REQUEST_TEST_TYPE': 'sti',
         'TESTING_FARM_REQUEST_TEST_URL': 'https://username:secret@gitlab.com/namespace/repo',
         'TESTING_FARM_REQUEST_TEST_REF': 'sha',
-        'TESTING_FARM_REQUEST_USERNAME': 'testuser',
+        'TESTING_FARM_REQUEST_TOKENNAME': 'testtoken',
         'TESTING_FARM_REQUEST_MERGE': 'testref',
         'TESTING_FARM_FAILED_IF_PROVISION_ERROR': False,
         'TESTING_FARM_PARALLEL_LIMIT': None,

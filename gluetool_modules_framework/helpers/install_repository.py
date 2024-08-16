@@ -3,6 +3,7 @@
 
 import os
 import re
+from tempfile import NamedTemporaryFile
 from dataclasses import dataclass
 
 from functools import cmp_to_key
@@ -181,9 +182,17 @@ class InstallRepository(gluetool.Module):
 
             packages += packages_to_install
 
+        # Create a temporary file with list of packages to install with NamedTemporaryFile and save its name
+        download_packages_filename = ""
+        with NamedTemporaryFile(mode='w+', delete=False) as tmp_file:
+            download_packages_filename = tmp_file.name
+            tmp_file.write(' '.join(packages))
+            tmp_file.flush()
+
         # First download all found .rpm files
         sut_installation.add_step('Download packages',
-                                  'cd {}; echo {} | xargs -n1 curl -sO'.format(download_path, ' '.join(packages)),
+                                  'cd {}; cat {} | xargs -n1 curl -sO'.format(
+                                      download_path, download_packages_filename),
                                   ignore_exception=True)
 
         # Remove .src.rpm packages
@@ -202,22 +211,26 @@ class InstallRepository(gluetool.Module):
                 if not re.search(excluded_packages_regexp, rpm_file)
             ]
 
-        # create a string with all packages to install
-        packages_str = ' '.join(packages)
+        install_packages_filename = ""
+        with NamedTemporaryFile(mode='w+', delete=False) as tmp_file:
+            install_packages_filename = tmp_file.name
+            tmp_file.write(' '.join(packages))
+            tmp_file.flush()
 
         # note: the `SUTInstallation` library does the magic of using DNF where it is needed \o/
+        # but we need to keep yum in the first place for it to work
         sut_installation.add_step('Reinstall packages',
-                                  'yum -y reinstall {}'.format(packages_str), ignore_exception=True)
+                                  'yum -y reinstall $(cat {})'.format(install_packages_filename), ignore_exception=True)
         sut_installation.add_step('Downgrade packages',
-                                  'yum -y downgrade {}'.format(packages_str), ignore_exception=True)
+                                  'yum -y downgrade $(cat {})'.format(install_packages_filename), ignore_exception=True)
         sut_installation.add_step('Update packages',
-                                  'yum -y update {}'.format(packages_str), ignore_exception=True)
+                                  'yum -y update $(cat {})'.format(install_packages_filename), ignore_exception=True)
         sut_installation.add_step('Install packages',
-                                  'yum -y install {}'.format(packages_str), ignore_exception=True)
+                                  'yum -y install $(cat {})'.format(install_packages_filename), ignore_exception=True)
 
         sut_installation.add_step(
             'Verify all packages installed',
-            'basename --suffix=.rpm {} | xargs rpm -q'.format(packages_str)
+            'cat {} | xargs basename --suffix=.rpm | xargs rpm -q'.format(install_packages_filename)
         )
 
     def _install_repository_file_artifacts(

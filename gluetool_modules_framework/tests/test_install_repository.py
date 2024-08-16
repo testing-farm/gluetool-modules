@@ -2,11 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
+import tempfile
 
 from mock import MagicMock, call
 
 from gluetool import GlueError
 from gluetool.utils import Command
+from gluetool.tests import Bunch
 import gluetool_modules_framework.libs.guest_setup
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 import gluetool_modules_framework.helpers.install_repository
@@ -60,6 +62,20 @@ def test_sanity_shared(module):
 
 @pytest.mark.parametrize('environment_index', [0, 1], ids=['multiple-repositories', 'no-repositories'])
 def test_guest_setup(module, environment_index, tmpdir, monkeypatch):
+    mock_file = Bunch(name='dummy.txt', write=MagicMock(), flush=MagicMock())
+
+    # must implement context protocol, I cannot get it to work with Bunch :/
+    class MockNamedTemporaryFile(Bunch):
+        # pylint: disable=too-few-public-methods
+        def __enter__(self):
+            return mock_file
+
+        def __exit__(self, *args, **kwargs):
+            pass
+
+    mock_tempfile = MockNamedTemporaryFile
+
+    monkeypatch.setattr(gluetool_modules_framework.helpers.install_repository, 'NamedTemporaryFile', mock_tempfile)
     module.execute()
 
     stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
@@ -118,22 +134,44 @@ def test_guest_setup(module, environment_index, tmpdir, monkeypatch):
     ]
     mock_command_init.assert_has_calls(command_calls)
 
+    write_calls = [
+        call('https://example.com/dummy1-1.0.1-1.x86_64.rpm https://example.com/dummy2-1.0.1-1.src.rpm https://example.com/dummy2-1.0.1-1.x86_64.rpm https://example.com/package-install-1.0.1-1.src.rpm https://example.com/package-install-1.0.2-1.src.rpm https://example.com/package-install-1.0.3-1.src.rpm https://example.com/package-install-1.0.3-1.x86_64.rpm'),
+        call('https://example.com/dummy1-1.0.1-1.x86_64.rpm https://example.com/package-install-1.0.3-1.x86_64.rpm')
+    ]
+
+    mock_file.write.assert_has_calls(write_calls)
+    assert mock_file.flush.called
+
     execute_calls = [
         call('command -v dnf'),
         call('curl --output /etc/yum.repos.d/repo4.repo.repo -LO https://example.com/repo4.repo'),
         call('mkdir -pv dummy-path'),
-        call('cd dummy-path; echo https://example.com/dummy1-1.0.1-1.x86_64.rpm https://example.com/dummy2-1.0.1-1.src.rpm https://example.com/dummy2-1.0.1-1.x86_64.rpm https://example.com/package-install-1.0.1-1.src.rpm https://example.com/package-install-1.0.2-1.src.rpm https://example.com/package-install-1.0.3-1.src.rpm https://example.com/package-install-1.0.3-1.x86_64.rpm | xargs -n1 curl -sO'),
-        call('dnf -y reinstall https://example.com/dummy1-1.0.1-1.x86_64.rpm https://example.com/package-install-1.0.3-1.x86_64.rpm'),
-        call('dnf -y downgrade --allowerasing https://example.com/dummy1-1.0.1-1.x86_64.rpm https://example.com/package-install-1.0.3-1.x86_64.rpm'),
-        call('dnf -y update --allowerasing https://example.com/dummy1-1.0.1-1.x86_64.rpm https://example.com/package-install-1.0.3-1.x86_64.rpm'),
-        call('dnf -y install --allowerasing https://example.com/dummy1-1.0.1-1.x86_64.rpm https://example.com/package-install-1.0.3-1.x86_64.rpm'),
-        call('basename --suffix=.rpm https://example.com/dummy1-1.0.1-1.x86_64.rpm https://example.com/package-install-1.0.3-1.x86_64.rpm | xargs rpm -q')
+        call('cd dummy-path; cat dummy.txt | xargs -n1 curl -sO'),
+        call('dnf -y reinstall $(cat dummy.txt)'),
+        call('dnf -y downgrade --allowerasing $(cat dummy.txt)'),
+        call('dnf -y update --allowerasing $(cat dummy.txt)'),
+        call('dnf -y install --allowerasing $(cat dummy.txt)'),
+        call('cat dummy.txt | xargs basename --suffix=.rpm | xargs rpm -q')
     ]
 
     execute_mock.assert_has_calls(execute_calls)
 
 
 def test_guest_setup_forced_artifacts(module, tmpdir, monkeypatch):
+    mock_file = Bunch(name='dummy.txt', write=MagicMock(), flush=MagicMock())
+
+    # must implement context protocol, I cannot get it to work with Bunch :/
+    class MockNamedTemporaryFile(Bunch):
+        # pylint: disable=too-few-public-methods
+        def __enter__(self):
+            return mock_file
+
+        def __exit__(self, *args, **kwargs):
+            pass
+
+    mock_tempfile = MockNamedTemporaryFile
+
+    monkeypatch.setattr(gluetool_modules_framework.helpers.install_repository, 'NamedTemporaryFile', mock_tempfile)
     module.execute()
 
     stage = gluetool_modules_framework.libs.guest_setup.GuestSetupStage.ARTIFACT_INSTALLATION
@@ -168,15 +206,23 @@ def test_guest_setup_forced_artifacts(module, tmpdir, monkeypatch):
     ]
     mock_command_init.assert_has_calls(command_calls)
 
+    write_calls = [
+        call('https://example.com/forced-1.x86_64.rpm'),
+        call('https://example.com/forced-1.x86_64.rpm')
+    ]
+
+    mock_file.write.assert_has_calls(write_calls)
+    assert mock_file.flush.called
+
     execute_calls = [
         call('command -v dnf'),
         call('mkdir -pv dummy-path'),
-        call('cd dummy-path; echo https://example.com/forced-1.x86_64.rpm | xargs -n1 curl -sO'),
-        call('dnf -y reinstall https://example.com/forced-1.x86_64.rpm'),
-        call('dnf -y downgrade --allowerasing https://example.com/forced-1.x86_64.rpm'),
-        call('dnf -y update --allowerasing https://example.com/forced-1.x86_64.rpm'),
-        call('dnf -y install --allowerasing https://example.com/forced-1.x86_64.rpm'),
-        call('basename --suffix=.rpm https://example.com/forced-1.x86_64.rpm | xargs rpm -q')
+        call('cd dummy-path; cat dummy.txt | xargs -n1 curl -sO'),
+        call('dnf -y reinstall $(cat dummy.txt)'),
+        call('dnf -y downgrade --allowerasing $(cat dummy.txt)'),
+        call('dnf -y update --allowerasing $(cat dummy.txt)'),
+        call('dnf -y install --allowerasing $(cat dummy.txt)'),
+        call('cat dummy.txt | xargs basename --suffix=.rpm | xargs rpm -q')
     ]
 
     execute_mock.assert_has_calls(execute_calls)

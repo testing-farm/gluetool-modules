@@ -61,6 +61,11 @@ repos:
     hooks:
       - id: ansible-lint
 
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+
   - repo: local
     hooks:
       - id: poetry-lock

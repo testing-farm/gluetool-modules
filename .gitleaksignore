@@ -1,0 +1,6 @@
+# not secrets
+Fingerprint: b80d25bd5f0d6c3c75f42edc9891e68137e195dd:gluetool_modules/provision/artemis.py:generic-api-key:688
+Fingerprint: 41b5fee24a0ccf9c096e9656819acd2a0f2b0c01:gluetool_modules/provision/artemis.py:generic-api-key:683
+# mock data
+Fingerprint: 159164edd091abc54b6d2d664f4068a96f1b79d1:gluetool_modules/tests/assets/github/fetch_pull_request.json:generic-api-key:321
+Fingerprint: 159164edd091abc54b6d2d664f4068a96f1b79d1:gluetool_modules/tests/assets/github/fetch_pull_request.json:generic-api-key:457

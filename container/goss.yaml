@@ -109,7 +109,13 @@ command:
   tmt --version:
     exit-status: 0
     stdout:
-      - "tmt version: 1.34"
+      - "tmt version: 1.35"
+    timeout: 100000
+
+  rpm -q tmt:
+    exit-status: 0
+    stdout:
+      - "tmt-1.35.0-2.fc40.noarch"
     timeout: 100000
 
   tmt run report -h polarion:

@@ -47,12 +47,13 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       postgresql-devel python3.9 python3-libselinux \
                       redhat-rpm-config koji python3-virtualenv standard-test-roles \
                       rsync beakerlib-libraries rpm-build rpm-devel awscli \
-    && dnf copr -y enable @teemtee/tmt \
-    # dropped version to pick latest pre-release
-    && dnf -y install tmt-1.34.0 \
-                      tmt+provision-container-1.34.0 \
-                      tmt+provision-virtual-1.34.0 \
-                      tmt+report-polarion-1.34.0 \
+    # disabled because tmt-1.35.0-2 needs to be installed from koji
+    # && dnf copr -y enable @teemtee/tmt \
+    # remove `--enablerepo=updates-testing` once copr repo is enabled again
+    && dnf -y install --enablerepo=updates-testing tmt-1.35.0 \
+                                                   tmt+provision-container-1.35.0 \
+                                                   tmt+provision-virtual-1.35.0 \
+                                                   tmt+report-polarion-1.35.0 \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \

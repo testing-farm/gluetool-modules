@@ -1533,6 +1533,12 @@ class TestScheduleTMT(Module):
             href = artifacts_location(self, schedule_entry.tmt_reproducer_filepath, logger=schedule_entry.logger)
             test_suite.logs.append(Log(href=href, name='tmt-reproducer'))
 
+        if test_suite.requested_environment is None:
+            test_suite.requested_environment = schedule_entry.testing_environment
+
+        if schedule_entry.guest is not None and test_suite.provisioned_environment is None:
+            test_suite.provisioned_environment = schedule_entry.guest.environment
+
         if not schedule_entry.results:
             return
 
@@ -1595,11 +1601,5 @@ class TestScheduleTMT(Module):
             assert schedule_entry.testing_environment is not None
             test_case.requested_environment = schedule_entry.testing_environment
             test_case.provisioned_environment = schedule_entry.guest.environment
-
-            if test_suite.requested_environment is None:
-                test_suite.requested_environment = schedule_entry.testing_environment
-
-            if test_suite.provisioned_environment is None:
-                test_suite.provisioned_environment = schedule_entry.guest.environment
 
             test_suite.test_cases.append(test_case)

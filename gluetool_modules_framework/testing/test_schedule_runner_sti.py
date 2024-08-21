@@ -384,6 +384,12 @@ sut     ansible_host={} ansible_user=root
             self.overloaded_shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
             return
 
+        if test_suite.requested_environment is None:
+            test_suite.requested_environment = schedule_entry.testing_environment
+
+        if schedule_entry.guest is not None and test_suite.provisioned_environment is None:
+            test_suite.provisioned_environment = schedule_entry.guest.environment
+
         if not schedule_entry.results:
             return
 
@@ -486,11 +492,5 @@ sut     ansible_host={} ansible_user=root
             assert schedule_entry.testing_environment is not None
             test_case.requested_environment = schedule_entry.testing_environment
             test_case.provisioned_environment = schedule_entry.guest.environment
-
-            if test_suite.requested_environment is None:
-                test_suite.requested_environment = schedule_entry.testing_environment
-
-            if test_suite.provisioned_environment is None:
-                test_suite.provisioned_environment = schedule_entry.guest.environment
 
             test_suite.test_cases.append(test_case)

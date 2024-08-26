@@ -1390,6 +1390,9 @@ class BrewTask(KojiTask):
             commands=commands, context=context
         )
 
+        # The dt=2 parameter removes diffs from the commit url, making it lighter
+        overall_urls = [url + '&dt=2' for url in overall_urls]
+
         # get git commit html
         for url in overall_urls:
             # Using `wait` for retries would be much easier if we wouldn't be interested

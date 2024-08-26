@@ -189,6 +189,9 @@ class InstallRepository(gluetool.Module):
             tmp_file.write(' '.join(packages))
             tmp_file.flush()
 
+        # Copy the package list to the guest
+        guest.copy_to(download_packages_filename, download_packages_filename)
+
         # First download all found .rpm files
         sut_installation.add_step('Download packages',
                                   'cd {}; cat {} | xargs -n1 curl -sO'.format(
@@ -216,6 +219,9 @@ class InstallRepository(gluetool.Module):
             install_packages_filename = tmp_file.name
             tmp_file.write(' '.join(packages))
             tmp_file.flush()
+
+        # Copy the package list to the guest
+        guest.copy_to(install_packages_filename, install_packages_filename)
 
         # note: the `SUTInstallation` library does the magic of using DNF where it is needed \o/
         # but we need to keep yum in the first place for it to work

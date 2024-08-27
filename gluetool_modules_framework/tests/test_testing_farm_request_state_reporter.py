@@ -27,7 +27,6 @@ def fixture_request_empty(module, monkeypatch):
     request = {
         'state': None,
         'overall_result': None,
-        'xunit': None,
         'summary': None,
         'artifacts_url': None
     }
@@ -79,7 +78,6 @@ def test_testing_farm_reporter_execute(module, request_empty):
     assert request == {
         'state': 'running',
         'overall_result': None,
-        'xunit': None,
         'summary': None,
         'artifacts_url': None
     }
@@ -92,7 +90,6 @@ def test_testing_farm_reporter_destroy_failure_systemexit(module, request_empty)
     assert request == {
         'state': 'running',
         'overall_result': None,
-        'xunit': None,
         'summary': None,
         'artifacts_url': None
     }
@@ -107,7 +104,6 @@ def test_testing_farm_reporter_destroy_failure(module, request_empty, evaluate):
         'summary': str(GlueError('message')),
         'overall_result': 'unknown',
         'artifacts_url': None,
-        'xunit': None,
         'destroying': True
     }
 
@@ -125,7 +121,6 @@ def test_testing_farm_reporter_destroy_failure_mapping(module, request_empty, ev
         'summary': str(GlueError('message')),
         'overall_result': 'some-mapped-overall-result',
         'artifacts_url': None,
-        'xunit': None,
         'destroying': True
     }
 
@@ -136,7 +131,6 @@ def test_testing_farm_reporter_destroy_no_result(module, request_running, evalua
     assert request == {
         'state': 'complete',
         'overall_result': 'unknown',
-        'xunit': None,
         'summary': None,
         'artifacts_url': None,
         'destroying': True
@@ -149,7 +143,6 @@ def test_testing_farm_reporter_destroy_result(module, request_empty, results, ev
     assert result == {
         'state': 'complete',
         'overall_result': 'unknown',
-        'xunit': '<?xml version="1.0" encoding="UTF-8"?>\n<testsuites overall-result="some-overall-result"><properties><property name="baseosci.overall-result" value="some-test-schedule-result"/></properties></testsuites>',  # noqa
         'artifacts_url': None,
         'summary': None,
         'destroying': True

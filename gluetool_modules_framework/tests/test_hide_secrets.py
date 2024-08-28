@@ -20,6 +20,8 @@ ASSETS_DIR = os.path.join('gluetool_modules_framework', 'tests', 'assets')
 @pytest.fixture(name='module')
 def fixture_module():
     _, module = create_module(HideSecrets)
+    module._config['retry-tick'] = 1
+    module._config['retry-timeout'] = 5
     return module
 
 

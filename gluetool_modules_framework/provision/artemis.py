@@ -181,26 +181,29 @@ class ArtemisAPI(object):
 
         def _api_call() -> Result[Optional[requests.Response], str]:
 
-            _request = getattr(requests, method.lower(), None)
-            if _request is None:
-                return Result.Error('Unknown HTTP method {}'.format(method))
+            with gluetool.utils.requests(logger=self.module.logger) as req:
 
-            try:
-                response = _request('{}v{}/{}'.format(self.url, self.version, endpoint), json=data)
+                _request = getattr(req, method.lower(), None)
 
-            # Catch all urllib3 and requests exceptions
-            # https://urllib3.readthedocs.io/en/latest/reference/urllib3.exceptions.html#urllib3.exceptions.HTTPError
-            # https://requests.readthedocs.io/en/latest/api/#exceptions
-            # TFT-1755 - Added to workaround DNS problems with podman
-            # TFT-2656 - Fix retrying of all possible HTTP errors when talking to Artemis
-            except (urllib3.exceptions.HTTPError, requests.exceptions.RequestException) as error:
-                fqcn = '{}.{}'.format(error.__module__, error.__class__.__qualname__)
-                self.module.debug('Retrying Artemis API call due to {} exception'.format(fqcn), sentry=True)
-                return Result.Error('{}: {}'.format(fqcn, str(error)))
+                if _request is None:
+                    return Result.Error('Unknown HTTP method {}'.format(method))
 
-            finally:
-                if self.module.pipeline_cancelled and not self.module.destroying:
-                    return Result.Ok(None)
+                try:
+                    response = _request('{}v{}/{}'.format(self.url, self.version, endpoint), json=data)
+
+                # Catch all urllib3 and requests exceptions
+                # https://urllib3.readthedocs.io/en/latest/reference/urllib3.exceptions.html#urllib3.exceptions.HTTPError
+                # https://requests.readthedocs.io/en/latest/api/#exceptions
+                # TFT-1755 - Added to workaround DNS problems with podman
+                # TFT-2656 - Fix retrying of all possible HTTP errors when talking to Artemis
+                except (urllib3.exceptions.HTTPError, requests.exceptions.RequestException) as error:
+                    fqcn = '{}.{}'.format(error.__module__, error.__class__.__qualname__)
+                    self.module.debug('Retrying Artemis API call due to {} exception'.format(fqcn), sentry=True)
+                    return Result.Error('{}: {}'.format(fqcn, str(error)))
+
+                finally:
+                    if self.module.pipeline_cancelled and not self.module.destroying:
+                        return Result.Ok(None)
 
             assert expected_status_codes is not None
             if response.status_code in expected_status_codes:

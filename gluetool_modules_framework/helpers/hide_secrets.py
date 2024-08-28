@@ -130,7 +130,7 @@ class HideSecrets(gluetool.Module):
             )
 
         except gluetool.GlueError:
-            self.warn('Failed to sync modified files to disk.')
+            self.warn('Failed to sync modified files to disk.', sentry=True)
 
     def destroy(self, failure: Optional[Any] = None) -> None:
         self.hide_secrets()

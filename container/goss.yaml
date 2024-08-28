@@ -95,7 +95,7 @@ command:
     exit-status: 0
     timeout: 100000
     stderr:
-      - gluetool 2.10
+      - gluetool 2.11
 
   koji version:
     exit-status: 0
@@ -120,12 +120,14 @@ command:
 
   tmt run report -h polarion:
     exit-status: 2
+    timeout: 100000
     stderr:
       - "how: polarion"
       - "Failed to login with pylero"
 
   tmt run report -h reportportal:
     exit-status: 2
+    timeout: 100000
     stderr:
       - "how: reportportal"
       - "No ReportPortal endpoint url provided."

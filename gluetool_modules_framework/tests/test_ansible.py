@@ -399,6 +399,7 @@ def test_render_extra_variables_templates(module, monkeypatch):
                 b'---\noption1: {{ value }}\noption2: {{ value }}'
             )
             templates.append(template.name)
+            template.flush()
 
     module._config['extra-variables-template-file'] = ','.join(templates)
 

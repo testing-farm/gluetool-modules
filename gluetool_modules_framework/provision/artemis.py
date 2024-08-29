@@ -780,6 +780,7 @@ class ArtemisGuest(NetworkedGuest):
     def _save_guest_log(self, filename: str, data: str) -> None:
         with open(os.path.join(self.workdir, filename), 'w') as f:
             f.write(data)
+            f.flush()
 
     def gather_guest_log(self, log: ArtemisGuestLog) -> None:
         """

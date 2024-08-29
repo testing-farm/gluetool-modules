@@ -287,6 +287,7 @@ class CoprBuilder(gluetool.Module):
         with open(os.path.join(workdir, pull_request.repo, COPR_CONFIG), 'w') as config_file:
             config_file.write('# Copr config for {}\n'.format(pull_request.clone_url))
             copr_config.write(config_file)
+            config_file.flush()
 
     def execute(self) -> None:
         try:

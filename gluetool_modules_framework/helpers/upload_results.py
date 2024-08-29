@@ -256,6 +256,7 @@ class UploadResults(gluetool.Module):
 
         with open('summary.html', 'w') as f:
             f.write(summary_page)
+            f.flush()
 
         return {
             'src-file-path': 'summary.html',

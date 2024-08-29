@@ -394,6 +394,7 @@ class CIJenkins(gluetool.Module):
         # save the configuration
         with open(config_file, 'w') as f:
             config.write(f)
+            f.flush()
 
         self.info("created jjb configuration in '{}'".format(config_file))
 

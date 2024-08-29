@@ -184,6 +184,7 @@ def run_and_log(command: List[str],
 
             assert log_file is not None
             log_file.write('{}\n\n'.format(text))
+            log_file.flush()
 
         log_blob(cast(LoggingFunctionType, write_cover), 'Command', ' '.join(command))
         log_blob(cast(LoggingFunctionType, write_cover), 'Stdout', output.stdout or '')

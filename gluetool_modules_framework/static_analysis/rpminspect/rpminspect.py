@@ -207,6 +207,7 @@ class CIRpminspect(gluetool.Module):
                 self.info('rpminspect.yaml added from {}'.format(repository.rpminspect_yaml_url))
                 with open(os.path.join(workdir, 'rpminspect.yaml')) as rpminspect_yaml:
                     rpminspect_yaml.write(rpminspect_yaml_content)
+                    rpminspect_yaml.flush()
 
         def _write_log(output: ProcessOutput) -> None:
             """

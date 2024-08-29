@@ -94,9 +94,11 @@ class TestSchedulerSystemRoles(gluetool.Module):
             response = request.get(base_url + '/lsr_role2collection.py')
             with open(lsr_role2coll_path, 'w') as writer:
                 writer.write(response.text)
+                writer.flush()
             response = request.get(base_url + '/lsr_role2collection/runtime.yml')
             with open(lsr_runtime_path, 'w') as writer:
                 writer.write(response.text)
+                writer.flush()
         try:
             lsr_coll_tmp = tempfile.mkdtemp(prefix='lsr_', suffix='_coll')
             cmd = ['python3', lsr_role2coll_path, '--src-owner', 'linux-system-roles',
@@ -275,6 +277,7 @@ class TestSchedulerSystemRoles(gluetool.Module):
 
 {}
 '''.format(vault_variables_file, playbook))
+            pbf.flush()
 
     def create_test_schedule(
         self,

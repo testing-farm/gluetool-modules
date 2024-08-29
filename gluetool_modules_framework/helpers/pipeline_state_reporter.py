@@ -517,6 +517,7 @@ class PipelineStateReporter(gluetool.Module):
                 'headers': umb_message.headers,
                 'body': umb_message.body
             }))
+            msgfile.flush()
 
     def _set_pr_status(self, status: str, description: str, upload_status_url: Optional[bool] = True) -> None:
         self.require_shared('set_pr_status')

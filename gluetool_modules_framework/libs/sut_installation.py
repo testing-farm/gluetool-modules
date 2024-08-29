@@ -208,6 +208,7 @@ class SUTInstallation(object):
         with open(os.path.join(self.log_dirpath, INSTALL_COMMANDS_FILE), 'a') as f:
             for command in commands:
                 f.write(command + '\n')
+                f.flush()
 
         return Ok(None)
 

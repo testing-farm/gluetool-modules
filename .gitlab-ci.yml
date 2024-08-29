@@ -207,8 +207,7 @@ integration/container:
   script:
     - direnv allow
     - eval "$(direnv export bash)"
-    - make staging/apply/ci
-    - make generate/staging/citool-config/ci
+    - make generate/staging/citool-config/container/ci
     - make test/staging/pipeline/container/ci
 
 # Generate documentation from the sources

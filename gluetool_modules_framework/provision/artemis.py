@@ -607,22 +607,6 @@ class ArtemisGuest(NetworkedGuest):
             if guest_state == 'error':
                 raise ArtemisResourceError()
 
-            guest_events_list = self.api.get_guest_events(self)
-            self.api.dump_events(self, guest_events_list)
-
-            error_guest_events_list = [event for event in guest_events_list if event['eventname'] == 'error']
-            if error_guest_events_list:
-                # There was/were error(s) while provisioning
-                last_error = sorted(
-                    error_guest_events_list,
-                    key=lambda event: cast(str, event['updated']),
-                    reverse=True
-                )[0]
-                err_msg = "Guest provisioning error(s) from Artemis, newest error: {}".format(
-                    last_error['details']['error']
-                )
-                self.debug(err_msg)
-
         except ArtemisResourceError:
             six.reraise(*sys.exc_info())
 

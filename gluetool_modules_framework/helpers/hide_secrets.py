@@ -94,7 +94,7 @@ class HideSecrets(gluetool.Module):
                 try:
                     output = gluetool.utils.Command([command], logger=self.logger).run(shell=True)
                 except gluetool.GlueCommandError as exc:
-                    self.warn('sync command "{}" failed, retrying: {}'.format(" ".join(cmd), exc))
+                    self.warn('sync command "{}" failed, retrying: {}'.format(command, exc), sentry=True)
                     return Result.Error(False)
 
                 output.log(self.logger)
@@ -117,7 +117,7 @@ class HideSecrets(gluetool.Module):
             try:
                 gluetool.utils.Command(cmd, logger=self.logger).run()
             except gluetool.GlueCommandError as exc:
-                self.warn('sync command "{}" failed, retrying: {}'.format(" ".join(cmd), exc))
+                self.warn('sync command "{}" failed, retrying: {}'.format(" ".join(cmd), exc), sentry=True)
                 return Result.Error(False)
             return Result.Ok(True)
 

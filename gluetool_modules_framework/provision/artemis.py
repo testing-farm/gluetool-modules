@@ -778,7 +778,7 @@ class ArtemisGuest(NetworkedGuest):
             self.api.api_call(
                 'guests/{}/logs/{}'.format(self.artemis_id, log.type),
                 method='POST',
-                expected_status_codes=[202]
+                expected_status_codes=[202, 409]
             )
             return
 

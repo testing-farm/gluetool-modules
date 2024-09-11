@@ -10,7 +10,6 @@ import gluetool
 import contextlib
 import time
 from mock import MagicMock
-
 from gluetool_modules_framework.testing_farm.testing_farm_request import RequestConflictError
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 
@@ -47,6 +46,14 @@ class ResponseMock():
 
     def json(self):
         return REQUESTS['fakekey']['1']
+
+
+class ResponseDecrypt():
+    status_code = 200
+
+    def json(self):
+        print('mock')
+        return "hello world"
 
 
 class Response404(ResponseMock):
@@ -93,6 +100,9 @@ class RequestsMock():
 
     def request_http_error(self, url, json, headers=None):
         raise HTTPError
+
+    def request_decrypt(self, url, json, headers=None):
+        return ResponseDecrypt()
 
 
 @contextlib.contextmanager
@@ -331,6 +341,31 @@ def test_webhook_http_error(module, requests_mock, request2, log):
         levelno=logging.WARNING,
         message="failed to post to webhook: Condition 'posting update to webhook someurl' failed to pass within given time"
     )
+
+
+def test_in_repository_config(module, requests_mock, request1):
+    RequestsMock.post = RequestsMock.request_decrypt
+
+    request = module._tf_request
+
+    assert [
+        {'some': 'secrets'},
+        {'secret_key': 'secret-value'}
+    ] == [env.secrets for env in request.environments_requested]
+
+    request.modify_with_config(
+        {'environments': {'secrets': {'SECRET_TOKEN_KEY': 'token,base64encodedencryptedstring'}}},
+        'https://example.com/git/repo'
+    )
+
+    assert [
+        {'some': 'secrets', 'SECRET_TOKEN_KEY': 'hello world'},
+        {'secret_key': 'secret-value', 'SECRET_TOKEN_KEY': 'hello world'}
+    ] == [env.secrets for env in request.environments_requested]
+
+    # Cleanup, the change would persist into other tests
+    for env in request.environments_requested:
+        del env.secrets['SECRET_TOKEN_KEY']
 
 
 # TestingFarmRequestModule class tests

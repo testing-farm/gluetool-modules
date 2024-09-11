@@ -15,12 +15,12 @@ import git
 
 import gluetool.log
 import gluetool.utils
-from gluetool.utils import Result
+from gluetool.utils import Result, load_yaml, cached_property
 
 from secret_type import Secret
 
 # Type annotations
-from typing import Any, Optional, List, Union  # noqa
+from typing import Any, Optional, List, Union, cast  # noqa
 
 # Clone directory for reproducer commands
 TESTCODE_DIR = 'testcode'
@@ -138,6 +138,20 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
     def clonedir_prefix(self) -> str:
         # NOTE: this can be a ref, sanitize for paths - e.g. refs/merge-requests/15/head
         return 'git-{}'.format(self.branch or self.ref).replace('/', '-')
+
+    @cached_property
+    def testing_farm_config(self) -> Optional[Any]:
+        config_filename = '.testing-farm.yaml'
+        if self.is_cloned and self.path and os.path.isfile(os.path.join(self.path, config_filename)):
+            return load_yaml(os.path.join(self.path, config_filename))
+        return None
+
+    @cached_property
+    def remote_url(self) -> Optional[str]:
+        if self.is_cloned and self.path:
+            cmd = gluetool.utils.Command(['git', '-C', self.path, 'remote', 'get-url', 'origin'], logger=self.logger)
+            return cast(str, cmd.run().stdout).strip()
+        return None
 
     def _get_clone_options(
         self,

@@ -225,6 +225,18 @@ class TestingFarmAPI(LoggerMixin, object):
 
         return response.json()
 
+    def decrypt_secret(self, git_url: str, message: str, api_key: str) -> str:
+        response = self._post_request(
+            'v0.1/secrets/decrypt',
+            payload={'url': git_url, 'message': message},
+            headers={'Authorization': 'Bearer {}'.format(api_key)}
+        )
+        decrypted_message = cast(str, response.json())
+        if not self._module.has_shared('add_secrets'):
+            raise gluetool.GlueError("The 'hide-secrets' module is required when secrets involved")
+        self._module.shared('add_secrets', decrypted_message)
+        return decrypted_message
+
 
 @attrs.define
 class TestingFarmRequestTMT():
@@ -414,6 +426,8 @@ class TestingFarmRequest(LoggerMixin, object):
             (request.get('settings') or {}).get('pipeline') or {}
         ).get('parallel-limit')
 
+        self.token_id = request['token_id']
+
     def webhook(self) -> Any:
         """
         Post to webhook, as defined in the API.
@@ -537,6 +551,34 @@ class TestingFarmRequest(LoggerMixin, object):
 
         # inform webhooks about the state change
         self.webhook()
+
+    def modify_with_config(self, config: Dict[str, Any], git_url: str) -> None:
+        """
+        Update self with data taken from .testing-farm.yaml file.
+        """
+
+        if 'environments' not in config:
+            self.warn('.testing-farm.yaml file exists but no useful data to modify environment found')
+            return
+
+        for environment in self.environments_requested:
+            if 'secrets' in config['environments']:
+                for secret_key, secret_value_encrypted in config['environments']['secrets'].items():
+                    if not secret_value_encrypted.startswith(self.token_id):
+                        self.warn('Found secret that was not encrypted with the same API Token that submitted this test'
+                                  f' request. Skipping. Encrypted secret: `{secret_key}: {secret_value_encrypted}`')
+                        continue
+
+                    secret_value = self._api.decrypt_secret(git_url, secret_value_encrypted, self._api_key)
+
+                    if environment.secrets is None:
+                        environment.secrets = {}
+
+                    environment.secrets.update({secret_key: secret_value})
+
+        self.info(
+            'Requested environments after applying in-repository patch: {}'.format(str(self.environments_requested))
+        )
 
 
 class TestingFarmRequestModule(gluetool.Module):

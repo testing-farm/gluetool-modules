@@ -204,10 +204,12 @@ integration/container:
   extends: [.integration]
   variables:
     PYTEST_PARALLEL_RUNS: 1
+    STAGING_CI_SUFFIX: $CI_JOB_ID
+    STAGING_CI_API_TAG: 6257fd33
   script:
     - direnv allow
     - eval "$(direnv export bash)"
-    - make generate/staging/citool-config/container/ci
+    - make staging/apply/ci
     - make test/staging/pipeline/container/ci
 
 # Generate documentation from the sources

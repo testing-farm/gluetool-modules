@@ -1049,6 +1049,11 @@ class TestScheduleTMT(Module):
             prefix=repository.clonedir_prefix
         )
 
+        self.info('fetching in-repository config')
+        if repository.testing_farm_config and repository.remote_url:
+            tf_request = cast(TestingFarmRequest, self.shared('testing_farm_request'))
+            tf_request.modify_with_config(repository.testing_farm_config, repository.remote_url)
+
         root_logger: ContextAdapter = Logging.get_logger()
 
         schedule = TestSchedule()

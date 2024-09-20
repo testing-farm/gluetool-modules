@@ -47,13 +47,13 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       postgresql-devel python3.9 python3-libselinux \
                       redhat-rpm-config koji python3-virtualenv standard-test-roles \
                       rsync beakerlib-libraries rpm-build rpm-devel awscli \
-    # disabled because tmt-1.35.0-2 needs to be installed from koji
-    # && dnf copr -y enable @teemtee/tmt \
+    # disabled because tmt-1.37.dev888-1.20240919234028088039.pr3229.20.g8c1c5dbc.fc40.noarch needs to be installed from koji
+    && dnf -y copr enable packit/teemtee-tmt-3229 \
     # remove `--enablerepo=updates-testing` once copr repo is enabled again
-    && dnf -y install --enablerepo=updates-testing tmt-1.35.0 \
-                                                   tmt+provision-container-1.35.0 \
-                                                   tmt+provision-virtual-1.35.0 \
-                                                   tmt+report-polarion-1.35.0 \
+    && dnf -y install tmt-1.37.dev888-1.20240919234028088039.pr3229.20.g8c1c5dbc.fc40.noarch \
+                      tmt+provision-container-1.37.dev888-1.20240919234028088039.pr3229.20.g8c1c5dbc.fc40.noarch \
+                      tmt+provision-virtual-1.37.dev888-1.20240919234028088039.pr3229.20.g8c1c5dbc.fc40.noarch \
+                      tmt+report-polarion-1.37.dev888-1.20240919234028088039.pr3229.20.g8c1c5dbc.fc40.noarch \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \

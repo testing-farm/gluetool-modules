@@ -88,7 +88,10 @@ class HideSecrets(gluetool.Module):
         with tempfile.NamedTemporaryFile(mode='w', dir='.') as temp:
             temp.write(sed_expr)
             temp.flush()
-            command = "find '{}' -type f | xargs -i##### sed -i -f '{}' '#####'".format(search_path, temp.name)
+            # -print0 puts a null byte as a separator between each item
+            # -0 expects such separator so no more separating by space which takes quotes into account
+            command = "find '{}' -type f -print0 | xargs -0 -i##### sed -i -f '{}' '#####'".format(
+                search_path, temp.name)
 
             def _run_sed() -> Result[bool, bool]:
                 try:

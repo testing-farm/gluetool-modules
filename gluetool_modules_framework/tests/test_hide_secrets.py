@@ -87,6 +87,26 @@ def test_hide_secrets(monkeypatch, module, testing_farm_request):
         with open(os.path.join(tmpdir, 'testfile.txt'), 'r') as f:
             assert f.read() == FILE_CONTENTS.format(*['hidden' if len(secret_values) > 0 else 'no secret']*3)
 
+        #
+        # We also need to check if it works for filenames with special characters
+        #
+
+        # Create a file containing some secrets
+        secret_value = secret_values[0] if len(secret_values) > 0 else 'no secret'
+        with open(os.path.join(tmpdir, 't"e st\'f[i]l*e.txt'), 'w') as f:
+            f.write(FILE_CONTENTS.format(*[secret_value]*3))
+
+        # Check the file was created successfully
+        with open(os.path.join(tmpdir, 't"e st\'f[i]l*e.txt'), 'r') as f:
+            assert f.read() == FILE_CONTENTS.format(*[secret_value]*3)
+
+        # Replace all secrets with 'hidden'
+        module.destroy()
+
+        # Check all secrets are now 'hidden' or 'no secret' if there are no secrets
+        with open(os.path.join(tmpdir, 't"e st\'f[i]l*e.txt'), 'r') as f:
+            assert f.read() == FILE_CONTENTS.format(*['hidden' if len(secret_values) > 0 else 'no secret']*3)
+
 
 def test_hide_secrets_yaml_dump_long_string(monkeypatch, module):
     with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:

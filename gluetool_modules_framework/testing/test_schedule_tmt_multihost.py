@@ -40,6 +40,7 @@ from secret_type import Secret
 # TMT run log file
 TMT_LOG = 'tmt-run.log'
 TMT_REPRODUCER = 'tmt-reproducer.sh'
+TMT_VERBOSE_LOG = 'log.txt'
 
 # File with environment variables
 TMT_ENV_FILE = 'tmt-environment-{}.yaml'
@@ -1280,6 +1281,10 @@ class TestScheduleTMTMultihost(Module):
             tmt_log_filepath = os.path.join(schedule_entry.work_dirpath, TMT_LOG)
             tmt_log_href = artifacts_location(self, tmt_log_filepath, logger=schedule_entry.logger)
             test_suite.logs.append(Log(href=tmt_log_href, name='tmt-log'))
+
+            tmt_verbose_log_filepath = os.path.join(schedule_entry.work_dirpath, TMT_VERBOSE_LOG)
+            tmt_verbose_log_href = artifacts_location(self, tmt_verbose_log_filepath, logger=schedule_entry.logger)
+            test_suite.logs.append(Log(href=tmt_verbose_log_href, name='tmt-verbose-log'))
 
             test_suite.logs.append(Log(
                 href=artifacts_location(

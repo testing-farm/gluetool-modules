@@ -4,4 +4,7 @@
 #
 collections:
   - community.general
-  - ansible.posix
+  # Version 1.6+ breaks standard-test-roles
+  # Unsupported parameters for (ansible.posix.synchronize) module: ssh_args
+  - name: ansible.posix
+    version: 1.5.4

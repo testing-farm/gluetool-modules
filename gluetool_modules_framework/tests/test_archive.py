@@ -39,6 +39,8 @@ def fixture_module(monkeypatch):
     module._config['aws-region'] = 'aws-region'
     module._config['aws-s3-bucket'] = 'aws-s3-bucket'
     module._config['aws-options'] = '--aws-option'
+    module._config['parallel-archiving-finish-tick'] = 1
+    module._config['parallel-archiving-finish-timeout'] = 5
 
     patch_shared(monkeypatch, module, {}, callables={
         'testing_farm_request': lambda: MagicMock(id='request-id'),

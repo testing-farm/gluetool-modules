@@ -19,6 +19,8 @@ DEFAULT_PARALLEL_ARCHIVING_TICK = 30
 DEFAULT_RSYNC_TIMEOUT = 120
 DEFAULT_VERIFY_TICK = 5
 DEFAULT_VERIFY_TIMEOUT = 600
+DEFAULT_PARALLEL_ARCHIVING_FINISH_TICK = 5
+DEFAULT_PARALLEL_ARCHIVING_FINISH_TIMEOUT = 600
 
 ARCHIVE_STAGES = ['execute', 'progress', 'destroy']
 # Stages which use a copy for syncing
@@ -119,6 +121,18 @@ class Archive(gluetool.Module):
             'metavar': 'PARALLEL_ARCHIVING_TICK',
             'type': int,
             'default': DEFAULT_PARALLEL_ARCHIVING_TICK
+        },
+        'parallel-archiving-finish-timeout': {
+            'help': 'Timeout for parallel archiving to finish in seconds. (default: %(default)s)',
+            'metavar': 'PARALLEL_ARCHIVING_FINISH_TIMEOUT',
+            'type': int,
+            'default': DEFAULT_PARALLEL_ARCHIVING_FINISH_TIMEOUT,
+        },
+        'parallel-archiving-finish-tick': {
+            'help': 'Timeout between parallel archiving finish checks. (default: %(default)s)',
+            'metavar': 'PARALLEL_ARCHIVING_FINISH_TICK',
+            'type': int,
+            'default': DEFAULT_PARALLEL_ARCHIVING_FINISH_TICK,
         },
         'aws-region': {
             'help': 'AWS region to use for S3 archiving.',
@@ -439,6 +453,12 @@ class Archive(gluetool.Module):
         self.shared('hide_secrets', search_path=source)
 
         cmd.append(full_destination)
+
+        # Check if source file or directory still exists
+        if not os.path.exists(source):
+            self.warn('source {} does not exist, skipping rsync'.format(source))
+            return
+
         self.debug('syncing {} to {}'.format(source, full_destination))
 
         def _run_rsync() -> Result[bool, bool]:
@@ -516,6 +536,12 @@ class Archive(gluetool.Module):
         self.shared('hide_secrets', search_path=source)
 
         cmd.append(full_destination)
+
+        # Check if source file or directory still exists
+        if not os.path.exists(source):
+            self.warn('source {} does not exist, skipping aws'.format(source))
+            return
+
         self.debug('syncing {} to {}'.format(source, full_destination))
 
         def _run_aws() -> Result[bool, bool]:
@@ -557,6 +583,10 @@ class Archive(gluetool.Module):
 
             # If the entry['source'] is a wildcard, we need to use glob to find all the files
             for source in glob(sources, recursive=True):
+
+                # .copy files should be ignored here, they are created and should be deleted in run_* functions
+                if source.endswith('.copy'):
+                    continue
 
                 options = []
 
@@ -649,6 +679,24 @@ class Archive(gluetool.Module):
             self.info('Stopping parallel archiving')
             if self._archive_timer:
                 self._archive_timer.cancel()
+
+                # Wait until the timer is finished
+                self.debug('Waiting for parallel archiving to finish')
+
+                def _wait_for_timer() -> Result[bool, bool]:
+                    if self._archive_timer and self._archive_timer.is_alive():
+                        return Result.Error(True)
+                    return Result.Ok(True)
+
+                gluetool.utils.wait(
+                    "wait for parallel archiving to finish",
+                    _wait_for_timer,
+                    timeout=self.option('parallel-archiving-finish-timeout'),
+                    tick=self.option('parallel-archiving-finish-tick')
+                )
+
+                self.debug('Parallel archiving finished')
+
                 self._archive_timer = None
 
         # Gracefully catch errors, so other destroy functions can get a chance.

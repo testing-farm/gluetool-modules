@@ -72,7 +72,7 @@ command:
   ansible-galaxy collection list:
     exit-status: 0
     stdout:
-      - ansible.posix
+      - /ansible.posix[[:space:]]+1.5.4/
       - community.general
     timeout: 100000
 

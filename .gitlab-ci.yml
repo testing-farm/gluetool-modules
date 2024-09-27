@@ -142,8 +142,8 @@ testing-farm:
     INFRA_REPO: https://gitlab.com/testing-farm/infrastructure
     INFRA_PATH: infrastructure
     INFRA_BRANCH: main
-    # Use the gluetool-modules image build in the "container" step
-    WORKER_IMAGE: quay.io/testing-farm/gluetool-modules:$CI_PIPELINE_ID
+    # Use the worker image build in the "container" step
+    WORKER_IMAGE: quay.io/testing-farm/worker-public:$CI_PIPELINE_ID
     CI_ARTIFACT_URL_PREFIX:
       "https://testing-farm.gitlab.io/-/gluetool-modules/-/jobs/$CI_JOB_ID/artifacts/infrastructure"
   before_script:

@@ -6,9 +6,10 @@ import os
 import re
 
 import gluetool
+from gluetool import GlueError
 from gluetool.log import log_dict
 from gluetool.result import Ok, Error
-from gluetool.utils import normalize_multistring_option, render_template
+from gluetool.utils import normalize_multistring_option, render_template, SimplePatternMap
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage, \
     SetupGuestReturnType
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
@@ -90,6 +91,15 @@ class InstallAncestors(gluetool.Module):
         'source-release': {
             'help': 'Release for looking up ancestors.'
         },
+
+        'source-release-map': {
+            'help': """
+                Mapping between destination tag and release for looking up ancestors.
+                Can be overridden by source-release option.
+                """,
+            'default': []
+        },
+
         'log-dir-name': {
             'help': 'Name of directory where outputs of installation commands will be stored (default: %(default)s).',
             'type': str,
@@ -205,9 +215,30 @@ class InstallAncestors(gluetool.Module):
 
         ancestor_components = self.get_ancestor_components()
 
-        # The source-release option usually contains space but Jenkins somehow messes it up when passing it to
-        # gluetool pipeline. The workaround is to use hashes instead of spaces as in test-scheduler-sti module.
-        source_release = self.option('source-release').replace('#', ' ')
+        # Get source release based on mapping from destination tag
+        if self.option('source-release-map'):
+            source_release_map_filepath = self.option('source-release-map')
+            pattern_map = SimplePatternMap(
+                source_release_map_filepath,
+                logger=self.logger
+            )
+
+            try:
+                destination_tag = self.shared('primary_task').destination_tag
+                source_release = pattern_map.match(destination_tag)
+                self.debug("Destination tag '{}' was mapped to source release '{}'".format(destination_tag,
+                                                                                           source_release))
+            except GlueError as e:
+                self.debug("Could not match destination tag '{}' using the pattern map: {}".format(
+                    destination_tag,
+                    e
+                ))
+
+        # Get source release from option, takes precedence over the mapped one
+        if self.option('source-release'):
+            # The source-release option usually contains space but Jenkins somehow messes it up when passing it to
+            # gluetool pipeline. The workaround is to use hashes instead of spaces as in test-scheduler-sti module.
+            source_release = self.option('source-release').replace('#', ' ')
 
         major_version_pattern = self.option('major-version-pattern')
         source_version_match = re.match(major_version_pattern, source_release)
@@ -312,7 +343,7 @@ class InstallAncestors(gluetool.Module):
         #     if present, option release-template is not needed
         # ancestor-rpms
         #     mutually exclusive with ancestor-components
-        #     if present, options source-release, major-version-pattern and rpms-arches are not needed
+        #     if present, options source-release*, major-version-pattern and rpms-arches are not needed
 
         components_option = self.option('ancestor-components')
         rpms_option = self.option('ancestor-rpms')
@@ -322,17 +353,22 @@ class InstallAncestors(gluetool.Module):
                                                           "are mutually exclusive")
 
         required_options = list()
+        required_groups = list()
         if not components_option:
             required_options.append('release-template')
         if not rpms_option:
             required_options.append('major-version-pattern')
-            required_options.append('source-release')
             required_options.append('rpms-arches')
+            # one of the options is required
+            required_groups.append(('source-release', 'source-release-map'))
 
         missing_options = list()
-        for option_name in required_options:
-            if not self.option(option_name):
-                missing_options.append(option_name)
+        for required_option in required_options:
+            if not self.option(required_option):
+                missing_options.append(required_option)
+        for required_group in required_groups:
+            if not any(self.option(*required_group)):
+                missing_options.append(' or '.join(required_group))
 
         if missing_options:
             raise gluetool.GlueError("Missing required option(s): {}".format(', '.join(missing_options)))

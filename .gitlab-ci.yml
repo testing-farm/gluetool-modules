@@ -25,6 +25,7 @@ image: "quay.io/testing-farm/python-ci-image:2023-09-21-f3e8c41e"
 #
 variables:
   BUILDAH_TAG: v1.29.0
+  STAGING_CI_SUFFIX: $CI_MERGE_REQUEST_ID-$CI_JOB_ID
 
 #
 # Mark tests to run for merge requests
@@ -146,6 +147,14 @@ testing-farm:
     WORKER_IMAGE: quay.io/testing-farm/worker-public:$CI_PIPELINE_ID
     CI_ARTIFACT_URL_PREFIX:
       "https://testing-farm.gitlab.io/-/gluetool-modules/-/jobs/$CI_JOB_ID/artifacts/infrastructure"
+    STAGING_CI_API_TAG: latest
+  rules:
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^release\/.*/
+      variables:
+        INFRA_BRANCH: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+        STAGING_CI_API_TAG: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+    - if: $CI_MERGE_REQUEST_ID
+      when: always
   before_script:
     # Use public nameservers to mitigate the EKS cluster to be reolved locally.
     # A known issues due to the AWS setup we use.
@@ -162,6 +171,7 @@ testing-farm:
         echo "Forcing infrastructure repository '$INFRA_REPO'"
       fi
     # Parse infrastructure branch from description
+    - INFRA_BRANCH=${INFRA_BRANCH/release\/}
     - >
       if grep '!infra-branch' <<< $description; then
         INFRA_BRANCH=$(grep '!infra-branch' <<< $description | sed 's/.*!infra-branch:\?//' | tr -d '[:space:]');
@@ -196,6 +206,8 @@ integration:
   script:
     - direnv allow
     - eval "$(direnv export bash)"
+    - export STAGING_CI_API_TAG=${STAGING_CI_API_TAG/release\/}
+    - export STAGING_CI_SUFFIX
     - make staging/apply/ci
     - make generate/staging/citool-config/ci
     - make test/staging/pipeline/ci
@@ -207,6 +219,7 @@ integration/container:
   script:
     - direnv allow
     - eval "$(direnv export bash)"
+    - export STAGING_CI_SUFFIX
     - make generate/staging/citool-config/container/ci
     - make test/staging/pipeline/container/ci
 

@@ -254,11 +254,12 @@ def test_update_empty(module, request2):
 
 
 def test_update(module, request2, monkeypatch):
-    patch_shared(monkeypatch, module, {'xunit_testing_farm_file': 'xunitfile', 'results': 'someresults'})
+    patch_shared(monkeypatch, module, {'xunit_testing_farm_file': 'xunitfile'})
     request = module._tf_request
     request.update(
         state='somestate',
         overall_result='someresult',
+        xunit='somexunit',
         summary='somesummary',
         artifacts_url='someurl'
     )
@@ -267,6 +268,7 @@ def test_update(module, request2, monkeypatch):
         'state': 'somestate',
         'result': {
             'overall': 'someresult',
+            'xunit': 'somexunit',
             'summary': 'somesummary',
             'xunit_url': 'someurl/xunitfile'
         },

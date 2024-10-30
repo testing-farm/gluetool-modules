@@ -454,6 +454,7 @@ class TestingFarmRequest(LoggerMixin, object):
     def update(self,
                state: Optional[str] = None,
                overall_result: Optional[str] = None,
+               xunit: Optional[str] = None,
                summary: Optional[str] = None,
                artifacts_url: Optional[str] = None,
                destroying: bool = False) -> None:
@@ -463,6 +464,7 @@ class TestingFarmRequest(LoggerMixin, object):
 
         :param str state: New state of the test request.
         :param str overall_result: New overall result of the test request.
+        :param str xunit: New XUnit XML content to set.
         :param str summary: New result summary to set.
         :param str artifacts_url: The URL to the artifacts to set.
         :param str destroying: A flag to indicate that the update is happening during pipeline destroy phase.
@@ -486,7 +488,12 @@ class TestingFarmRequest(LoggerMixin, object):
                 'overall': overall_result
             })
 
-        if artifacts_url and self._module.shared('xunit_testing_farm_file') and self._module.shared('results'):
+        if xunit:
+            result.update({
+                'xunit': xunit
+            })
+
+        if xunit and artifacts_url and self._module.shared('xunit_testing_farm_file'):
             result.update({
                 'xunit_url': '{}/{}'.format(artifacts_url, self._module.shared('xunit_testing_farm_file'))
             })

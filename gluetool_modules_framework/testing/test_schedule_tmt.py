@@ -1466,8 +1466,16 @@ class TestScheduleTMT(Module):
                 )
             ]
 
-        # gather and return overall plan run result and test results
-        return gather_plan_results(self, schedule_entry, work_dirpath, self.option('recognize-errors'))
+        # gather overall plan run result and test results
+        plan_results, test_results = gather_plan_results(
+            self, schedule_entry, work_dirpath, self.option('recognize-errors'))
+
+        # check if tmt exited with an error and show it on the plan level
+        if tmt_output.exit_code == TMTExitCodes.TESTS_ERROR:
+            schedule_entry.warn('tmt exited with an error, plan results are overwritten to show the error')
+            plan_results = TestScheduleResult.ERROR
+
+        return plan_results, test_results
 
     def run_test_schedule_entry(self, schedule_entry: TestScheduleEntry) -> None:
 

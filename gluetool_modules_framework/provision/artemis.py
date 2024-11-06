@@ -57,7 +57,8 @@ API_FEATURE_VERSIONS: Dict[str, str] = {
     'hw-constraints-cpu-flag': '0.0.67',
     'hw-constraints-zcrypt': '0.0.69',
     'hw-constraints-disk-model-name': '0.0.69',
-    'guest-log-blobs': '0.0.70'
+    'guest-log-blobs': '0.0.70',
+    'security-group-rules': '0.0.72'
 }
 
 SUPPORTED_API_VERSIONS: Set[str] = set(API_FEATURE_VERSIONS.values())
@@ -107,7 +108,17 @@ class ArtemisGuestLog:
             raise GlueError("Field '{}' is missing '{{datetime}}' string".format(attribute.name))
 
 
+@attrs.define(kw_only=True)
+class SecurityGroupRule:
+    type: str = attrs.field(validator=attrs.validators.instance_of(str))
+    port_min: int = attrs.field(validator=attrs.validators.instance_of(int))
+    port_max: int = attrs.field(validator=attrs.validators.instance_of(int))
+    protocol: str = attrs.field(validator=attrs.validators.instance_of(str))
+    cidr: str = attrs.field(validator=attrs.validators.instance_of(str))
+
+
 ArtemisGuestLogs = List[ArtemisGuestLog]
+SecurityGroupRules = List[SecurityGroupRule]
 
 
 class ArtemisResourceError(GlueError):
@@ -243,7 +254,9 @@ class ArtemisAPI(object):
                      user_data: Optional[Dict[str, Any]] = None,
                      post_install_script: Optional[str] = None,
                      watchdog_dispatch_delay: Optional[int] = None,
-                     watchdog_period_delay: Optional[int] = None
+                     watchdog_period_delay: Optional[int] = None,
+                     security_group_rules_ingress: Optional[SecurityGroupRules] = None,
+                     security_group_rules_egress: Optional[SecurityGroupRules] = None,
                      ) -> Any:
         '''
         Submits a guest request to Artemis API.
@@ -327,6 +340,10 @@ class ArtemisAPI(object):
         else:
             # Note that this should never happen, because we check the requested version in sanity()
             raise GlueError('unsupported API version {}'.format(self.version))
+
+        if self.version >= API_FEATURE_VERSIONS['security-group-rules']:
+            data['security_group_rules_ingress'] = security_group_rules_ingress
+            data['security_group_rules_egress'] = security_group_rules_egress
 
         if self.version >= API_FEATURE_VERSIONS['hw-constraints-kickstart']:
             data['environment']['kickstart'] = kickstart or self.module.kickstart or {}
@@ -1300,7 +1317,9 @@ class ArtemisProvisioner(gluetool.Module):
                               watchdog_dispatch_delay: Optional[int] = None,
                               watchdog_period_delay: Optional[int] = None,
                               workdir: Optional[str] = None,
-                              guest_logs: Optional[ArtemisGuestLogs] = None
+                              guest_logs: Optional[ArtemisGuestLogs] = None,
+                              security_group_rules_ingress: Optional[SecurityGroupRules] = None,
+                              security_group_rules_egress: Optional[SecurityGroupRules] = None
                               ) -> ArtemisGuest:
         '''
         Start provisioning of an Artemis guest by submitting a request to Artemis API.
@@ -1338,7 +1357,9 @@ class ArtemisProvisioner(gluetool.Module):
                                          user_data=user_data,
                                          post_install_script=post_install_script,
                                          watchdog_dispatch_delay=watchdog_dispatch_delay,
-                                         watchdog_period_delay=watchdog_period_delay)
+                                         watchdog_period_delay=watchdog_period_delay,
+                                         security_group_rules_ingress=security_group_rules_ingress,
+                                         security_group_rules_egress=security_group_rules_egress)
 
         guestname = response.get('guestname')
         hostname = six.ensure_str(response['address']) if response['address'] is not None else None
@@ -1411,6 +1432,8 @@ class ArtemisProvisioner(gluetool.Module):
         provisioning = (environment.settings or {}).get('provisioning') or {}
         if not post_install_script:
             post_install_script = provisioning.get('post_install_script')
+        security_group_rules_ingress = provisioning.get('security_group_rules_ingress') or None
+        security_group_rules_egress = provisioning.get('security_group_rules_egress') or None
 
         if self.option('snapshots'):
             environment.snapshots = True
@@ -1445,7 +1468,9 @@ class ArtemisProvisioner(gluetool.Module):
             watchdog_period_delay=watchdog_period_delay,
             workdir=workdir,
             # NOTE: create a copy of the logs template, we need a separate instance for each guest
-            guest_logs=[attrs.evolve(log) for log in self.guest_logs_template] if self.guest_logs_template else None
+            guest_logs=[attrs.evolve(log) for log in self.guest_logs_template] if self.guest_logs_template else None,
+            security_group_rules_ingress=security_group_rules_ingress,
+            security_group_rules_egress=security_group_rules_egress
         )
 
         self.guests.append(guest)

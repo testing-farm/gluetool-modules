@@ -72,6 +72,7 @@ def fixture_module(monkeypatch):
                 'ready-timeout': 300,
                 'ready-tick': 3,
                 'api-call-timeout': 60,
+                'user-data-vars-template-file': None
             }
         }
     )
@@ -392,10 +393,20 @@ dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --
             None,
             (gluetool.glue.GlueError, "Environment variable 'VARIABLE2' is not allowed to be exposed to the tmt process")
         ),
+        (  # with user data
+            {},
+            {},
+            TestingEnvironment('x86_64', 'rhel-9',
+                               settings={'provisioning': {'tags': {'Foo': 'Bar', "Baz Baz": "Boo Boo"}}}),
+            """# tmt reproducer
+dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script echo hello --user-data \"Foo=Bar\" --user-data \"Baz Baz=Boo Boo\"""",  # noqa
+            None,
+            None
+        ),
     ],
     ids=[
         'virtual', 'local', 'variables', 'tmt_context',
-        'tmt_process_environment_options_only', 'tmt_process_environment', 'tmt_process_environment_not_accepted'
+        'tmt_process_environment_options_only', 'tmt_process_environment', 'tmt_process_environment_not_accepted', 'user_data'
     ]
 )
 def test_tmt_output_dir(

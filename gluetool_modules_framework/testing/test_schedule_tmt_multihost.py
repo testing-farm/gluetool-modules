@@ -601,6 +601,33 @@ class TestScheduleTMTMultihost(Module):
 
         return None
 
+    def user_data(self, schedule_entry: TestScheduleEntry) -> List[str]:
+        artemis_options: Dict[str, Any] = self.shared('artemis_api_options')
+        context = self.shared('eval_context')
+        user_data = {}
+
+        # Parse and template user-data-vars from YAML
+        user_data_tpl_filepath = artemis_options.get('user-data-vars-template-file')
+
+        if user_data_tpl_filepath is not None:
+            user_data.update({
+                key: gluetool.utils.render_template(str(value), logger=self.logger, **context)
+                for key, value in gluetool.utils.load_yaml(user_data_tpl_filepath, logger=self.logger).items()
+            })
+
+        if schedule_entry.testing_environment:
+            tags = ((schedule_entry.testing_environment.settings or {}).get('provisioning') or {}).get('tags') or {}
+            if tags:
+                user_data.update(tags)
+
+        log_dict(self.debug, 'user-data', user_data)
+
+        user_data_formatted = []
+        for key, value in user_data.items():
+            user_data_formatted.append('"{}={}"'.format(key, value))
+
+        return user_data_formatted
+
     def _tmt_context_to_options(self, context: Dict[str, str]) -> List[str]:
         if not context:
             return []
@@ -1193,6 +1220,11 @@ class TestScheduleTMTMultihost(Module):
             command.extend(['--skip-prepare-verify-ssh'])
         if artemis_post_install_script:
             command.extend(['--post-install-script', artemis_post_install_script])
+
+        user_data = self.user_data(schedule_entry)
+        if user_data:
+            for data_entry in user_data:
+                command.extend(['--user-data', data_entry])
 
         # add tmt reproducer suitable for local execution
         schedule_entry.tmt_reproducer.append(' '.join(command))

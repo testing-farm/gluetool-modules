@@ -624,7 +624,7 @@ class TestScheduleTMTMultihost(Module):
 
         user_data_formatted = []
         for key, value in user_data.items():
-            user_data_formatted.append('"{}={}"'.format(key, value))
+            user_data_formatted.append('{}={}'.format(key, value))
 
         return user_data_formatted
 

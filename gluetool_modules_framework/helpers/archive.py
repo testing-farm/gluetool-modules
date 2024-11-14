@@ -4,6 +4,7 @@
 import os
 import shutil
 from glob import glob
+import tempfile
 
 import gluetool
 from gluetool.glue import GlueError
@@ -365,7 +366,9 @@ class Archive(gluetool.Module):
 
     def prepare_source_copy(self, original_source: str) -> Tuple[str, str]:
         original_source = original_source.rstrip('/')
-        source = '{}.copy'.format(original_source)
+
+        # Create a copy in the temporary directory with
+        source = os.path.join(tempfile.mkdtemp(), os.path.basename(original_source))
         if os.path.isdir(original_source):
             shutil.copytree(
                 original_source, source,
@@ -383,10 +386,8 @@ class Archive(gluetool.Module):
 
     def delete_source_copy(self, source: str) -> None:
         self.debug('removing source copy {}'.format(source))
-        if os.path.isdir(source):
-            shutil.rmtree(source)
-        else:
-            os.unlink(source)
+        # Delete the temporary created directory
+        shutil.rmtree(os.path.dirname(source))
 
     def run_rsync(
         self,
@@ -583,10 +584,6 @@ class Archive(gluetool.Module):
 
             # If the entry['source'] is a wildcard, we need to use glob to find all the files
             for source in glob(sources, recursive=True):
-
-                # .copy files should be ignored here, they are created and should be deleted in run_* functions
-                if source.endswith('.copy'):
-                    continue
 
                 options = []
 

@@ -7,6 +7,7 @@ import time
 import pytest
 import logging
 import shutil
+import tempfile
 from mock import MagicMock, call
 
 import gluetool
@@ -93,7 +94,6 @@ def test_execute_destroy_ssh(monkeypatch, module):
     mock_shutil_copytree = MagicMock()
     mock_shutil_copy2 = MagicMock()
     mock_shutil_rmtree = MagicMock()
-    mock_os_unlink = MagicMock()
     mock_requests = MagicMock()
     mock_requests_head = mock_requests.return_value.__enter__.return_value.head
     mock_requests_head.return_value.status_code = 200
@@ -104,7 +104,7 @@ def test_execute_destroy_ssh(monkeypatch, module):
     monkeypatch.setattr(shutil, 'copytree', mock_shutil_copytree)
     monkeypatch.setattr(shutil, 'copy2', mock_shutil_copy2)
     monkeypatch.setattr(shutil, 'rmtree', mock_shutil_rmtree)
-    monkeypatch.setattr(os, 'unlink', mock_os_unlink)
+    monkeypatch.setattr(tempfile, 'mkdtemp', lambda: '/tmp/dir')
 
     monkeypatch.setattr(os.path, 'exists', lambda _: True)
 
@@ -127,7 +127,7 @@ def test_execute_destroy_ssh(monkeypatch, module):
         call(['ssh', 'https://artifacts.example.com', 'mkdir', '-p',
               '/artifacts-root/request-id'], logger=module.logger),
 
-        call(['rsync', '--rsync-option', '--timeout=10', '/archive-source-execute.copy',
+        call(['rsync', '--rsync-option', '--timeout=10', '/tmp/dir/archive-source-execute',
               'https://artifacts.example.com:/artifacts-root/request-id/archive-source-execute'], logger=module.logger),
 
         call(['rsync', '--rsync-option', '--timeout=10', '/archive-source',
@@ -157,7 +157,7 @@ def test_execute_destroy_ssh(monkeypatch, module):
         call(['rsync', '--rsync-option', '--timeout=10', '--chmod=666', '/env-archive-source',
               'https://artifacts.example.com:/artifacts-root/request-id/env-dest'], logger=module.logger),
 
-        call(['rsync', '--rsync-option', '--timeout=10', '/env-archive-source2.copy',
+        call(['rsync', '--rsync-option', '--timeout=10', '/tmp/dir/env-archive-source2',
               'https://artifacts.example.com:/artifacts-root/request-id/env-archive-source2'], logger=module.logger),
     ]
 
@@ -176,7 +176,6 @@ def test_destroy_daemon(monkeypatch, module):
     mock_shutil_copytree = MagicMock()
     mock_shutil_copy2 = MagicMock()
     mock_shutil_rmtree = MagicMock()
-    mock_os_unlink = MagicMock()
     mock_requests = MagicMock()
     mock_requests_head = mock_requests.return_value.__enter__.return_value.head
     mock_requests_head.return_value.status_code = 200
@@ -187,7 +186,7 @@ def test_destroy_daemon(monkeypatch, module):
     monkeypatch.setattr(shutil, 'copytree', mock_shutil_copytree)
     monkeypatch.setattr(shutil, 'copy2', mock_shutil_copy2)
     monkeypatch.setattr(shutil, 'rmtree', mock_shutil_rmtree)
-    monkeypatch.setattr(os, 'unlink', mock_os_unlink)
+    monkeypatch.setattr(tempfile, 'mkdtemp', lambda: '/tmp/dir')
 
     monkeypatch.setattr(os.path, 'exists', lambda _: True)
 
@@ -249,7 +248,6 @@ def test_execute_destroy_local(monkeypatch, module):
     mock_shutil_copytree = MagicMock()
     mock_shutil_copy2 = MagicMock()
     mock_shutil_rmtree = MagicMock()
-    mock_os_unlink = MagicMock()
     mock_requests = MagicMock()
     mock_requests_head = mock_requests.return_value.__enter__.return_value.head
     mock_requests_head.return_value.status_code = 200
@@ -260,7 +258,7 @@ def test_execute_destroy_local(monkeypatch, module):
     monkeypatch.setattr(shutil, 'copytree', mock_shutil_copytree)
     monkeypatch.setattr(shutil, 'copy2', mock_shutil_copy2)
     monkeypatch.setattr(shutil, 'rmtree', mock_shutil_rmtree)
-    monkeypatch.setattr(os, 'unlink', mock_os_unlink)
+    monkeypatch.setattr(tempfile, 'mkdtemp', lambda: '/tmp/dir')
 
     monkeypatch.setattr(os.path, 'exists', lambda _: True)
 
@@ -321,7 +319,6 @@ def test_execute_destroy_s3(monkeypatch, module):
     mock_shutil_copytree = MagicMock()
     mock_shutil_copy2 = MagicMock()
     mock_shutil_rmtree = MagicMock()
-    mock_os_unlink = MagicMock()
     mock_requests = MagicMock()
     mock_requests_head = mock_requests.return_value.__enter__.return_value.head
     mock_requests_head.return_value.status_code = 200
@@ -332,7 +329,7 @@ def test_execute_destroy_s3(monkeypatch, module):
     monkeypatch.setattr(shutil, 'copytree', mock_shutil_copytree)
     monkeypatch.setattr(shutil, 'copy2', mock_shutil_copy2)
     monkeypatch.setattr(shutil, 'rmtree', mock_shutil_rmtree)
-    monkeypatch.setattr(os, 'unlink', mock_os_unlink)
+    monkeypatch.setattr(tempfile, 'mkdtemp', lambda: '/tmp/dir')
 
     monkeypatch.setattr(os.path, 'exists', lambda _: True)
 
@@ -376,10 +373,10 @@ def test_execute_destroy_s3(monkeypatch, module):
         call(['aws', 's3', 'cp', '--aws-option', '/env-archive-source',
               's3://aws-s3-bucket/artifacts-root/request-id/env-dest'], logger=module.logger),
 
-        call(['aws', 's3', 'cp', '--aws-option', '/archive-source-execute.copy',
+        call(['aws', 's3', 'cp', '--aws-option', '/tmp/dir/archive-source-execute',
               's3://aws-s3-bucket/artifacts-root/request-id/archive-source-execute'], logger=module.logger),
 
-        call(['aws', 's3', 'cp', '--aws-option', '/env-archive-source2.copy',
+        call(['aws', 's3', 'cp', '--aws-option', '/tmp/dir/env-archive-source2',
               's3://aws-s3-bucket/artifacts-root/request-id/env-archive-source2'], logger=module.logger),
     ]
 
@@ -392,7 +389,6 @@ def test_parallel_archiving(monkeypatch, module, log):
     mock_shutil_copytree = MagicMock()
     mock_shutil_copy2 = MagicMock()
     mock_shutil_rmtree = MagicMock()
-    mock_os_unlink = MagicMock()
     mock_requests = MagicMock()
     mock_requests_head = mock_requests.return_value.__enter__.return_value.head
     mock_requests_head.return_value.status_code = 200
@@ -403,7 +399,7 @@ def test_parallel_archiving(monkeypatch, module, log):
     monkeypatch.setattr(shutil, 'copytree', mock_shutil_copytree)
     monkeypatch.setattr(shutil, 'copy2', mock_shutil_copy2)
     monkeypatch.setattr(shutil, 'rmtree', mock_shutil_rmtree)
-    monkeypatch.setattr(os, 'unlink', mock_os_unlink)
+    monkeypatch.setattr(tempfile, 'mkdtemp', lambda: '/tmp/dir')
 
     monkeypatch.setattr(os.path, 'exists', lambda _: True)
 
@@ -411,7 +407,7 @@ def test_parallel_archiving(monkeypatch, module, log):
         if path in [
             '/dir-archive-source',
             '/archive-source-another-progress',
-            '/archive-source-another-progress.copy'
+            '/tmp/dir/archive-source-another-progress'
         ]:
             return True
 
@@ -436,20 +432,19 @@ def test_parallel_archiving(monkeypatch, module, log):
     assert log.match(levelno=logging.INFO, message='Stopping parallel archiving')
     assert log.match(
         levelno=logging.DEBUG,
-        message='syncing /archive-source-progress.copy to https://artifacts.example.com:/artifacts-root/request-id/archive-source-progress'  # Ignore PEP8Bear
+        message='syncing /tmp/dir/archive-source-progress to https://artifacts.example.com:/artifacts-root/request-id/archive-source-progress'  # Ignore PEP8Bear
     )
     assert log.match(
         levelno=logging.DEBUG,
-        message='syncing /archive-source-another-progress.copy to https://artifacts.example.com:/artifacts-root/request-id/archive-source-another-progress'  # Ignore PEP8Bear
+        message='syncing /tmp/dir/archive-source-another-progress to https://artifacts.example.com:/artifacts-root/request-id/archive-source-another-progress'  # Ignore PEP8Bear
     )
 
     mock_shutil_copytree.assert_called_with(
-        '/archive-source-another-progress', '/archive-source-another-progress.copy',
+        '/archive-source-another-progress', '/tmp/dir/archive-source-another-progress',
         symlinks=True, ignore_dangling_symlinks=True, dirs_exist_ok=True
     )
-    mock_shutil_rmtree.assert_called_with('/archive-source-another-progress.copy')
+    mock_shutil_rmtree.assert_called_with('/tmp/dir')
 
     mock_shutil_copy2.assert_called_with(
-        '/archive-source-progress', '/archive-source-progress.copy', follow_symlinks=False
+        '/archive-source-progress', '/tmp/dir/archive-source-progress', follow_symlinks=False
     )
-    mock_os_unlink.assert_called_with('/archive-source-progress.copy')

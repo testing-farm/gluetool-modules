@@ -308,6 +308,21 @@ class Archive(gluetool.Module):
             path
         ]
 
+        def _run_ssh() -> Result[bool, bool]:
+            try:
+                Command(cmd, logger=self.logger).run()
+            except gluetool.GlueCommandError as exc:
+                self.warn('ssh command "{}" failed, retrying: {}'.format(" ".join(cmd), exc))
+                return Result.Error(False)
+            return Result.Ok(True)
+
+        gluetool.utils.wait(
+            "creating '{}' directory with ssh".format(path),
+            _run_ssh,
+            timeout=self.option('retry-timeout'),
+            tick=self.option('retry-tick')
+        )
+
         Command(cmd, logger=self.logger).run()
         self._created_directories.append(path)
 
@@ -328,6 +343,8 @@ class Archive(gluetool.Module):
 
         cmd += self.rsync_options
 
+        cmd.append('--mkpath')
+
         cmd.append('/dev/null')
 
         cmd.append('rsync://{}/{}/'.format(
@@ -335,7 +352,20 @@ class Archive(gluetool.Module):
                 path
         ))
 
-        Command(cmd, logger=self.logger).run()
+        def _run_rsync() -> Result[bool, bool]:
+            try:
+                Command(cmd, logger=self.logger).run()
+            except gluetool.GlueCommandError as exc:
+                self.warn('rsync command "{}" failed, retrying: {}'.format(" ".join(cmd), exc))
+                return Result.Error(False)
+            return Result.Ok(True)
+
+        gluetool.utils.wait(
+            "creating '{}' directory with rsync".format(path),
+            _run_rsync,
+            timeout=self.option('retry-timeout'),
+            tick=self.option('retry-tick')
+        )
 
         self._created_directories.append(path)
 

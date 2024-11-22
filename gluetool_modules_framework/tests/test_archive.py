@@ -206,7 +206,7 @@ def test_destroy_daemon(monkeypatch, module):
     module.destroy()
 
     calls = [
-        call(['rsync', '--rsync-option', '--timeout=10', '/dev/null',
+        call(['rsync', '--rsync-option', '--timeout=10', '--mkpath', '/dev/null',
               'rsync://artifacts-rsync.example.com/request-id/'], logger=module.logger),
 
         call(['rsync', '--rsync-option', '--timeout=10', '/archive-source',
@@ -221,7 +221,7 @@ def test_destroy_daemon(monkeypatch, module):
         call(['rsync', '--rsync-option', '--timeout=10', '--recursive', '/dir-archive-source',
               'rsync://artifacts-rsync.example.com/request-id/'], logger=module.logger),
 
-        call(['rsync', '--rsync-option', '--timeout=10', '/dev/null',
+        call(['rsync', '--rsync-option', '--timeout=10', '--mkpath', '/dev/null',
               'rsync://artifacts-rsync.example.com/request-id/dir-archive-source/'], logger=module.logger),
 
         call(['rsync', '--rsync-option', '--timeout=10', '/dir-archive-source/1',

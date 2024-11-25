@@ -9,10 +9,10 @@ results:
         path: passed/execute/logs/tests/core/docs
       - name: data
         path: passed/execute/logs/tests/core/docs/data
-      - name: testout.log
-        path: passed/execute/logs/tests/core/docs/out.log
       - name: journal.txt
         path: passed/execute/logs/tests/core/docs/journal.txt
+      - name: testout.log
+        path: passed/execute/logs/tests/core/docs/out.log
   - name: /tests/core/dry
     result: passed
     duration:

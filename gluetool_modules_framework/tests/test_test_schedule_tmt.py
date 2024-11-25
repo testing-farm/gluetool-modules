@@ -192,10 +192,10 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     assert testcase_docs.logs[0].href.endswith('/passed/execute/logs/tests/core/docs')
     assert testcase_docs.logs[1].name == 'data'
     assert testcase_docs.logs[1].href.endswith('/passed/execute/logs/tests/core/docs/data')
-    assert testcase_docs.logs[2].name == 'testout.log'
-    assert testcase_docs.logs[2].href.endswith('/passed/execute/logs/tests/core/docs/out.log')
-    assert testcase_docs.logs[3].name == 'journal.txt'
-    assert testcase_docs.logs[3].href.endswith('/passed/execute/logs/tests/core/docs/journal.txt')
+    assert testcase_docs.logs[2].name == 'journal.txt'
+    assert testcase_docs.logs[2].href.endswith('/passed/execute/logs/tests/core/docs/journal.txt')
+    assert testcase_docs.logs[3].name == 'testout.log'
+    assert testcase_docs.logs[3].href.endswith('/passed/execute/logs/tests/core/docs/out.log')
 
     assert testcase_dry.name == '/tests/core/dry'
     assert testcase_dry.result == 'passed'

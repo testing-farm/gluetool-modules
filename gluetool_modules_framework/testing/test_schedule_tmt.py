@@ -35,7 +35,7 @@ from gluetool_modules_framework.libs.git import RemoteGitRepository
 from gluetool_modules_framework.provision.artemis import ArtemisGuest
 
 # Type annotations
-from typing import cast, Any, Dict, List, Optional, Tuple, Union  # noqa
+from typing import cast, Any, Dict, List, Optional, Tuple, Union, Set  # noqa
 
 from gluetool_modules_framework.libs.results import TestSuite, Log, TestCase, TestCaseCheck, Subresult
 from secret_type import Secret
@@ -111,12 +111,15 @@ PLAN_OUTCOME_WITH_ERROR = {
 RESULTS_YAML = "execute/results.yaml"
 
 
-@attrs.define
+@attrs.define(frozen=True)
 class TestArtifact:
     """
     Represents a test output artifact (in particular, log files)
     """
-    name: str
+
+    # Compare artifact uniqueness on `path` attribute only. We might attempt to store a single artifact under various
+    # names into results, so store them first into a set and allow only one occurrence of each `path`.
+    name: str = attrs.field(eq=False, hash=False)
     path: str
 
 
@@ -476,29 +479,43 @@ def gather_plan_results(
         # copy the logs as we'll do some popping later
         logs: List[str] = result.log[:]
 
+        # `artifacts_dir` is e.g. `work-sanitywft7y56u/testing-farm/sanity/execute`
         artifacts_dir = os.path.join(work_dir, plan_path, 'execute')
-        artifacts = []
+        artifacts: Set[TestArtifact] = set()
 
         # attach the artifacts directory itself, useful for browsing;
         # usually all artifacts are in the same dir
         if result.log:
-            artifacts.append(TestArtifact(
+            # `log_dir` is e.g. `data/guest/default-0/testing-farm/script-1`
+            # NOTE: `logs[0]` might possibly be an unexpected directory when dealing with tests with custom results.
+            # `logs[0]` is expected to be e.g. `data/guest/default-0/testing-farm/script-1/output.txt` but users are
+            # free to influence this results entry.
+            log_dir = os.path.normpath(os.path.join(artifacts_dir, os.path.dirname(logs[0])))
+            artifacts.add(TestArtifact(
                 name='log_dir',
-                path=os.path.join(artifacts_dir, os.path.dirname(logs[0]))
+                path=log_dir
             ))
-            artifacts.append(TestArtifact(
+            artifacts.add(TestArtifact(
                 name='data',
-                path=os.path.join(artifacts_dir, os.path.dirname(logs[0]), 'data')
+                path=os.path.join(log_dir, 'data')
             ))
+
+            # list all artifacts under 'data'
+            for dir, _, files in os.walk(os.path.join(log_dir, 'data')):
+                for file in files:
+                    artifacts.add(TestArtifact(
+                        name=os.path.join(dir, file).removeprefix(log_dir).lstrip('/'),
+                        path=os.path.join(dir, file)
+                    ))
 
             # the first log is the main one for developers, traditionally called "testout.log"
             testout = logs.pop(0)
-            artifacts.append(TestArtifact(name='testout.log', path=os.path.join(artifacts_dir, testout)))
+            artifacts.add(TestArtifact(name='testout.log', path=os.path.join(artifacts_dir, testout)))
 
         # attach all other logs; name them after their filename; eventually, tmt results.yaml should
         # allow more meta-data, like declaring a HTML viewer
         for log in logs:
-            artifacts.append(TestArtifact(name=os.path.basename(log), path=os.path.join(artifacts_dir, log)))
+            artifacts.add(TestArtifact(name=os.path.basename(log), path=os.path.join(artifacts_dir, log)))
 
         checks = [
             TestCaseCheck(
@@ -517,7 +534,7 @@ def gather_plan_results(
         test_results.append(TestResult(
             name=result.name,
             result=outcome,
-            artifacts=artifacts,
+            artifacts=sorted(list(artifacts), key=lambda artifact: artifact.path),
             note=result.note,
             checks=checks,
             duration=result.duration,

@@ -9,10 +9,10 @@ results:
         path: skipped/execute/logs/tests/core/docs
       - name: data
         path: skipped/execute/logs/tests/core/docs/data
-      - name: testout.log
-        path: skipped/execute/logs/tests/core/docs/out.log
       - name: journal.txt
         path: skipped/execute/logs/tests/core/docs/journal.txt
+      - name: testout.log
+        path: skipped/execute/logs/tests/core/docs/out.log
   - name: /tests/core/dry
     result: not_applicable
     duration: 01:23:45

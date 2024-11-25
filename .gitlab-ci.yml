@@ -171,7 +171,6 @@ testing-farm:
         echo "Forcing infrastructure repository '$INFRA_REPO'"
       fi
     # Parse infrastructure branch from description
-    - INFRA_BRANCH=${INFRA_BRANCH/release\/}
     - >
       if grep '!infra-branch' <<< $description; then
         INFRA_BRANCH=$(grep '!infra-branch' <<< $description | sed 's/.*!infra-branch:\?//' | tr -d '[:space:]');

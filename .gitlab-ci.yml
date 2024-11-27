@@ -182,6 +182,7 @@ testing-farm:
         export PYTEST_OPTIONS=$(grep '!pytest-options' <<< $description | sed 's/.*!pytest-options:\?//');
         echo "Forcing pytest options '$PYTEST_OPTIONS'"
       fi
+    - echo "Cloning branch '$INFRA_BRANCH' of repository '$INFRA_REPO'"
     - git clone -b $INFRA_BRANCH $INFRA_REPO $INFRA_PATH && cd $INFRA_PATH
     - dnf -y install direnv libffi libffi-devel podman buildah
     - echo -n "$INFRA_VAULT_PASSWORD" > .vault_pass

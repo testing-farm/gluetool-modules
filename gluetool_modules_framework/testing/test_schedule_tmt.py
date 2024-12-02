@@ -28,7 +28,7 @@ from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
 from gluetool_modules_framework.libs.sut_installation import INSTALL_COMMANDS_FILE
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleResult, TestScheduleEntryOutput, \
-    TestScheduleEntryStage, TestScheduleEntryAdapter
+    TestScheduleEntryStage, TestScheduleEntryAdapter, TestScheduleEntryState
 from gluetool_modules_framework.libs.test_schedule import TestScheduleEntry as BaseTestScheduleEntry
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
 from gluetool_modules_framework.libs.git import RemoteGitRepository
@@ -866,23 +866,21 @@ class TestScheduleTMT(Module):
 
         return plans
 
-    def _apply_test_filter(self,
-                           plan: str,
-                           tmt_env_file: Optional[str],
-                           repodir: str,
-                           context_files: List[str],
-                           testing_environment: TestingEnvironment,
-                           test_filter: Optional[str] = None,
-                           test_name: Optional[str] = None) -> bool:
+    def _is_plan_empty(self,
+                       plan: str,
+                       tmt_env_file: Optional[str],
+                       repodir: str,
+                       context_files: List[str],
+                       testing_environment: TestingEnvironment,
+                       work_dirpath: str,
+                       test_filter: Optional[str] = None,
+                       test_name: Optional[str] = None) -> bool:
         """
-        Return ``False`` if plan would have no tests after applying test filter, otherwise return ``True``.
+        Return ``True`` if plan would have no tests after applying test selectors, otherwise return ``False``.
         """
 
         test_filter = test_filter or self.test_filter
         test_name = test_name or self.test_name
-
-        if not any([test_filter, test_name]):
-            return True
 
         command = [
             self.option('command')
@@ -907,69 +905,16 @@ class TestScheduleTMT(Module):
             ]
             command.extend(env_options)
 
-        command.extend(['discover', 'plan', '--name', '^{}$'.format(plan), 'test'])
+        command.extend(['discover', 'plan', '--name', '^{}$'.format(plan)])
+
+        if test_filter or test_name:
+            command.extend(['test'])
 
         if test_filter:
             command.extend(['--filter', test_filter])
 
         if test_name:
             command.extend(['--name', test_name])
-
-        try:
-            tmt_output = Command(command).run(cwd=repodir)
-
-        except GlueCommandError as exc:
-            log_blob(
-                self.error,
-                "Failed to discover tests",
-                exc.output.stderr or exc.output.stdout or '<no output>'
-            )
-            raise GlueError('Failed to discover tests, TMT metadata are absent or corrupted.')
-
-        if not tmt_output.stderr:
-            raise GlueError("Did not find any plans. Command used '{}'.".format(' '.join(command)))
-
-        output_lines = [line.strip() for line in tmt_output.stderr.splitlines()]
-
-        if any(['No tests found' in line for line in output_lines]):
-            return False
-
-        return True
-
-    def _is_plan_empty(self,
-                       plan: str,
-                       repodir: str,
-                       context_files: List[str],
-                       testing_environment: TestingEnvironment,
-                       tmt_env_file: Optional[str]) -> bool:
-        """
-        Return list of plans which still have tests after applying test filter.
-        """
-
-        command = [
-            self.option('command')
-        ]
-
-        if context_files:
-            command.extend([
-                '--context=@{}'.format(filepath)
-                for filepath in context_files
-            ])
-
-        command.extend(self._root_option)
-
-        if testing_environment.tmt and 'context' in testing_environment.tmt:
-            command.extend(self._tmt_context_to_options(testing_environment.tmt['context']))
-
-        command.extend(['run'])
-
-        if tmt_env_file:
-            env_options = [
-                '-e', '@{}'.format(tmt_env_file)
-            ]
-            command.extend(env_options)
-
-        command.extend(['discover', 'plan', '--name', '^{}$'.format(plan)])
 
         try:
             tmt_output = Command(command).run(cwd=repodir)
@@ -985,6 +930,8 @@ class TestScheduleTMT(Module):
                 exc.output.stderr or exc.output.stdout or '<no output>'
             )
             raise GlueError('Failed to discover tests, TMT metadata are absent or corrupted.')
+
+        self._save_output(tmt_output, os.path.join(work_dirpath, 'tmt-discover.log'))
 
         if not tmt_output.stderr:
             raise GlueError("Did not find any plans. Command used '{}'.".format(' '.join(command)))
@@ -1110,12 +1057,17 @@ class TestScheduleTMT(Module):
             for plan in plans:
                 tmt_env_file = self._prepare_tmt_env_file(tec, plan, repodir)
 
-                if not self._apply_test_filter(plan, tmt_env_file, repodir, context_files, tec):
-                    self.debug("Plan '{}' has no tests after applying test filters, skipping".format(plan))
-                    continue
+                # Prepare environment for test schedule entry execution
+                schedule_entry = TestScheduleEntry(root_logger, tec, plan, repodir)
+                work_dirpath = self._prepare_environment(schedule_entry)
+                schedule_entry.work_dirpath = work_dirpath
 
-                if self._is_plan_empty(plan, repodir, context_files, tec, tmt_env_file):
-                    self.debug("ignoring empty plan '{}'".format(plan))
+                if self._is_plan_empty(plan, tmt_env_file, repodir, context_files, tec, work_dirpath):
+                    self.info("skipping empty plan '{}'".format(plan))
+                    schedule_entry.stage = TestScheduleEntryStage.COMPLETE
+                    schedule_entry.state = TestScheduleEntryState.OK
+                    schedule_entry.result = TestScheduleResult.SKIPPED
+                    schedule.append(schedule_entry)
                     continue
 
                 exported_plan = self.export_plan(repodir, plan, context_files, tmt_env_file, tec)
@@ -1131,17 +1083,6 @@ class TestScheduleTMT(Module):
                     kickstart = provision.kickstart
                     watchdog_dispatch_delay = provision.watchdog_dispatch_delay
                     watchdog_period_delay = provision.watchdog_period_delay
-
-                schedule_entry = TestScheduleEntry(
-                    root_logger,
-                    tec,
-                    plan,
-                    repodir,
-                )
-
-                # Prepare environment for test schedule entry execution
-                work_dirpath = self._prepare_environment(schedule_entry)
-                schedule_entry.work_dirpath = work_dirpath
 
                 # Create `settings` dictionary if it doesn't exist and the watchdog specification exists in TMT plan
                 if watchdog_dispatch_delay is not None or watchdog_period_delay is not None:
@@ -1183,12 +1124,6 @@ class TestScheduleTMT(Module):
 
                 schedule.append(schedule_entry)
 
-            if not schedule:
-                raise GlueError((
-                    'No plans to execute after applying filters and removing empty plans. '
-                    'Cowardly refusing to continue.'
-                ))
-
         schedule.log(self.debug, label='complete schedule')
 
         return schedule
@@ -1225,6 +1160,16 @@ class TestScheduleTMT(Module):
         schedule_entry.info("working directory '{}'".format(work_dir))
 
         return work_dir
+
+    def _save_output(self, output: gluetool.utils.ProcessOutput, filepath: str) -> None:
+        with open(filepath, 'w') as f:
+            def _write(label: str, s: str) -> None:
+                f.write('{}\n{}\n\n'.format(label, s))
+
+            _write('# STDOUT:', format_blob(cast(str, output.stdout)))
+            _write('# STDERR:', format_blob(cast(str, output.stderr)))
+
+            f.flush()
 
     def _run_plan(self,
                   schedule_entry: TestScheduleEntry,
@@ -1432,17 +1377,6 @@ class TestScheduleTMT(Module):
         if guest_setups:
             schedule_entry.tmt_reproducer.extend(guest_setup_reproducer)
 
-        def _save_output(output: gluetool.utils.ProcessOutput) -> None:
-
-            with open(tmt_log_filepath, 'w') as f:
-                def _write(label: str, s: str) -> None:
-                    f.write('{}\n{}\n\n'.format(label, s))
-
-                _write('# STDOUT:', format_blob(cast(str, output.stdout)))
-                _write('# STDERR:', format_blob(cast(str, output.stderr)))
-
-                f.flush()
-
         def _save_reproducer(reproducer: str) -> None:
 
             assert schedule_entry.tmt_reproducer_filepath
@@ -1474,7 +1408,7 @@ class TestScheduleTMT(Module):
 
         finally:
             if tmt_output:
-                _save_output(tmt_output)
+                self._save_output(tmt_output, tmt_log_filepath)
             if schedule_entry.tmt_reproducer:
                 _save_reproducer('\n'.join(schedule_entry.tmt_reproducer))
 
@@ -1545,6 +1479,16 @@ class TestScheduleTMT(Module):
             return
 
         if schedule_entry.work_dirpath:
+            # When a test suite is skipped, it is most likely due to not finding any tests in discover step. Adding
+            # discover log to results.
+            if schedule_entry.result == TestScheduleResult.SKIPPED:
+                tmt_discover_log_href = artifacts_location(
+                    self,
+                    os.path.join(schedule_entry.work_dirpath, 'tmt-discover.log'),
+                    logger=schedule_entry.logger
+                )
+                test_suite.logs.append(Log(href=tmt_discover_log_href, name='tmt-discover-log'))
+
             workdir_href = artifacts_location(self, schedule_entry.work_dirpath, logger=schedule_entry.logger)
             test_suite.logs.append(Log(href=workdir_href, name='workdir'))
 

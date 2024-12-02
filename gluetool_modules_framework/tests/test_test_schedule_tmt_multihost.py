@@ -542,9 +542,6 @@ def test_tmt_output_distgit(module, guest, monkeypatch, additional_options, addi
             'plan1',   # tmt run discover plan --name plan1
         ]
 
-        if (tf_request := module.shared('testing_farm_request')) and tf_request.tmt and tf_request.tmt.test_name:  # noqa
-            run_outputs.append('plan1')     # tmt run discover plan --name plan1
-
         _set_run_outputs(
             m,
             *run_outputs,
@@ -616,7 +613,6 @@ def test_create_schedule(module, monkeypatch, log, tec, expected_schedule, expec
                          '',       # git checkout
                          'plan1',  # tmt plan ls
                          'plan1',   # tmt run discover plan --name plan1 test --filter filter1
-                         'plan1',   # tmt run discover plan --name plan1
                          '[]')     # tmt plan export
 
         schedule = module.create_test_schedule(tec)
@@ -745,14 +741,21 @@ def test_apply_test_filter(module, monkeypatch, tmpdir, test_filter, test_name, 
     monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt_multihost, 'Command', mock_command)
 
     tmt_env_file = module._prepare_tmt_env_file(testing_environment, 'plan1', tmpdir)
-    assert module._apply_test_filter(
-        'plan1', tmt_env_file, repodir, testing_environment, test_filter=test_filter, test_name=test_name
+
+    assert not module._is_plan_empty(
+        plan='plan1',
+        tmt_env_file=tmt_env_file,
+        repodir=repodir,
+        testing_environment=testing_environment,
+        work_dirpath=tmpdir,
+        test_filter=test_filter,
+        test_name=test_name
     )
 
     mock_command.assert_called_once_with(expected_command)
 
 
-def test_is_plan_empty(module, monkeypatch):
+def test_is_plan_empty(module, monkeypatch, tmpdir):
     repodir = 'foo'
     testing_environment = TestingEnvironment('x86_64')
 
@@ -762,7 +765,13 @@ def test_is_plan_empty(module, monkeypatch):
     mock_command = MagicMock(return_value=MagicMock(run=mock_command_run))
     monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt_multihost, 'Command', mock_command)
 
-    module._is_plan_empty('plan1', repodir, testing_environment, 'tmt-env-file')
+    module._is_plan_empty(
+        plan='plan1',
+        repodir=repodir,
+        testing_environment=testing_environment,
+        tmt_env_file='tmt-env-file',
+        work_dirpath=tmpdir
+    )
 
     mock_command.assert_called_once_with([
         'dummytmt',
@@ -783,7 +792,13 @@ def test_is_plan_empty(module, monkeypatch):
     mock_command = MagicMock(return_value=MagicMock(run=mock_command_run))
     monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt_multihost, 'Command', mock_command)
 
-    assert module._is_plan_empty('plan1', repodir, testing_environment, 'tmt-env-file') == True
+    assert module._is_plan_empty(
+        plan='plan1',
+        repodir=repodir,
+        testing_environment=testing_environment,
+        tmt_env_file='tmt-env-file',
+        work_dirpath=tmpdir
+    ) == True
 
     mock_command.assert_called_once_with([
         'dummytmt',

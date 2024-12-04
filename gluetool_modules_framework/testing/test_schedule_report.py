@@ -142,7 +142,8 @@ class TestScheduleReport(gluetool.Module):
         1. if any entry is still incomplete, schedule result is ``UNDEFINED``
         2. if any entry finished didn't finish with ``OK`` state, schedule result is ``ERROR``
         3. if all entries finished with ``PASSED`` result, schedule result is ``PASSED``
-        4. schedule result is the result of the first entry with non-``PASSED`` result
+        4. if any entry finished ``ERROR`` result, schedule result is ``ERROR``
+        5. schedule result is the result of the first entry with non-``PASSED`` result
         """
 
         assert schedule
@@ -157,6 +158,10 @@ class TestScheduleReport(gluetool.Module):
 
         if all((schedule_entry.result == TestScheduleResult.PASSED for schedule_entry in schedule)):
             schedule.result = TestScheduleResult.PASSED
+            return
+
+        if any((schedule_entry.result == TestScheduleResult.ERROR for schedule_entry in schedule)):
+            schedule.result = TestScheduleResult.ERROR
             return
 
         for schedule_entry in schedule:

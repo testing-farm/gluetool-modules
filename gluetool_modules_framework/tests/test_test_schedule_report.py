@@ -91,7 +91,7 @@ def create_test_schedule(entry_properties):
             (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.FAILED),
             (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.ERROR)
         ]),
-        TSResult.FAILED
+        TSResult.ERROR
     ),
 ])
 def test_overall_result_base(module, schedule: TestSchedule, expected_schedule_result: TSResult):

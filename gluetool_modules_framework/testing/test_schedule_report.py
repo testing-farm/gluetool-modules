@@ -159,6 +159,10 @@ class TestScheduleReport(gluetool.Module):
             schedule.result = TestScheduleResult.PASSED
             return
 
+        if any((schedule_entry.result == TestScheduleResult.ERROR for schedule_entry in schedule)):
+            schedule.result = TestScheduleResult.ERROR
+            return
+
         for schedule_entry in schedule:
             if not schedule_entry.result == TestScheduleResult.PASSED:
                 schedule.result = schedule_entry.result

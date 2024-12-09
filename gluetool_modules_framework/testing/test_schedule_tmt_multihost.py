@@ -34,7 +34,7 @@ from gluetool_modules_framework.provision.artemis import ArtemisGuest
 # Type annotations
 from typing import cast, Any, Dict, List, Optional, Tuple, Union  # noqa
 
-from gluetool_modules_framework.libs.results import TestSuite, Log, TestCase, TestCaseCheck, Guest
+from gluetool_modules_framework.libs.results import TestSuite, Log, TestCase, TestCaseCheck, Guest, Subresult
 from secret_type import Secret
 
 # TMT run log file
@@ -134,6 +134,7 @@ class TestResult:
     duration: Optional[datetime.timedelta] = None
     start_time: Optional[str] = None
     end_time: Optional[str] = None
+    subresults: List['TMTResultSubresult']
 
 
 @attrs.define
@@ -145,6 +146,23 @@ class TMTResultCheck:
         member_validator=attrs.validators.instance_of(str),
         iterable_validator=attrs.validators.instance_of(list)
     ))
+
+
+@attrs.define(kw_only=True)
+class TMTResultSubresult:
+    name: str = attrs.field(validator=attrs.validators.instance_of(str))
+    result: str = attrs.field(validator=attrs.validators.instance_of(str))
+    original_result: str = attrs.field(validator=attrs.validators.instance_of(str))
+    end_time: str = attrs.field(validator=attrs.validators.instance_of(str))
+
+    @classmethod
+    def _structure(cls, data: Dict[str, Any]) -> 'TMTResultSubresult':
+        return TMTResultSubresult(
+            name=data.get('name'),
+            result=data.get('result'),
+            original_result=data.get('original-result'),
+            end_time=data.get('end-time'),
+        )
 
 
 @attrs.define
@@ -201,6 +219,7 @@ class TMTResult:
     )
     start_time: Optional[str] = attrs.field(validator=attrs.validators.optional(attrs.validators.instance_of(str)))
     end_time: Optional[str] = attrs.field(validator=attrs.validators.optional(attrs.validators.instance_of(str)))
+    subresult: List[TMTResultSubresult]
 
     @classmethod
     def _structure(cls, data: Dict[str, Any], converter: cattrs.Converter) -> 'TMTResult':
@@ -220,6 +239,7 @@ class TMTResult:
             duration=duration,
             start_time=data['start-time'],
             end_time=data['end-time'],
+            subresult=converter.structure(data['subresult'], List[TMTResultSubresult])
         )
 
 
@@ -453,7 +473,8 @@ def gather_plan_results(
             duration=result.duration,
             start_time=result.start_time,
             end_time=result.end_time,
-            serial_number=result.serial_number
+            serial_number=result.serial_number,
+            subresults=result.subresult
         ))
 
     # count the maximum result weight encountered, i.e. the overall result
@@ -1266,7 +1287,8 @@ class TestScheduleTMTMultihost(Module):
                         TestArtifact(name='testout.log', path=tmt_log_filepath),
                         TestArtifact(name='log_dir', path=os.path.split(tmt_log_filepath)[0]),
                     ],
-                    checks=[]
+                    checks=[],
+                    subresults=[],
                 )
             ], {}
 
@@ -1361,6 +1383,7 @@ class TestScheduleTMTMultihost(Module):
             test_case = TestCase(
                 name=task.name,
                 result=task.result,
+                subresults=[Subresult(**cattrs.unstructure(subresult)) for subresult in task.subresults],
                 note=task.note,
                 checks=task.checks,
                 duration=task.duration,

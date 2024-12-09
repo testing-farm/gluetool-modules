@@ -49,9 +49,18 @@ class TestCaseCheck:
 
 
 @attrs.define
+class Subresult:
+    name: str
+    result: str
+    original_result: str
+    end_time: str
+
+
+@attrs.define
 class TestCase:
     name: str
     result: Optional[str] = None
+    subresults: List[Subresult] = attrs.field(factory=list)
     note: Optional[str] = None
     properties: Dict[str, str] = attrs.field(factory=dict)
     logs: List[Log] = attrs.field(factory=list)

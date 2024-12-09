@@ -11,6 +11,7 @@
   guest:
     name: default-0
     role:
+  subresult: []
   check: []
 - name: /tests/core/dry
   result: pass
@@ -24,4 +25,5 @@
   guest:
     name: default-0
     role:
+  subresult: []
   check: []

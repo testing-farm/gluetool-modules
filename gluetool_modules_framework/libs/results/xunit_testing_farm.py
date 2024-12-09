@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import attrs
+import cattrs
 
 from xsdata_attrs.bindings import XmlSerializer
 from xsdata.formats.dataclass.serializers.config import SerializerConfig
@@ -206,6 +207,14 @@ class XUnitTFTestCaseChecks:
 
 
 @attrs.define(kw_only=True)
+class XUnitTFTestCaseSubresult:
+    name: str = attrs.field(metadata={'type': 'Attribute'})
+    result: str = attrs.field(metadata={'type': 'Attribute'})
+    original_result: str = attrs.field(metadata={'type': 'Attribute', 'name': 'original-result'})
+    end_time: str = attrs.field(metadata={'type': 'Attribute', 'name': 'end-time'})
+
+
+@attrs.define(kw_only=True)
 class XUnitTFTestCase:
     name: str = attrs.field(metadata={'type': 'Attribute'})
     result: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
@@ -227,6 +236,7 @@ class XUnitTFTestCase:
     )
     test_outputs: Optional[XUnitTFTestOutputs] = attrs.field(default=None, metadata={'name': 'test-outputs'})
     checks: Optional[XUnitTFTestCaseChecks] = None
+    subresult: Optional[List[XUnitTFTestCaseSubresult]] = None
 
     # Properties used in BaseOS CI covscan module
     added: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
@@ -268,6 +278,8 @@ class XUnitTFTestCase:
             test_outputs=XUnitTFTestOutputs.construct(test_case.test_outputs)
             if test_case.test_outputs is not None else None,
             checks=XUnitTFTestCaseChecks.construct(test_case) if test_case.checks else None,
+            subresult=[XUnitTFTestCaseSubresult(**cattrs.unstructure(subresult)) for subresult in test_case.subresults]
+            if test_case.subresults else None,
             added=test_case.added,
             fixed=test_case.fixed,
             baseline=test_case.baseline,

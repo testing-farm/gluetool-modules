@@ -53,8 +53,11 @@ RUN    ln -s /CONFIG /etc/citool.d \
     #                   tmt+provision-virtual-1.39.0 \
     #                   tmt+report-polarion-1.39.0 \
     # Pull in tmt from @teemtee/tmt copr repository
+    # TODO: remove teemtee/tmt after tmt-1.40
     && dnf copr -y enable @teemtee/tmt \
-    && dnf -y install tmt-1.39.0 \
+    && dnf copr -y enable @teemtee/stable \
+    && dnf -y install fmf-1.5.0 \
+                      tmt-1.39.0 \
                       tmt+provision-container-1.39.0 \
                       tmt+provision-virtual-1.39.0 \
                       tmt+report-polarion-1.39.0 \

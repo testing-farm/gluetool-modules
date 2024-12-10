@@ -23,6 +23,11 @@ package:
   standard-test-roles:
     installed: true
 
+  fmf:
+    installed: true
+    versions:
+      - 1.5.0
+
   tmt:
     installed: true
 

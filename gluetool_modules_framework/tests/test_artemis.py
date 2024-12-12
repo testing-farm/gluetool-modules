@@ -96,7 +96,7 @@ def fixture_module():
     module._config['boot-tick'] = 1
     module._config['boot-timeout'] = 2
     module._config['ready-tick'] = 1
-    module._config['ready-timeout'] = 2
+    module._config['ready-timeout-offset'] = 1
     module._config['snapshot-ready-tick'] = 1
     module._config['snapshot-ready-timeout'] = 2
 
@@ -527,6 +527,10 @@ def test_provision(monkeypatch, module, scenario, tmpdir, log):
         # there should be nothing else to cleanup
         module.destroy()
         assert log.match(levelno=logging.INFO, message='no guests to remove during module destroy')
+
+
+def test_provision_guest_wait(module):
+    module.destroy
 
 
 def test_api_url_option(module, monkeypatch):

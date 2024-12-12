@@ -1065,7 +1065,7 @@ class ArtemisProvisioner(gluetool.Module):
                 'default': DEFAULT_READY_TIMEOUT
             },
             'ready-timeout-offset': {
-                'help': 'Offset to be subtracted from the pipeline timeout to wait for guest to become ready',
+                'help': 'Offset to be subtracted from the pipeline timeout to wait for guest to become ready. Requires testing-farm-request module.',
                 'metavar': 'READY_TIMEOUT_OFFSET',
                 'type': int,
             },

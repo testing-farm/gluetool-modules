@@ -1403,7 +1403,7 @@ class ArtemisProvisioner(gluetool.Module):
                 request = self.shared('testing_farm_request')
                 pipeline_timeout = request.get('settings', {}).get('pipeline', {}).get('timeout',
                                                                                        self.option('ready-timeout'))
-                timeout = pipeline_timeout - self.option('ready-timeout-offset')
+                timeout = (pipeline_timeout - self.option('ready-timeout-offset')) > 0 or self.option('ready-timeout')
             guest._wait_ready(timeout=timeout, tick=self.option('ready-tick'))
             response = self.api.inspect_guest(guest.artemis_id)
             guest.hostname = six.ensure_str(response['address']) if response['address'] is not None else None

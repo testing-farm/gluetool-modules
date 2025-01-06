@@ -1457,49 +1457,47 @@ class TestScheduleTMT(Module):
             self.overloaded_shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
             return
 
-        # When a test suite is skipped, it is most likely due to not finding any tests in discover step. Adding discover
-        # log to results.
-        if schedule_entry.result == TestScheduleResult.SKIPPED:
-            assert schedule_entry.work_dirpath
-            tmt_discover_log_href = artifacts_location(
-                self,
-                os.path.join(schedule_entry.work_dirpath, 'tmt-discover.log'),
-                logger=schedule_entry.logger
-            )
-            test_suite.logs.append(Log(href=tmt_discover_log_href, name='tmt-discover-log'))
+        def _append_existing_log(path: str, name: str):
+            if not os.path.exists(path):
+                return
+            href = artifacts_location(self, path, logger=schedule_entry.logger)
+            test_suite.logs.append(Log(href=href, name='name'))
 
         if schedule_entry.work_dirpath:
-            workdir_href = artifacts_location(self, schedule_entry.work_dirpath, logger=schedule_entry.logger)
-            test_suite.logs.append(Log(href=workdir_href, name='workdir'))
+            # When a test suite is skipped, it is most likely due to not finding any tests in discover step. Adding discover
+            # log to results.
+            if schedule_entry.result == TestScheduleResult.SKIPPED:
+                _append_existing_log(
+                    os.path.join(schedule_entry.work_dirpath, 'tmt-discover.log'),
+                    'tmt-discover-log'
+                )
 
-            tmt_log_filepath = os.path.join(schedule_entry.work_dirpath, TMT_LOG)
-            tmt_log_href = artifacts_location(self, tmt_log_filepath, logger=schedule_entry.logger)
-            test_suite.logs.append(Log(href=tmt_log_href, name='tmt-log'))
+            _append_existing_log(schedule_entry.work_dirpath, 'workdir')
 
-            tmt_verbose_log_filepath = os.path.join(schedule_entry.work_dirpath, TMT_VERBOSE_LOG)
-            tmt_verbose_log_href = artifacts_location(self, tmt_verbose_log_filepath, logger=schedule_entry.logger)
-            test_suite.logs.append(Log(href=tmt_verbose_log_href, name='tmt-verbose-log'))
+            _append_existing_log(os.path.join(schedule_entry.work_dirpath, TMT_LOG), 'tmt-log')
 
-            test_suite.logs.append(Log(
-                href=artifacts_location(
-                    self,
-                    os.path.join(schedule_entry.work_dirpath, safe_name(schedule_entry.plan[1:]), 'data'),
-                    logger=schedule_entry.logger
-                ),
-                name='data'
-            ))
+            _append_existing_log(
+                os.path.join(schedule_entry.work_dirpath, TMT_VERBOSE_LOG),
+                'tmt-verbose-log'
+            )
+
+            _append_existing_log(
+                os.path.join(schedule_entry.work_dirpath, safe_name(schedule_entry.plan[1:])),
+                'data'
+            )
 
             if isinstance(schedule_entry.guest, ArtemisGuest) and schedule_entry.guest.guest_logs:
                 for log in schedule_entry.guest.guest_logs:
-                    log_filepath = os.path.join(
-                        schedule_entry.work_dirpath, log.filename.format(guestname=schedule_entry.guest.artemis_id)
+                    _append_existing_log(
+                        os.path.join(
+                             schedule_entry.work_dirpath,
+                             log.filename.format(guestname=schedule_entry.guest.artemis_id)
+                        ),
+                        log.name
                     )
-                    log_href = artifacts_location(self, log_filepath)
-                    test_suite.logs.append(Log(href=log_href, name=log.name))
 
         if schedule_entry.tmt_reproducer_filepath:
-            href = artifacts_location(self, schedule_entry.tmt_reproducer_filepath, logger=schedule_entry.logger)
-            test_suite.logs.append(Log(href=href, name='tmt-reproducer'))
+            _append_existing_log('tmt-reproducer', schedule_entry.tmt_reproducer_filepath)
 
         if test_suite.requested_environment is None:
             test_suite.requested_environment = schedule_entry.testing_environment

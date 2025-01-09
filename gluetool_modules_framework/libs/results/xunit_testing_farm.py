@@ -221,7 +221,7 @@ class XUnitTFTestCase:
     time: Optional[int] = attrs.field(default=None, metadata={'type': 'Attribute'})
     start_time: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute', 'name': 'start-time'})
     end_time: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute', 'name': 'end-time'})
-    note: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
+    note: List[str] = attrs.field(factory=list)
 
     properties: Optional[XUnitTFProperties]
     parameters: Optional[XUnitTFParameters] = None  # Property used in BaseOS CI results.xml

@@ -61,7 +61,7 @@ class TestCase:
     name: str
     result: Optional[str] = None
     subresults: List[Subresult] = attrs.field(factory=list)
-    note: Optional[str] = None
+    note: List[str] = attrs.field(factory=list)
     properties: Dict[str, str] = attrs.field(factory=dict)
     logs: List[Log] = attrs.field(factory=list)
     requested_environment: Optional[TestingEnvironment] = None

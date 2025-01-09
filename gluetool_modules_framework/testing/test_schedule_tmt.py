@@ -132,7 +132,7 @@ class TestResult:
     name: str
     result: str
     artifacts: List[TestArtifact]
-    note: Optional[str] = None
+    note: List[str] = attrs.field(factory=list)
     checks: List[TestCaseCheck]
     duration: Optional[datetime.timedelta] = None
     start_time: Optional[str] = None
@@ -186,10 +186,10 @@ class TMTResult:
         member_validator=attrs.validators.instance_of(str),
         iterable_validator=attrs.validators.instance_of(list)
     ))
-    note: Optional[str] = attrs.field(
-        default=None,
-        validator=attrs.validators.optional(attrs.validators.instance_of(str))
-    )
+    note: List[str] = attrs.field(validator=attrs.validators.deep_iterable(
+        member_validator=attrs.validators.instance_of(str),
+        iterable_validator=attrs.validators.instance_of(list)
+    ))
     check: List[TMTResultCheck] = attrs.field(validator=attrs.validators.deep_iterable(
         member_validator=attrs.validators.instance_of(TMTResultCheck),
         iterable_validator=attrs.validators.instance_of(list)
@@ -206,6 +206,7 @@ class TMTResult:
 
     @classmethod
     def _structure(cls, data: Dict[str, Any], converter: cattrs.Converter) -> 'TMTResult':
+        note = (data.get('note') or []) if isinstance((data.get('note') or []), list) else [data.get('note')]
         duration = None
         if data['duration'] is not None:
             hours, minutes, seconds = map(int, data['duration'].split(':'))
@@ -215,7 +216,7 @@ class TMTResult:
             name=data['name'],
             result=data['result'],
             log=data['log'],
-            note=data.get('note'),
+            note=cast(List[str], note),
             check=converter.structure(data['check'], List[TMTResultCheck]),
             duration=duration,
             start_time=data['start-time'],

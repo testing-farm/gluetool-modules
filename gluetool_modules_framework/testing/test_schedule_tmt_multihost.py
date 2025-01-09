@@ -127,7 +127,7 @@ class TestResult:
     name: str
     result: str
     artifacts: List[TestArtifact]
-    note: Optional[str] = None
+    note: List[str] = attrs.field(factory=list)
     checks: List[TestCaseCheck]
     guest: Optional['TMTResultGuest'] = None
     serial_number: Optional[int] = None
@@ -208,7 +208,10 @@ class TMTResult:
         iterable_validator=attrs.validators.instance_of(list)
     ))
     guest: TMTResultGuest = attrs.field(validator=attrs.validators.instance_of(TMTResultGuest))
-    note: Optional[str] = attrs.field(validator=attrs.validators.optional(attrs.validators.instance_of(str)))
+    note: List[str] = attrs.field(validator=attrs.validators.deep_iterable(
+        member_validator=attrs.validators.instance_of(str),
+        iterable_validator=attrs.validators.instance_of(list)
+    ))
     check: List[TMTResultCheck] = attrs.field(validator=attrs.validators.deep_iterable(
         member_validator=attrs.validators.instance_of(TMTResultCheck),
         iterable_validator=attrs.validators.instance_of(list)
@@ -226,6 +229,7 @@ class TMTResult:
 
     @classmethod
     def _structure(cls, data: Dict[str, Any], converter: cattrs.Converter) -> 'TMTResult':
+        note = (data.get('note') or []) if isinstance((data.get('note') or []), list) else [data.get('note')]
         duration = None
         if data['duration'] is not None:
             hours, minutes, seconds = map(int, data['duration'].split(':'))
@@ -236,7 +240,7 @@ class TMTResult:
             result=data['result'],
             log=data['log'],
             guest=converter.structure(data['guest'], TMTResultGuest),
-            note=data.get('note'),
+            note=cast(List[str], note),
             check=converter.structure(data['check'], List[TMTResultCheck]),
             serial_number=data.get('serial-number'),
             duration=duration,

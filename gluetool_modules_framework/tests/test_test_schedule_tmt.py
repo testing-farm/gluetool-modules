@@ -199,7 +199,7 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
 
     assert testcase_dry.name == '/tests/core/dry'
     assert testcase_dry.result == 'passed'
-    assert testcase_dry.note == 'original result: fail'
+    assert testcase_dry.note == ['original result: fail']
     assert len(testcase_dry.logs) == 3
     assert testcase_dry.logs[0].name == 'log_dir'
     assert testcase_dry.logs[0].href.endswith('/passed/execute/logs/tests/core/dry')

@@ -49,7 +49,7 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       rsync beakerlib-libraries rpm-build rpm-devel awscli \
     # Pull in tmt from @teemtee/tmt copr repository
     && dnf copr -y enable @teemtee/stable \
-    && dnf -y install fmf-1.5.0 \
+    && dnf -y install fmf-1.6.0 \
                       tmt-1.40.0 \
                       tmt+provision-container-1.40.0 \
                       tmt+provision-virtual-1.40.0 \

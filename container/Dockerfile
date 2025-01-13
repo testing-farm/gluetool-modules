@@ -47,13 +47,13 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       postgresql-devel python3.9 python3-libselinux \
                       redhat-rpm-config koji python3-virtualenv standard-test-roles \
                       rsync beakerlib-libraries rpm-build rpm-devel awscli \
-    # Pull in tmt from @teemtee/tmt copr repository
+    # Pull in tmt from @teemtee/stable copr repository
     && dnf copr -y enable @teemtee/stable \
-    && dnf -y install fmf-1.5.0 \
-                      tmt-1.40.0 \
-                      tmt+provision-container-1.40.0 \
-                      tmt+provision-virtual-1.40.0 \
-                      tmt+report-polarion-1.40.0 \
+    && dnf -y install fmf-1.6.1 \
+                      tmt-1.41.0 \
+                      tmt+provision-container-1.41.0 \
+                      tmt+provision-virtual-1.41.0 \
+                      tmt+report-polarion-1.41.0 \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \

@@ -249,7 +249,7 @@ def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest
     test_suite = TestSuite(name='some-suite', result='some-result')
     module.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
 
-    assert len(test_suite.logs) == 6
+    assert len(test_suite.logs) == 4
 
     assert test_suite.logs[0].name == 'workdir'
     assert test_suite.logs[0].href.endswith('some-workdir')
@@ -257,17 +257,11 @@ def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest
     assert test_suite.logs[1].name == 'tmt-log'
     assert test_suite.logs[1].href.endswith('some-workdir/tmt-run.log')
 
-    assert test_suite.logs[2].name == 'tmt-verbose-log'
-    assert test_suite.logs[2].href.endswith('some-workdir/log.txt')
+    assert test_suite.logs[2].name == 'console.log'
+    assert test_suite.logs[2].href.endswith('some-workdir/console-guest0.log')
 
-    assert test_suite.logs[3].name == 'data'
-    assert test_suite.logs[3].href.endswith('some-workdir/passed/data')
-
-    assert test_suite.logs[4].name == 'console.log'
-    assert test_suite.logs[4].href.endswith('some-workdir/console-guest0.log')
-
-    assert test_suite.logs[5].name == 'tmt-reproducer'
-    assert test_suite.logs[5].href.endswith('some-workdir/tmt-reproducer.sh')
+    assert test_suite.logs[3].name == 'tmt-reproducer'
+    assert test_suite.logs[3].href.endswith('some-workdir/tmt-reproducer.sh')
 
     shutil.rmtree(schedule_entry.work_dirpath)
 

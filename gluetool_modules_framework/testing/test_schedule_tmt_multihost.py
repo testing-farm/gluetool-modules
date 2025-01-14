@@ -1353,21 +1353,21 @@ class TestScheduleTMTMultihost(Module):
             test_suite.logs.append(Log(href=workdir_href, name='workdir'))
 
             tmt_log_filepath = os.path.join(schedule_entry.work_dirpath, TMT_LOG)
-            tmt_log_href = artifacts_location(self, tmt_log_filepath, logger=schedule_entry.logger)
-            test_suite.logs.append(Log(href=tmt_log_href, name='tmt-log'))
+            if os.path.exists(tmt_log_filepath):
+                tmt_log_href = artifacts_location(self, tmt_log_filepath, logger=schedule_entry.logger)
+                test_suite.logs.append(Log(href=tmt_log_href, name='tmt-log'))
 
             tmt_verbose_log_filepath = os.path.join(schedule_entry.work_dirpath, TMT_VERBOSE_LOG)
-            tmt_verbose_log_href = artifacts_location(self, tmt_verbose_log_filepath, logger=schedule_entry.logger)
-            test_suite.logs.append(Log(href=tmt_verbose_log_href, name='tmt-verbose-log'))
+            if os.path.exists(tmt_verbose_log_filepath):
+                tmt_verbose_log_href = artifacts_location(self, tmt_verbose_log_filepath, logger=schedule_entry.logger)
+                test_suite.logs.append(Log(href=tmt_verbose_log_href, name='tmt-verbose-log'))
 
-            test_suite.logs.append(Log(
-                href=artifacts_location(
-                    self,
-                    os.path.join(schedule_entry.work_dirpath, safe_name(schedule_entry.plan[1:]), 'data'),
-                    logger=schedule_entry.logger
-                ),
-                name='data'
-            ))
+            data_filepath = os.path.join(schedule_entry.work_dirpath, safe_name(schedule_entry.plan[1:]), 'data')
+            if os.path.exists(data_filepath):
+                test_suite.logs.append(Log(
+                    href=artifacts_location(self, data_filepath, logger=schedule_entry.logger),
+                    name='data'
+                ))
 
             if isinstance(schedule_entry.guest, ArtemisGuest) and schedule_entry.guest.guest_logs:
                 for log in schedule_entry.guest.guest_logs:

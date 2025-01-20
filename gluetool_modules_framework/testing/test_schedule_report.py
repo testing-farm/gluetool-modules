@@ -322,8 +322,6 @@ class TestScheduleReport(gluetool.Module):
                 generate_xunit_testing_farm: bool = True
             ) -> None:
 
-        self.require_shared('test_schedule')
-
         if not self._schedule:
             return
 
@@ -345,6 +343,7 @@ class TestScheduleReport(gluetool.Module):
                 generate_xunit=generate_xunit, generate_xunit_testing_farm=generate_xunit_testing_farm)
 
     def execute(self) -> None:
+        self.require_shared('test_schedule')
         self.generate_results('finished schedule')
 
     def destroy(self, failure: Optional[Any] = None) -> None:

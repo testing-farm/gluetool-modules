@@ -992,7 +992,7 @@ class ArtemisProvisioner(gluetool.Module):
                 'default': []
             },
             'kickstart-pre-install': {
-                'help': 'Pre installation part, corresponding to `%pre` in ks file.',
+                'help': 'Pre installation part, corresponding to ``%%pre`` in ks file.',
                 'type': str,
             },
             'kickstart-script': {
@@ -1000,7 +1000,7 @@ class ArtemisProvisioner(gluetool.Module):
                 'type': str,
             },
             'kickstart-post-install': {
-                'help': 'Post installation part, corresponding to `%post` in ks file.',
+                'help': 'Post installation part, corresponding to ``%%post`` in ks file.',
                 'type': str,
             },
             'kickstart-metadata': {

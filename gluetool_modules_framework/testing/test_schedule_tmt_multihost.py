@@ -23,7 +23,7 @@ from gluetool.utils import Command, from_yaml, load_yaml, create_cattrs_unserial
 
 from gluetool_modules_framework.libs import create_inspect_callback
 from gluetool_modules_framework.libs.artifacts import artifacts_location
-from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
+from gluetool_modules_framework.libs.testing_environment import TestingEnvironment, dict_nested_value
 from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleResult, TestScheduleEntryOutput, \
     TestScheduleEntryStage, TestScheduleEntryAdapter, TestScheduleEntryState
 from gluetool_modules_framework.libs.test_schedule import TestScheduleEntry as BaseTestScheduleEntry
@@ -802,8 +802,10 @@ class TestScheduleTMTMultihost(Module):
 
         command.extend(self._root_option)
 
-        if testing_environment.tmt and 'context' in testing_environment.tmt:
-            command.extend(self._tmt_context_to_options(testing_environment.tmt['context']))
+        te_tmt = testing_environment.tmt
+
+        if te_tmt and 'context' in te_tmt:
+            command.extend(self._tmt_context_to_options(te_tmt['context']))
 
         command.append('run')
 
@@ -813,7 +815,14 @@ class TestScheduleTMTMultihost(Module):
             ]
             command.extend(env_options)
 
-        command.extend(['discover', 'plan', '--name', '^{}$'.format(plan)])
+        discover_extra_args = dict_nested_value(te_tmt, 'extra_args', 'discover')
+        if discover_extra_args:
+            for extra_args in discover_extra_args:
+                command.extend(['discover'] + gluetool.utils.normalize_shell_option(extra_args))
+        else:
+            command.append('discover')
+
+        command.extend(['plan', '--name', '^{}$'.format(plan)])
 
         if test_filter or test_name:
             command.extend(['test'])
@@ -1165,6 +1174,18 @@ class TestScheduleTMTMultihost(Module):
             '--name', r'^{}$'.format(re.escape(schedule_entry.plan))
         ])
 
+        # `discover` step in case of extra arguments
+        discover_extra_args = dict_nested_value(schedule_entry.testing_environment.tmt, 'extra_args', 'discover')
+        if discover_extra_args:
+            for extra_args in discover_extra_args:
+                command.extend(['discover'] + gluetool.utils.normalize_shell_option(extra_args))
+
+        # `prepare` step in case of extra arguments
+        prepare_extra_args = dict_nested_value(schedule_entry.testing_environment.tmt, 'extra_args', 'prepare')
+        if prepare_extra_args:
+            for extra_args in prepare_extra_args:
+                command.extend(['prepare'] + gluetool.utils.normalize_shell_option(extra_args))
+
         if self.test_filter or self.test_name:
             command.append('tests')
             if self.test_filter:
@@ -1201,6 +1222,12 @@ class TestScheduleTMTMultihost(Module):
         if user_data:
             for data_entry in user_data:
                 command.extend(['--user-data', data_entry])
+
+        # `finish` step in case of extra arguments
+        finish_extra_args = dict_nested_value(schedule_entry.testing_environment.tmt, 'extra_args', 'finish')
+        if finish_extra_args:
+            for extra_args in finish_extra_args:
+                command.extend(['finish'] + gluetool.utils.normalize_shell_option(extra_args))
 
         # add tmt reproducer suitable for local execution
         schedule_entry.tmt_reproducer.append(' '.join(command))

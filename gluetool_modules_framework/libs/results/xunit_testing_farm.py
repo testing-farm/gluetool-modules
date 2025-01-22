@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import attrs
-import cattrs
 
 from xsdata_attrs.bindings import XmlSerializer
 from xsdata.formats.dataclass.serializers.config import SerializerConfig
@@ -13,7 +12,8 @@ from typing import List, Optional, Dict, TYPE_CHECKING, cast
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 
 if TYPE_CHECKING:
-    from gluetool_modules_framework.libs.results import Results, TestSuite, TestCase, Log, Phase, Guest, TestCaseCheck  # noqa
+    from gluetool_modules_framework.libs.results import (Results, TestSuite, TestCase, Log, Phase, Guest,  # noqa
+                                                         TestCaseCheck, TestCaseSubresult)
 
 
 # Used in BaseOS CI results
@@ -212,6 +212,28 @@ class XUnitTFTestCaseSubresult:
     result: str = attrs.field(metadata={'type': 'Attribute'})
     original_result: str = attrs.field(metadata={'type': 'Attribute', 'name': 'original-result'})
     end_time: str = attrs.field(metadata={'type': 'Attribute', 'name': 'end-time'})
+    logs: Optional[XUnitTFLogs]
+
+    @classmethod
+    def construct(cls, subresult: 'TestCaseSubresult') -> 'XUnitTFTestCaseSubresult':
+        return XUnitTFTestCaseSubresult(
+            name=subresult.name,
+            result=subresult.result,
+            original_result=subresult.original_result,
+            end_time=subresult.end_time,
+            logs=XUnitTFLogs.construct(subresult.logs) if subresult.logs else None,
+        )
+
+
+@attrs.define(kw_only=True)
+class XUnitTFTestCaseSubresults:
+    subresult: Optional[List[XUnitTFTestCaseSubresult]] = None
+
+    @classmethod
+    def construct(cls, test_case: 'TestCase') -> 'XUnitTFTestCaseSubresults':
+        return XUnitTFTestCaseSubresults(
+            subresult=[XUnitTFTestCaseSubresult.construct(subresult) for subresult in test_case.subresults]
+        )
 
 
 @attrs.define(kw_only=True)
@@ -236,7 +258,7 @@ class XUnitTFTestCase:
     )
     test_outputs: Optional[XUnitTFTestOutputs] = attrs.field(default=None, metadata={'name': 'test-outputs'})
     checks: Optional[XUnitTFTestCaseChecks] = None
-    subresult: Optional[List[XUnitTFTestCaseSubresult]] = None
+    subresults: Optional[XUnitTFTestCaseSubresults] = None
 
     # Properties used in BaseOS CI covscan module
     added: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
@@ -278,8 +300,7 @@ class XUnitTFTestCase:
             test_outputs=XUnitTFTestOutputs.construct(test_case.test_outputs)
             if test_case.test_outputs is not None else None,
             checks=XUnitTFTestCaseChecks.construct(test_case) if test_case.checks else None,
-            subresult=[XUnitTFTestCaseSubresult(**cattrs.unstructure(subresult)) for subresult in test_case.subresults]
-            if test_case.subresults else None,
+            subresults=XUnitTFTestCaseSubresults.construct(test_case) if test_case.subresults else None,
             added=test_case.added,
             fixed=test_case.fixed,
             baseline=test_case.baseline,

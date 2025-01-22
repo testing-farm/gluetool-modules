@@ -37,7 +37,7 @@ from gluetool_modules_framework.provision.artemis import ArtemisGuest
 # Type annotations
 from typing import cast, Any, Dict, List, Optional, Tuple, Union, Set  # noqa
 
-from gluetool_modules_framework.libs.results import TestSuite, Log, TestCase, TestCaseCheck, Subresult
+from gluetool_modules_framework.libs.results import TestSuite, Log, TestCase, TestCaseCheck, TestCaseSubresult
 from secret_type import Secret
 
 # TMT run log file
@@ -140,7 +140,7 @@ class TestResult:
     duration: Optional[datetime.timedelta] = None
     start_time: Optional[str] = None
     end_time: Optional[str] = None
-    subresults: List['TMTResultSubresult']
+    subresults: List[TestCaseSubresult]
 
 
 @attrs.define
@@ -160,6 +160,10 @@ class TMTResultSubresult:
     result: str = attrs.field(validator=attrs.validators.instance_of(str))
     original_result: str = attrs.field(validator=attrs.validators.instance_of(str))
     end_time: str = attrs.field(validator=attrs.validators.instance_of(str))
+    log: List[str] = attrs.field(validator=attrs.validators.deep_iterable(
+        member_validator=attrs.validators.instance_of(str),
+        iterable_validator=attrs.validators.instance_of(list)
+    ))
 
     @classmethod
     def _structure(cls, data: Dict[str, Any]) -> 'TMTResultSubresult':
@@ -168,6 +172,7 @@ class TMTResultSubresult:
             result=data['result'],
             original_result=data['original-result'],
             end_time=data['end-time'],
+            log=data['log'],
         )
 
 
@@ -531,6 +536,22 @@ def gather_plan_results(
             ) for check in result.check
         ]
 
+        subresults = [
+            TestCaseSubresult(
+                name=subresult.name,
+                result=subresult.result,
+                original_result=subresult.original_result,
+                end_time=subresult.end_time,
+                logs=[
+                    Log(
+                        href=artifacts_location(module, os.path.join(artifacts_dir, log), logger=schedule_entry.logger),
+                        name=os.path.basename(log)
+                    )
+                    for log in subresult.log
+                ]
+            ) for subresult in result.subresult
+        ]
+
         test_results.append(TestResult(
             name=result.name,
             result=outcome,
@@ -540,7 +561,7 @@ def gather_plan_results(
             duration=result.duration,
             start_time=result.start_time,
             end_time=result.end_time,
-            subresults=result.subresult
+            subresults=subresults,
         ))
 
     # count the maximum result weight encountered, i.e. the overall result
@@ -1582,7 +1603,7 @@ class TestScheduleTMT(Module):
             test_case = TestCase(
                 name=task.name,
                 result=task.result,
-                subresults=[Subresult(**cattrs.unstructure(subresult)) for subresult in task.subresults],
+                subresults=task.subresults,
                 note=task.note,
                 checks=task.checks,
                 duration=task.duration,

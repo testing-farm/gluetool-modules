@@ -23,6 +23,15 @@ from typing import cast, TYPE_CHECKING, Any, Dict, List, Optional, Union  # noqa
 import bs4  # noqa
 
 
+OVERALL_RESULT_WEIGHT = {
+    TestScheduleResult.SKIPPED: 0,
+    TestScheduleResult.PASSED: 1,
+    TestScheduleResult.INFO: 2,
+    TestScheduleResult.FAILED: 3,
+    TestScheduleResult.ERROR: 4
+}
+
+
 class TestScheduleReport(gluetool.Module):
     """
     Report test results, carried by schedule entries, and prepare serialized version of these results
@@ -141,9 +150,7 @@ class TestScheduleReport(gluetool.Module):
 
         1. if any entry is still incomplete, schedule result is ``UNDEFINED``
         2. if any entry finished didn't finish with ``OK`` state, schedule result is ``ERROR``
-        3. if all entries finished with ``PASSED`` result, schedule result is ``PASSED``
-        4. if any entry finished ``ERROR`` result, schedule result is ``ERROR``
-        5. schedule result is the result of the first entry with non-``PASSED`` result
+        3. schedule result is the result with a maximum weight from the entry results
         """
 
         assert schedule
@@ -156,18 +163,12 @@ class TestScheduleReport(gluetool.Module):
             schedule.result = TestScheduleResult.ERROR
             return
 
-        if all((schedule_entry.result == TestScheduleResult.PASSED for schedule_entry in schedule)):
-            schedule.result = TestScheduleResult.PASSED
-            return
+        # Get the maximum weight from all schedule entries' results
+        max_weight = max(OVERALL_RESULT_WEIGHT[schedule_entry.result] for schedule_entry in schedule)
 
-        if any((schedule_entry.result == TestScheduleResult.ERROR for schedule_entry in schedule)):
-            schedule.result = TestScheduleResult.ERROR
-            return
-
-        for schedule_entry in schedule:
-            if not schedule_entry.result == TestScheduleResult.PASSED:
-                schedule.result = schedule_entry.result
-                return
+        # Create reverse mapping of weights to results and look up the result directly
+        weight_to_result = {weight: result for result, weight in OVERALL_RESULT_WEIGHT.items()}
+        schedule.result = weight_to_result[max_weight]
 
     def _overall_result_custom(self, schedule: TestSchedule) -> None:
         """

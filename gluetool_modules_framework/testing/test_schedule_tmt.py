@@ -26,7 +26,7 @@ from gluetool_modules_framework.libs import create_inspect_callback
 from gluetool_modules_framework.libs.artifacts import artifacts_location
 from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
 from gluetool_modules_framework.libs.sut_installation import INSTALL_COMMANDS_FILE
-from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
+from gluetool_modules_framework.libs.testing_environment import TestingEnvironment, dict_nested_value
 from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleResult, TestScheduleEntryOutput, \
     TestScheduleEntryStage, TestScheduleEntryAdapter
 from gluetool_modules_framework.libs.test_schedule import TestScheduleEntry as BaseTestScheduleEntry
@@ -896,8 +896,10 @@ class TestScheduleTMT(Module):
 
         command.extend(self._root_option)
 
-        if testing_environment.tmt and 'context' in testing_environment.tmt:
-            command.extend(self._tmt_context_to_options(testing_environment.tmt['context']))
+        te_tmt = testing_environment.tmt
+
+        if te_tmt and 'context' in te_tmt:
+            command.extend(self._tmt_context_to_options(te_tmt['context']))
 
         command.append('run')
 
@@ -907,7 +909,13 @@ class TestScheduleTMT(Module):
             ]
             command.extend(env_options)
 
-        command.extend(['discover', 'plan', '--name', '^{}$'.format(plan), 'test'])
+        command.append('discover')
+
+        discover_extra_args = dict_nested_value(te_tmt, 'extra_args', 'discover')
+        if discover_extra_args:
+            command.append(discover_extra_args)
+
+        command.extend(['plan', '--name', '^{}$'.format(plan), 'test'])
 
         if test_filter:
             command.extend(['--filter', test_filter])
@@ -969,7 +977,13 @@ class TestScheduleTMT(Module):
             ]
             command.extend(env_options)
 
-        command.extend(['discover', 'plan', '--name', '^{}$'.format(plan)])
+        command.append('discover')
+
+        discover_extra_args = dict_nested_value(testing_environment.tmt, 'extra_args', 'discover')
+        if discover_extra_args:
+            command.append(discover_extra_args)
+
+        command.extend(['plan', '--name', '^{}$'.format(plan)])
 
         try:
             tmt_output = Command(command).run(cwd=repodir)
@@ -1340,6 +1354,18 @@ class TestScheduleTMT(Module):
                 )
             )
 
+        # `discover` step in case of extra arguments
+        discover_extra_args = dict_nested_value(schedule_entry.testing_environment.tmt, 'extra_args', 'discover')
+        if discover_extra_args:
+            command.extend(['discover', discover_extra_args])
+            reproducer.extend(['discover', discover_extra_args])
+
+        # `prepare` step in case of extra arguments
+        prepare_extra_args = dict_nested_value(schedule_entry.testing_environment.tmt, 'extra_args', 'prepare')
+        if prepare_extra_args:
+            command.extend(['prepare', prepare_extra_args])
+            reproducer.extend(['prepare', prepare_extra_args])
+
         if isinstance(schedule_entry.guest, StaticLocalhostGuest):
             local_command = [
                 # `provision` step for container based execution
@@ -1369,6 +1395,12 @@ class TestScheduleTMT(Module):
                 '--key', schedule_entry.guest.key,
                 '--port', str(schedule_entry.guest.port),
             ])
+
+        # `finish` step in case of extra arguments
+        finish_extra_args = dict_nested_value(schedule_entry.testing_environment.tmt, 'extra_args', 'finish')
+        if finish_extra_args:
+            command.extend(['finish', finish_extra_args])
+            reproducer.extend(['finish', finish_extra_args])
 
         # `plan` step
         command.extend([

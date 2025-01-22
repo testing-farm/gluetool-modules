@@ -371,10 +371,22 @@ dummytmt --root some-tmt-root run --all --verbose provision --how virtual --imag
             None,
             (gluetool.glue.GlueError, "Environment variable 'VARIABLE2' is not allowed to be exposed to the tmt process")
         ),
+        (  # with tmt prepare extra arguments
+            {},
+            {},
+            TestingEnvironment('x86_64', 'rhel-9', tmt={
+                'extra_args': {'prepare': '--args', 'discover': '--args', 'finish': '--args'}
+            }),
+            """# tmt reproducer
+dummytmt --root some-tmt-root run --all --verbose discover --args prepare --args provision --how virtual --image guest-compose finish --args plan --name ^plan1$""",  # noqa
+            None,
+            None
+        ),
     ],
     ids=[
         'virtual', 'local', 'variables', 'tmt_context',
-        'tmt_process_environment_options_only', 'tmt_process_environment', 'tmt_process_environment_not_accepted'
+        'tmt_process_environment_options_only', 'tmt_process_environment', 'tmt_process_environment_not_accepted',
+        'tmt_extra_args'
     ]
 )
 def test_tmt_output_dir(

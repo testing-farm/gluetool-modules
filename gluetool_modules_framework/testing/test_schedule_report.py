@@ -23,6 +23,15 @@ from typing import cast, TYPE_CHECKING, Any, Dict, List, Optional, Union  # noqa
 import bs4  # noqa
 
 
+OVERALL_RESULT_WEIGHT = {
+    TestScheduleResult.SKIPPED: 0,
+    TestScheduleResult.PASSED: 1,
+    TestScheduleResult.INFO: 2,
+    TestScheduleResult.FAILED: 3,
+    TestScheduleResult.ERROR: 4
+}
+
+
 class TestScheduleReport(gluetool.Module):
     """
     Report test results, carried by schedule entries, and prepare serialized version of these results
@@ -156,18 +165,12 @@ class TestScheduleReport(gluetool.Module):
             schedule.result = TestScheduleResult.ERROR
             return
 
-        if all((schedule_entry.result == TestScheduleResult.PASSED for schedule_entry in schedule)):
-            schedule.result = TestScheduleResult.PASSED
-            return
+        # Get the maximum weight from all schedule entries' results
+        max_weight = max(OVERALL_RESULT_WEIGHT[schedule_entry.result] for schedule_entry in schedule)
 
-        if any((schedule_entry.result == TestScheduleResult.ERROR for schedule_entry in schedule)):
-            schedule.result = TestScheduleResult.ERROR
-            return
-
-        for schedule_entry in schedule:
-            if not schedule_entry.result == TestScheduleResult.PASSED:
-                schedule.result = schedule_entry.result
-                return
+        # Create reverse mapping of weights to results and look up the result directly
+        weight_to_result = {weight: result for result, weight in OVERALL_RESULT_WEIGHT.items()}
+        schedule.result = weight_to_result[max_weight]
 
     def _overall_result_custom(self, schedule: TestSchedule) -> None:
         """

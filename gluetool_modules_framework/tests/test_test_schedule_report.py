@@ -93,6 +93,38 @@ def create_test_schedule(entry_properties):
         ]),
         TSResult.ERROR
     ),
+    (
+        create_test_schedule([
+            (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.PASSED),
+            (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.PASSED),
+            (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.SKIPPED)
+        ]),
+        TSResult.PASSED
+    ),
+    (
+        create_test_schedule([
+            (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.SKIPPED),
+            (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.SKIPPED),
+            (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.SKIPPED)
+        ]),
+        TSResult.SKIPPED
+    ),
+    (
+        create_test_schedule([
+            (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.SKIPPED),
+            (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.PASSED),
+            (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.INFO)
+        ]),
+        TSResult.INFO
+    ),
+    (
+        create_test_schedule([
+            (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.PASSED),
+            (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.FAILED),
+            (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.ERROR)
+        ]),
+        TSResult.ERROR
+    ),
 ])
 def test_overall_result_base(module, schedule: TestSchedule, expected_schedule_result: TSResult):
     module._overall_result(schedule)

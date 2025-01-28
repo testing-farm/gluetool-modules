@@ -292,7 +292,7 @@ class Archive(gluetool.Module):
         Creates directory on the host with ssh where artifacts will be stored.
         If directory is not set, it will create the root directory.
         """
-        request_id = self.shared('testing_farm_request').id
+        request_id = self.request_id or self.shared('testing_farm_request').id
 
         path = os.path.join(self.artifacts_root, request_id)
         if directory:
@@ -332,7 +332,7 @@ class Archive(gluetool.Module):
         Creates directory on the host with rsync where artifacts will be stored.
         If directory is not set, it will create the root directory.
         """
-        path = self.shared('testing_farm_request').id
+        path = self.request_id or self.shared('testing_farm_request').id
 
         if directory:
             path = os.path.join(path, directory)
@@ -374,7 +374,7 @@ class Archive(gluetool.Module):
         """
         Creates directory on the local host.
         """
-        request_id = self.shared('testing_farm_request').id
+        request_id = self.request_id or self.shared('testing_farm_request').id
 
         path = os.path.join(self.artifacts_local_root, request_id)
 
@@ -429,7 +429,7 @@ class Archive(gluetool.Module):
         options = options or []
         original_source = source
 
-        request_id = self.shared('testing_farm_request').id
+        request_id = self.request_id or self.shared('testing_farm_request').id
 
         cmd = ['rsync']
 
@@ -521,7 +521,7 @@ class Archive(gluetool.Module):
         options = options or []
         original_source = source
 
-        request_id = self.shared('testing_farm_request').id
+        request_id = self.request_id or self.shared('testing_farm_request').id
 
         env = os.environ.copy()
         env.update({
@@ -670,6 +670,12 @@ class Archive(gluetool.Module):
                 )
 
     def execute(self) -> None:
+
+        # In this stage we should know the test request id
+        # Let's store it in module, so we still have it in the case of pipeline error
+        if self.shared('testing_farm_request'):
+            self.request_id = self.shared('testing_farm_request').id
+
         if self.option('disable-archiving'):
             self.info('Archiving is disabled, skipping')
             return

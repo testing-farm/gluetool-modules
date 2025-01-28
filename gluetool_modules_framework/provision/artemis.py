@@ -763,6 +763,9 @@ class ArtemisGuest(NetworkedGuest):
         '''
         self.stop_guest_logging()
 
+        guest_events_list = self.api.get_guest_events(self)
+        self.api.dump_events(self, guest_events_list)
+
         if self._module.option('keep'):
             self.warn("keeping guest provisioned as requested")
             return

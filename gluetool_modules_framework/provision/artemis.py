@@ -761,6 +761,9 @@ class ArtemisGuest(NetworkedGuest):
         '''
         Destroy the guest.
         '''
+        guest_events_list = self.api.get_guest_events(self)
+        self.api.dump_events(self, guest_events_list)
+
         self.stop_guest_logging()
 
         if self._module.option('keep'):

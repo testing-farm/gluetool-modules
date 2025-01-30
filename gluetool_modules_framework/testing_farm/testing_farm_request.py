@@ -826,6 +826,9 @@ class TestingFarmRequestModule(gluetool.Module):
             'webhook_url': request.webhook_url or '<no webhook specified>',
         })
 
+        # Initialize Report Portal if needed
+        self.shared('check_create_rp_launch', request)
+
         if self.option('enable-pipeline-cancellation'):
             pipeline_cancellation_tick = self.option('pipeline-cancellation-tick')
             self._pipeline_cancellation_timer = RepeatTimer(

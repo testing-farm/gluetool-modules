@@ -1476,6 +1476,11 @@ class TestScheduleTMT(Module):
             # add environment variables from testing environment
             tmt_process_environment.update(tmt['environment'])
 
+            if self.has_shared('check_create_rp_launch'):
+                launch_id = self.shared('check_create_rp_launch', schedule_entry)
+                if launch_id:
+                    tmt_process_environment['TMT_PLUGIN_REPORT_REPORTPORTAL_UPLOAD_TO_LAUNCH'] = launch_id
+
         # add tmt reproducer suitable for local execution: run until provisioning
         schedule_entry.tmt_reproducer.append(' '.join(reproducer))
 

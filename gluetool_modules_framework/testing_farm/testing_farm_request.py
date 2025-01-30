@@ -5,12 +5,13 @@ from enum import Enum
 from functools import partial
 from posixpath import join as urljoin
 
+import datetime
 import psutil
 import re
 import six
 import sys
 import attrs
-from requests import Response
+from requests import Response, Session
 
 import gluetool
 from gluetool.log import log_dict, LoggerMixin
@@ -107,6 +108,70 @@ class RequestConflictError(gluetool.GlueError):
         super(RequestConflictError, self).__init__(message)
 
         self.response = response
+
+
+class ReportPortalAPI:
+    """
+    Report Portal API client handling authentication and API calls.
+
+    :param str api_url: Base URL of the Report Portal API
+    :param str token: Authentication token for Report Portal
+    :param str project: Report Portal project name
+    """
+
+    def __init__(self, api_url: str, token: str, project: str):
+        self.api_url = api_url.rstrip('/')
+        self.token = token
+        self.project = project
+        self.session = Session()
+        self.session.headers.update({
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json'
+        })
+
+    def create_launch(self, name: str, description: Optional[str] = None) -> str:
+        """
+        Create a new launch in Report Portal.
+
+        :param str name: Name of the launch
+        :param str description: Optional description of the launch
+        :returns: ID of the created launch
+        :rtype: str
+        """
+        response = self._request('POST', f'/{self.project}/launch', {
+            'name': name,
+            'description': description,
+            'startTime': datetime.datetime.utcnow().isoformat()
+        })
+        return cast(str, response['id'])
+
+    def finish_launch(self, launch_id: str, status: str = 'PASSED') -> None:
+        """
+        Finish an existing launch.
+
+        :param str launch_id: ID of the launch to finish
+        :param str status: Final status of the launch
+        """
+        self._request('PUT', f'/{self.project}/launch/{launch_id}/finish', {
+            'endTime': datetime.datetime.utcnow().isoformat(),
+            'status': status
+        })
+
+    def _request(self, method: str, endpoint: str, data: Optional[Dict[str, Any]] = None) -> Any:
+        """
+        Make an HTTP request to Report Portal API.
+
+        :param str method: HTTP method
+        :param str endpoint: API endpoint
+        :param dict data: Request payload
+        :returns: Response data
+        :rtype: dict
+        :raises: requests.exceptions.RequestException
+        """
+        url = f'{self.api_url}/api/v1{endpoint}'
+        response = self.session.request(method, url, json=data)
+        response.raise_for_status()
+        return response.json() if response.content else {}
 
 
 class TestingFarmAPI(LoggerMixin, object):
@@ -747,12 +812,45 @@ class TestingFarmRequestModule(gluetool.Module):
         if pipeline_state == PipelineState.cancel_requested:
             self.cancel_pipeline()
 
+    def _should_create_rp_launch(self, environment: TestingEnvironment) -> bool:
+        """
+        Check if Report Portal launch should be created based on environment configuration.
+
+        Returns True if all required Report Portal settings are present and suite-per-plan=1.
+        """
+
+        # We already checked it in the execute method.
+        assert environment.tmt is not None
+
+        required_vars = [
+            'TMT_PLUGIN_REPORT_REPORTPORTAL_URL',
+            'TMT_PLUGIN_REPORT_REPORTPORTAL_TOKEN',
+            'TMT_PLUGIN_REPORT_REPORTPORTAL_PROJECT',
+            'TMT_PLUGIN_REPORT_REPORTPORTAL_SUITE_PER_PLAN'
+        ]
+
+        if not all(var in environment.tmt['environment'] for var in required_vars):
+            return False
+
+        suite_per_plan = environment.tmt['environment']['TMT_PLUGIN_REPORT_REPORTPORTAL_SUITE_PER_PLAN']
+        if suite_per_plan != '1':
+            self.warn(
+                f'TMT_PLUGIN_REPORT_REPORTPORTAL_SUITE_PER_PLAN={suite_per_plan} is not supported. Only value "1" enables the feature.'  # noqa: E501
+            )
+            return False
+
+        return True
+
     def destroy(self, failure: Optional[gluetool.Failure] = None) -> None:
         # stop the repeat timer, it will not be needed anymore
         if self._pipeline_cancellation_timer:
             self.debug('Stopping pipeline cancellation check')
             self._pipeline_cancellation_timer.cancel()
             self._pipeline_cancellation_timer = None
+
+        # Finalize Report Portal launch if it was created
+        if self.rp_api and self.rp_launch_id:
+            self.rp_api.finish_launch(self.rp_launch_id)
 
     def execute(self) -> None:
         self._tf_api_internal = TestingFarmAPI(self, self.internal_api_url)
@@ -781,6 +879,32 @@ class TestingFarmRequestModule(gluetool.Module):
             'environments_requested': [env.serialize_to_json() for env in request.environments_requested],
             'webhook_url': request.webhook_url or '<no webhook specified>',
         })
+
+        # Initialize Report Portal if needed
+        self.rp_api = None
+        for environment in request.environments_requested:
+            if not environment.tmt or environment.tmt.get('environment') is None:
+                continue
+
+            if not self._should_create_rp_launch(environment):
+                continue
+
+            self.rp_api = ReportPortalAPI(
+                api_url=environment.tmt['environment']['TMT_PLUGIN_REPORT_REPORTPORTAL_URL'],
+                token=environment.tmt['environment']['TMT_PLUGIN_REPORT_REPORTPORTAL_TOKEN'],
+                project=environment.tmt['environment']['TMT_PLUGIN_REPORT_REPORTPORTAL_PROJECT']
+            )
+
+            launch_name = environment.tmt['environment'].get('TMT_PLUGIN_REPORT_REPORTPORTAL_LAUNCH')
+            if not launch_name:
+                launch_name = f'{request.url}@{request.ref}'
+
+            self.rp_launch_id = self.rp_api.create_launch(
+                name=launch_name,
+                description=f'Testing Farm launch for {request.url}@{request.ref}'
+            )
+
+            environment.tmt['environment']['TMT_PLUGIN_REPORT_REPORTPORTAL_UPLOAD_TO_LAUNCH'] = self.rp_launch_id
 
         if self.option('enable-pipeline-cancellation'):
             pipeline_cancellation_tick = self.option('pipeline-cancellation-tick')

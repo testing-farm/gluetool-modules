@@ -156,7 +156,10 @@ class TestScheduleRunnerMultihost(gluetool.Module):
 
     def _run_schedule(self, schedule: TestSchedule) -> None:
 
-        schedule_queue = schedule[:] if not self.parallelize or self.parallel_limit else None
+        schedule_queue = (
+            [entry for entry in schedule if entry.result != TestScheduleResult.SKIPPED]
+            if not self.parallelize or self.parallel_limit else None
+        )
 
         def _job(schedule_entry: TestScheduleEntry, name: str, target: Callable[[TestScheduleEntry], Any]) -> Job:
 

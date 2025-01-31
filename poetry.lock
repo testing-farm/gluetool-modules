@@ -653,14 +653,14 @@ gitdb2 = ">=2,<3"
 
 [[package]]
 name = "gluetool"
-version = "2.12"
+version = "2.13"
 description = "Python framework for constructing command-line pipelines."
 category = "main"
 optional = false
 python-versions = "<3.10,>=3.8"
 files = [
-    {file = "gluetool-2.12-py3-none-any.whl", hash = "sha256:ea1b695e3e9486ded8b518ccfd7495ed82d1411adfb1f83f0b548c07b94f9c74"},
-    {file = "gluetool-2.12.tar.gz", hash = "sha256:a1d001bcbac70aeaff7c7b09b906c3b97ea38a02bf8451693dfa3fde902ab0c1"},
+    {file = "gluetool-2.13-py3-none-any.whl", hash = "sha256:103972a3e4b5dfbbb6c563fcad6bca620d12eceb35f46b89463254f27e535703"},
+    {file = "gluetool-2.13.tar.gz", hash = "sha256:f7c9b91000d265c864f1cc1d2e971e4ba0bb4b72a6df567e9f3a9cf9c398ce9d"},
 ]
 
 [package.dependencies]

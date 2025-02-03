@@ -4,7 +4,7 @@
 import pytest
 
 from gluetool import GlueError
-from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
+from gluetool_modules_framework.libs.testing_environment import TestingEnvironment, dict_nested_value
 
 
 def test_eq():
@@ -76,4 +76,113 @@ def test_clone():
     env2 = env1.clone()
     assert env1 == env2
     env2.compose = 'bar'
-    env1 != env2
+    assert env1 != env2
+
+
+@pytest.mark.parametrize('test_name, dictionary, keys, expected', [
+    (
+        'returning a list',
+        {
+            'a': [
+                'b',
+                'c'
+            ]
+        },
+        ('a'),
+        [
+            'b',
+            'c'
+        ]
+    ),
+    (
+        'unknown key',
+        {
+            'a': [
+                'b',
+                'c'
+            ]
+        },
+        ('b'),
+        None
+    ),
+    (
+        'returning a dictionary',
+        {
+            'a': {
+                'b': {
+                    'c': 'd'
+                }
+            }
+        },
+        ('a'),
+        {
+            'b': {
+                'c': 'd'
+            }
+        }
+    ),
+    (
+        'returning a nested dictionary',
+        {
+            'a': {
+                'b': {
+                    'c': 'd'
+                }
+            }
+        },
+        ('a', 'b'),
+        {
+            'c': 'd'
+        }
+    ),
+    (
+        'unknown key in nested dictionary',
+        {
+            'a': {
+                'b': {
+                    'c': 'd'
+                }
+            }
+        },
+        ('a', 'd'),
+        None
+    ),
+    (
+        'valid nested value',
+        {
+            'a': {
+                'b': {
+                    'c': 'd'
+                }
+            }
+        },
+        ('a', 'b', 'c'),
+        'd'
+    ),
+    (
+        'last key not a dict',
+        {
+            'a': {
+                'b': {
+                    'c': 'd'
+                }
+            }
+        },
+        ('a', 'b', 'c', 'd'),
+        None
+    ),
+    (
+        'value not a dictionary',
+        {
+            'a': {
+                'b': {
+                    'c': 'd'
+                }
+            }
+        },
+        ('a', 'b', 'c', 'd', 'e'),
+        None
+    )
+])
+def test_dict_nested_value(test_name, dictionary, keys, expected):
+    assert dict_nested_value(dictionary, *keys) == expected

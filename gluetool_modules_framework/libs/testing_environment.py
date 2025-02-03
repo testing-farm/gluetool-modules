@@ -24,6 +24,24 @@ ArchType = Union[str, gluetool_modules_framework.libs._UniqObject]
 SnapshotsType = bool
 
 
+def dict_nested_value(dictionary: Optional[Dict[str, Any]], *keys: str) -> Optional[Any]:
+    """
+    Return nested value of a dictionary specified by given keys or None if any of the keys
+    does not exist or does not lead to a dictionary.
+    """
+    if not dictionary:
+        return None
+
+    key, keys = keys[0], keys[1:]
+
+    if key in dictionary:
+        if isinstance(dictionary[key], dict):
+            return dict_nested_value(dictionary[key], *keys) if len(keys) else dictionary[key]
+        return None if len(keys) else dictionary[key]
+
+    return None
+
+
 @dataclass
 class TestingEnvironment(object):
     """

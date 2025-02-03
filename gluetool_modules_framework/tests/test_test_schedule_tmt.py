@@ -365,10 +365,35 @@ dummytmt --root some-tmt-root run --all --verbose provision --how virtual --imag
             None,
             (gluetool.glue.GlueError, "Environment variable 'VARIABLE2' is not allowed to be exposed to the tmt process")
         ),
+        (  # with tmt prepare extra arguments
+            {},
+            {},
+            TestingEnvironment('x86_64', 'rhel-9', tmt={
+                'extra_args': {
+                    'prepare': [
+                        '--args1',
+                        '--args2'
+                    ],
+                    'discover': [
+                        '--args1',
+                        '--args2'
+                    ],
+                    'finish': [
+                        '--args1 --args2',
+                        '--args3'
+                    ]
+                }
+            }),
+            """# tmt reproducer
+dummytmt --root some-tmt-root run --all --verbose discover --args1 discover --args2 prepare --args1 prepare --args2 provision --how virtual --image guest-compose finish --args1 --args2 finish --args3 plan --name ^plan1$""",  # noqa
+            None,
+            None
+        ),
     ],
     ids=[
         'virtual', 'local', 'variables', 'tmt_context',
-        'tmt_process_environment_options_only', 'tmt_process_environment', 'tmt_process_environment_not_accepted'
+        'tmt_process_environment_options_only', 'tmt_process_environment', 'tmt_process_environment_not_accepted',
+        'tmt_extra_args'
     ]
 )
 def test_tmt_output_dir(
@@ -674,9 +699,10 @@ def test_plans_from_git_filter(module, monkeypatch):
     mock_command.assert_called_once_with(['dummytmt', '--root', 'some-tmt-root', 'plan', 'ls', '--filter', 'filter1'])
 
 
-@pytest.mark.parametrize('test_filter, test_name, expected_command', [
+@pytest.mark.parametrize('test_filter, test_name, tmt_extra_args, expected_command', [
         (
             'filter1',
+            None,
             None,
             [
                 'dummytmt', '--root', 'some-tmt-root', 'run', '-e', '@tmt-environment-lan1.yaml', 'discover', 'plan',
@@ -686,6 +712,7 @@ def test_plans_from_git_filter(module, monkeypatch):
         (
             None,
             'name1',
+            None,
             [
                 'dummytmt', '--root', 'some-tmt-root', 'run', '-e', '@tmt-environment-lan1.yaml', 'discover', 'plan',
                 '--name', '^plan1$', 'test', '--name', 'name1'
@@ -694,17 +721,44 @@ def test_plans_from_git_filter(module, monkeypatch):
         (
             'filter1',
             'name1',
+            None,
             [
                 'dummytmt', '--root', 'some-tmt-root', 'run', '-e', '@tmt-environment-lan1.yaml', 'discover', 'plan',
                 '--name', '^plan1$', 'test', '--filter', 'filter1', '--name', 'name1'
             ]
         ),
+        (
+            'filter1',
+            'name1',
+            {
+                'prepare': [
+                    '--args1',
+                    '--args2'
+                ],
+                'discover': [
+                    '--args1',
+                    '--args2'
+                ],
+                'finish': [
+                    '--args1 --args2'
+                    '--args3'
+                ]
+            },
+            [
+                'dummytmt', '--root', 'some-tmt-root', 'run', '-e', '@tmt-environment-lan1.yaml',
+                'discover', '--args1', 'discover', '--args2',
+                'plan', '--name', '^plan1$', 'test', '--filter', 'filter1', '--name', 'name1'
+            ]
+        ),
     ]
 )
-def test_apply_test_filter(module, monkeypatch, tmpdir, test_filter, test_name, expected_command):
+def test_apply_test_filter(module, monkeypatch, tmpdir, test_filter, test_name, tmt_extra_args, expected_command):
     repodir = 'foo'
     context_files = []
-    testing_environment = TestingEnvironment('x86_64', variables={'variable1': 'value1'})
+    testing_environment = TestingEnvironment(
+        'x86_64',
+        variables={'variable1': 'value1'}, tmt={'extra_args': tmt_extra_args}
+    )
 
     mock_output = MagicMock(exit_code=0, stdout='', stderr='plan1')
     mock_command_run = MagicMock(return_value=mock_output)

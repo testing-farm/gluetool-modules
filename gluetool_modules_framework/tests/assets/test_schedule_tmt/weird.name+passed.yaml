@@ -9,10 +9,10 @@ results:
         path: weird-name-passed/execute/logs/tests/core/docs
       - name: data
         path: weird-name-passed/execute/logs/tests/core/docs/data
-      - name: testout.log
-        path: weird-name-passed/execute/logs/tests/core/docs/out.log
       - name: journal.txt
         path: weird-name-passed/execute/logs/tests/core/docs/journal.txt
+      - name: testout.log
+        path: weird-name-passed/execute/logs/tests/core/docs/out.log
   - name: /tests/core/dry
     result: passed
     duration: 01:23:45

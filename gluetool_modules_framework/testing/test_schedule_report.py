@@ -226,7 +226,7 @@ class TestScheduleReport(gluetool.Module):
         else:
             self.warn('Result of testing: {}'.format(result))
 
-    def _serialize_results(self, schedule: TestSchedule) -> None:
+    def _serialize_results(self, schedule: TestSchedule, report_results: bool = True) -> None:
 
         self._results = Results(overall_result=self._overall_result(schedule).name.lower())
 
@@ -272,12 +272,13 @@ class TestScheduleReport(gluetool.Module):
             self.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
             self._results.test_suites.append(test_suite)
 
-        log_blob(
-            self.debug,
-            'serialized xunit_testing_farm results',
-            self._results.xunit_testing_farm.to_xml_string(pretty_print=True)
-        )
-        log_blob(self.debug, 'serialized xunit results', self._results.xunit.to_xml_string(pretty_print=True))
+        if report_results:
+            log_blob(
+                self.debug,
+                'serialized xunit_testing_farm results',
+                self._results.xunit_testing_farm.to_xml_string(pretty_print=True)
+            )
+            log_blob(self.debug, 'serialized xunit results', self._results.xunit.to_xml_string(pretty_print=True))
 
     def results(self) -> Optional[Results]:
         return self._results
@@ -303,11 +304,17 @@ class TestScheduleReport(gluetool.Module):
 
         self.debug('results saved into {}'.format(self.option('xunit-file')))
 
-    def _generate_results(self, generate_xunit: bool = True, generate_xunit_testing_farm: bool = True) -> None:
+    def _generate_results(
+            self,
+            generate_xunit: bool = True,
+            generate_xunit_testing_farm: bool = True,
+            report_results: bool = True
+    ) -> None:
 
-        self._serialize_results(self._schedule)
+        self._serialize_results(self._schedule, report_results=report_results)
 
-        self._report_final_result(self._schedule)
+        if report_results:
+            self._report_final_result(self._schedule)
 
         assert self._results is not None
 
@@ -322,28 +329,33 @@ class TestScheduleReport(gluetool.Module):
                 label: str,
                 failure: Optional[Any] = None,
                 generate_xunit: bool = True,
-                generate_xunit_testing_farm: bool = True
+                generate_xunit_testing_farm: bool = True,
+                report_results: bool = True,
             ) -> None:
 
         if not self._schedule:
             return
 
         with self._generate_results_lock:
-            if failure:
-                self._schedule.log(
-                    self.info,
-                    label=label,
-                    include_errors=True,
-                    include_logs=True,
-                    include_connection_info=True,
-                    connection_info_docs_link=self.option('docs-link-reservation'),
-                    module=self
-                )
-            else:
-                self._schedule.log(self.info, label=label)
+            if report_results:
+                if failure:
+                    self._schedule.log(
+                        self.info,
+                        label=label,
+                        include_errors=True,
+                        include_logs=True,
+                        include_connection_info=True,
+                        connection_info_docs_link=self.option('docs-link-reservation'),
+                        module=self
+                    )
+                else:
+                    self._schedule.log(self.info, label=label)
 
             self._generate_results(
-                generate_xunit=generate_xunit, generate_xunit_testing_farm=generate_xunit_testing_farm)
+                generate_xunit=generate_xunit,
+                generate_xunit_testing_farm=generate_xunit_testing_farm,
+                report_results=report_results
+            )
 
     def execute(self) -> None:
         self.require_shared('test_schedule')

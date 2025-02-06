@@ -598,6 +598,10 @@ class Archive(gluetool.Module):
     # in the parallel archiving timer without calling it
     def archive_stage(self, stage: str = 'progress') -> None:
 
+        # Before archiving in progress, let's regenerate results.xml
+        if stage == 'progress':
+            self.shared('generate_results', 'test execution running', generate_xunit=False, report_results=False)
+
         map_stage = self.source_destination_map().get(stage, [])
 
         for entry in map_stage:

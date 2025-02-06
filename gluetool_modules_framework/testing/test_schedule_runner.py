@@ -462,6 +462,8 @@ class TestScheduleRunner(gluetool.Module):
 
                 _shift(schedule_entry, TestScheduleEntryStage.RUNNING)
 
+                self.shared('generate_results', 'test execution started', generate_xunit=False)
+
         def _on_job_complete(result: Any, schedule_entry: TestScheduleEntry) -> None:
 
             if schedule_entry.stage == TestScheduleEntryStage.CREATED:
@@ -500,13 +502,14 @@ class TestScheduleRunner(gluetool.Module):
 
             elif schedule_entry.stage == TestScheduleEntryStage.RUNNING:
                 schedule_entry.info('test execution finished')
-                self.shared('generate_results', 'test execution finished', generate_xunit=False)
 
                 # Here we should display "test logs are in ..." message like we do for guest-setup,
                 # but leaving that for another patch as we don't have unified "report results"
                 # structure yet.
 
                 _shift(schedule_entry, TestScheduleEntryStage.CLEANUP)
+
+                self.shared('generate_results', 'test execution finished', generate_xunit=False)
 
                 engine.enqueue_jobs(_job(schedule_entry, 'cleanup', self._cleanup))
 

@@ -436,4 +436,5 @@ def test_setup(guest, monkeypatch):
     monkeypatch.setattr(guest._module, 'shared', MagicMock(return_value=output))
 
     assert guest.setup(foo=17) == output
-    guest._module.shared.assert_called_once_with('setup_guest', guest, variables=None, foo=17)
+    guest._module.shared.assert_called_once_with('setup_guest', guest, variables={
+                                                 'UPDATE_FROM_ARTIFACTS': False}, foo=17)

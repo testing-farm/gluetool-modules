@@ -557,24 +557,35 @@ class TestingFarmRequest(LoggerMixin, object):
         Update self with data taken from .testing-farm.yaml file.
         """
 
-        if 'environments' not in config:
-            self.warn('.testing-farm.yaml file exists but no useful data to modify environment found')
+        if 'environments' not in config or \
+           'secrets' not in config['environments'] or \
+           not isinstance(config['environments']['secrets'], dict):
+            self.warn('.testing-farm.yaml file exists but no useful data to modify environment found.')
             return
 
-        for environment in self.environments_requested:
-            if 'secrets' in config['environments']:
-                for secret_key, secret_value_encrypted in config['environments']['secrets'].items():
-                    if not secret_value_encrypted.startswith(self.token_id):
-                        self.warn('Found secret that was not encrypted with the same API Token that submitted this test'
-                                  f' request. Skipping. Encrypted secret: `{secret_key}: {secret_value_encrypted}`')
-                        continue
+        secrets = {}
 
-                    secret_value = self._api.decrypt_secret(git_url, secret_value_encrypted, self._api_key)
+        for secret_key, secret_values_encrypted in config['environments']['secrets'].items():
+            if not isinstance(secret_values_encrypted, list):
+                secret_values_encrypted = [secret_values_encrypted]
 
-                    if environment.secrets is None:
-                        environment.secrets = {}
+            for secret_value_encrypted in secret_values_encrypted:
+                if not isinstance(secret_value_encrypted, str):
+                    self.warn('Invalid secret with key `{}`, skipping.'.format(secret_key))
+                    return
 
-                    environment.secrets.update({secret_key: secret_value})
+                if secret_value_encrypted.startswith(self.token_id):
+                    secrets.update(
+                        {secret_key: self._api.decrypt_secret(git_url, secret_value_encrypted, self._api_key)}
+                    )
+                    self.info('Adding secret with key `{}` to the requested environments.'.format(secret_key))
+
+        if secrets:
+            for environment in self.environments_requested:
+                if environment.secrets is None:
+                    environment.secrets = {}
+
+                environment.secrets.update(secrets)
 
         self.info(
             'Requested environments after applying in-repository patch: {}'.format(str(self.environments_requested))

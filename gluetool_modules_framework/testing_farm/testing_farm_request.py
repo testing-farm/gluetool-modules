@@ -121,7 +121,7 @@ class TestingFarmAPI(LoggerMixin, object):
         self._delete_request = partial(self._request, type='delete')
 
     def _request(self, endpoint: str, payload: Optional[Dict[str, Any]] = None, type: Optional[str] = None,
-                 headers: Optional[Dict[str, str]] = None) -> Any:
+                 headers: Optional[Dict[str, str]] = None, accepted_error_codes: Optional[List[int]] = None) -> Any:
         """
         Post payload to the given API endpoint. Retry if failed to mitigate connection/service
         instabilities.
@@ -135,12 +135,18 @@ class TestingFarmAPI(LoggerMixin, object):
 
         headers = headers or {}
 
+        # These error conditions are valid responses
+        # 404 - request not found
+        # 409 - request in conflict
+        accepted_error_codes = accepted_error_codes or [404, 409]
+
         # construct post URL
         url = urljoin(self._api_url, endpoint)  # type: ignore
         log_dict(self.debug, "posting following payload to url '{}'".format(url), payload)
 
         def _response() -> Any:
             assert type is not None
+            assert accepted_error_codes is not None
             try:
                 with requests() as req:
                     response = getattr(req, type)(url, json=payload, headers=headers)
@@ -150,10 +156,7 @@ class TestingFarmAPI(LoggerMixin, object):
                 except ValueError:
                     response_data = response.text
 
-                # These error conditions are valid responses
-                # 404 - request not found
-                # 409 - request in conflict
-                if response.status_code in [404, 409]:
+                if response.status_code in accepted_error_codes:
                     return Result.Ok(response)
 
                 if not response:
@@ -236,11 +239,18 @@ class TestingFarmAPI(LoggerMixin, object):
         response = self._post_request(
             'v0.1/secrets/decrypt',
             payload={'url': git_url, 'message': message},
-            headers=self._get_headers(api_key)
+            headers=self._get_headers(api_key),
+            accepted_error_codes=[400],
         )
+
+        if response.status_code != 200:
+            raise gluetool.GlueError("Error while decrypting secret '{}'.".format(message))
+
         decrypted_message = cast(str, response.json())
+
         if not self._module.has_shared('add_secrets'):
             raise gluetool.GlueError("The 'hide-secrets' module is required when secrets involved")
+
         self._module.shared('add_secrets', decrypted_message)
         return decrypted_message
 
@@ -562,26 +572,51 @@ class TestingFarmRequest(LoggerMixin, object):
     def modify_with_config(self, config: Dict[str, Any], git_url: str) -> None:
         """
         Update self with data taken from .testing-farm.yaml file.
+
+        Expected format of the file:
+
+        .. code-block:: yaml
+
+          version: 1
+          environments:
+            secrets:
+              SECRET_MESSAGE: "12475e5a-6667-4409-ab54-c8a9164eef2c,EFOj+3Jn3WvsAKbi7PRPtT2D...s5FGBhzdwAYcndDpebQbg=="
+              SECRET_TOKEN:
+                - "4a2599e8-cf75-4c04-8f8e-013e6ed4a70b,FTyFKFEsRogzR4K12zxFs19O4gFAnqeJz/W6...NhZwYBiGO0QjzLzXifmlQ=="
+                - "83ba2098-0902-494f-8381-fd33bdd2b3b4,PAg4zm7YCewlWwZtUkAQnXzWr/96rXkklxWF...BLblT8ZJDE2ZKT4dlTV8Ho="
         """
 
-        if 'environments' not in config:
-            self.warn('.testing-farm.yaml file exists but no useful data to modify environment found')
+        if 'environments' not in config or \
+           'secrets' not in config['environments'] or \
+           not isinstance(config['environments']['secrets'], dict):
+            self.warn('.testing-farm.yaml file exists but no useful data to modify environment found.')
             return
 
-        for environment in self.environments_requested:
-            if 'secrets' in config['environments']:
-                for secret_key, secret_value_encrypted in config['environments']['secrets'].items():
-                    if not secret_value_encrypted.startswith(self.token_id):
-                        self.warn('Found secret that was not encrypted with the same API Token that submitted this test'
-                                  f' request. Skipping. Encrypted secret: `{secret_key}: {secret_value_encrypted}`')
-                        continue
+        secrets = {}
 
-                    secret_value = self._api.decrypt_secret(git_url, secret_value_encrypted, self._api_key)
+        for secret_key, secret_values_encrypted in config['environments']['secrets'].items():
+            if not isinstance(secret_values_encrypted, list):
+                secret_values_encrypted = [secret_values_encrypted]
 
-                    if environment.secrets is None:
-                        environment.secrets = {}
+            # Secret key can have multiple secret values tied to various TF API tokens, decrypt and use the first match
+            for secret_value_encrypted in secret_values_encrypted:
+                if not isinstance(secret_value_encrypted, str):
+                    self.warn('Invalid secret with key `{}`, skipping.'.format(secret_key))
+                    return
 
-                    environment.secrets.update({secret_key: secret_value})
+                if secret_value_encrypted.startswith(self.token_id):
+                    secrets.update(
+                        {secret_key: self._api.decrypt_secret(git_url, secret_value_encrypted, self._api_key)}
+                    )
+                    self.info('Adding secret with key `{}` to the requested environments.'.format(secret_key))
+                    break
+
+        if secrets:
+            for environment in self.environments_requested:
+                if environment.secrets is None:
+                    environment.secrets = {}
+
+                environment.secrets.update(secrets)
 
         self.info(
             'Requested environments after applying in-repository patch: {}'.format(str(self.environments_requested))

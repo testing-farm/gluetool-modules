@@ -52,7 +52,6 @@ class ResponseDecrypt():
     status_code = 200
 
     def json(self):
-        print('mock')
         return "hello world"
 
 
@@ -343,7 +342,61 @@ def test_webhook_http_error(module, requests_mock, request2, log):
     )
 
 
-def test_in_repository_config(module, requests_mock, request1):
+@pytest.mark.parametrize('config, expected_secrets, expected_logs', [
+    (  # Normal config with `str` as secret value
+        {'environments': {'secrets': {'SECRET_TOKEN_KEY': 'token,base64encodedencryptedstring'}}},
+        [
+            {'some': 'secrets', 'SECRET_TOKEN_KEY': 'hello world'},
+            {'secret_key': 'secret-value', 'SECRET_TOKEN_KEY': 'hello world'}
+        ],
+        []
+    ),
+    (  # Normal config with `list[str]` as secret value
+        {'environments': {'secrets': {'SECRET_TOKEN_KEY': [
+            'token-invalid,base64encodedencryptedstring', 'token,base64encodedencryptedstring']}}},
+        [
+            {'some': 'secrets', 'SECRET_TOKEN_KEY': 'hello world'},
+            {'secret_key': 'secret-value', 'SECRET_TOKEN_KEY': 'hello world'}
+        ],
+        []
+    ),
+    (  # Invalid config
+        {'envirments': {'secrets': {'SECRET_TOKEN_KEY': [
+            'token-invalid,base64encodedencryptedstring', 'token,base64encodedencryptedstring']}}},
+        [
+            {'some': 'secrets'},
+            {'secret_key': 'secret-value'}
+        ],
+        ['.testing-farm.yaml file exists but no useful data to modify environment found.']
+    ),
+    (  # Invalid config
+        {'environments': {'secrts': {'SECRET_TOKEN_KEY': [
+            'token-invalid,base64encodedencryptedstring', 'token,base64encodedencryptedstring']}}},
+        [
+            {'some': 'secrets'},
+            {'secret_key': 'secret-value'}
+        ],
+        ['.testing-farm.yaml file exists but no useful data to modify environment found.']
+    ),
+    (  # Invalid config
+        {'environments': {'secrts': [{'SECRET_TOKEN_KEY': [
+            'token-invalid,base64encodedencryptedstring', 'token,base64encodedencryptedstring']}]}},
+        [
+            {'some': 'secrets'},
+            {'secret_key': 'secret-value'}
+        ],
+        ['.testing-farm.yaml file exists but no useful data to modify environment found.']
+    ),
+    (  # Invalid config
+        {'environments': {'secrets': {'SECRET_TOKEN_KEY': None}}},
+        [
+            {'some': 'secrets'},
+            {'secret_key': 'secret-value'}
+        ],
+        ['Invalid secret with key `SECRET_TOKEN_KEY`, skipping.']
+    ),
+])
+def test_in_repository_config(module, requests_mock, request1, log, config, expected_secrets, expected_logs):
     RequestsMock.post = RequestsMock.request_decrypt
 
     request = module._tf_request
@@ -353,19 +406,17 @@ def test_in_repository_config(module, requests_mock, request1):
         {'secret_key': 'secret-value'}
     ] == [env.secrets for env in request.environments_requested]
 
-    request.modify_with_config(
-        {'environments': {'secrets': {'SECRET_TOKEN_KEY': 'token,base64encodedencryptedstring'}}},
-        'https://example.com/git/repo'
-    )
+    request.modify_with_config(config, 'https://example.com/git/repo')
 
-    assert [
-        {'some': 'secrets', 'SECRET_TOKEN_KEY': 'hello world'},
-        {'secret_key': 'secret-value', 'SECRET_TOKEN_KEY': 'hello world'}
-    ] == [env.secrets for env in request.environments_requested]
+    assert expected_secrets == [env.secrets for env in request.environments_requested]
+
+    for expected_log in expected_logs:
+        assert log.match(levelno=logging.WARN, message=expected_log)
 
     # Cleanup, the change would persist into other tests
     for env in request.environments_requested:
-        del env.secrets['SECRET_TOKEN_KEY']
+        if 'SECRET_TOKEN_KEY' in env.secrets:
+            del env.secrets['SECRET_TOKEN_KEY']
 
 
 # TestingFarmRequestModule class tests

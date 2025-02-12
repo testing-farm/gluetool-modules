@@ -71,9 +71,10 @@ class HideSecrets(gluetool.Module):
         # * Pipe '|' - because we use sed with '|' character
         def _posix_bre_escaped(value: str) -> str:
             value = value.replace('\\', '\\\\')
-            value = value.replace('\n', '\\n')
             for escape in r".*[]^$|":
                 value = value.replace(escape, r'\{}'.format(escape))
+            # Secrets can be indented with spaces, so we need to match them
+            value = value.replace('\n', '[[:space:]]*\\n[[:space:]]*')
             return value
 
         sed_expr = '\n'.join('s|{}|hidden|g'.format(_posix_bre_escaped(value)) for value in self._secrets)
@@ -90,7 +91,7 @@ class HideSecrets(gluetool.Module):
             temp.flush()
             # -print0 puts a null byte as a separator between each item
             # -0 expects such separator so no more separating by space which takes quotes into account
-            command = "find '{}' -type f -print0 | xargs -0 -i##### sed -i -f '{}' '#####'".format(
+            command = "find '{}' -type f -print0 | xargs -0 -i##### sed -z -i -f '{}' '#####'".format(
                 search_path, temp.name)
 
             def _run_sed() -> Result[bool, bool]:

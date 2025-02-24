@@ -185,8 +185,15 @@ class TestingFarmAPI(LoggerMixin, object):
                                    timeout=self._module.option('retry-timeout'),
                                    tick=self._module.option('retry-tick'))
 
+    def _get_headers(self, api_key: str) -> Dict[str, str]:
+        """
+        Return a dict with headers for a request to Testing Farm API.
+        Used for authentication.
+        """
+        return {'Authorization': f'Bearer {api_key}'}
+
     def get_request(self, request_id: str, api_key: str) -> RequestType:
-        response = self._get_request('v0.1/requests/{}?api_key={}'.format(request_id, api_key))
+        response = self._get_request('v0.1/requests/{}'.format(request_id), headers=self._get_headers(api_key))
 
         if response.status_code == 404:
             raise gluetool.GlueError("Request '{}' was not found".format(request_id))
@@ -203,7 +210,7 @@ class TestingFarmAPI(LoggerMixin, object):
     def get_token(self, token_id: str, api_key: str) -> TokenType:
         request = self._get_request(
             'v0.1/tokens/{}'.format(token_id),
-            headers={'Authorization': 'Bearer {}'.format(api_key)}
+            headers=self._get_headers(api_key)
         )
 
         if not request:
@@ -229,7 +236,7 @@ class TestingFarmAPI(LoggerMixin, object):
         response = self._post_request(
             'v0.1/secrets/decrypt',
             payload={'url': git_url, 'message': message},
-            headers={'Authorization': 'Bearer {}'.format(api_key)}
+            headers=self._get_headers(api_key)
         )
         decrypted_message = cast(str, response.json())
         if not self._module.has_shared('add_secrets'):

@@ -233,7 +233,7 @@ def test_get_request_123(module_api, log):
     assert '''Got unexpected response status code 123:
 {
     "payload": "<not available>",
-    "post-url": "dummy-module/v0.1/requests/1?api_key=fakekey",
+    "post-url": "dummy-module/v0.1/requests/1",
     "response": {''' in log.records[-3].message
 
 

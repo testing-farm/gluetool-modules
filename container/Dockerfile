@@ -50,10 +50,10 @@ RUN    ln -s /CONFIG /etc/citool.d \
     # Pull in tmt from @teemtee/stable copr repository
     && dnf copr -y enable @teemtee/stable \
     && dnf -y install fmf-1.6.1 \
-                      tmt-1.42.1 \
-                      tmt+provision-container-1.42.1 \
-                      tmt+provision-virtual-1.42.1 \
-                      tmt+report-polarion-1.42.1 \
+                      tmt-1.43.0 \
+                      tmt+provision-container-1.43.0 \
+                      tmt+provision-virtual-1.43.0 \
+                      tmt+report-polarion-1.43.0 \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \

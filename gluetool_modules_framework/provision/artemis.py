@@ -1064,9 +1064,14 @@ class ArtemisProvisioner(gluetool.Module):
                 'type': int,
                 'default': DEFAULT_READY_TIMEOUT
             },
-            'ready-timeout-offset': {
-                'help': 'Offset to be subtracted from the pipeline timeout to wait for guest to become ready. Requires testing-farm-request module.',
-                'metavar': 'READY_TIMEOUT_OFFSET',
+            'ready-timeout-from-pipeline': {
+                'help': 'Override ready-timeout with the pipeline timeout.',
+                'metavar': 'READY_TIMEOUT_FROM_PIPELINE',
+                'type': bool,
+            },
+            'ready-timeout-from-pipeline-offset': {
+                'help': 'Subtract this amount from the pipeline timeout to wait for guest to become ready.',
+                'metavar': 'READY_TIMEOUT_FROM_PIPELINE_OFFSET',
                 'type': int,
             },
             'ready-tick': {
@@ -1394,16 +1399,7 @@ class ArtemisProvisioner(gluetool.Module):
         '''
         assert self.api
         try:
-            if self.option('ready-timeout-offset') is None:
-                timeout = self.option('ready-timeout')
-            else:
-                if not self.has_shared('testing_farm_request'):
-                    raise gluetool.GlueError("Module 'testing_farm_request' is required for the pipeline timeout.")
-                # maybe totally rubish
-                request = self.shared('testing_farm_request')
-                pipeline_timeout = request.get('settings', {}).get('pipeline', {}).get('timeout',
-                                                                                       self.option('ready-timeout'))
-                timeout = (pipeline_timeout - self.option('ready-timeout-offset')) > 0 or self.option('ready-timeout')
+            timeout = self._adj_timeout()
             guest._wait_ready(timeout=timeout, tick=self.option('ready-tick'))
             response = self.api.inspect_guest(guest.artemis_id)
             guest.hostname = six.ensure_str(response['address']) if response['address'] is not None else None
@@ -1599,3 +1595,16 @@ class ArtemisProvisioner(gluetool.Module):
         for guest in self.guests[:]:
             guest.destroy()
             self.api.dump_events(guest)
+
+    def _adj_timeout(self) -> int:
+        timeout = int(self.option('ready-timeout'))
+        if self.option('ready-timeout-from-pipeline'):
+            if self.has_shared('testing_farm_request'):
+                offset = self.option('ready-timeout-from-pipeline-offset') or 0
+                request = self.shared('testing_farm_request')
+                pipeline_timeout = request.get('settings', {}).get('pipeline', {}).get('timeout',
+                                                                                       self.option('ready-timeout'))
+                user_timeout = pipeline_timeout - offset
+                if user_timeout > 0:
+                    timeout = user_timeout
+        return timeout

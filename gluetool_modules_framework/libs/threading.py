@@ -11,4 +11,10 @@ class RepeatTimer(threading.Timer):
 
     def run(self) -> None:
         while not self.finished.wait(self.interval):
-            self.function(*self.args, **self.kwargs)
+            try:
+                self.function(*self.args, **self.kwargs)
+            except Exception:
+                # Don't let exception crash the thread
+                # This allows the thread to be properly cancelled when needed
+                self.finished.set()
+                break

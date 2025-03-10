@@ -18,6 +18,7 @@ class EnvironmentRequestedMock:
 
 @dataclass
 class TestingFarmRequestMock:
+    __test__ = False
     environments_requested: List[EnvironmentRequestedMock]
 
 

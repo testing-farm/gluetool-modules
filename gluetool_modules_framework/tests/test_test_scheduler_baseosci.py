@@ -43,6 +43,7 @@ class PrimaryTaskMock:
 
 @dataclass
 class TestCase:
+    __test__ = False
     # ID of the test displayed by pytest
     id: str
     # Requested environments

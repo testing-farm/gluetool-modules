@@ -24,3 +24,11 @@ docs/source/module_parsers.py
 
 # Ansible "retry" files
 *.retry
+
+# Ignore files creates by tests
+# console-<uuid>.log
+/console-*.log
+# <uuid>-artemis-guest-log.yaml
+/*-artemis-guest-log.yaml
+# flasher-debug-<uuid>.log
+/flasher-debug-*.log

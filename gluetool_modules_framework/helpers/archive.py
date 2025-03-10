@@ -601,7 +601,7 @@ class Archive(gluetool.Module):
         if not self.get_shared('testing_farm_request'):
             # Request is not available, log it but do not raise error
             # to avoid stucked threads
-            self.error('No testing_farm_request shared')
+            self.warn('No testing farm request found, skipping archiving', sentry=True)
             return
 
         # Before archiving in progress, let's regenerate results.xml

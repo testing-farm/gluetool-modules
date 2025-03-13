@@ -49,11 +49,11 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       rsync beakerlib-libraries rpm-build rpm-devel awscli \
     # Pull in tmt from @teemtee/stable copr repository
     && dnf copr -y enable @teemtee/stable \
-    && dnf -y install fmf-1.6.1 \
-                      tmt-1.43.0 \
-                      tmt+provision-container-1.43.0 \
-                      tmt+provision-virtual-1.43.0 \
-                      tmt+report-polarion-1.43.0 \
+    && dnf -y install fmf-1.7.0 \
+                      tmt-1.44.0 \
+                      tmt+provision-container-1.44.0 \
+                      tmt+provision-virtual-1.44.0 \
+                      tmt+report-polarion-1.44.0 \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \

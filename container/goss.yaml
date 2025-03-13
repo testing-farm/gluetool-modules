@@ -26,7 +26,7 @@ package:
   fmf:
     installed: true
     versions:
-      - 1.6.1
+      - 1.7.0
 
   tmt:
     installed: true
@@ -100,7 +100,7 @@ command:
     exit-status: 0
     timeout: 100000
     stderr:
-      - gluetool 2.13
+      - gluetool 2.14
 
   koji version:
     exit-status: 0
@@ -114,13 +114,13 @@ command:
   tmt --version:
     exit-status: 0
     stdout:
-      - "tmt version: 1.43.0"
+      - "tmt version: 1.44.0"
     timeout: 100000
 
   rpm -q tmt:
     exit-status: 0
     stdout:
-      - "tmt-1.43.0"
+      - "tmt-1.44.0"
     timeout: 100000
 
   tmt run report -h polarion:

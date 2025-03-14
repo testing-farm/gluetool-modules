@@ -1581,6 +1581,9 @@ class TestScheduleTMT(Module):
 
             if isinstance(schedule_entry.guest, ArtemisGuest) and schedule_entry.guest.guest_logs:
                 for log in schedule_entry.guest.guest_logs:
+                    if not log.save_empty and log.content is None:
+                        continue
+
                     log_filepath = os.path.join(
                         schedule_entry.work_dirpath, log.filename.format(guestname=schedule_entry.guest.artemis_id)
                     )

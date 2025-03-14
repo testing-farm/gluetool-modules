@@ -396,6 +396,9 @@ sut     ansible_host={} ansible_user=root
         if schedule_entry.work_dirpath and isinstance(schedule_entry.guest, ArtemisGuest) \
                 and schedule_entry.guest.guest_logs:
             for guest_log in schedule_entry.guest.guest_logs:
+                if not guest_log.save_empty and guest_log.content is None:
+                    continue
+
                 guest_log_filepath = os.path.join(
                     schedule_entry.work_dirpath, guest_log.filename.format(guestname=schedule_entry.guest.artemis_id)
                 )

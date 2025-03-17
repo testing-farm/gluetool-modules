@@ -10,7 +10,7 @@ IMAGE_TAG ?= ${USER}
 
 build:  ## Build gluetool-modules container image
 	poetry build
-	buildah bud --layers -t $(IMAGE):$(IMAGE_TAG) -f container/Dockerfile .
+	buildah bud --pull=always --layers -t $(IMAGE):$(IMAGE_TAG) -f container/Dockerfile .
 
 push:  ## Push gluetool-modules container image to quay.io
 	buildah push $(IMAGE):$(IMAGE_TAG)

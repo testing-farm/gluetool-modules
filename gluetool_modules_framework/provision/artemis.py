@@ -58,7 +58,8 @@ API_FEATURE_VERSIONS: Dict[str, str] = {
     'hw-constraints-zcrypt': '0.0.69',
     'hw-constraints-disk-model-name': '0.0.69',
     'guest-log-blobs': '0.0.70',
-    'security-group-rules': '0.0.72'
+    'security-group-rules': '0.0.72',
+    'guest-reboot': '0.0.74',
 }
 
 SUPPORTED_API_VERSIONS: Set[str] = set(API_FEATURE_VERSIONS.values())

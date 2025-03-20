@@ -59,6 +59,7 @@ RESULT_WEIGHT = {
     'info': 1,
     'fail': 2,
     'warn': 2,
+    'pending': 2,
     'error': 3,
 }
 
@@ -78,7 +79,8 @@ RESULT_OUTCOME = {
     'fail': 'failed',
     'warn': 'needs_inspection',
     'error': 'error',
-    'skip': 'not_applicable'
+    'skip': 'not_applicable',
+    'pending': 'not_applicable',
 }
 
 # Result weight to TestScheduleResult outcome
@@ -1260,7 +1262,7 @@ class TestScheduleTMT(Module):
         # work_dirpath is relative to the current directory, but tmt expects it to be a absolute path
         # so it recognizes it as a path instead of run directory name
         command: List[str] = [
-            self.option('command')
+            self.option('command'), '--feeling-safe'
         ]
 
         tf_request = cast(TestingFarmRequest, self.shared('testing_farm_request'))
@@ -1350,7 +1352,7 @@ class TestScheduleTMT(Module):
             local_command = [
                 # `provision` step for container based execution
                 'provision',
-                '--how', 'container'
+                '--how', 'local'
             ]
             command += local_command
             reproducer += local_command

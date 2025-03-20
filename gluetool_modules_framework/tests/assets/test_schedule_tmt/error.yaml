@@ -31,3 +31,13 @@ results:
         path: error/execute/logs/remove/data
       - name: testout.log
         path: error/execute/logs/remove/out.log
+  - name: /todo
+    result: pending
+    duration:
+    artifacts:
+      - name: log_dir
+        path: error/execute/logs/todo
+      - name: data
+        path: error/execute/logs/todo/data
+      - name: testout.log
+        path: error/execute/logs/todo/out.log

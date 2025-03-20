@@ -38,3 +38,16 @@
     role:
   subresult: []
   check: []
+- name: /todo
+  result: pending
+  log:
+    - logs/todo/out.log
+  duration:
+  start-time:
+  end-time:
+  serial-number: 4
+  guest:
+    name: default-0
+    role:
+  subresult: []
+  check: []

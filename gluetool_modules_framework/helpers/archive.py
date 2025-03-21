@@ -19,9 +19,9 @@ DEFAULT_RETRY_TICK = 10
 DEFAULT_PARALLEL_ARCHIVING_TICK = 30
 DEFAULT_RSYNC_TIMEOUT = 120
 DEFAULT_VERIFY_TICK = 5
-DEFAULT_VERIFY_TIMEOUT = 600
+DEFAULT_VERIFY_TIMEOUT = 1800
 DEFAULT_PARALLEL_ARCHIVING_FINISH_TICK = 5
-DEFAULT_PARALLEL_ARCHIVING_FINISH_TIMEOUT = 600
+DEFAULT_PARALLEL_ARCHIVING_FINISH_TIMEOUT = 1800
 
 ARCHIVE_STAGES = ['execute', 'progress', 'destroy']
 # Stages which use a copy for syncing
@@ -598,6 +598,12 @@ class Archive(gluetool.Module):
     # in the parallel archiving timer without calling it
     def archive_stage(self, stage: str = 'progress') -> None:
 
+        if not self.get_shared('testing_farm_request'):
+            # Request is not available, log it but do not raise error
+            # to avoid stucked threads
+            self.warn('No testing farm request found, skipping archiving', sentry=True)
+            return
+
         # Before archiving in progress, let's regenerate results.xml
         if stage == 'progress':
             self.shared('generate_results', 'test execution running', generate_xunit=False, report_results=False)
@@ -673,6 +679,16 @@ class Archive(gluetool.Module):
                     tick=self.option('verify-tick')
                 )
 
+    def _safe_archive_stage(self, stage: str = 'progress') -> None:
+        """
+        A wrapper around archive_stage that catches all exceptions to prevent thread from getting stuck.
+        """
+        try:
+            self.archive_stage(stage)
+        except Exception as exc:
+            # Log the exception but don't let it propagate and crash the thread
+            self.error(f"Error during parallel archiving: {exc}", sentry=True)
+
     def execute(self) -> None:
         if self.option('disable-archiving'):
             self.info('Archiving is disabled, skipping')
@@ -694,7 +710,7 @@ class Archive(gluetool.Module):
             parallel_archiving_tick = self.option('parallel-archiving-tick')
             self._archive_timer = RepeatTimer(
                 parallel_archiving_tick,
-                self.archive_stage
+                self._safe_archive_stage
             )
 
             self.debug('Starting parallel archiving, run every {} seconds'.format(parallel_archiving_tick))

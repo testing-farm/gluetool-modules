@@ -48,12 +48,14 @@ def fixture_module(monkeypatch):
         'artifacts_location': lambda path: 'https://artifacts.example.com/{}'.format(path)
     })
 
-    os.environ['SOURCE_DESTINATION_MAP'] = '/env-archive-source:env-dest:666:destroy#/env-archive-source2:::execute'
+    os.environ['SOURCE_DESTINATION_MAP'] = '/env-archive-source::env-dest:666:destroy#/env-archive-source2::::execute'
 
     return module
 
 
 def _mock_glob(path, recursive=False):
+    if 'archive-excludes' in path:
+        return ['/archive-excludes/exclude-1', '/archive-excludes/exclude-2']
     if '*' in path:
         return ['/dir-archive-source/1', '/dir-archive-source/2', '/dir-archive-source/3']
     if 'archive-source' in path:
@@ -159,6 +161,9 @@ def test_execute_destroy_ssh(monkeypatch, module):
 
         call(['rsync', '--rsync-option', '--timeout=10', '/tmp/dir/env-archive-source2',
               'https://artifacts.example.com:/artifacts-root/request-id/env-archive-source2'], logger=module.logger),
+
+        call(['rsync', '--rsync-option', '--timeout=10', '/archive-excludes/exclude-2',
+              'https://artifacts.example.com:/artifacts-root/request-id/archive-excludes'], logger=module.logger),
     ]
 
     mock_command_init.assert_has_calls(calls, any_order=True)
@@ -234,6 +239,9 @@ def test_destroy_daemon(monkeypatch, module):
 
         call(['rsync', '--rsync-option', '--timeout=10', '--chmod=666', '/env-archive-source',
               'rsync://artifacts-rsync.example.com/request-id/env-dest'], logger=module.logger),
+
+        call(['rsync', '--rsync-option', '--timeout=10', '/archive-excludes/exclude-2',
+              'rsync://artifacts-rsync.example.com/request-id/archive-excludes'], logger=module.logger),
     ]
 
     mock_command_init.assert_has_calls(calls, any_order=True)
@@ -305,6 +313,9 @@ def test_execute_destroy_local(monkeypatch, module):
 
         call(['rsync', '--rsync-option', '--timeout=10', '--chmod=666', '/env-archive-source',
               '/artifacts-root/request-id/env-dest'], logger=module.logger),
+
+        call(['rsync', '--rsync-option', '--timeout=10', '/archive-excludes/exclude-2',
+              '/artifacts-root/request-id/archive-excludes'], logger=module.logger),
     ]
 
     mock_command_init.assert_has_calls(calls, any_order=True)

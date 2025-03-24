@@ -21,3 +21,7 @@ destroy:
   - source: /dir-archive-source
 
   - source: /archive-source/*
+
+  - source: /archive-excludes/*
+    exclude:
+      - /archive-excludes/exclude-1

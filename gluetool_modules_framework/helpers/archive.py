@@ -650,63 +650,67 @@ class Archive(gluetool.Module):
             # If the entry['source'] is a wildcard, we need to use glob to find all the files
             for source in glob(sources, recursive=True):
 
-                if excludes is not None and any(re.search(exclude_entry, source) for exclude_entry in excludes):
-                    self.debug('Skipping {} because it matches exclude pattern {}'.format(source, excludes))
-                    continue
+                try:
+                    if excludes is not None and any(re.search(exclude_entry, source) for exclude_entry in excludes):
+                        self.debug('Skipping {} because it matches exclude pattern {}'.format(source, excludes))
+                        continue
+                    options = []
 
-                options = []
+                    if self.option('archive-mode') != 's3':
+                        # Not needed for S3
+                        if os.path.isdir(source):
+                            options.append('--recursive')
 
-                if self.option('archive-mode') != 's3':
-                    # Not needed for S3
-                    if os.path.isdir(source):
-                        options.append('--recursive')
+                        # S3 does not support permissions
+                        if permissions:
+                            options.append('--chmod={}'.format(permissions))
 
-                    # S3 does not support permissions
-                    if permissions:
-                        options.append('--chmod={}'.format(permissions))
+                    # In case of syncing 'progress' and 'execute' stages, make sure we work with a copy.
+                    # This is a workaround for the problem of the source file being overwritten with hide-secrets
+                    # module. In that module 'sed -i' is used and the inode of the source file would change,
+                    # effectively breaking the saving of the "live" logs like 'progress.log'.
+                    if self.option('archive-mode') == 's3':
+                        self.run_aws(
+                            source, destination,
+                            options=options or None,
+                            source_copy=True if stage in ARCHIVE_STAGES_USING_COPY else False
+                        )
+                    else:
+                        self.run_rsync(
+                            source, destination,
+                            options=options or None,
+                            source_copy=True if stage in ARCHIVE_STAGES_USING_COPY else False
+                        )
 
-                # In case of syncing 'progress' and 'execute' stages, make sure we work with a copy.
-                # This is a workaround for the problem of the source file being overwritten with hide-secrets module.
-                # In that module 'sed -i' is used and the inode of the source file would change, effectively breaking
-                # the saving of the "live" logs like 'progress.log'.
-                if self.option('archive-mode') == 's3':
-                    self.run_aws(
-                        source, destination,
-                        options=options or None,
-                        source_copy=True if stage in ARCHIVE_STAGES_USING_COPY else False
+                    if not verify or self.option('archive-mode') == 'local':
+                        continue
+
+                    # Verify archivation target
+                    target = self.shared('artifacts_location', source.lstrip('/'))
+
+                    def _verify_archivation() -> Result[bool, bool]:
+                        with gluetool.utils.requests() as request:
+                            # For HEAD method we need to enable redirects explicitely
+                            # https://requests.readthedocs.io/en/latest/user/quickstart/#redirection-and-history
+                            response = request.head(target, allow_redirects=True)
+
+                            if response.status_code == 200:
+                                return Result.Ok(True)
+
+                            return Result.Error(True)
+
+                    self.info("Verifying archivation of '{}'".format(target))
+
+                    gluetool.utils.wait(
+                        "verify archivation of '{}'".format(target),
+                        _verify_archivation,
+                        timeout=self.option('verify-timeout'),
+                        tick=self.option('verify-tick')
                     )
-                else:
-                    self.run_rsync(
-                        source, destination,
-                        options=options or None,
-                        source_copy=True if stage in ARCHIVE_STAGES_USING_COPY else False
-                    )
 
-                if not verify or self.option('archive-mode') == 'local':
-                    continue
-
-                # Verify archivation target
-                target = self.shared('artifacts_location', source.lstrip('/'))
-
-                def _verify_archivation() -> Result[bool, bool]:
-                    with gluetool.utils.requests() as request:
-                        # For HEAD method we need to enable redirects explicitely
-                        # https://requests.readthedocs.io/en/latest/user/quickstart/#redirection-and-history
-                        response = request.head(target, allow_redirects=True)
-
-                        if response.status_code == 200:
-                            return Result.Ok(True)
-
-                        return Result.Error(True)
-
-                self.info("Verifying archivation of '{}'".format(target))
-
-                gluetool.utils.wait(
-                    "verify archivation of '{}'".format(target),
-                    _verify_archivation,
-                    timeout=self.option('verify-timeout'),
-                    tick=self.option('verify-tick')
-                )
+                except Exception as error:
+                    # Log error and continue with another item
+                    self.error(f'Failed to sync {sources}: {error}', sentry=True)
 
     def _safe_archive_stage(self, stage: str = 'progress') -> None:
         """

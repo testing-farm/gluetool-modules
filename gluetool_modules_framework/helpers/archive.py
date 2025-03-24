@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import re
 import shutil
 from glob import glob
 import tempfile
@@ -26,7 +27,7 @@ DEFAULT_PARALLEL_ARCHIVING_FINISH_TIMEOUT = 1800
 ARCHIVE_STAGES = ['execute', 'progress', 'destroy']
 # Stages which use a copy for syncing
 ARCHIVE_STAGES_USING_COPY = ['execute', 'progress']
-SOURCE_DESTINATION_ENTRY_KEYS = ['source', 'destination', 'permissions', 'verify']
+SOURCE_DESTINATION_ENTRY_KEYS = ['source', 'exclude', 'destination', 'permissions', 'verify']
 
 
 class Archive(gluetool.Module):
@@ -35,7 +36,16 @@ class Archive(gluetool.Module):
 
     The module supports SOURCE_DESTINATION_MAP environment variable which can be used to specify
     additional source-destination mappings. The variable is a string of the following format:
-    <SOURCE>:[<DESTINATION>]:[<PERMISSIONS>]:[<STAGE>][#<SOURCE>:[<DESTINATION>]:[<PERMISSIONS>][<STAGE>]]...
+    <SOURCE>:[<EXCLUDE1>,<EXCLUDE2>]:[<DESTINATION>]:[<PERMISSIONS>]:[<STAGE>]#...
+
+    For example:
+    example-directory/*:^excluded-file1$,^excluded-file2$:example-destination:777:destroy
+
+    The ``SOURCE`` is a path to the directory that should be archived. It is a glob.
+    The ``EXCLUDE`` is a list of patterns used to exclude files from the archive. The entries are regexes.
+    The ``DESTINATION`` is a path to the destination directory.
+    The ``PERMISSIONS`` defines the permissions for the destination directory.
+    The ``STAGE`` specifies when the archive should be performed. See ARCHIVE_STAGES for available stages.
 
     The ``archive-mode`` option supports four modes: ``daemon``, ``ssh``, ``local`` and ``s3``:
     * The ``daemon`` mode uses the rsync daemon to with rsync protocol
@@ -195,13 +205,15 @@ class Archive(gluetool.Module):
         if additional_map_var:
             for entry in additional_map_var.split('#'):
 
-                source, destination, permissions, stage = entry.split(':')
+                source, exclude, destination, permissions, stage = entry.split(':')
+                exclude_split = [entry for entry in exclude.split(',') if entry]
 
                 if stage not in ARCHIVE_STAGES:
                     raise GlueError('Invalid stage "{}" in SOURCE_DESTINATION_MAP env'.format(stage))
 
                 source_destination_map[stage].append({
                     'source': source,
+                    'exclude': exclude_split or [],
                     'destination': destination or '',
                     'permissions': permissions or None
                 })
@@ -222,10 +234,22 @@ class Archive(gluetool.Module):
                     if key not in SOURCE_DESTINATION_ENTRY_KEYS:
                         raise GlueError('Invalid key "{}" in source-destination-map entry'.format(key))
 
+                    # Render possible templates in the value
                     if value is not None:
-                        dict_entry[key] = render_template(
-                            value, logger=self.logger, **context
-                        )
+                        # Exclude value is a list of strings
+                        if isinstance(value, list):
+                            dict_entry[key] = [
+                                render_template(
+                                    sub_entry,
+                                    logger=self.logger,
+                                    **context
+                                )
+                                for sub_entry in value
+                            ]
+                        else:
+                            dict_entry[key] = render_template(
+                                value, logger=self.logger, **context
+                            )
 
         return source_destination_map
 
@@ -615,6 +639,7 @@ class Archive(gluetool.Module):
                 raise GlueError('Source path must be specified in source-destination-map')
 
             sources = entry['source']
+            excludes = entry.get('exclude')
             destination = entry.get('destination')
             permissions = entry.get('permissions')
             verify = normalize_bool_option(entry.get('verify'))
@@ -624,6 +649,10 @@ class Archive(gluetool.Module):
 
             # If the entry['source'] is a wildcard, we need to use glob to find all the files
             for source in glob(sources, recursive=True):
+
+                if excludes is not None and any(re.search(exclude_entry, source) for exclude_entry in excludes):
+                    self.debug('Skipping {} because it matches exclude pattern {}'.format(source, excludes))
+                    continue
 
                 options = []
 

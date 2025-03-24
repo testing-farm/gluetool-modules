@@ -1602,9 +1602,10 @@ class ArtemisProvisioner(gluetool.Module):
             if self.has_shared('testing_farm_request'):
                 offset = self.option('ready-timeout-from-pipeline-offset') or 0
                 request = self.shared('testing_farm_request')
-                pipeline_timeout = request.get('settings', {}).get('pipeline', {}).get('timeout',
-                                                                                       self.option('ready-timeout'))
-                user_timeout = pipeline_timeout - offset
-                if user_timeout > 0:
-                    timeout = user_timeout
+                if request:
+                    pipeline_timeout = request.get('settings', {}).get('pipeline', {}).get('timeout')
+                    if pipeline_timeout:
+                        user_timeout = pipeline_timeout - offset
+                        if user_timeout > 0:
+                            timeout = user_timeout
         return timeout

@@ -780,8 +780,17 @@ class ArtemisGuest(NetworkedGuest):
         self.info('successfully released')
 
     def _save_guest_log(self, filename: str, data: str) -> None:
-        with open(os.path.join(self.workdir, filename), 'w') as f:
+        filepath = os.path.join(self.workdir, filename)
+        temporary_filepath = os.path.join(self.workdir, f'{filename}.tmp')
+
+        # Save first into a temporary file - if we fail to save the content,
+        # we won't break the existing file, if there's any.
+        with open(temporary_filepath, 'w') as f:
             f.write(data)
+
+        # Now *atomically* rename the temporary file - if we succeed, everything
+        # is fine; if we fail, the original file remains unharmed.
+        os.rename(temporary_filepath, filepath)
 
     def gather_guest_log(self, log: ArtemisGuestLog) -> None:
         """
@@ -848,6 +857,9 @@ class ArtemisGuest(NetworkedGuest):
         log.content = content
         guest_log_file = log.filename.format(guestname=self.artemis_id)
         self._save_guest_log(guest_log_file, content)
+
+        if normalize_bool_option(self.module.option('guest-logs-without-history')):
+            return
 
         updated = response.json().get('updated')
         if not updated:
@@ -1049,6 +1061,10 @@ class ArtemisProvisioner(gluetool.Module):
             'guest-logs-config': {
                 'help': 'Configuration of the Artemis guest logs gathering.',
                 'type': str,
+            },
+            'guest-logs-without-history': {
+                'help': 'If set, only one copy of guest log will be stored, no intermediate snapshots.',
+                'action': 'store_true'
             },
         }),
         ('Timeout options', {

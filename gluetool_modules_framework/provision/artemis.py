@@ -1165,6 +1165,7 @@ class ArtemisProvisioner(gluetool.Module):
             'ready-timeout': self.option('ready-timeout'),
             'ready-tick': self.option('ready-tick'),
             'api-call-timeout': self.option('api-call-timeout'),
+            'user-data-vars-template-file': self.option('user-data-vars-template-file')
         }
 
     @property

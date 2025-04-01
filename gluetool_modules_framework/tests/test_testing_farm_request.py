@@ -421,8 +421,11 @@ def test_in_repository_config(module, requests_mock, request1, log, config, expe
 
 # TestingFarmRequestModule class tests
 def test_eval_context_request1(module, monkeypatch, request1):
+    monkeypatch.setenv('REQUEST_TIMEOUT', '79m')
+
     assert module.eval_context == {
         'TESTING_FARM_REQUEST_ID': '1',
+        'TESTING_FARM_REQUEST_TIMEOUT': '79m',
         'TESTING_FARM_REQUEST_TEST_TYPE': 'fmf',
         'TESTING_FARM_REQUEST_TEST_URL': 'testurl',
         'TESTING_FARM_REQUEST_TEST_REF': 'testref',
@@ -434,8 +437,11 @@ def test_eval_context_request1(module, monkeypatch, request1):
 
 
 def test_eval_context_request3(module, monkeypatch, request3):
+    monkeypatch.setenv('REQUEST_TIMEOUT', '79m')
+
     assert module.eval_context == {
         'TESTING_FARM_REQUEST_ID': '3',
+        'TESTING_FARM_REQUEST_TIMEOUT': '79m',
         'TESTING_FARM_REQUEST_TEST_TYPE': 'sti',
         'TESTING_FARM_REQUEST_TEST_URL': 'https://username:secret@gitlab.com/namespace/repo',
         'TESTING_FARM_REQUEST_TEST_REF': 'sha',

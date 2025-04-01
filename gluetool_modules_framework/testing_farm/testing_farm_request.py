@@ -5,6 +5,7 @@ from enum import Enum
 from functools import partial
 from posixpath import join as urljoin
 
+import os
 import psutil
 import re
 import six
@@ -724,6 +725,7 @@ class TestingFarmRequestModule(gluetool.Module):
             # common for all artifact providers
             'TESTING_FARM_REQUEST_ID': self._tf_request.id,
             'TESTING_FARM_REQUEST_TEST_TYPE': self._tf_request.type,
+            'TESTING_FARM_REQUEST_TIMEOUT': os.environ.get('REQUEST_TIMEOUT', ''),
             # TODO: we have raw secret string here because this dict is fed to `gluetool.utils.render_template` which
             # does not know how to work with `secret_type.Secret[str]`
             'TESTING_FARM_REQUEST_TEST_URL': self._tf_request.url._dangerous_extract(),

@@ -11,7 +11,7 @@ from gluetool_modules_framework.infrastructure.copr import CoprTask
 import attrs
 import datetime
 
-from typing import List, Dict, Optional, Union
+from typing import List, Optional, Union
 
 
 @attrs.define
@@ -57,13 +57,19 @@ class TestCaseSubresult:
     logs: List[Log]
 
 
+@attrs.define(frozen=True)
+class Property:
+    name: str
+    value: str
+
+
 @attrs.define
 class TestCase:
     name: str
     result: Optional[str] = None
     subresults: List[TestCaseSubresult] = attrs.field(factory=list)
     note: List[str] = attrs.field(factory=list)
-    properties: Dict[str, str] = attrs.field(factory=dict)
+    properties: List[Property] = attrs.field(factory=list)
     logs: List[Log] = attrs.field(factory=list)
     requested_environment: Optional[TestingEnvironment] = None
     provisioned_environment: Optional[TestingEnvironment] = None
@@ -113,7 +119,7 @@ class TestSuite:
     name: str
     result: Optional[str] = None
     logs: List[Log] = attrs.field(factory=list)
-    properties: Dict[str, str] = attrs.field(factory=dict)
+    properties: List[Property] = attrs.field(factory=list)
     test_cases: List[TestCase] = attrs.field(factory=list)
     requested_environment: Optional[TestingEnvironment] = None
     provisioned_environment: Optional[TestingEnvironment] = None

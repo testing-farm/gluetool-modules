@@ -16,7 +16,7 @@ from gluetool.log import log_blob, log_dict, format_dict
 from gluetool.utils import cached_property, Command, check_for_commands, GlueCommandError, \
     dict_update, Bunch, PatternMap, format_command_line
 from gluetool_modules_framework.libs.results.test_result import TestResult, publish_result
-from gluetool_modules_framework.libs.results import TestSuite, Log, TestCase
+from gluetool_modules_framework.libs.results import TestSuite, Log, TestCase, Property
 
 from typing import Any, Dict, cast, Optional, Union
 
@@ -76,7 +76,9 @@ class OSHTestResult(TestResult):
         test_suite = super(OSHTestResult, self).convert_to_results()
 
         if 'osh_url' in self.urls:
-            test_suite.properties.update({'baseosci.url.osh-run': self.urls['osh_url']})
+            test_suite.properties.append(
+                Property(name='baseosci.url.osh-run', value=self.urls['osh_url'])
+            )
 
         return test_suite
 

@@ -37,7 +37,8 @@ from gluetool_modules_framework.provision.artemis import ArtemisGuest
 # Type annotations
 from typing import cast, Any, Dict, List, Optional, Tuple, Union, Set  # noqa
 
-from gluetool_modules_framework.libs.results import TestSuite, Log, TestCase, TestCaseCheck, TestCaseSubresult
+from gluetool_modules_framework.libs.results import TestSuite, Log, TestCase, TestCaseCheck, \
+    TestCaseSubresult, Property
 from secret_type import Secret
 
 # TMT run log file
@@ -1627,14 +1628,15 @@ class TestScheduleTMT(Module):
             assert schedule_entry.guest.environment is not None
             assert schedule_entry.guest.hostname is not None
 
-            test_case.properties.update({
-                'baseosci.arch': str(schedule_entry.guest.environment.arch),
-                'baseosci.connectable_host': schedule_entry.guest.hostname,
-                'baseosci.distro': str(schedule_entry.guest.environment.compose),
-                'baseosci.status': schedule_entry.stage.value.capitalize(),
-                'baseosci.testcase.source.url': self.shared('dist_git_repository').web_url or '',
-                'baseosci.variant': ''
-            })
+            test_case.properties.extend([
+                Property('baseosci.arch', str(schedule_entry.guest.environment.arch)),
+                Property('baseosci.connectable_host', schedule_entry.guest.hostname),
+                Property('baseosci.distro', str(schedule_entry.guest.environment.compose)),
+                Property('baseosci.status', schedule_entry.stage.value.capitalize()),
+                Property('baseosci.testcase.source.url',
+                         self.shared('dist_git_repository').web_url or ''),
+                Property('baseosci.variant', '')
+            ])
 
             for artifact in task.artifacts:
                 path = artifacts_location(self, artifact.path, logger=schedule_entry.logger)

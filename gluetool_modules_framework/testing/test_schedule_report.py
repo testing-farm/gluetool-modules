@@ -15,7 +15,7 @@ from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestSche
 
 from gluetool_modules_framework.infrastructure.koji_fedora import KojiTask
 from gluetool_modules_framework.infrastructure.copr import CoprTask
-from gluetool_modules_framework.libs.results import Results, TestSuite, Log
+from gluetool_modules_framework.libs.results import Results, TestSuite, Log, Property
 
 # Type annotations
 from typing import cast, TYPE_CHECKING, Any, Dict, List, Optional, Union  # noqa
@@ -251,7 +251,9 @@ class TestScheduleReport(gluetool.Module):
                 name=schedule_entry.testsuite_name or schedule_entry.id,
                 result=schedule_entry.result.name.lower(),
                 stage=schedule_entry.stage.name.lower(),
-                properties={'baseosci.result': schedule_entry.result.name.lower()},
+                properties=[
+                    Property(name='baseosci.result', value=schedule_entry.result.name.lower())
+                ]
             )
 
             for stage in gluetool_modules_framework.libs.guest_setup.STAGES_ORDERED:

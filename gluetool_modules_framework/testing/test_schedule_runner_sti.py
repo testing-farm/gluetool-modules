@@ -27,7 +27,7 @@ from gluetool_modules_framework.provision.artemis import ArtemisGuest
 from typing import cast, Any, Callable, Dict, List, Optional, Tuple  # noqa
 from gluetool_modules_framework.testing.test_scheduler_sti import TestScheduleEntry  # noqa
 
-from gluetool_modules_framework.libs.results import TestSuite, Log, TestCase
+from gluetool_modules_framework.libs.results import TestSuite, Log, TestCase, Property
 
 
 # Check whether Ansible finished running tests every 5 seconds.
@@ -418,17 +418,18 @@ sut     ansible_host={} ansible_user=root
             assert schedule_entry.guest is not None
             assert schedule_entry.guest.environment is not None
             assert schedule_entry.guest.hostname is not None
-            test_case.properties.update({
-                'baseosci.arch': str(schedule_entry.guest.environment.arch),
-                'baseosci.connectable_host': schedule_entry.guest.hostname,
-                'baseosci.distro': str(schedule_entry.guest.environment.compose),
-                'baseosci.status': schedule_entry.stage.value.capitalize(),
-                'baseosci.variant': '',
-            })
+            test_case.properties.extend([
+                    Property('baseosci.arch', str(schedule_entry.guest.environment.arch)),
+                    Property('baseosci.connectable_host', schedule_entry.guest.hostname),
+                    Property('baseosci.distro', str(schedule_entry.guest.environment.compose)),
+                    Property('baseosci.status', schedule_entry.stage.value.capitalize()),
+                    Property('baseosci.variant', '')
+            ])
             if self.has_shared('dist_git_repository'):
-                test_case.properties.update({
-                    'baseosci.testcase.source.url': self.shared('dist_git_repository').web_url or ''
-                })
+                test_case.properties.append(
+                    Property('baseosci.testcase.source.url',
+                             self.shared('dist_git_repository').web_url or '')
+                )
 
             # logs
             assert schedule_entry.artifact_dirpath is not None

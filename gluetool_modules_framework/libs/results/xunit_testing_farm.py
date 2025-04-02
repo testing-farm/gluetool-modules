@@ -7,13 +7,15 @@ from xsdata_attrs.bindings import XmlSerializer
 from xsdata.formats.dataclass.serializers.config import SerializerConfig
 from xsdata.formats.dataclass.serializers.writers import XmlEventWriter
 
-from typing import List, Optional, Dict, TYPE_CHECKING, cast
+from typing import List, Optional, TYPE_CHECKING, cast
 
+import gluetool_modules_framework.libs.results as lib_results
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 
 if TYPE_CHECKING:
-    from gluetool_modules_framework.libs.results import (Results, TestSuite, TestCase, Log, Phase, Guest,  # noqa
-                                                         TestCaseCheck, TestCaseSubresult)
+    from gluetool_modules_framework.libs.results import (Results, TestSuite, TestCase, Log,  # noqa
+                                                         Phase, Guest, TestCaseCheck,
+                                                         TestCaseSubresult, Property)
 
 
 # Used in BaseOS CI results
@@ -59,9 +61,10 @@ class XUnitTFProperties:
     property: List[XUnitTFProperty]
 
     @classmethod
-    def construct(cls, properties: Dict[str, str]) -> 'XUnitTFProperties':
+    def construct(cls, properties: List['Property']) -> 'XUnitTFProperties':
         return XUnitTFProperties(
-            property=[XUnitTFProperty(name=name, value=value) for name, value in sorted(properties.items())]
+            property=[XUnitTFProperty(name=prop.name, value=prop.value) for prop
+                      in sorted(properties, key=lambda p: p.name)]
         )
 
 
@@ -368,27 +371,32 @@ class XUnitTFTestSuites:
 
     @classmethod
     def construct(cls, results: 'Results') -> 'XUnitTFTestSuites':
-        properties: Dict[str, str] = {}
+        properties: List['Property'] = []
         if results.primary_task:
-            properties.update({
-                'baseosci.artifact-id': str(results.primary_task.id),
-                'baseosci.artifact-namespace': results.primary_task.ARTIFACT_NAMESPACE
-            })
+            properties.extend([
+                lib_results.Property(name='baseosci.artifact-id',
+                                     value=str(results.primary_task.id)),
+                lib_results.Property(name='baseosci.artifact-namespace',
+                                     value=results.primary_task.ARTIFACT_NAMESPACE)
+            ])
 
         if results.test_schedule_result:
-            properties.update({'baseosci.overall-result': results.test_schedule_result})
+            properties.append(lib_results.Property(name='baseosci.overall-result',
+                                                   value=results.test_schedule_result))
 
         if results.testing_thread:
-            properties.update({'baseosci.id.testing-thread': results.testing_thread})
+            properties.append(lib_results.Property(name='baseosci.id.testing-thread',
+                                                   value=results.testing_thread))
 
         if results.polarion_lookup_method is not None:
             assert results.polarion_custom_lookup_method_field_id is not None
             assert results.polarion_project_id is not None
-            properties.update({
-                'polarion-lookup-method': results.polarion_lookup_method,
-                'polarion-custom-lookup-method-field-id': results.polarion_custom_lookup_method_field_id,
-                'polarion-project-id': results.polarion_project_id
-            })
+            properties.extend([
+                lib_results.Property(name='polarion-lookup-method', value=results.polarion_lookup_method),
+                lib_results.Property(name='polarion-custom-lookup-method-field-id',
+                                     value=results.polarion_custom_lookup_method_field_id),
+                lib_results.Property(name='polarion-project-id', value=results.polarion_project_id)
+            ])
 
         return XUnitTFTestSuites(
             overall_result=results.overall_result,

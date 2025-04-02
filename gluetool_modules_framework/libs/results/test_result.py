@@ -6,7 +6,7 @@ import six
 
 import gluetool
 from gluetool.utils import new_xml_element
-from gluetool_modules_framework.libs.results import TestSuite
+from gluetool_modules_framework.libs.results import TestSuite, Property
 
 # Type annotations
 # pylint: disable=unused-import,wrong-import-order
@@ -151,22 +151,26 @@ class TestResult(object):
 
         primary_task = self.glue.shared('primary_task')
         if primary_task:
-            test_suite.properties.update({
-                'baseosci.artifact-id': str(primary_task.id),
-                'baseosci.artifact-namespace': primary_task.ARTIFACT_NAMESPACE
-            })
+            test_suite.properties.extend([
+                Property(name='baseosci.artifact-id', value=str(primary_task.id)),
+                Property(name='baseosci.artifact-namespace', value=primary_task.ARTIFACT_NAMESPACE)
+            ])
 
-        test_suite.properties.update({
-            'baseosci.test-type': self.test_type,
-            'baseosci.result-class': self.result_class,
-            'baseosci.overall-result': self.overall_result
-        })
+        test_suite.properties.extend([
+            Property(name='baseosci.test-type', value=self.test_type),
+            Property(name='baseosci.result-class', value=self.result_class),
+            Property(name='baseosci.overall-result', value=self.overall_result)
+        ])
 
         if 'testing-thread-id' in self.ids:
-            test_suite.properties.update({'baseosci.id.testing-thread': self.ids['testing-thread-id']})
+            test_suite.properties.append(
+                Property(name='baseosci.id.testing-thread', value=self.ids['testing-thread-id'])
+            )
 
         if 'jenkins_build' in self.urls:
-            test_suite.properties.update({'baseosci.url.jenkins-build': self.urls['jenkins_build']})
+            test_suite.properties.append(
+                Property(name='baseosci.url.jenkins-build', value=self.urls['jenkins_build'])
+            )
 
         return test_suite
 

@@ -246,8 +246,10 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     assert testcase_a.end_time == '2023-10-16T07:23:58.885551+00:00'
     # Checking serial-number
     assert testcase_a.serial_number == 1
-    # Checking properties
-    assert len(testcase_a.properties) == 0
+    # Checking properties (sorted by name)
+    assert len(testcase_a.properties) == 1
+    assert testcase_a.properties[0].name == 'contact'
+    assert testcase_a.properties[0].value == 'John Doe <jdoe@example.com>'
 
     # Checking testcase B server (multihost)
     assert testcase_b_server.name == '/tests/testing-farm/tests/multihost/B'
@@ -279,8 +281,12 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     assert testcase_b_server.end_time == '2023-10-16T07:24:18.041634+00:00'
     # Checking serial-number
     assert testcase_b_server.serial_number == 2
-    # Checking properties
-    assert len(testcase_b_server.properties) == 0
+    # Checking properties (sorted by name)
+    assert len(testcase_b_server.properties) == 2
+    assert testcase_b_server.properties[0].name == 'contact'
+    assert testcase_b_server.properties[0].value == 'John Doe <jdoe@example.com>'
+    assert testcase_b_server.properties[1].name == 'contact'
+    assert testcase_b_server.properties[1].value == 'John Smith <jsmith@example.com>'
 
     # Checking testcase B client (multihost)
     assert testcase_b_client.name == '/tests/testing-farm/tests/multihost/B'
@@ -311,9 +317,15 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     # Checking end-time
     assert testcase_b_client.end_time == '2023-10-16T07:24:18.041634+00:00'
     # Checking serial-number
-    assert testcase_b_client.serial_number == 2
     # Checking properties
-    assert len(testcase_b_client.properties) == 0
+    assert len(testcase_b_client.properties) == 2
+    assert testcase_b_client.serial_number == 2
+    # Checking properties (sorted by name)
+    assert len(testcase_b_client.properties) == 2
+    assert testcase_b_client.properties[0].name == 'contact'
+    assert testcase_b_client.properties[0].value == 'John Doe <jdoe@example.com>'
+    assert testcase_b_client.properties[1].name == 'contact'
+    assert testcase_b_client.properties[1].value == 'John Smith <jsmith@example.com>'
 
     # Checking testcase C server (multihost)
     assert testcase_c_server.name == '/tests/testing-farm/tests/multihost/C'

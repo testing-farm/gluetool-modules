@@ -1,0 +1,7 @@
+---
+- name: /install
+  serial-number: 1
+- name: /update
+  serial-number: 2
+- name: /remove
+  serial-number: 3

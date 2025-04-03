@@ -1,0 +1,12 @@
+---
+- name: /server-setup/testing-farm/tests/multihost/A
+  serial-number: 1
+  contact:
+    - John Doe <jdoe@example.com>
+- name: /tests/testing-farm/tests/multihost/B
+  serial-number: 2
+  contact:
+    - John Doe <jdoe@example.com>
+    - John Smith <jsmith@example.com>
+- name: /tests/testing-farm/tests/multihost/C
+  serial-number: 3

@@ -217,7 +217,7 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     # Checking serial number
     assert testcase_docs.serial_number == None
     # Checking properties (properties are sorted by name)
-    assert len(testcase_docs.properties) == 6
+    assert len(testcase_docs.properties) == 8
     assert testcase_docs.properties[0].name == 'baseosci.arch'
     assert testcase_docs.properties[0].value == 'None'
     assert testcase_docs.properties[1].name == 'baseosci.connectable_host'
@@ -230,6 +230,10 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     assert testcase_docs.properties[4].value == ''
     assert testcase_docs.properties[5].name == 'baseosci.variant'
     assert testcase_docs.properties[5].value == ''
+    assert testcase_docs.properties[6].name == 'contact'
+    assert testcase_docs.properties[6].value == 'John Doe <jdoe@example.com>'
+    assert testcase_docs.properties[7].name == 'contact'
+    assert testcase_docs.properties[7].value == 'John Smith <jsmith@example.com>'
 
     # Checking testcase_dry
     assert testcase_dry.name == '/tests/core/dry'

@@ -1,0 +1,5 @@
+---
+- name: /tests/core/docs
+  serial-number: 1
+- name: /tests/core/dry
+  serial-number: 2

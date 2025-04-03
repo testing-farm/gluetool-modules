@@ -30,6 +30,14 @@ from gluetool_modules_framework.libs.testing_environment import TestingEnvironme
 from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleResult, TestScheduleEntryOutput, \
     TestScheduleEntryStage, TestScheduleEntryAdapter, TestScheduleEntryState
 from gluetool_modules_framework.libs.test_schedule import TestScheduleEntry as BaseTestScheduleEntry
+from gluetool_modules_framework.libs.test_schedule_tmt import \
+    DEFAULT_RESULT_LOG_MAX_SIZE, \
+    DISCOVERED_TESTS_YAML, \
+    PLAN_OUTCOME, PLAN_OUTCOME_WITH_ERROR, \
+    RESULTS_YAML, RESULT_OUTCOME, RESULT_WEIGHT, \
+    TMTDiscoveredTest, TMTDiscoveredTest, TMTExitCodes, \
+    TMT_ENV_FILE, TMT_LOG, TMT_REPRODUCER, TMT_VERBOSE_LOG, \
+    get_test_contacts, safe_name
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
 from gluetool_modules_framework.libs.git import RemoteGitRepository
 from gluetool_modules_framework.provision.artemis import ArtemisGuest
@@ -41,80 +49,8 @@ from gluetool_modules_framework.libs.results import TestSuite, Log, TestCase, Te
     TestCaseSubresult, Property
 from secret_type import Secret
 
-# TMT run log file
-TMT_LOG = 'tmt-run.log'
-TMT_REPRODUCER = 'tmt-reproducer.sh'
-TMT_VERBOSE_LOG = 'log.txt'
-
-# File with environment variables
-TMT_ENV_FILE = 'tmt-environment-{}.yaml'
-
-# Maximum size of logs read in MiB
-DEFAULT_RESULT_LOG_MAX_SIZE = 10
-
 CONTEXT_FILENAME_PREFIX = 'context-'
 CONTEXT_FILENAME_SUFFIX = '.yaml'
-
-# Weight of a test result, used to count the overall result. Higher weight has precendence
-# when counting the overall result. See https://tmt.readthedocs.io/en/latest/spec/steps.html#execute
-RESULT_WEIGHT = {
-    'skip': 0,
-    'pass': 1,
-    'info': 1,
-    'fail': 2,
-    'warn': 2,
-    'pending': 3,
-    'error': 3,
-}
-
-# Map tmt results to our expected results
-#
-# Note that we comply to
-#
-#     https://pagure.io/fedora-ci/messages/blob/master/f/schemas/test-complete.yaml
-#
-# TMT recognized `error` for a test, but we do not translate it to a TestScheduleResult
-# error, as this error is user facing, nothing we can do about it to fix it, it is his problem.
-#
-# For more context see: https://pagure.io/fedora-ci/messages/pull-request/86
-RESULT_OUTCOME = {
-    'pass': 'passed',
-    'info': 'info',
-    'fail': 'failed',
-    'warn': 'needs_inspection',
-    'error': 'error',
-    'skip': 'not_applicable',
-    'pending': 'pending',
-}
-
-# Result weight to TestScheduleResult outcome
-#
-#     https://tmt.readthedocs.io/en/latest/overview.html#exit-codes
-#
-# All tmt errors are connected to tests or config, so only higher return code than 3
-# is treated as error
-PLAN_OUTCOME = {
-    0: TestScheduleResult.SKIPPED,
-    1: TestScheduleResult.PASSED,
-    2: TestScheduleResult.FAILED,
-    3: TestScheduleResult.FAILED,
-}
-
-# Result weight to TestScheduleResult outcome
-#
-#     https://tmt.readthedocs.io/en/latest/overview.html#exit-codes
-#
-# All tmt errors are connected to tests or config, so only higher return code than 3
-# is treated as error
-PLAN_OUTCOME_WITH_ERROR = {
-    0: TestScheduleResult.SKIPPED,
-    1: TestScheduleResult.PASSED,
-    2: TestScheduleResult.FAILED,
-    3: TestScheduleResult.ERROR,
-}
-
-# Results YAML file, contains list of test run results, relative to plan workdir
-RESULTS_YAML = "execute/results.yaml"
 
 
 @attrs.define(frozen=True)
@@ -137,6 +73,13 @@ class TestResult:
     :ivar name: name of the test.
     :ivar result: test result.
     :ivar artifacts: artifacts/log files declared by the test
+    :ivar note: notes from the test
+    :ivar checks: list of checks performed by the test
+    :ivar duration: test duration
+    :ivar start_time: test start time
+    :ivar end_time: test end time
+    :ivar subresults: list of subresults
+    :ivar contacts: list of contacts
     """
     name: str
     result: str
@@ -147,6 +90,7 @@ class TestResult:
     start_time: Optional[str] = None
     end_time: Optional[str] = None
     subresults: List[TestCaseSubresult]
+    contacts: List[str] = attrs.field(factory=list)
 
 
 @attrs.define
@@ -366,15 +310,6 @@ class TMTPlan:
         return excludes
 
 
-# https://tmt.readthedocs.io/en/latest/overview.html#exit-codes
-class TMTExitCodes(enum.IntEnum):
-    TESTS_PASSED = 0
-    TESTS_FAILED = 1
-    TESTS_ERROR = 2
-    RESULTS_MISSING = 3
-    TESTS_SKIPPED = 4
-
-
 class TestScheduleEntry(BaseTestScheduleEntry):
     @staticmethod
     def construct_id(tec: TestingEnvironment, plan: Optional[str] = None) -> str:
@@ -426,19 +361,6 @@ class TestScheduleEntry(BaseTestScheduleEntry):
         log_fn('plan: {}'.format(self.plan))
 
 
-def safe_name(name: str) -> str:
-    """
-    A safe variant of the name which does not contain special characters.
-
-    Spaces and other special characters are removed to prevent problems with
-    tools which do not expect them (e.g. in directory names).
-
-    Workaround for https://github.com/teemtee/tmt/issues/1857
-    """
-
-    return re.sub(r"[^\w/-]+", "-", name).strip("-")
-
-
 def gather_plan_results(
     module: gluetool.Module,
     schedule_entry: TestScheduleEntry,
@@ -453,12 +375,14 @@ def gather_plan_results(
     :returns: A tuple with overall_result and List[TestResult].
     """
     test_results: List[TestResult] = []
+    discovered_tests: List[TMTDiscoveredTest] = []
 
     # TMT uses plan name as a relative directory to the working directory, but
     # plan start's with '/' character, strip it so we can use it with os.path.join
     plan_path = safe_name(schedule_entry.plan[1:])
 
     results_yaml = os.path.join(work_dir, plan_path, RESULTS_YAML)
+    discovered_tests_yaml = os.path.join(work_dir, plan_path, DISCOVERED_TESTS_YAML)
 
     if not os.path.exists(results_yaml):
         schedule_entry.warn("Could not find results file '{}' containing tmt results".format(results_yaml), sentry=True)
@@ -474,6 +398,27 @@ def gather_plan_results(
 
     except GlueError as error:
         schedule_entry.warn('Could not load results.yaml file: {}'.format(error))
+        return TestScheduleResult.ERROR, test_results
+
+    if not os.path.exists(discovered_tests_yaml):
+        schedule_entry.warn(
+            "Could not find tests file '{}' containing discovered tests".format(discovered_tests_yaml),
+            sentry=True)
+        return TestScheduleResult.ERROR, test_results
+
+    # load test results from `tests.yaml` which is created in tmt's discover step
+    # https://tmt.readthedocs.io/en/stable/spec/plans.html#discover
+    try:
+        converter = gluetool.utils.create_cattrs_converter(prefer_attrib_converters=True)
+        discovered_tests = load_yaml(
+            discovered_tests_yaml,
+            unserializer=gluetool.utils.create_cattrs_unserializer(List[TMTDiscoveredTest],
+                                                                   converter=converter)
+        )
+        log_dict(schedule_entry.debug, "loaded tests from '{}'".format(discovered_tests_yaml), discovered_tests)
+
+    except GlueError as error:
+        schedule_entry.warn('Could not load tests.yaml file: {}'.format(error))
         return TestScheduleResult.ERROR, test_results
 
     # Something went wrong, there should be results. There were tests, otherwise we wouldn't
@@ -572,6 +517,7 @@ def gather_plan_results(
             start_time=result.start_time,
             end_time=result.end_time,
             subresults=subresults,
+            contacts=get_test_contacts(result.name, result.serial_number, discovered_tests),
         ))
 
     # count the maximum result weight encountered, i.e. the overall result
@@ -1664,6 +1610,11 @@ class TestScheduleTMT(Module):
                          self.shared('dist_git_repository').web_url or ''),
                 Property('baseosci.variant', '')
             ])
+
+            if len(task.contacts) > 0:
+                test_case.properties.extend([
+                    Property('contact', contact) for contact in task.contacts
+                ])
 
             for artifact in task.artifacts:
                 path = artifacts_location(self, artifact.path, logger=schedule_entry.logger)

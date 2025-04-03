@@ -1,0 +1,8 @@
+---
+- name: /tests/core/docs
+  serial-number: 1
+  contact:
+    - John Doe <jdoe@example.com>
+    - John Smith <jsmith@example.com>
+- name: /tests/core/dry
+  serial-number: 2

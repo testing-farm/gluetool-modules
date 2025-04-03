@@ -48,12 +48,12 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       redhat-rpm-config koji python3-virtualenv standard-test-roles \
                       rsync beakerlib-libraries rpm-build rpm-devel awscli \
     # Pull in tmt from @teemtee/stable copr repository
-    && dnf copr -y enable @teemtee/stable \
+    && dnf copr -y enable @teemtee/latest \
     && dnf -y install fmf-1.7.0 \
-                      tmt-1.44.0 \
-                      tmt+provision-container-1.44.0 \
-                      tmt+provision-virtual-1.44.0 \
-                      tmt+report-polarion-1.44.0 \
+                      tmt-1.46.0.dev11+g1b647af6-main.fc40 \
+                      tmt+provision-container-1.46.0.dev11+g1b647af6-main.fc40 \
+                      tmt+provision-virtual-1.46.0.dev11+g1b647af6-main.fc40 \
+                      tmt+report-polarion-1.46.0.dev11+g1b647af6-main.fc40 \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \

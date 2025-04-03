@@ -19,6 +19,7 @@
   </logs>
   <properties>
    <property name="baseosci.result" value="passed"/>
+   <property name="id" value="work-0_plan"/>
   </properties>
  </testsuite>
  <testsuite name="plan" result="passed" tests="0" stage="complete">
@@ -31,6 +32,7 @@
   </logs>
   <properties>
    <property name="baseosci.result" value="passed"/>
+   <property name="id" value="work-1_plan"/>
   </properties>
  </testsuite>
  <testsuite name="plan" result="passed" tests="0" stage="complete">
@@ -43,6 +45,7 @@
   </logs>
   <properties>
    <property name="baseosci.result" value="passed"/>
+   <property name="id" value="work-2_plan"/>
   </properties>
  </testsuite>
 </testsuites>

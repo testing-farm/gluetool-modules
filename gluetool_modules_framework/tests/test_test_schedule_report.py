@@ -169,6 +169,7 @@ def test_execute(module, monkeypatch):
                     GuestSetupOutput(stage, 'schedule entry #{}: {}'.format(i, stage), 'logpath', 'some data')
                 ] for stage in STAGES_ORDERED
             }
+            entry.work_dirpath = 'work-{}'.format(i)
 
         patch_shared(monkeypatch, module, {}, callables={
             'test_schedule': lambda: schedule,
@@ -201,6 +202,7 @@ def test_destroy(module, monkeypatch):
                     GuestSetupOutput(stage, 'schedule entry #{}: {}'.format(i, stage), 'logpath', 'some data')
                 ] for stage in STAGES_ORDERED
             }
+            entry.work_dirpath = 'work-{}'.format(i)
 
         patch_shared(monkeypatch, module, {}, callables={
             'test_schedule': lambda: schedule,

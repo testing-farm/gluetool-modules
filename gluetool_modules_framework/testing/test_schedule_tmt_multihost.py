@@ -25,7 +25,7 @@ from gluetool_modules_framework.libs import create_inspect_callback
 from gluetool_modules_framework.libs.artifacts import artifacts_location
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment, dict_nested_value
 from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleResult, TestScheduleEntryOutput, \
-    TestScheduleEntryStage, TestScheduleEntryAdapter, TestScheduleEntryState
+    TestScheduleEntryStage, TestScheduleEntryAdapter, TestScheduleEntryState, sanitize_name
 from gluetool_modules_framework.libs.test_schedule import TestScheduleEntry as BaseTestScheduleEntry
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
 from gluetool_modules_framework.libs.git import RemoteGitRepository
@@ -34,7 +34,8 @@ from gluetool_modules_framework.provision.artemis import ArtemisGuest
 # Type annotations
 from typing import cast, Any, Dict, List, Optional, Tuple, Union, Set  # noqa
 
-from gluetool_modules_framework.libs.results import TestSuite, Log, TestCase, TestCaseCheck, Guest, TestCaseSubresult
+from gluetool_modules_framework.libs.results import TestSuite, Log, TestCase, TestCaseCheck, Guest, TestCaseSubresult, \
+    Property
 from secret_type import Secret
 
 # TMT run log file
@@ -1130,6 +1131,13 @@ class TestScheduleTMTMultihost(Module):
 
         # create environment variables for the tmt process, start with options coming from options
         tmt_process_environment = self.environment_variables.copy()
+        tmt_process_environment.update({
+            'TMT_PLUGIN_REPORT_REPORTPORTAL_LINK_TEMPLATE': '{}/#{}_{}'.format(
+                self.shared('coldstore_url'),
+                schedule_entry.work_dirpath,
+                r'{{ PLAN_NAME }}_{{ RESULT.serial_number }}_{{ RESULT.guest.name }}'
+            )
+        })
 
         def _check_accepted_environment_variables(variables: Dict[str, str]) -> None:
             for key, _ in six.iteritems(variables):
@@ -1421,7 +1429,16 @@ class TestScheduleTMTMultihost(Module):
                     role=task.guest.role,
                     environment=TestingEnvironment(arch=guest.arch, compose=guest.image) if guest else None
                 ) if task.guest else None,
-                serial_number=task.serial_number
+                serial_number=task.serial_number,
+            )
+
+            test_case.properties.append(
+                Property('id', '{}_{}_{}_{}'.format(
+                    schedule_entry.work_dirpath,
+                    sanitize_name(test_suite.name, allow_slash=False),
+                    test_case.serial_number,
+                    test_case.guest.name if test_case.guest else None
+                )),
             )
 
             if task.result == 'failed':

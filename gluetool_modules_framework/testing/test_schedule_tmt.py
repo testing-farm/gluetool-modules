@@ -28,7 +28,7 @@ from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
 from gluetool_modules_framework.libs.sut_installation import INSTALL_COMMANDS_FILE
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment, dict_nested_value
 from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleResult, TestScheduleEntryOutput, \
-    TestScheduleEntryStage, TestScheduleEntryAdapter, TestScheduleEntryState
+    TestScheduleEntryStage, TestScheduleEntryAdapter, TestScheduleEntryState, sanitize_name
 from gluetool_modules_framework.libs.test_schedule import TestScheduleEntry as BaseTestScheduleEntry
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
 from gluetool_modules_framework.libs.git import RemoteGitRepository
@@ -37,7 +37,7 @@ from gluetool_modules_framework.provision.artemis import ArtemisGuest
 # Type annotations
 from typing import cast, Any, Dict, List, Optional, Tuple, Union, Set  # noqa
 
-from gluetool_modules_framework.libs.results import TestSuite, Log, TestCase, TestCaseCheck, \
+from gluetool_modules_framework.libs.results import TestSuite, Log, TestCase, TestCaseCheck, Guest, \
     TestCaseSubresult, Property
 from secret_type import Secret
 
@@ -140,6 +140,8 @@ class TestResult:
     artifacts: List[TestArtifact]
     note: List[str] = attrs.field(factory=list)
     checks: List[TestCaseCheck]
+    guest: Optional['TMTResultGuest'] = None
+    serial_number: Optional[int] = None
     duration: Optional[datetime.timedelta] = None
     start_time: Optional[str] = None
     end_time: Optional[str] = None
@@ -179,6 +181,12 @@ class TMTResultSubresult:
         )
 
 
+@attrs.define
+class TMTResultGuest:
+    name: str = attrs.field(validator=attrs.validators.instance_of(str))
+    role: Optional[str] = attrs.field(validator=attrs.validators.optional(attrs.validators.instance_of(str)))
+
+
 @attrs.define(kw_only=True)
 class TMTResult:
     """
@@ -197,6 +205,7 @@ class TMTResult:
         member_validator=attrs.validators.instance_of(str),
         iterable_validator=attrs.validators.instance_of(list)
     ))
+    guest: TMTResultGuest = attrs.field(validator=attrs.validators.instance_of(TMTResultGuest))
     note: List[str] = attrs.field(validator=attrs.validators.deep_iterable(
         member_validator=attrs.validators.instance_of(str),
         iterable_validator=attrs.validators.instance_of(list)
@@ -208,6 +217,7 @@ class TMTResult:
     duration: Optional[datetime.timedelta] = attrs.field(
         validator=attrs.validators.optional(attrs.validators.instance_of(datetime.timedelta)),
     )
+    serial_number: Optional[int] = attrs.field(validator=attrs.validators.optional(attrs.validators.instance_of(int)))
     start_time: Optional[str] = attrs.field(validator=attrs.validators.optional(attrs.validators.instance_of(str)))
     end_time: Optional[str] = attrs.field(validator=attrs.validators.optional(attrs.validators.instance_of(str)))
     subresult: List[TMTResultSubresult] = attrs.field(validator=attrs.validators.deep_iterable(
@@ -227,8 +237,10 @@ class TMTResult:
             name=data['name'],
             result=data['result'],
             log=data['log'],
+            guest=converter.structure(data['guest'], TMTResultGuest),
             note=cast(List[str], note),
             check=converter.structure(data['check'], List[TMTResultCheck]),
+            serial_number=data.get('serial-number'),
             duration=duration,
             start_time=data['start-time'],
             end_time=data['end-time'],
@@ -559,11 +571,13 @@ def gather_plan_results(
             name=result.name,
             result=outcome,
             artifacts=sorted(list(artifacts), key=lambda artifact: artifact.path),
+            guest=result.guest,
             note=result.note,
             checks=checks,
             duration=result.duration,
             start_time=result.start_time,
             end_time=result.end_time,
+            serial_number=result.serial_number,
             subresults=subresults,
         ))
 
@@ -1408,6 +1422,13 @@ class TestScheduleTMT(Module):
 
         # create environment variables for the tmt process, start with options coming from options
         tmt_process_environment = self.environment_variables.copy()
+        tmt_process_environment.update({
+            'TMT_PLUGIN_REPORT_REPORTPORTAL_LINK_TEMPLATE': '{}/#{}_{}'.format(
+                self.shared('coldstore_url'),
+                schedule_entry.work_dirpath,
+                r'{{ PLAN_NAME }}_{{ RESULT.serial_number }}_{{ RESULT.guest.name }}'
+            )
+        })
 
         def _check_accepted_environment_variables(variables: Dict[str, str]) -> None:
             for key, _ in six.iteritems(variables):
@@ -1615,6 +1636,8 @@ class TestScheduleTMT(Module):
                 duration=task.duration,
                 start_time=task.start_time,
                 end_time=task.end_time,
+                guest=Guest(name=task.guest.name) if task.guest else None,
+                serial_number=task.serial_number,
             )
 
             if task.result == 'failed':
@@ -1635,7 +1658,13 @@ class TestScheduleTMT(Module):
                 Property('baseosci.status', schedule_entry.stage.value.capitalize()),
                 Property('baseosci.testcase.source.url',
                          self.shared('dist_git_repository').web_url or ''),
-                Property('baseosci.variant', '')
+                Property('baseosci.variant', ''),
+                Property('id', '{}_{}_{}_{}'.format(
+                    schedule_entry.work_dirpath,
+                    sanitize_name(test_suite.name, allow_slash=False),
+                    test_case.serial_number,
+                    test_case.guest.name if test_case.guest else None
+                )),
             ])
 
             for artifact in task.artifacts:

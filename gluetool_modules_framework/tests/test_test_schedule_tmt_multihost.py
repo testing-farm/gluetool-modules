@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import base64
+import datetime
 import os
 import shutil
 import re
@@ -189,7 +190,7 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     orig_gather_plan_results = gluetool_modules_framework.testing.test_schedule_tmt_multihost.gather_plan_results
 
     def inject_gather_plan_results(module, schedule_entry, work_dir, recognize_errors=False):
-        shutil.copytree(os.path.join(ASSETS_DIR, 'passed'), os.path.join(work_dir, 'passed'))
+        shutil.copytree(os.path.join(ASSETS_DIR, 'multihost-passed'), os.path.join(work_dir, 'passed'))
         return orig_gather_plan_results(module, schedule_entry, work_dir, recognize_errors=recognize_errors)
 
     # run tmt with the mock plan
@@ -207,31 +208,178 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     # Second call shouldn't produce duplicated results
     module.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
 
-    assert test_suite.test_count == 2
-    testcase_docs, testcase_dry = test_suite.test_cases[0], test_suite.test_cases[1]
-    assert testcase_docs.name == '/tests/core/docs'
-    assert testcase_docs.result == 'passed'
-    # expecting log_dir, testout.log, and journal.txt, in exactly that order
-    assert len(testcase_docs.logs) == 4
-    assert testcase_docs.logs[0].name == 'log_dir'
-    assert testcase_docs.logs[0].href.endswith('/passed/execute/logs/tests/core/docs')
-    assert testcase_docs.logs[1].name == 'data'
-    assert testcase_docs.logs[1].href.endswith('/passed/execute/logs/tests/core/docs/data')
-    assert testcase_docs.logs[2].name == 'journal.txt'
-    assert testcase_docs.logs[2].href.endswith('/passed/execute/logs/tests/core/docs/journal.txt')
-    assert testcase_docs.logs[3].name == 'testout.log'
-    assert testcase_docs.logs[3].href.endswith('/passed/execute/logs/tests/core/docs/out.log')
+    assert test_suite.test_count == 5
+    testcase_a = test_suite.test_cases[0]
+    testcase_b_server = test_suite.test_cases[1]
+    testcase_b_client = test_suite.test_cases[2]
+    testcase_c_server = test_suite.test_cases[3]
+    testcase_c_client = test_suite.test_cases[4]
 
-    assert testcase_dry.name == '/tests/core/dry'
-    assert testcase_dry.result == 'passed'
-    assert testcase_dry.note == ['original result: fail']
-    assert len(testcase_dry.logs) == 3
-    assert testcase_dry.logs[0].name == 'log_dir'
-    assert testcase_dry.logs[0].href.endswith('/passed/execute/logs/tests/core/dry')
-    assert testcase_dry.logs[1].name == 'data'
-    assert testcase_dry.logs[1].href.endswith('/passed/execute/logs/tests/core/dry/data')
-    assert testcase_dry.logs[2].name == 'testout.log'
-    assert testcase_dry.logs[2].href.endswith('/passed/execute/logs/tests/core/dry/out.log')
+    # Checking testcase a
+    assert testcase_a.name == '/server-setup/testing-farm/tests/multihost/A'
+    assert testcase_a.result == 'passed'
+    # expecting log_dir, testout.log, and testout.log, in exactly that order
+    assert len(testcase_a.logs) == 3
+    assert testcase_a.logs[0].name == 'log_dir'
+    assert testcase_a.logs[0].href.endswith(
+        '/passed/execute/data/guest/server/server-setup/testing-farm/tests/multihost/A-1')
+    assert testcase_a.logs[1].name == 'data'
+    assert testcase_a.logs[1].href.endswith(
+        '/passed/execute/data/guest/server/server-setup/testing-farm/tests/multihost/A-1/data')
+    assert testcase_a.logs[2].name == 'testout.log'
+    assert testcase_a.logs[2].href.endswith(
+        '/passed/execute/data/guest/server/server-setup/testing-farm/tests/multihost/A-1/output.txt')
+    # Checking guest
+    assert testcase_a.guest.name == 'server'
+    assert testcase_a.guest.role == None
+    # Checking subresults
+    assert len(testcase_a.subresults) == 0
+    # Checking checks
+    assert len(testcase_a.checks) == 0
+    # Checking note
+    assert testcase_a.note == []
+    # Checking duration
+    assert testcase_a.duration == datetime.timedelta(0)
+    # Checking start-time
+    assert testcase_a.start_time == '2023-10-16T07:23:58.568500+00:00'
+    # Checking end-time
+    assert testcase_a.end_time == '2023-10-16T07:23:58.885551+00:00'
+    # Checking serial-number
+    assert testcase_a.serial_number == 1
+    # Checking properties
+    assert len(testcase_a.properties) == 0
+
+    # Checking testcase B server (multihost)
+    assert testcase_b_server.name == '/tests/testing-farm/tests/multihost/B'
+    assert testcase_b_server.result == 'passed'
+    # expecting log_dir, testout.log, and testout.log, in exactly that order
+    assert len(testcase_b_server.logs) == 3
+    assert testcase_b_server.logs[0].name == 'log_dir'
+    assert testcase_b_server.logs[0].href.endswith('/tests/testing-farm/tests/multihost/B-2')
+    assert testcase_b_server.logs[1].name == 'data'
+    assert testcase_b_server.logs[1].href.endswith(
+        '/passed/execute/data/guest/server/tests/testing-farm/tests/multihost/B-2/data')
+    assert testcase_b_server.logs[2].name == 'testout.log'
+    assert testcase_b_server.logs[2].href.endswith(
+        '/passed/execute/data/guest/server/tests/testing-farm/tests/multihost/B-2/output.txt')
+    # Checking guest
+    assert testcase_b_server.guest.name == 'server'
+    assert testcase_b_server.guest.role == None
+    # Checking subresults
+    assert len(testcase_b_server.subresults) == 0
+    # Checking checks
+    assert len(testcase_b_server.checks) == 0
+    # Checking note
+    assert testcase_b_server.note == []
+    # Checking duration
+    assert testcase_b_server.duration == datetime.timedelta(0)
+    # Checking start-time
+    assert testcase_b_server.start_time == '2023-10-16T07:24:17.726241+00:00'
+    # Checking end-time
+    assert testcase_b_server.end_time == '2023-10-16T07:24:18.041634+00:00'
+    # Checking serial-number
+    assert testcase_b_server.serial_number == 2
+    # Checking properties
+    assert len(testcase_b_server.properties) == 0
+
+    # Checking testcase B client (multihost)
+    assert testcase_b_client.name == '/tests/testing-farm/tests/multihost/B'
+    assert testcase_b_client.result == 'passed'
+    # expecting log_dir, testout.log, and testout.log, in exactly that order
+    assert len(testcase_b_client.logs) == 3
+    assert testcase_b_client.logs[0].name == 'log_dir'
+    assert testcase_b_client.logs[0].href.endswith('/tests/testing-farm/tests/multihost/B-2')
+    assert testcase_b_client.logs[1].name == 'data'
+    assert testcase_b_client.logs[1].href.endswith(
+        '/passed/execute/data/guest/client/tests/testing-farm/tests/multihost/B-2/data')
+    assert testcase_b_client.logs[2].name == 'testout.log'
+    assert testcase_b_client.logs[2].href.endswith(
+        '/passed/execute/data/guest/client/tests/testing-farm/tests/multihost/B-2/output.txt')
+    # Checking guest
+    assert testcase_b_client.guest.name == 'client'
+    assert testcase_b_client.guest.role == None
+    # Checking subresults
+    assert len(testcase_b_client.subresults) == 0
+    # Checking checks
+    assert len(testcase_b_client.checks) == 0
+    # Checking note
+    assert testcase_b_client.note == []
+    # Checking duration
+    assert testcase_b_client.duration == datetime.timedelta(0)
+    # Checking start-time
+    assert testcase_b_client.start_time == '2023-10-16T07:24:17.726241+00:00'
+    # Checking end-time
+    assert testcase_b_client.end_time == '2023-10-16T07:24:18.041634+00:00'
+    # Checking serial-number
+    assert testcase_b_client.serial_number == 2
+    # Checking properties
+    assert len(testcase_b_client.properties) == 0
+
+    # Checking testcase C server (multihost)
+    assert testcase_c_server.name == '/tests/testing-farm/tests/multihost/C'
+    assert testcase_c_server.result == 'passed'
+    # expecting log_dir, testout.log, and testout.log, in exactly that order
+    assert len(testcase_c_server.logs) == 3
+    assert testcase_c_server.logs[0].name == 'log_dir'
+    assert testcase_c_server.logs[0].href.endswith('/tests/testing-farm/tests/multihost/C-3')
+    assert testcase_c_server.logs[1].name == 'data'
+    assert testcase_c_server.logs[1].href.endswith(
+        '/passed/execute/data/guest/server/tests/testing-farm/tests/multihost/C-3/data')
+    assert testcase_c_server.logs[2].name == 'testout.log'
+    assert testcase_c_server.logs[2].href.endswith(
+        '/passed/execute/data/guest/server/tests/testing-farm/tests/multihost/C-3/output.txt')
+    # Checking guest
+    assert testcase_c_server.guest.name == 'server'
+    assert testcase_c_server.guest.role == None
+    # Checking subresults
+    assert len(testcase_c_server.subresults) == 0
+    # Checking checks
+    assert len(testcase_c_server.checks) == 0
+    # Checking note
+    assert testcase_c_server.note == []
+    # Checking duration
+    assert testcase_c_server.duration == datetime.timedelta(0)
+    # Checking start-time
+    assert testcase_c_server.start_time == '2023-10-16T07:24:22.123139+00:00'
+    # Checking end-time
+    assert testcase_c_server.end_time == '2023-10-16T07:24:22.440081+00:00'
+    # Checking serial-number
+    assert testcase_c_server.serial_number == 3
+    # Checking properties
+    assert len(testcase_c_server.properties) == 0
+
+    # Checking testcase C client (multihost)
+    assert testcase_c_client.name == '/tests/testing-farm/tests/multihost/C'
+    assert testcase_c_client.result == 'passed'
+    # expecting log_dir, testout.log, and testout.log, in exactly that order
+    assert len(testcase_c_client.logs) == 3
+    assert testcase_c_client.logs[0].name == 'log_dir'
+    assert testcase_c_client.logs[0].href.endswith('/tests/testing-farm/tests/multihost/C-3')
+    assert testcase_c_client.logs[1].name == 'data'
+    assert testcase_c_client.logs[1].href.endswith(
+        '/passed/execute/data/guest/client/tests/testing-farm/tests/multihost/C-3/data')
+    assert testcase_c_client.logs[2].name == 'testout.log'
+    assert testcase_c_client.logs[2].href.endswith(
+        '/passed/execute/data/guest/client/tests/testing-farm/tests/multihost/C-3/output.txt')
+    # Checking guest
+    assert testcase_c_client.guest.name == 'client'
+    assert testcase_c_client.guest.role == None
+    # Checking subresults
+    assert len(testcase_c_client.subresults) == 0
+    # Checking checks
+    assert len(testcase_c_client.checks) == 0
+    # Checking note
+    assert testcase_c_client.note == []
+    # Checking duration
+    assert testcase_c_client.duration == datetime.timedelta(0)
+    # Checking start-time
+    assert testcase_c_client.start_time == '2023-10-16T07:24:22.123139+00:00'
+    # Checking end-time
+    assert testcase_c_client.end_time == '2023-10-16T07:24:22.440081+00:00'
+    # Checking serial-number
+    assert testcase_c_client.serial_number == 3
+    # Checking properties
+    assert len(testcase_c_client.properties) == 0
 
     shutil.rmtree(schedule_entry.work_dirpath)
 

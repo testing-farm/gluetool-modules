@@ -131,6 +131,13 @@ class TestResult:
     :ivar name: name of the test.
     :ivar result: test result.
     :ivar artifacts: artifacts/log files declared by the test
+    :ivar note: notes attached to the test result.
+    :ivar checks: list of checks attached to the test result.
+    :ivar guest: guest on which the test was run.
+    :ivar serial_number: serial number of the test.
+    :ivar duration: duration of the test.
+    :ivar start_time: start time of the test.
+    :ivar end_time: end time of the test.
     """
     name: str
     result: str

@@ -217,6 +217,9 @@ class TMTResult:
         member_validator=attrs.validators.instance_of(TMTResultSubresult),
         iterable_validator=attrs.validators.instance_of(list)
     ))
+    serial_number: Optional[int] = attrs.field(
+        validator=attrs.validators.optional(attrs.validators.instance_of(int)),
+    )
 
     @classmethod
     def _structure(cls, data: Dict[str, Any], converter: cattrs.Converter) -> 'TMTResult':
@@ -235,7 +238,8 @@ class TMTResult:
             duration=duration,
             start_time=data['start-time'],
             end_time=data['end-time'],
-            subresult=converter.structure(data['subresult'], List[TMTResultSubresult])
+            subresult=converter.structure(data['subresult'], List[TMTResultSubresult]),
+            serial_number=data.get('serial-number'),
         )
 
 

@@ -247,12 +247,14 @@ class TestScheduleReport(gluetool.Module):
             self._results.polarion_project_id = self.option('polarion-project-id')
 
         for schedule_entry in schedule:
+            test_suite_name = schedule_entry.testsuite_name or schedule_entry.id
             test_suite = TestSuite(
-                name=schedule_entry.testsuite_name or schedule_entry.id,
+                name=test_suite_name,
                 result=schedule_entry.result.name.lower(),
                 stage=schedule_entry.stage.name.lower(),
                 properties=[
-                    Property(name='baseosci.result', value=schedule_entry.result.name.lower())
+                    Property(name='baseosci.result', value=schedule_entry.result.name.lower()),
+                    Property(name='id', value='{}_{}'.format(schedule_entry.work_dirpath, test_suite_name)),
                 ]
             )
 

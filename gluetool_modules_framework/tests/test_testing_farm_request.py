@@ -321,6 +321,33 @@ def test_update_conflict(module, request2, monkeypatch, log):
     module.cancel_pipeline.assert_called_once_with(destroying=True)
 
 
+def test_update_state_ignored(module, request2, monkeypatch, log):
+    patch_shared(monkeypatch, module, {'xunit_testing_farm_file': 'xunitfile', 'results': 'someresults'})
+
+    request = module._tf_request
+    monkeypatch.setattr(module.glue, 'pipeline_cancelled', True)
+
+    request.update(
+        state='somestate',
+        overall_result='someresult',
+        summary='somesummary',
+        artifacts_url='someurl'
+    )
+
+    # state was ignored because pipeline was cancelled
+    assert PUT_REQUESTS['2'] == {
+        'api_key': 'fakekey',
+        'result': {
+            'overall': 'someresult',
+            'summary': 'somesummary',
+            'xunit_url': 'someurl/xunitfile'
+        },
+        'run': {
+            'artifacts': 'someurl',
+        }
+    }
+
+
 def test_webhook(module, requests_mock, request2):
     module._config.update({'retry-timeout': 1, 'retry-tick': 1})
     request = module._tf_request

@@ -124,6 +124,7 @@ class InstallKojiBuildExecute(gluetool.Module):
             sut_installation.add_step(
                 'Download task id {}'.format(artifact.id),
                 (
+                    'set -o pipefail; '
                     '( {0} download-build --debuginfo --task-id --arch noarch --arch {2} --arch src {1} || '
                     '{0} download-task --arch noarch --arch {2} --arch src {1} ) | '
                     'egrep Downloading | cut -d " " -f 3 | tee rpms-list-{1}'

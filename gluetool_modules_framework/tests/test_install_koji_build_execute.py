@@ -110,8 +110,8 @@ def test_extract_artifacts(module, monkeypatch):
     (
         None,  # No additional input artifacts, see `mock_guest` function for the base artifacts
         [  # Expected install commands
-            '( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123123',  # noqa
-            '( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123124 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123124',  # noqa
+            'set -o pipefail; ( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123123',  # noqa
+            'set -o pipefail; ( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123124 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123124',  # noqa
             'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list',  # noqa
             'dnf -y reinstall $(cat rpms-list) || true',
             r"""if [ ! -z "$(sed 's/\s//g' rpms-list)" ];then dnf -y install --allowerasing $(cat rpms-list);else echo "Nothing to install, rpms-list is empty"; fi""",
@@ -128,10 +128,10 @@ def test_extract_artifacts(module, monkeypatch):
             Artifact(id='skip-installing-me-2', packages=None, type='redhat-brew-build', install=False),
         ],
         [  # Expected install commands
-            '( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123123',  # noqa
-            '( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123124 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123124',  # noqa
-            '( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src skip-installing-me-1 || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src skip-installing-me-1 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-skip-installing-me-1',  # noqa
-            '( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src skip-installing-me-2 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src skip-installing-me-2 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-skip-installing-me-2',  # noqa
+            'set -o pipefail; ( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123123',  # noqa
+            'set -o pipefail; ( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123124 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123124',  # noqa
+            'set -o pipefail; ( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src skip-installing-me-1 || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src skip-installing-me-1 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-skip-installing-me-1',  # noqa
+            'set -o pipefail; ( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src skip-installing-me-2 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src skip-installing-me-2 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-skip-installing-me-2',  # noqa
             'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | grep -Fv "$(cat rpms-list-skip-installing-me-1)" | grep -Fv "$(cat rpms-list-skip-installing-me-2)" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list',  # noqa
             'dnf -y reinstall $(cat rpms-list) || true',
             r"""if [ ! -z "$(sed 's/\s//g' rpms-list)" ];then dnf -y install --allowerasing $(cat rpms-list);else echo "Nothing to install, rpms-list is empty"; fi""",
@@ -145,7 +145,7 @@ def test_extract_artifacts(module, monkeypatch):
     (
         None,  # No additional input artifacts, see `mock_guest` function for the base artifacts
         [  # Expected install commands
-            '( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src forced-artifact || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src forced-artifact ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-forced-artifact',  # noqa
+            'set -o pipefail; ( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src forced-artifact || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src forced-artifact ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-forced-artifact',  # noqa
             'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list',  # noqa
             'dnf -y reinstall $(cat rpms-list) || true',
             r"""if [ ! -z "$(sed 's/\s//g' rpms-list)" ];then dnf -y install --allowerasing $(cat rpms-list);else echo "Nothing to install, rpms-list is empty"; fi""",
@@ -204,8 +204,8 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
     copr_module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir))
 
     koji_commands = [
-        '( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123123',  # noqa
-        '( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123124 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123124',  # noqa
+        'set -o pipefail; ( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123123',  # noqa
+        'set -o pipefail; ( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123124 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123124',  # noqa
         'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list',  # noqa
         'dnf -y reinstall $(cat rpms-list) || true',
         r"""if [ ! -z "$(sed 's/\s//g' rpms-list)" ];then dnf -y install --allowerasing $(cat rpms-list);else echo "Nothing to install, rpms-list is empty"; fi""",
@@ -248,8 +248,8 @@ def test_guest_setup_yum(module, local_guest, tmpdir):
     calls = [
         call('command -v dnf'),
         call('command -v dnf'),
-        call('( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123123'),  # noqa
-        call('( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123124 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123124'),  # noqa
+        call('set -o pipefail; ( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123123'),  # noqa
+        call('set -o pipefail; ( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123124 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123124'),  # noqa
         call('ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list'),  # noqa
         call('yum -y reinstall $(cat rpms-list)'),
         call('yum -y downgrade $(cat rpms-list)'),

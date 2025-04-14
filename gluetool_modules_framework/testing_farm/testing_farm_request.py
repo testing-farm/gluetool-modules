@@ -544,7 +544,8 @@ class TestingFarmRequest(LoggerMixin, object):
                 'api_key': self._api_key
             })
 
-        if state:
+        # TFT-3292 - do not update state if pipeline was cancelled
+        if state and not self._module.pipeline_cancelled:
             payload.update({
                 'state': state
             })
@@ -808,7 +809,7 @@ class TestingFarmRequestModule(gluetool.Module):
         assert self._tf_request
 
         # update the state
-        self._tf_request.update(state='canceled')
+        self._tf_request.update(state=PipelineState.canceled)
 
         if not destroying:
             # cancel the pipeline

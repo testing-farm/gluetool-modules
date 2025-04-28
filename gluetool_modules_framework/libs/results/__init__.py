@@ -16,8 +16,8 @@ from typing import List, Optional, Union
 
 @attrs.define
 class Log:
-    href: str
-    name: str
+    href: str = attrs.field(eq=True)
+    name: str = attrs.field(eq=True)
     guest_setup_stage: Optional[str] = None
     schedule_stage: Optional[str] = None
     schedule_entry: Optional[str] = None

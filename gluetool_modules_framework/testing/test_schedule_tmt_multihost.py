@@ -1375,27 +1375,37 @@ class TestScheduleTMTMultihost(Module):
                     os.path.join(schedule_entry.work_dirpath, 'tmt-discover.log'),
                     logger=schedule_entry.logger
                 )
-                test_suite.logs.append(Log(href=tmt_discover_log_href, name='tmt-discover-log'))
+                log_to_add = Log(href=tmt_discover_log_href, name='tmt-discover-log')
+                if log_to_add not in test_suite.logs:
+                    test_suite.logs.append(log_to_add)
 
             workdir_href = artifacts_location(self, schedule_entry.work_dirpath, logger=schedule_entry.logger)
-            test_suite.logs.append(Log(href=workdir_href, name='workdir'))
+            log_to_add = Log(href=workdir_href, name='workdir')
+            if log_to_add not in test_suite.logs:
+                test_suite.logs.append(log_to_add)
 
             tmt_log_filepath = os.path.join(schedule_entry.work_dirpath, TMT_LOG)
             if os.path.exists(tmt_log_filepath):
                 tmt_log_href = artifacts_location(self, tmt_log_filepath, logger=schedule_entry.logger)
-                test_suite.logs.append(Log(href=tmt_log_href, name='tmt-log'))
+                log_to_add = Log(href=tmt_log_href, name='tmt-log')
+                if log_to_add not in test_suite.logs:
+                    test_suite.logs.append(log_to_add)
 
             tmt_verbose_log_filepath = os.path.join(schedule_entry.work_dirpath, TMT_VERBOSE_LOG)
             if os.path.exists(tmt_verbose_log_filepath):
                 tmt_verbose_log_href = artifacts_location(self, tmt_verbose_log_filepath, logger=schedule_entry.logger)
-                test_suite.logs.append(Log(href=tmt_verbose_log_href, name='tmt-verbose-log'))
+                log_to_add = Log(href=tmt_verbose_log_href, name='tmt-verbose-log')
+                if log_to_add not in test_suite.logs:
+                    test_suite.logs.append(log_to_add)
 
             data_filepath = os.path.join(schedule_entry.work_dirpath, safe_name(schedule_entry.plan[1:]), 'data')
             if os.path.exists(data_filepath):
-                test_suite.logs.append(Log(
+                log_to_add = Log(
                     href=artifacts_location(self, data_filepath, logger=schedule_entry.logger),
                     name='data'
-                ))
+                )
+                if log_to_add not in test_suite.logs:
+                    test_suite.logs.append(log_to_add)
 
             if isinstance(schedule_entry.guest, ArtemisGuest) and schedule_entry.guest.guest_logs:
                 for log in schedule_entry.guest.guest_logs:
@@ -1403,11 +1413,15 @@ class TestScheduleTMTMultihost(Module):
                         schedule_entry.work_dirpath, log.filename.format(guestname=schedule_entry.guest.artemis_id)
                     )
                     log_href = artifacts_location(self, log_filepath)
-                    test_suite.logs.append(Log(href=log_href, name=log.name))
+                    log_to_add = Log(href=log_href, name=log.name)
+                    if log_to_add not in test_suite.logs:
+                        test_suite.logs.append(log_to_add)
 
         if schedule_entry.tmt_reproducer_filepath:
             href = artifacts_location(self, schedule_entry.tmt_reproducer_filepath, logger=schedule_entry.logger)
-            test_suite.logs.append(Log(href=href, name='tmt-reproducer'))
+            log_to_add = Log(href=href, name='tmt-reproducer')
+            if log_to_add not in test_suite.logs:
+                test_suite.logs.append(log_to_add)
 
         if not schedule_entry.results:
             return
@@ -1441,21 +1455,23 @@ class TestScheduleTMTMultihost(Module):
             for artifact in task.artifacts:
                 path = artifacts_location(self, artifact.path, logger=schedule_entry.logger)
 
-                schedule_entry.outputs.append(
-                    TestScheduleEntryOutput(
+                outputs = TestScheduleEntryOutput(
                         stage=TestScheduleEntryStage.RUNNING,
                         label=artifact.name,
                         log_path=path,
                         additional_data=None
-                    )
                 )
+                if outputs not in schedule_entry.outputs:
+                    schedule_entry.outputs.append(outputs)
 
-                test_case.logs.append(Log(
+                log_to_add = Log(
                     href=path,
                     name=artifact.name,
                     schedule_stage='running',
                     schedule_entry=schedule_entry.id
-                ))
+                )
+                if log_to_add not in test_case.logs:
+                    test_case.logs.append(log_to_add)
 
                 # test output can contain invalid utf characters, make sure to replace them
                 if os.path.isfile(artifact.path):
@@ -1486,10 +1502,13 @@ class TestScheduleTMTMultihost(Module):
 
             plan_path = safe_name(schedule_entry.plan[1:])
             assert schedule_entry.work_dirpath is not None
-            test_suite.test_cases.append(test_case)
+
+            if test_case not in test_suite.test_cases:
+                test_suite.test_cases.append(test_case)
 
         for test_case in test_suite.test_cases:
             if test_case.guest and (test_case.guest.name, test_case.guest.role) not in [
                 (guest.name, guest.role) for guest in test_suite.guests
             ]:
-                test_suite.guests.append(test_case.guest)
+                if test_case not in test_suite.test_cases:
+                    test_suite.guests.append(test_case.guest)

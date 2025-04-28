@@ -183,6 +183,8 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     # generate results.xml
     test_suite = TestSuite(name='some-suite', result='some-result')
     module.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
+    # Second call shouldn't produce duplicated results
+    module.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
 
     assert test_suite.test_count == 2
     testcase_docs, testcase_dry = test_suite.test_cases[0], test_suite.test_cases[1]

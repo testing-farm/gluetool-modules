@@ -10,6 +10,7 @@ from gluetool.glue import Module
 import pytest
 import requests
 import urllib3.exceptions
+import gluetool_modules_framework.testing_farm.testing_farm_request
 from requests.exceptions import ConnectionError
 from mock import MagicMock
 
@@ -96,7 +97,8 @@ def fixture_module():
     module._config['boot-tick'] = 1
     module._config['boot-timeout'] = 2
     module._config['ready-tick'] = 1
-    module._config['ready-timeout'] = 2
+    module._config['ready-timeout-from-pipeline'] = False
+    module._config['ready-timeout-from-pipeline-offset'] = 1
     module._config['snapshot-ready-tick'] = 1
     module._config['snapshot-ready-timeout'] = 2
 
@@ -527,6 +529,57 @@ def test_provision(monkeypatch, module, scenario, tmpdir, log):
         # there should be nothing else to cleanup
         module.destroy()
         assert log.match(levelno=logging.INFO, message='no guests to remove during module destroy')
+
+
+def test_adj_timeout(monkeypatch, module, log):
+    patch_shared(monkeypatch, module, {'testing_farm_request': {'settings': {'pipeline': {'timeout': 50}}}})
+    module._config['ready-timeout-from-pipeline'] = False  # disable overriding ready-timeout from request
+    module._config['ready-timeout-offset'] = 3
+    module._config['ready-timeout'] = 7
+    timeout = module._adj_timeout()
+    assert type(timeout) == int
+    assert timeout == 7
+
+
+def test_adj_timeout_enabled(monkeypatch, module, log):
+    # without a testing-farm-request module, read-timeout should be used
+    module._config['ready-timeout-from-pipeline'] = True
+    module._config['ready-timeout-from-pipeline-offset'] = 3
+    module._config['ready-timeout'] = 7
+    timeout = module._adj_timeout()
+    assert type(timeout) == int
+    assert timeout == 7
+
+
+def test_adj_timeout_tfrequest(monkeypatch, module, log):
+    patch_shared(monkeypatch, module, {'testing_farm_request': {'settings': {'pipeline': {'timeout': 50}}}})
+    module._config['ready-timeout-from-pipeline'] = True
+    module._config['ready-timeout-from-pipeline-offset'] = 3
+    module._config['ready-timeout'] = 7
+    timeout = module._adj_timeout()
+    assert type(timeout) == int
+    assert timeout == 47
+
+
+def test_adj_timeout_zero(monkeypatch, module, log):
+    # if the result of pipeline timeout and offset is less than one, use ready-timeout
+    patch_shared(monkeypatch, module, {'testing_farm_request': {'settings': {'pipeline': {'timeout': 7}}}})
+    module._config['ready-timeout-from-pipeline'] = True
+    module._config['ready-timeout-from-pipeline-offset'] = 7
+    module._config['ready-timeout'] = 20
+    timeout = module._adj_timeout()
+    assert type(timeout) == int
+    assert timeout == 20
+
+
+def test_adj_timeout_no_offset(monkeypatch, module, log):
+    patch_shared(monkeypatch, module, {'testing_farm_request': {'settings': {'pipeline': {'timeout': 50}}}})
+    module._config['ready-timeout-from-pipeline'] = True
+    module._config['ready-timeout-from-pipeline-offset'] = None
+    module._config['ready-timeout'] = 21
+    timeout = module._adj_timeout()
+    assert type(timeout) == int
+    assert timeout == 50
 
 
 def test_api_url_option(module, monkeypatch):

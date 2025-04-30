@@ -45,6 +45,9 @@ TMT_VERBOSE_LOG = 'log.txt'
 # File with environment variables
 TMT_ENV_FILE = 'tmt-environment-{}.yaml'
 
+# Maximum size of logs read in MiB
+DEFAULT_RESULT_LOG_MAX_SIZE = 10
+
 # Weight of a test result, used to count the overall result. Higher weight has precendence
 # when counting the overall result. See https://tmt.readthedocs.io/en/latest/spec/steps.html#execute
 RESULT_WEIGHT = {
@@ -617,7 +620,12 @@ class TestScheduleTMTMultihost(Module):
                 'help': 'Comment added at the beginning of the tmt reproducer. (default: %(default)s).',
                 'default': '# tmt reproducer'
             },
-        })
+            'result-log-max-size': {
+                'help': 'Maximum size of a result log read, in MiB. (default: %(default)s).',
+                'default': DEFAULT_RESULT_LOG_MAX_SIZE,
+                'type': int
+            }
+        }),
     ]
 
     shared_functions = ['create_test_schedule', 'run_test_schedule_entry', 'serialize_test_schedule_entry_results']
@@ -1468,7 +1476,29 @@ class TestScheduleTMTMultihost(Module):
                 # test output can contain invalid utf characters, make sure to replace them
                 if os.path.isfile(artifact.path):
                     with open(artifact.path, 'r', errors='replace') as f:
-                        test_case.system_out.append(f.read())
+                        log_size = os.path.getsize(artifact.path)
+                        max_log_size = self.option('result-log-max-size') * 1024 * 1024
+
+                        # TFT-3175
+                        # The output can be very large and reading it whole can easily lead to OOM.
+                        # Send to Sentry to see how many pipelines are affected by this.
+                        if log_size > max_log_size:
+                            self.warn(
+                                "Artifact '{}' is too large - {} bytes, limiting output to {} bytes".format(
+                                    artifact.path, log_size, max_log_size
+                                ),
+                                sentry=True
+                            )
+                            f.seek(log_size - max_log_size)
+
+                            test_case.system_out.append(
+                                "Output too large, limiting output to last {} MiB.\n\n".format(
+                                    self.option('result-log-max-size')
+                                )
+                                + f.read()
+                            )
+                        else:
+                            test_case.system_out.append(f.read())
 
             plan_path = safe_name(schedule_entry.plan[1:])
             assert schedule_entry.work_dirpath is not None

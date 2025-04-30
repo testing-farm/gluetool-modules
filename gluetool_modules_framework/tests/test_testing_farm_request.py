@@ -629,9 +629,12 @@ def test_pipeline_cancellation(module, request2, monkeypatch, log):
 
     assert process_mock.called_once()
     assert PUT_REQUESTS['2']['state'] == 'canceled'
-    assert log.records[-3].message == 'Cancelling pipeline as requested'
-    assert log.records[-2].message == 'Stopping pipeline cancellation check'
-    assert log.records[-1].message == 'No webhook, skipping'
+    assert log.records[-6].message == 'trying to acquire pipeline cancellation lock'
+    assert log.records[-5].message == 'acquired pipeline cancellation lock'
+    assert log.records[-4].message == 'Cancelling pipeline as requested'
+    assert log.records[-3].message == 'Stopping pipeline cancellation check'
+    assert log.records[-2].message == 'No webhook, skipping'
+    assert log.records[-1].message == 'released pipeline cancellation lock'
 
 
 def test_pipeline_cancellation_destroy(module, request1, monkeypatch, log):

@@ -14,7 +14,7 @@ import attrs
 from requests import Response
 
 import gluetool
-from gluetool.log import log_dict, LoggerMixin
+from gluetool.log import log_dict, LoggerMixin, ContextAdapter
 from gluetool.result import Result
 from gluetool.utils import dict_update, requests, render_template
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
@@ -28,8 +28,40 @@ from typing import Any, Dict, List, Optional, Union, cast  # noqa
 from typing_extensions import TypedDict, NotRequired, Literal
 
 from gluetool_modules_framework.libs.threading import RepeatTimer
+from threading import Lock
+
 
 DEFAULT_PIPELINE_CANCELLATION_TICK = 30
+
+
+class LoggingLock(LoggerMixin):
+    def __init__(self, logger: ContextAdapter, name: str = 'Lock') -> None:
+        self._lock = Lock()
+        self.name = name
+        super(LoggingLock, self).__init__(logger)
+
+    def acquire(self, blocking: bool = True, timeout: int = -1) -> bool:
+        self.info('trying to acquire {}'.format(self.name))
+        result = self._lock.acquire(blocking, timeout)
+        if result:
+            self.info('acquired {}'.format(self.name))
+        else:
+            self.info('failed to acquire {}'.format(self.name))
+        return result
+
+    def release(self) -> None:
+        self._lock.release()
+        self.info('released {}'.format(self.name))
+
+    def __enter__(self) -> 'LoggingLock':
+        self.acquire()
+        return self
+
+    def __exit__(self, *args: Any, **kwargs: Any) -> None:
+        self.release()
+
+    def locked(self) -> bool:
+        return self._lock.locked()
 
 
 # Following classes reflect the structure of what comes out of GET `/request/{request_id}` endpoint in the TF API.
@@ -689,7 +721,7 @@ class TestingFarmRequestModule(gluetool.Module):
     ]
 
     required_options = ('public-api-url', 'internal-api-url', 'api-key', 'request-id')
-    shared_functions = ['testing_farm_request']
+    shared_functions = ['testing_farm_request', 'pipeline_cancellation_lock']
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(TestingFarmRequestModule, self).__init__(*args, **kwargs)
@@ -738,6 +770,9 @@ class TestingFarmRequestModule(gluetool.Module):
 
     def testing_farm_request(self) -> Optional[TestingFarmRequest]:
         return self._tf_request
+
+    def pipeline_cancellation_lock(self) -> LoggingLock:
+        return self._pipeline_cancellation_lock
 
     def get_pipeline_state(self) -> PipelineState:
         """
@@ -789,7 +824,8 @@ class TestingFarmRequestModule(gluetool.Module):
         pipeline_state = self.get_pipeline_state()
 
         if pipeline_state == PipelineState.cancel_requested:
-            self.cancel_pipeline()
+            with self._pipeline_cancellation_lock:
+                self.cancel_pipeline()
 
     def destroy(self, failure: Optional[gluetool.Failure] = None) -> None:
         # stop the repeat timer, it will not be needed anymore
@@ -835,4 +871,5 @@ class TestingFarmRequestModule(gluetool.Module):
 
             self.debug('Starting pipeline cancellation, check every {} seconds'.format(pipeline_cancellation_tick))
 
+            self._pipeline_cancellation_lock = LoggingLock(logger=self.logger, name='pipeline cancellation lock')
             self._pipeline_cancellation_timer.start()

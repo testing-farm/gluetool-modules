@@ -1,6 +1,7 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+import base64
 import os
 import shutil
 import re
@@ -53,6 +54,7 @@ def fixture_module(monkeypatch):
     module = create_module(gluetool_modules_framework.testing.test_schedule_tmt.TestScheduleTMT)[1]
     module._config['command'] = 'dummytmt'
     module._config['reproducer-comment'] = '# tmt reproducer'
+    module._config['result-log-max-size'] = 10
     patch_shared(
         monkeypatch,
         module,
@@ -245,6 +247,7 @@ def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest
             gluetool_modules_framework.testing.test_schedule_tmt.gather_plan_results = orig_gather_plan_results
 
     schedule_entry.results = None
+
     # generate results.xml
     test_suite = TestSuite(name='some-suite', result='some-result')
     module.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
@@ -1336,3 +1339,66 @@ def test_tmt_plan_export(module, monkeypatch, exported_plan, expected_environmen
 
     if not expected_exception:
         assert schedules[0].testing_environment == expected_environment
+
+
+def test_serialize_test_schedule_entry_large_artifact(module, module_dist_git, guest, monkeypatch, tmpdir, log):
+    # this doesn't appear anywhere in results.xml, but _run_plan() needs it
+    module.glue.add_shared('dist_git_repository', module_dist_git)
+
+    test_env = TestingEnvironment('x86_64', 'rhel-9')
+    schedule_entry = TestScheduleEntry(
+        gluetool.log.Logging().get_logger(),
+        test_env,
+        '/passed',
+        'some-repo-dir'
+    )
+    schedule_entry.guest = guest
+    schedule_entry.testing_environment = test_env
+    schedule_entry.work_dirpath = os.path.join(tmpdir, 'some-workdir')
+    os.mkdir(schedule_entry.work_dirpath)
+
+    # gather_plan_results() is called in _run_plan() right after calling tmt; we need to inject
+    # writing results.yaml in between, which we can't do with a mock
+    orig_gather_plan_results = gluetool_modules_framework.testing.test_schedule_tmt.gather_plan_results
+
+    # Test with 20MiB log size
+    log_size = 20*1024*1024
+    max_size = module._config['result-log-max-size']*1024*1024
+
+    def inject_gather_plan_results(module, schedule_entry, work_dir, recognize_errors=False):
+        shutil.copytree(os.path.join(ASSETS_DIR, 'passed'), os.path.join(work_dir, 'passed'))
+        # generate 20MiB output log, note that base encoding does not preserve desired length
+        with open(os.path.join(work_dir, 'passed/execute/logs/tests/core/docs/out.log'), 'wb') as log:
+            with open('/dev/urandom', 'rb') as random:
+                log.write(base64.b64encode(random.read(log_size))[0:log_size])
+        return orig_gather_plan_results(module, schedule_entry, work_dir, recognize_errors=recognize_errors)
+
+    # run tmt with the mock plan
+    with monkeypatch.context() as m:
+        _set_run_outputs(m, 'dummy test done')
+        try:
+            gluetool_modules_framework.testing.test_schedule_tmt.gather_plan_results = inject_gather_plan_results
+            module.run_test_schedule_entry(schedule_entry)
+        finally:
+            gluetool_modules_framework.testing.test_schedule_tmt.gather_plan_results = orig_gather_plan_results
+
+    # generate results.xml
+    test_suite = TestSuite(name='some-suite', result='some-result')
+
+    module.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
+
+    preamble = 'Output too large, limiting output to last {} MiB.\n\n'.format(module._config['result-log-max-size'])
+
+    assert test_suite.test_cases[0].system_out[0][0:len(preamble)] == preamble
+    assert len(test_suite.test_cases[0].system_out[0])-len(preamble) == max_size
+
+    assert log.match(
+        levelno=logging.WARN,
+        message="Artifact '{}' is too large - {} bytes, limiting output to {} bytes".format(
+            test_suite.test_cases[0].logs[3].href,
+            log_size,
+            max_size
+        )
+    )
+
+    shutil.rmtree(schedule_entry.work_dirpath)

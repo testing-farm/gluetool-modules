@@ -16,6 +16,7 @@ import gluetool_modules_framework.libs
 import requests
 import urllib3.exceptions
 from simplejson import JSONDecodeError
+from contextlib import nullcontext
 
 from gluetool import GlueError, SoftGlueError
 from gluetool.log import log_blob, log_dict, LoggerMixin
@@ -1487,25 +1488,29 @@ class ArtemisProvisioner(gluetool.Module):
         if watchdog_period_delay is None:
             watchdog_period_delay = provisioning.get('watchdog_period_delay')
 
-        guest = self.provision_guest_start(
-            environment,
-            pool=pool,
-            key=key,
-            priority=priority,
-            ssh_key=ssh_key,
-            options=options,
-            post_install_script=post_install_script,
-            user_data=user_data,
-            watchdog_dispatch_delay=watchdog_dispatch_delay,
-            watchdog_period_delay=watchdog_period_delay,
-            workdir=workdir,
-            # NOTE: create a copy of the logs template, we need a separate instance for each guest
-            guest_logs=[attrs.evolve(log) for log in self.guest_logs_template] if self.guest_logs_template else None,
-            security_group_rules_ingress=security_group_rules_ingress,
-            security_group_rules_egress=security_group_rules_egress
-        )
+        # Prevent pipeline cancellation before provisioned guest id is stored (TFT-3300).
+        with self.shared('pipeline_cancellation_lock') or nullcontext():
+            guest = self.provision_guest_start(
+                environment,
+                pool=pool,
+                key=key,
+                priority=priority,
+                ssh_key=ssh_key,
+                options=options,
+                post_install_script=post_install_script,
+                user_data=user_data,
+                watchdog_dispatch_delay=watchdog_dispatch_delay,
+                watchdog_period_delay=watchdog_period_delay,
+                workdir=workdir,
+                # NOTE: create a copy of the logs template, we need a separate instance for each guest
+                guest_logs=[
+                    attrs.evolve(log) for log in self.guest_logs_template
+                ] if self.guest_logs_template else None,
+                security_group_rules_ingress=security_group_rules_ingress,
+                security_group_rules_egress=security_group_rules_egress
+            )
 
-        self.guests.append(guest)
+            self.guests.append(guest)
 
         event_log_uri = self.shared('artifacts_location', guest.event_log_path, self.logger)
         guest.info("guest event log: {}".format(event_log_uri))

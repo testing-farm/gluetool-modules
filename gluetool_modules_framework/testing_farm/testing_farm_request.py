@@ -350,7 +350,8 @@ class TestingFarmRequest(LoggerMixin, object):
 
         self.id = cast(str, self._module.option('request-id'))
 
-        request = self._api.get_request(self.id, self._api_key)
+        self.json = self._api.get_request(self.id, self._api_key)
+        request = self.json
 
         # Select correct test, trust Testing Farm validation that only one test
         # is specified, as defined in the API standard.

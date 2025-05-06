@@ -558,14 +558,14 @@ def test_adj_timeout_tfrequest(monkeypatch, module, log):
     module._config['ready-timeout'] = 7
     timeout = module._adj_timeout()
     assert type(timeout) == int
-    assert timeout == 47
+    assert timeout == 2997
 
 
 def test_adj_timeout_zero(monkeypatch, module, log):
     # if the result of pipeline timeout and offset is less than one, use ready-timeout
     patch_shared(monkeypatch, module, {'testing_farm_request': {'settings': {'pipeline': {'timeout': 7}}}})
     module._config['ready-timeout-from-pipeline'] = True
-    module._config['ready-timeout-from-pipeline-offset'] = 7
+    module._config['ready-timeout-from-pipeline-offset'] = 420
     module._config['ready-timeout'] = 20
     timeout = module._adj_timeout()
     assert type(timeout) == int
@@ -579,7 +579,7 @@ def test_adj_timeout_no_offset(monkeypatch, module, log):
     module._config['ready-timeout'] = 21
     timeout = module._adj_timeout()
     assert type(timeout) == int
-    assert timeout == 50
+    assert timeout == 3000
 
 
 def test_api_url_option(module, monkeypatch):

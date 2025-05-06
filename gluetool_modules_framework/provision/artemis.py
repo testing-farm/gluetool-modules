@@ -70,7 +70,7 @@ EVENT_LOG_SUFFIX = '-artemis-guest-log.yaml'
 DEFAULT_PRIORIY_GROUP = 'default-priority'
 DEFAULT_READY_TIMEOUT = 300
 DEFAULT_READY_TICK = 3
-DEFAULT_READY_TIMEOUT_FROM_PIPELINE = True
+DEFAULT_READY_TIMEOUT_FROM_PIPELINE = 'store_true'
 DEFAULT_ACTIVATION_TIMEOUT = 240
 DEFAULT_ACTIVATION_TICK = 5
 DEFAULT_API_CALL_TIMEOUT = 60
@@ -1626,10 +1626,8 @@ class ArtemisProvisioner(gluetool.Module):
             if self.has_shared('testing_farm_request'):
                 offset = self.option('ready-timeout-from-pipeline-offset') or 0
                 request = self.shared('testing_farm_request')
-                if request and hasattr(request, 'json') and hasattr(request.json, 'get'):
-                    pipeline_timeout = request.json.get('settings', {}).get('pipeline', {}).get('timeout')
-                    if pipeline_timeout:
-                        user_timeout = (pipeline_timeout * 60) - offset
-                        if user_timeout > 0:
-                            timeout = user_timeout
+                if request and request.pipeline_timeout > 0:
+                    user_timeout = (request.pipeline_timeout * 60) - offset
+                    if user_timeout > 0:
+                        timeout = user_timeout
         return timeout

@@ -6,6 +6,7 @@ import gluetool
 from gluetool.action import Action
 from gluetool.log import log_dict
 from gluetool.result import Ok, Error
+from gluetool.utils import Command
 
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage, \
     SetupGuestReturnType
@@ -104,6 +105,12 @@ class InstallKojiBuildExecute(gluetool.Module):
 
         rpms_lists_to_skip_install = []
 
+        try:
+            guest.execute('type bootc && sudo bootc status && ((sudo bootc status --format yaml | grep -e "booted: null" -e "image: null") && exit 1 || exit 0)')  # noqa: E501
+            has_bootc = True
+        except gluetool.glue.GlueCommandError:
+            has_bootc = False
+
         for artifact in artifacts:
             koji_command = 'koji' if 'fedora' in artifact.type else 'brew'
 
@@ -112,36 +119,44 @@ class InstallKojiBuildExecute(gluetool.Module):
             else:
                 download_arches = cast(str, arch)
 
-            sut_installation.add_step(
-                'Download task id {}'.format(artifact.id),
-                (
-                    '( {0} download-build --debuginfo --task-id --arch noarch --arch {2} --arch src {1} || '
-                    '{0} download-task --arch noarch --arch {2} --arch src {1} ) | '
-                    'egrep Downloading | cut -d " " -f 3 | tee rpms-list-{1}'
-                ).format(koji_command, artifact.id, download_arches)
-            )
+            download_command = (
+                '( {0} download-build --debuginfo --task-id --arch noarch --arch {2} --arch src {1} || '
+                '{0} download-task --arch noarch --arch {2} --arch src {1} ) | '
+                'egrep Downloading | cut -d " " -f 3 | tee rpms-list-{1}'
+            ).format(koji_command, artifact.id, download_arches)
+
+            if not has_bootc:
+                sut_installation.add_step('Download task id {}'.format(artifact.id), download_command)
+            else:
+                Command(['bash', '-c', download_command], logger=guest.logger).run()
 
             if artifact.install is False:
                 rpms_lists_to_skip_install.append('rpms-list-{}'.format(artifact.id))
 
         excluded_packages_regexp = '|'.join(['^{} '.format(package) for package in excluded_packages])
 
-        sut_installation.add_step(
-            'Get package list',
-            (
-                'ls *[^.src].rpm | '
-                'sed -r "s/(.*)-.*-.*/\\1 \\0/" | '
-                '{}'  # Do not install excluded packages in the tmt plan
-                '{}'  # Do not install packages with "install: false" specified in the TF API
-                '{}'  # Do not install i686 builds
-                'awk "{{print \\$2}}" | '
-                'tee rpms-list'
-            ).format(
-                'egrep -v "({})" | '.format(excluded_packages_regexp) if excluded_packages_regexp else '',
-                ''.join(['grep -Fv "$(cat {})" | '.format(rpm) for rpm in rpms_lists_to_skip_install]),
-                'egrep -v "i686" | ' if arch == 'x86_64' and self.option('download-i686-builds') else '',
-            )
+        list_command = (
+            'ls *[^.src].rpm | '
+            'sed -r "s/(.*)-.*-.*/\\1 \\0/" | '
+            '{}'  # Do not install excluded packages in the tmt plan
+            '{}'  # Do not install packages with "install: false" specified in the TF API
+            '{}'  # Do not install i686 builds
+            'awk "{{print \\$2}}" | '
+            '{}'  # For bootc we need to have a full path to the RPMs
+            'tee rpms-list'
+        ).format(
+            'egrep -v "({})" | '.format(excluded_packages_regexp) if excluded_packages_regexp else '',
+            ''.join(['grep -Fv "$(cat {})" | '.format(rpm) for rpm in rpms_lists_to_skip_install]),
+            'egrep -v "i686" | ' if arch == 'x86_64' and self.option('download-i686-builds') else '',
+            'xargs realpath | ' if has_bootc else '',
         )
+
+        if not has_bootc:
+            sut_installation.add_step('Get package list', list_command)
+        else:
+            output = Command(['bash', '-c', list_command], logger=guest.logger).run()
+            if output.stdout is None:
+                raise gluetool.GlueError('Command did not produce usable output')
 
         try:
             guest.execute('command -v dnf')
@@ -149,48 +164,52 @@ class InstallKojiBuildExecute(gluetool.Module):
         except gluetool.glue.GlueCommandError:
             has_dnf = False
 
-        if has_dnf:
-            # HACK: this is *really* awkward wrt. error handling: https://bugzilla.redhat.com/show_bug.cgi?id=1831022
-            sut_installation.add_step('Reinstall packages',
-                                      'dnf -y reinstall $(cat rpms-list) || true')
+        if not has_bootc:
+            if has_dnf:
+                # HACK: this is *really* awkward wrt. error handling:
+                # https://bugzilla.redhat.com/show_bug.cgi?id=1831022
+                sut_installation.add_step(
+                    'Reinstall packages',
+                    'dnf -y reinstall $(cat rpms-list) || true'
+                )
 
+                sut_installation.add_step(
+                    'Install packages',
+                    r"""if [ ! -z "$(sed 's/\s//g' rpms-list)" ];"""
+                    'then dnf -y install $(cat rpms-list);'
+                    'else echo "Nothing to install, rpms-list is empty"; fi'
+                )
+            else:
+                sut_installation.add_step(
+                    'Reinstall packages',
+                    'yum -y reinstall $(cat rpms-list)',
+                    ignore_exception=True,
+                )
+
+                # yum install refuses downgrades, do it explicitly
+                sut_installation.add_step(
+                    'Downgrade packages',
+                    'yum -y downgrade $(cat rpms-list)',
+                    ignore_exception=True,
+                )
+
+                sut_installation.add_step(
+                    'Install packages',
+                    'yum -y install $(cat rpms-list)',
+                    ignore_exception=True,
+                )
+
+            # Use printf to correctly quote the package name, we encountered '^' in the NVR, which is actually a valid
+            # character in NVR - https://docs.fedoraproject.org/en-US/packaging-guidelines/Versioning/#_snapshots
+            #
+            # Explicitely pass delimiter for xargs to mitigate special handling of quotes, which would break the
+            # quoting done previously by printf
             sut_installation.add_step(
-                'Install packages',
+                'Verify all packages installed',
                 r"""if [ ! -z "$(sed 's/\s//g' rpms-list)" ];"""
-                'then dnf -y install $(cat rpms-list);'
-                'else echo "Nothing to install, rpms-list is empty"; fi'
+                "then sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q;"
+                "else echo 'Nothing to verify, rpms-list is empty'; fi"
             )
-        else:
-            sut_installation.add_step(
-                'Reinstall packages',
-                'yum -y reinstall $(cat rpms-list)',
-                ignore_exception=True,
-            )
-
-            # yum install refuses downgrades, do it explicitly
-            sut_installation.add_step(
-                'Downgrade packages',
-                'yum -y downgrade $(cat rpms-list)',
-                ignore_exception=True,
-            )
-
-            sut_installation.add_step(
-                'Install packages',
-                'yum -y install $(cat rpms-list)',
-                ignore_exception=True,
-            )
-
-        # Use printf to correctly quote the package name, we encountered '^' in the NVR, which is actually a valid
-        # character in NVR - https://docs.fedoraproject.org/en-US/packaging-guidelines/Versioning/#_snapshots
-        #
-        # Explicitely pass delimiter for xargs to mitigate special handling of quotes, which would break the
-        # quoting done previously by printf
-        sut_installation.add_step(
-            'Verify all packages installed',
-            r"""if [ ! -z "$(sed 's/\s//g' rpms-list)" ];"""
-            "then sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q;"
-            "else echo 'Nothing to verify, rpms-list is empty'; fi"
-        )
 
         assert request is not None
 
@@ -225,6 +244,30 @@ class InstallKojiBuildExecute(gluetool.Module):
                 guest_setup_output,
                 sut_result.error
             ))
+
+        if has_bootc:
+            if not output.stdout:
+                self.warn('Nothing to install, rpms-list is empty')
+                return Ok(guest_setup_output)
+
+            rpms_list = output.stdout.split('\n')
+
+            packages = ['--package=' + rpm for rpm in rpms_list if rpm]
+
+            command = self.shared('tmt_command')
+            command.extend([
+                '-vvv',
+                'run',
+                'provision',
+                '--how', 'connect',
+                '--guest', guest.hostname,
+                '--key', guest.key,
+                '--port', str(guest.port),
+                'prepare',
+                '--how', 'install',
+                ] + packages
+            )
+            Command(command, logger=guest.logger).run(env={'DEBUG': '1'})
 
         return Ok(guest_setup_output)
 

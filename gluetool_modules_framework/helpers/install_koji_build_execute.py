@@ -6,6 +6,7 @@ import gluetool
 from gluetool.action import Action
 from gluetool.log import log_dict
 from gluetool.result import Ok, Error
+from gluetool.utils import Command
 
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage, \
     SetupGuestReturnType
@@ -129,7 +130,7 @@ class InstallKojiBuildExecute(gluetool.Module):
         sut_installation.add_step(
             'Get package list',
             (
-                'ls *[^.src].rpm | '
+                'pwd && ls *[^.src].rpm | '
                 'sed -r "s/(.*)-.*-.*/\\1 \\0/" | '
                 '{}'  # Do not install excluded packages in the tmt plan
                 '{}'  # Do not install packages with "install: false" specified in the TF API
@@ -149,48 +150,55 @@ class InstallKojiBuildExecute(gluetool.Module):
         except gluetool.glue.GlueCommandError:
             has_dnf = False
 
-        if has_dnf:
-            # HACK: this is *really* awkward wrt. error handling: https://bugzilla.redhat.com/show_bug.cgi?id=1831022
-            sut_installation.add_step('Reinstall packages',
-                                      'dnf -y reinstall $(cat rpms-list) || true')
+        try:
+            guest.execute('type bootc && sudo bootc status && ((sudo bootc status --format yaml | grep -e "booted: null" -e "image: null") && exit 1 || exit 0)')  # noqa: E501
+            has_bootc = True
+        except gluetool.glue.GlueCommandError:
+            has_bootc = False
 
+        if not has_bootc:
+            if has_dnf:
+                # HACK: this is *really* awkward wrt. error handling: https://bugzilla.redhat.com/show_bug.cgi?id=1831022
+                sut_installation.add_step('Reinstall packages',
+                                        'dnf -y reinstall $(cat rpms-list) || true')
+
+                sut_installation.add_step(
+                    'Install packages',
+                    r"""if [ ! -z "$(sed 's/\s//g' rpms-list)" ];"""
+                    'then dnf -y install $(cat rpms-list);'
+                    'else echo "Nothing to install, rpms-list is empty"; fi'
+                )
+            else:
+                sut_installation.add_step(
+                    'Reinstall packages',
+                    'yum -y reinstall $(cat rpms-list)',
+                    ignore_exception=True,
+                )
+
+                # yum install refuses downgrades, do it explicitly
+                sut_installation.add_step(
+                    'Downgrade packages',
+                    'yum -y downgrade $(cat rpms-list)',
+                    ignore_exception=True,
+                )
+
+                sut_installation.add_step(
+                    'Install packages',
+                    'yum -y install $(cat rpms-list)',
+                    ignore_exception=True,
+                )
+
+            # Use printf to correctly quote the package name, we encountered '^' in the NVR, which is actually a valid
+            # character in NVR - https://docs.fedoraproject.org/en-US/packaging-guidelines/Versioning/#_snapshots
+            #
+            # Explicitely pass delimiter for xargs to mitigate special handling of quotes, which would break the
+            # quoting done previously by printf
             sut_installation.add_step(
-                'Install packages',
+                'Verify all packages installed',
                 r"""if [ ! -z "$(sed 's/\s//g' rpms-list)" ];"""
-                'then dnf -y install $(cat rpms-list);'
-                'else echo "Nothing to install, rpms-list is empty"; fi'
+                "then sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q;"
+                "else echo 'Nothing to verify, rpms-list is empty'; fi"
             )
-        else:
-            sut_installation.add_step(
-                'Reinstall packages',
-                'yum -y reinstall $(cat rpms-list)',
-                ignore_exception=True,
-            )
-
-            # yum install refuses downgrades, do it explicitly
-            sut_installation.add_step(
-                'Downgrade packages',
-                'yum -y downgrade $(cat rpms-list)',
-                ignore_exception=True,
-            )
-
-            sut_installation.add_step(
-                'Install packages',
-                'yum -y install $(cat rpms-list)',
-                ignore_exception=True,
-            )
-
-        # Use printf to correctly quote the package name, we encountered '^' in the NVR, which is actually a valid
-        # character in NVR - https://docs.fedoraproject.org/en-US/packaging-guidelines/Versioning/#_snapshots
-        #
-        # Explicitely pass delimiter for xargs to mitigate special handling of quotes, which would break the
-        # quoting done previously by printf
-        sut_installation.add_step(
-            'Verify all packages installed',
-            r"""if [ ! -z "$(sed 's/\s//g' rpms-list)" ];"""
-            "then sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q;"
-            "else echo 'Nothing to verify, rpms-list is empty'; fi"
-        )
 
         assert request is not None
 
@@ -225,6 +233,29 @@ class InstallKojiBuildExecute(gluetool.Module):
                 guest_setup_output,
                 sut_result.error
             ))
+
+        if has_bootc:
+
+            output = guest.execute('cat rpms-list')
+            # Parse rpms from output
+            rpms_list = output.stdout.split('\n')
+
+            packages = ['--package=' + rpm for rpm in rpms_list if rpm]
+            
+            command = self.shared('tmt_command')
+            command.extend([
+                '-vvv',
+                'run',
+                'provision',
+                '--how', 'connect',
+                '--guest', guest.hostname,
+                '--key', guest.key,
+                '--port', str(guest.port),
+                'prepare',
+                '--how', 'install',
+                ] + packages
+            )
+            Command(command, logger=guest.logger).run(env={'DEBUG': '1'})
 
         return Ok(guest_setup_output)
 

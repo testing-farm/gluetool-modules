@@ -532,7 +532,9 @@ def test_provision(monkeypatch, module, scenario, tmpdir, log):
 
 
 def test_adj_timeout(monkeypatch, module, log):
-    patch_shared(monkeypatch, module, {'testing_farm_request': {'settings': {'pipeline': {'timeout': 50}}}})
+    request = MagicMock()
+    request.json = {'settings': {'pipeline': {'timeout': 50}}}
+    patch_shared(monkeypatch, module, {'testing_farm_request': request})
     module._config['ready-timeout-from-pipeline'] = False  # disable overriding ready-timeout from request
     module._config['ready-timeout-offset'] = 3
     module._config['ready-timeout'] = 7
@@ -552,7 +554,9 @@ def test_adj_timeout_enabled(monkeypatch, module, log):
 
 
 def test_adj_timeout_tfrequest(monkeypatch, module, log):
-    patch_shared(monkeypatch, module, {'testing_farm_request': {'settings': {'pipeline': {'timeout': 50}}}})
+    request = MagicMock()
+    request.json = {'settings': {'pipeline': {'timeout': 50}}}
+    patch_shared(monkeypatch, module, {'testing_farm_request': request})
     module._config['ready-timeout-from-pipeline'] = True
     module._config['ready-timeout-from-pipeline-offset'] = 3
     module._config['ready-timeout'] = 7
@@ -563,7 +567,9 @@ def test_adj_timeout_tfrequest(monkeypatch, module, log):
 
 def test_adj_timeout_zero(monkeypatch, module, log):
     # if the result of pipeline timeout and offset is less than one, use ready-timeout
-    patch_shared(monkeypatch, module, {'testing_farm_request': {'settings': {'pipeline': {'timeout': 7}}}})
+    request = MagicMock()
+    request.json = {'settings': {'pipeline': {'timeout': 7}}}
+    patch_shared(monkeypatch, module, {'testing_farm_request': request})
     module._config['ready-timeout-from-pipeline'] = True
     module._config['ready-timeout-from-pipeline-offset'] = 420
     module._config['ready-timeout'] = 20
@@ -573,7 +579,9 @@ def test_adj_timeout_zero(monkeypatch, module, log):
 
 
 def test_adj_timeout_no_offset(monkeypatch, module, log):
-    patch_shared(monkeypatch, module, {'testing_farm_request': {'settings': {'pipeline': {'timeout': 50}}}})
+    request = MagicMock()
+    request.json = {'settings': {'pipeline': {'timeout': 50}}}
+    patch_shared(monkeypatch, module, {'testing_farm_request': request})
     module._config['ready-timeout-from-pipeline'] = True
     module._config['ready-timeout-from-pipeline-offset'] = None
     module._config['ready-timeout'] = 21

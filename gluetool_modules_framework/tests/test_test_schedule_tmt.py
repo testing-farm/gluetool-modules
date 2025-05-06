@@ -90,7 +90,14 @@ def fixture_guest(module):
         environment=TestingEnvironment(compose='guest-compose'),
         key='mockkey0'
     )
-    guest.execute = MagicMock(return_value=MagicMock(stdout='', stderr=''))
+
+    def side_effect(cmd):
+        if 'bootc' in cmd:
+            raise gluetool.glue.GlueCommandError('dummy_error', MagicMock(exit_code=1, stdout='', stderr=''))
+        else:
+            return MagicMock(stdout='', stderr='')
+
+    guest.execute = MagicMock(side_effect=side_effect)
     guest.guest_logs = [ArtemisGuestLog(
         name='console.log',
         type='some-type',

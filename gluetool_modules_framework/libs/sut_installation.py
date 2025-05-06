@@ -8,7 +8,7 @@ import gluetool
 from gluetool import SoftGlueError
 from gluetool.log import log_dict
 from gluetool.result import Ok, Error
-from gluetool.utils import Result
+from gluetool.utils import Result, Command, ProcessOutput
 from gluetool_modules_framework.libs.sentry import ArtifactFingerprintsMixin
 from gluetool_modules_framework.libs import run_and_log
 
@@ -32,8 +32,10 @@ StepCallbackType = Callable[[str, gluetool.utils.ProcessOutput], Optional[str]]
 #: :ivar list(str) items: Items to execute command with replaced to `command`.
 #: :ivar bool ignore_exception: Indicates whether to raise `SUTInstallationFailedError` when command fails.
 #: :ivar Callable callback: Callback to additional processing of command output.
+#: :ivar bool local: If set to True, run the step locally on the worker.
+#: :ivar dict env: Environment variables to set for the command execution.
 SUTStep = collections.namedtuple(
-    'SUTStep', ['label', 'command', 'items', 'ignore_exception', 'callback']
+    'SUTStep', ['label', 'command', 'items', 'ignore_exception', 'callback', 'local', 'env']
 )
 
 # Pattern for dnf commands which will be extended with --allowerasing
@@ -92,7 +94,9 @@ class SUTInstallation(object):
                  command: str,
                  items: Union[Optional[str], Optional[List[str]]] = None,
                  ignore_exception: bool = False,
-                 callback: Optional[StepCallbackType] = None) -> None:
+                 callback: Optional[StepCallbackType] = None,
+                 local: bool = False,
+                 env: Optional[Dict[str, str]] = None) -> None:
 
         if not items:
             items = []
@@ -100,7 +104,7 @@ class SUTInstallation(object):
         if not isinstance(items, list):
             items = [items]
 
-        self.steps.append(SUTStep(label, command, items, ignore_exception, callback))
+        self.steps.append(SUTStep(label, command, items, ignore_exception, callback, local, env or {}))
 
     def run(self,
             guest: gluetool_modules_framework.libs.guest.NetworkedGuest) -> Result[None, SUTInstallationFailedError]:
@@ -135,14 +139,22 @@ class SUTInstallation(object):
                 if re.search(ALLOW_ERASING_PATTERN, command):
                     command = re.sub(ALLOW_ERASING_PATTERN, r' \1 --allowerasing ', command)
 
+            # our `command` is assigned to this `cmd`, and here we convert it
+            # to string to work with guest.execute
+            # kwargs hack is to make executor do not pass env parameters if not needed
+            def executor(cmd: List[str]) -> ProcessOutput:
+                kwargs = {'env': step.env} if step.env else {}
+                if step.local:
+                    return Command(['bash', '-c', cmd[0]]).run(**kwargs)
+                else:
+                    return guest.execute(cmd[0], **kwargs)
+
             if not step.items:
                 commands.append(command)
                 command_failed, error_message, output = run_and_log(
                     [command],  # `command` is a string, we need to send it as List[str]
                     log_filepath,
-                    # our `command` is assigned to this `cmd`, and here we convert it
-                    # to string to work with guest.execute
-                    lambda cmd: guest.execute(cmd[0]),
+                    executor=executor,
                     callback=step.callback,
                     label=step.label
                 )
@@ -167,9 +179,7 @@ class SUTInstallation(object):
                 command_failed, error_message, output = run_and_log(
                     [final_command],  # `final_command` is a string, we need to send it as List[str]
                     log_filepath,
-                    # our `final_command` is assigned to this `cmd`, and here we convert it
-                    # to string to work with guest.execute
-                    lambda cmd: guest.execute(cmd[0]),
+                    executor=executor,
                     callback=step.callback,
                     label=step.label
                 )

@@ -70,6 +70,7 @@ EVENT_LOG_SUFFIX = '-artemis-guest-log.yaml'
 DEFAULT_PRIORIY_GROUP = 'default-priority'
 DEFAULT_READY_TIMEOUT = 300
 DEFAULT_READY_TICK = 3
+DEFAULT_READY_TIMEOUT_FROM_PIPELINE = 'store_true'
 DEFAULT_ACTIVATION_TIMEOUT = 240
 DEFAULT_ACTIVATION_TICK = 5
 DEFAULT_API_CALL_TIMEOUT = 60
@@ -1085,6 +1086,7 @@ class ArtemisProvisioner(gluetool.Module):
                 'help': 'Override ready-timeout with the pipeline timeout.',
                 'metavar': 'READY_TIMEOUT_FROM_PIPELINE',
                 'type': bool,
+                'default': DEFAULT_READY_TIMEOUT_FROM_PIPELINE
             },
             'ready-timeout-from-pipeline-offset': {
                 'help': 'Subtract this amount from the pipeline timeout to wait for guest to become ready.',
@@ -1624,10 +1626,8 @@ class ArtemisProvisioner(gluetool.Module):
             if self.has_shared('testing_farm_request'):
                 offset = self.option('ready-timeout-from-pipeline-offset') or 0
                 request = self.shared('testing_farm_request')
-                if request:
-                    pipeline_timeout = request.get('settings', {}).get('pipeline', {}).get('timeout')
-                    if pipeline_timeout:
-                        user_timeout = pipeline_timeout - offset
-                        if user_timeout > 0:
-                            timeout = user_timeout
+                if request and request.pipeline_timeout > 0:
+                    user_timeout = (request.pipeline_timeout * 60) - offset
+                    if user_timeout > 0:
+                        timeout = user_timeout
         return timeout

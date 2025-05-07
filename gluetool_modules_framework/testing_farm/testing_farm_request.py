@@ -351,6 +351,10 @@ class TestingFarmRequest(LoggerMixin, object):
         self.id = cast(str, self._module.option('request-id'))
 
         request = self._api.get_request(self.id, self._api_key)
+        try:
+            self.pipeline_timeout = int(((request.get('settings') or {}).get('pipeline') or {}).get('timeout') or 0)
+        except(ValueError, TypeError):
+            self.pipeline_timeout = 0
 
         # Select correct test, trust Testing Farm validation that only one test
         # is specified, as defined in the API standard.

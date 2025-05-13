@@ -295,9 +295,9 @@ class TMTPlan:
             if step.how != 'install':
                 continue
 
-            # no exclude in the step
+            # no exclude in the step, continue processing the next step
             if step.exclude is None:
-                return []
+                continue
 
             gluetool.utils.log_dict(
                 logger.info,

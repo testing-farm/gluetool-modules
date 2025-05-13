@@ -1016,6 +1016,10 @@ def test_plans_from_git_filter_from_request(module, monkeypatch):
                         'script': 'do-something',
                     },
                     {
+                        'name': 'Install step without exclude (TFT-3360)',
+                        'how': 'install',
+                    },
+                    {
                         'name': 'Install packages',
                         'how': 'install',
                         'exclude': ['package3', 'package4']

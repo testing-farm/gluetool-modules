@@ -257,6 +257,10 @@ class TMTPlanProvision:
             mapping_validator=attrs.validators.instance_of(dict)
         ))
     )
+    pool: Optional[str] = attrs.field(
+        validator=attrs.validators.optional(attrs.validators.instance_of(str))
+    )
+
     watchdog_dispatch_delay: Optional[int] = attrs.field(
         validator=attrs.validators.optional(attrs.validators.instance_of(int))
     )
@@ -269,6 +273,7 @@ class TMTPlanProvision:
         return TMTPlanProvision(
             hardware=data.get('hardware'),
             kickstart=data.get('kickstart'),
+            pool=data.get('pool'),
             watchdog_dispatch_delay=data.get('watchdog-dispatch-delay'),
             watchdog_period_delay=data.get('watchdog-period-delay'),
         )
@@ -1129,7 +1134,7 @@ class TestScheduleTMT(Module):
 
                 exported_plan = self.export_plan(repodir, plan, context_files, tmt_env_file, tec)
 
-                hardware = kickstart = watchdog_dispatch_delay = watchdog_period_delay = None
+                hardware = kickstart = watchdog_dispatch_delay = watchdog_period_delay = pool = None
                 if exported_plan and exported_plan.provision:
                     # this module will never support multiple provision phases
                     if len(exported_plan.provision) > 1:
@@ -1138,6 +1143,7 @@ class TestScheduleTMT(Module):
                     provision = exported_plan.provision[0]
                     hardware = provision.hardware
                     kickstart = provision.kickstart
+                    pool = provision.pool
                     watchdog_dispatch_delay = provision.watchdog_dispatch_delay
                     watchdog_period_delay = provision.watchdog_period_delay
 
@@ -1163,7 +1169,7 @@ class TestScheduleTMT(Module):
                     arch=tec.arch,
                     compose=tec.compose,
                     snapshots=tec.snapshots,
-                    pool=tec.pool,
+                    pool=tec.pool or pool,
                     variables=tec.variables,
                     secrets=tec.secrets,
                     artifacts=tec.artifacts,

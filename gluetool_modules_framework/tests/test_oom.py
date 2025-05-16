@@ -36,6 +36,10 @@ def test_required_options(module):
     assert module.required_options == ('reservation', 'limit')
 
 
+def test_shared(module):
+    assert module.glue.has_shared('oom_message')
+
+
 def test_oom_unavailable(module, log):
     module._config['enabled'] = False
 
@@ -93,6 +97,13 @@ def test_oom_event(module, monitoring_path, monkeypatch, log, memory_bytes, term
 
     if terminated:
         process_mock.assert_called_once()
+
+    if terminated:
+        assert module.oom_message() == "Worker out-of-memory, more than {} MiB consumed.".format(
+            module._config['limit']
+        )
+    else:
+        assert module.oom_message() is None
 
 
 def test_oom_destroy(module, monitoring_path, monkeypatch, log):

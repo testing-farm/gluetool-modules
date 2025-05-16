@@ -20,6 +20,10 @@ push:  ## Push gluetool-modules container image to quay.io
 test-image:  ## Test container image via dgoss
 	cd container && dgoss run --stop-timeout 0 -t --entrypoint bash $(IMAGE):$(IMAGE_TAG)
 
+test-coala:  ## Run coala static analysis
+	 podman run -ti --rm -v $$PWD:/gluetool_modules_framework:z --workdir=/gluetool_modules_framework \
+		 docker.io/coala/base coala -c /gluetool_modules_framework/.coafile --non-interactive
+
 ##@ Utility
 
 clean:  ## Remove gluetool-modules container image

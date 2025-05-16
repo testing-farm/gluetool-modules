@@ -125,6 +125,27 @@ def test_testing_farm_reporter_destroy_failure_mapping(module, request_empty, ev
     }
 
 
+def test_testing_farm_reporter_destroy_oom(module, monkeypatch, request_empty, evaluate, empty_eval_context):
+    failure = Failure(module, [GlueError, GlueError('message')])
+
+    patch_shared(monkeypatch, module, {
+        'oom_message': 'out-of-memory',
+    })
+
+    module._config['state-map'] = os.path.join(ASSETS_DIR, 'state-map.yaml')
+    module._config['overall-result-map'] = os.path.join(ASSETS_DIR, 'overall-result-map.yaml')
+
+    module.destroy(failure=failure)
+    request = module.shared('testing_farm_request')
+    assert request == {
+        'state': 'some-mapped-state',
+        'summary': 'out-of-memory',
+        'overall_result': 'some-mapped-overall-result',
+        'artifacts_url': None,
+        'destroying': True
+    }
+
+
 def test_testing_farm_reporter_destroy_no_result(module, request_running, evaluate):
     module.destroy()
     request = module.shared('testing_farm_request')

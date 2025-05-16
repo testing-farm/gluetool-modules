@@ -175,7 +175,12 @@ class TestingFarmRequestStateReporter(gluetool.Module):
             return None
 
         assert failure.exc_info[1] is not None
-        error_message = str(failure.exc_info[1])
+
+        # If there was an out-of-memory event, use its message as the summary
+        if self.shared('oom_message'):
+            error_message = str(self.shared('oom_message'))
+        else:
+            error_message = str(failure.exc_info[1])
 
         context = gluetool.utils.dict_update(self.shared('eval_context'), {
             'ERROR_MESSAGE': error_message,

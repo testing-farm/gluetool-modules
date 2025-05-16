@@ -545,6 +545,12 @@ class TestingFarmRequest(LoggerMixin, object):
                 'state': state
             })
 
+        # In case of out-of-memory event, we need to update the state to 'error' state.
+        if self._module.shared('oom_message'):
+            payload.update({
+                'state': PipelineState.error
+            })
+
         if overall_result:
             result.update({
                 'overall': overall_result

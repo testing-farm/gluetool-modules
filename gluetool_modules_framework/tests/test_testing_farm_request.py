@@ -321,6 +321,38 @@ def test_update_conflict(module, request2, monkeypatch, log):
     module.cancel_pipeline.assert_called_once_with(destroying=True)
 
 
+def test_update_oom_message(module, request2, monkeypatch, log):
+    patch_shared(monkeypatch, module, {
+        'xunit_testing_farm_file': 'xunitfile',
+        'results': 'someresults',
+        'oom_message': 'somemessage'
+    })
+
+    request = module._tf_request
+    monkeypatch.setattr(module.glue, 'pipeline_cancelled', True)
+
+    request.update(
+        state='somestate',
+        overall_result='someresult',
+        summary='somesummary',
+        artifacts_url='someurl'
+    )
+
+    # state was forced to error, because of oom
+    assert PUT_REQUESTS['2'] == {
+        'api_key': 'fakekey',
+        'state': 'error',
+        'result': {
+            'overall': 'someresult',
+            'summary': 'somesummary',
+            'xunit_url': 'someurl/xunitfile'
+        },
+        'run': {
+            'artifacts': 'someurl',
+        }
+    }
+
+
 def test_webhook(module, requests_mock, request2):
     module._config.update({'retry-timeout': 1, 'retry-tick': 1})
     request = module._tf_request

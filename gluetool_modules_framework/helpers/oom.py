@@ -82,11 +82,21 @@ class OutOfMemory(Module):
     ]
 
     required_options = ('reservation', 'limit')
+    shared_functions = ['oom_message']
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(OutOfMemory, self).__init__(*args, **kwargs)
         self._oom_timer: Optional[RepeatTimer] = None
         self._reservation_reached: bool = False
+        self._oom_message: Optional[str] = None
+
+    def oom_message(self) -> Optional[str]:
+        """
+        Use this shared function to find out if the pipeline was terminated due to out-of-memory event.
+
+        The function return `None` if there was no event, otherwise it returns the event error message.
+        """
+        return self._oom_message
 
     def terminate_pipeline(self) -> None:
         """
@@ -98,6 +108,8 @@ class OutOfMemory(Module):
             ),
             sentry=True
         )
+
+        self._oom_message = "Worker out-of-memory, more than {} MiB consumed.".format(self.option('limit'))
 
         # stop the repeat timer, it will not be needed anymore
         self.debug('Stopping pipeline oom check')
@@ -128,7 +140,7 @@ class OutOfMemory(Module):
 
         if not self._reservation_reached and memory_consumed > reservation:
             self.warn(
-                "Reservation memory '{}' reached".format(reservation),
+                "Reservation memory {} MiB reached".format(reservation),
                 sentry=True
             )
             self._reservation_reached = True

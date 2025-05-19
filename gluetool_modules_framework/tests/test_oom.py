@@ -40,8 +40,11 @@ def test_shared(module):
     assert module.glue.has_shared('oom_message')
 
 
-def test_oom_unavailable(module, log):
-    module._config['enabled'] = False
+@pytest.mark.parametrize('value', (
+    False, "no", "false"
+))
+def test_oom_unavailable(module, log, value):
+    module._config['enabled'] = value
 
     module.execute()
 

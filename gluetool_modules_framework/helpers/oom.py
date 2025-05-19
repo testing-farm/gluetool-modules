@@ -7,6 +7,7 @@ from contextlib import nullcontext
 import psutil
 from gluetool import Failure, Module
 from gluetool.log import log_dict
+from gluetool.utils import normalize_bool_option
 from gluetool_modules_framework.libs.threading import RepeatTimer
 
 # Type annotations
@@ -157,7 +158,7 @@ class OutOfMemory(Module):
             self._oom_timer = None
 
     def execute(self) -> None:
-        if not self.option('enabled'):
+        if not normalize_bool_option(self.option('enabled')):
             self.info('Out-of-memory monitoring is disabled')
             return
 

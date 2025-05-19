@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+import os
 import psutil
 import pytest
 import gluetool_modules_framework.helpers.oom
-import tempfile
 import time
 from mock import MagicMock
 
@@ -18,18 +18,12 @@ def fixture_module():
 
     module._config['enabled'] = True
     module._config['tick'] = 0.1
-    module._config['monitoring-path'] = 'some-monitoring-path'
-    module._config['verbose'] = True
+    module._config['verbose-logging'] = True
     module._config['reservation'] = 1
     module._config['limit'] = 2
+    module._config['force'] = True
 
     return module
-
-
-@pytest.fixture(name='monitoring_path')
-def fixture_monitoring_path():
-    with tempfile.NamedTemporaryFile(mode="w") as file:
-        yield file
 
 
 def test_required_options(module):
@@ -40,11 +34,54 @@ def test_shared(module):
     assert module.glue.has_shared('oom_message')
 
 
-@pytest.mark.parametrize('value', (
-    False, "no", "false"
+@pytest.mark.parametrize('option,values,expected', (
+    (
+        "verbose-logging",
+        (False, "no", "false"),
+        False
+    ),
+    (
+        "verbose-logging",
+        (True, "true", "True"),
+        True
+    ),
+    (
+        "enabled",
+        (False, "no", "false"),
+        False
+    ),
+    (
+        "enabled",
+        (True, "true", "True"),
+        True
+    ),
 ))
-def test_oom_unavailable(module, log, value):
-    module._config['enabled'] = value
+def test_options(option, values, expected):
+    for value in values:
+        module = create_module(gluetool_modules_framework.helpers.oom.OutOfMemory)[1]
+        module._config[option] = value
+        assert getattr(module, option.replace('-', '_')) == expected
+
+
+@pytest.mark.parametrize('container,toolbox,available', (
+    (True, True, False),
+    (True, False, True),
+    (False, False, False),
+))
+def test_available(module, monkeypatch, container, toolbox, available):
+    def exists(path):
+        if path == '/run/.containerenv':
+            return container
+        if path == '/run/.toolboxenv':
+            return toolbox
+
+    monkeypatch.setattr(os.path, 'exists', exists)
+
+    assert module.available == available
+
+
+def test_oom_unavailable(module, log):
+    module._config['enabled'] = False
 
     module.execute()
 
@@ -53,10 +90,13 @@ def test_oom_unavailable(module, log, value):
     assert len(log.records) == 1
 
 
-def test_monitoring_path_unavailable(module, log):
+def test_check_unavailable(module, log, monkeypatch):
+    module._config['force'] = False
+    monkeypatch.setattr(os.path, 'exists', MagicMock(return_value=False))
+
     module.execute()
 
-    assert log.records[-1].message == "Out-of-memory monitoring is unavailable, 'some-monitoring-path' not available"
+    assert log.records[-1].message == "Out-of-memory monitoring is unavailable, not running in a container"
     assert log.records[-1].levelno == logging.WARNING
     assert len(log.records) == 1
 
@@ -66,7 +106,7 @@ def test_monitoring_path_unavailable(module, log):
         (1024, False),
         (1024**2, False),
         (1.5*1024**2, False),
-        (3*1024**2+1, True),
+        (3*1024**2, True),
     ),
     ids=[
         'not-terminated',
@@ -75,14 +115,12 @@ def test_monitoring_path_unavailable(module, log):
         'limit'
     ]
 )
-def test_oom_event(module, monitoring_path, monkeypatch, log, memory_bytes, terminated):
-    module._config['monitoring-path'] = monitoring_path.name
-
+def test_oom_event(module, monkeypatch, log, memory_bytes, terminated):
     process_mock = MagicMock()
-    monkeypatch.setattr(psutil, 'Process', process_mock)
-
-    monitoring_path.write(str(memory_bytes))
-    monitoring_path.flush()
+    terminate_mock = MagicMock()
+    process_mock.terminate = terminate_mock
+    monkeypatch.setattr(psutil, 'Process', MagicMock(return_value=process_mock))
+    monkeypatch.setattr(module, 'total_rss_memory', MagicMock(return_value=memory_bytes))
 
     # pipeline cancellation is started in execute
     module.execute()
@@ -90,16 +128,15 @@ def test_oom_event(module, monitoring_path, monkeypatch, log, memory_bytes, term
         "Starting out-of-memory monitoring, check every 0.1 seconds:",
         "{",
         '    "limit": "2 MiB",',
-        '    "monitoring": "{}",'.format(monitoring_path.name),
         '    "reserved": "1 MiB"',
         "}",
     ]
 
     # make sure the timer runs
-    time.sleep(0.5)
+    time.sleep(1)
 
     if terminated:
-        process_mock.assert_called_once()
+        terminate_mock.assert_called_once()
 
     if terminated:
         assert module.oom_message() == "Worker out-of-memory, more than {} MiB consumed.".format(
@@ -108,28 +145,26 @@ def test_oom_event(module, monitoring_path, monkeypatch, log, memory_bytes, term
     else:
         assert module.oom_message() is None
 
-
-def test_oom_destroy(module, monitoring_path, monkeypatch, log):
-    module._config['monitoring-path'] = monitoring_path.name
-
-    process_mock = MagicMock()
-    monkeypatch.setattr(psutil, 'Process', process_mock)
-
-    # pipeline cancellation is started in execute
-    module.execute()
-    assert log.records[-1].message.split('\n') == [
-        "Starting out-of-memory monitoring, check every 0.1 seconds:",
-        "{",
-        '    "limit": "2 MiB",',
-        '    "monitoring": "{}",'.format(monitoring_path.name),
-        '    "reserved": "1 MiB"',
-        "}",
-    ]
-
-    monitoring_path.write(str(1024*3))
-    monitoring_path.flush()
-
     module.destroy()
-
-    assert process_mock.called_once()
     assert log.records[-1].message == 'Stopping out-of-memory monitoring'
+
+
+def test_total_rss_memory(module, monkeypatch, log):
+    pmock = MagicMock()
+    memory_info_mock = MagicMock()
+    memory_info_mock.rss = 100
+    pmock.memory_info = MagicMock(return_value=memory_info_mock)
+
+    pmock_raise = MagicMock()
+    pmock_raise.pid = 1
+    pmock_raise.memory_info = MagicMock(side_effect=psutil.NoSuchProcess(1))
+
+    monkeypatch.setattr(
+        psutil,
+        'process_iter',
+        MagicMock(return_value=[pmock, pmock, pmock, pmock_raise])
+    )
+
+    assert module.total_rss_memory() == 300
+    assert log.records[-1].message == "Ignoring process '1', it is gone or inacessible"
+    assert log.records[-1].levelno == logging.DEBUG

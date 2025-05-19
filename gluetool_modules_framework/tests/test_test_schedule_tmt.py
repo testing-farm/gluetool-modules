@@ -1255,8 +1255,13 @@ TMT_PLANS = ['''
         - prep2_exclude2
 ''']
 
-EMPTY_PROVISION_STEP = TMTPlanProvision(hardware=None, kickstart=None, watchdog_dispatch_delay=None,
-                                        watchdog_period_delay=None)
+EMPTY_PROVISION_STEP = TMTPlanProvision(
+    hardware=None,
+    kickstart=None,
+    pool=None,
+    watchdog_dispatch_delay=None,
+    watchdog_period_delay=None
+)
 
 
 @pytest.mark.parametrize('tf_request, mock_output, context_files, tec, expected_command, expected_plan', [
@@ -1333,6 +1338,14 @@ TMT_EXPORTED_PLANS = [
         - name: default-1
           how: virtual
     ''',
+    # multiple_provision_phases
+    '''
+    - name: plan1
+      provision:
+        - name: default-0
+          how: virtual
+          pool: some-testing-farm-beaker-pool
+    ''',
 ]
 
 
@@ -1382,12 +1395,25 @@ TMT_EXPORTED_PLANS = [
             None,
             (gluetool.GlueError, 'Multiple provision phases not supported, refusing to continue.')
         ),
+        # provision_pool
+        (
+            TMT_EXPORTED_PLANS[4],
+            TestingEnvironment(
+                arch='x86_64',
+                excluded_packages=[],
+                snapshots=False,
+                pool='some-testing-farm-beaker-pool'
+            ),
+            None
+        ),
+
     ],
     ids=[
         'single_provision_phase',
         'single_provision_phase_with_hardware',
         'single_provision_phase_with_kickstart',
-        'multiple_provision_phases'
+        'multiple_provision_phases',
+        'provision_plan'
     ]
 )
 def test_tmt_plan_export(module, monkeypatch, exported_plan, expected_environment, expected_exception, tmpdir):

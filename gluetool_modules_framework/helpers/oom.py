@@ -7,7 +7,7 @@ from contextlib import nullcontext
 import psutil
 from gluetool import Failure, Module
 from gluetool.log import log_dict
-from gluetool.utils import normalize_bool_option
+from gluetool.utils import cached_property, normalize_bool_option
 from gluetool_modules_framework.libs.threading import RepeatTimer
 
 # Type annotations
@@ -17,23 +17,20 @@ from typing import Any, Optional  # noqa
 # Default tick in seconds between checks for OOM
 DEFAULT_OOM_CHECK_TICK = 5
 
-# File containing the current memory consumption
-DEFAULT_CGROUPS_MEMORY_CURRENT_PATH = "/sys/fs/cgroup/memory.current"
-
 
 class OutOfMemory(Module):
     """
     Handle out-of-memory events for the pipeline.
 
-    Checks memory consumption via cgroups v2 memory controller.
+    Checks memory consumption by counting the rss of all processes if running in a container,
+    except toolbox container.
+
+    If the process is running outside of a container or in a toolbox container, the check
+    is disabled, because there is no easy way to identify containers launched by ``tmt``.
 
     If the ``reservation`` memory limit is reached, it sends a warning to Sentry.
 
     If the memory ``limit`` is reached, it terminates the terminates the pipeline.
-
-    The module will work only if run in a container engine using cgroups v2, where the
-    memory consumption can be detected by reading ``/sys/fs/cgroup/memory.current`` file.
-    If the file does not exist, the module just emits a warning and does nothing.
     """
 
     name = "oom"
@@ -53,10 +50,6 @@ class OutOfMemory(Module):
                     "type": int,
                     "metavar": "MiB",
                 },
-                "monitoring-path": {
-                    "help": "The file used to read current memory consumption in bytes. (default: %(default)s).",
-                    "default": DEFAULT_CGROUPS_MEMORY_CURRENT_PATH,
-                },
             },
         ),
         (
@@ -67,6 +60,11 @@ class OutOfMemory(Module):
                     "action": "store_true",
                     "default": "yes"
                 },
+                "force": {
+                    "help": "Force running, even if not running in a container. (default: %(default)s).",
+                    "action": "store_true",
+                    "default": "no"
+                },
                 "tick": {
                     "help": """
                         Number of seconds to wait between checking memory consumption again. (default: %(default)s)
@@ -74,9 +72,10 @@ class OutOfMemory(Module):
                     "type": int,
                     "default": DEFAULT_OOM_CHECK_TICK,
                 },
-                "verbose": {
-                    "help": "Enable verbose logging for memory checking.",
+                "verbose-logging": {
+                    "help": "Enable verbose logging for memory checking. (default: %(default)s",
                     "action": "store_true",
+                    "default": "no"
                 },
             },
         ),
@@ -99,6 +98,24 @@ class OutOfMemory(Module):
         """
         return self._oom_message
 
+    @cached_property
+    def available(self) -> bool:
+        if os.path.exists('/run/.containerenv') and not os.path.exists('/run/.toolboxenv'):
+            return True
+        return False
+
+    @cached_property
+    def enabled(self) -> bool:
+        return normalize_bool_option(self.option('enabled'))
+
+    @cached_property
+    def verbose_logging(self) -> bool:
+        return normalize_bool_option(self.option('verbose-logging'))
+
+    @cached_property
+    def force(self) -> bool:
+        return normalize_bool_option(self.option('force'))
+
     def terminate_pipeline(self) -> None:
         """
         Terminate the pipeline by terminating the current process.
@@ -113,13 +130,30 @@ class OutOfMemory(Module):
         self._oom_message = "Worker out-of-memory, more than {} MiB consumed.".format(self.option('limit'))
 
         # stop the repeat timer, it will not be needed anymore
-        self.debug('Stopping pipeline oom check')
+        self.debug('Stopping out-of-memory monitoring')
         if self._oom_timer:
             self._oom_timer.cancel()
             self._oom_timer = None
 
         # cancel the pipeline
         psutil.Process().terminate()
+
+    def total_rss_memory(self) -> int:
+        """
+        Get sum of RSS memory of all available processes.
+        """
+        total_rss = 0
+
+        for proc in psutil.process_iter():
+            try:
+                total_rss += proc.memory_info().rss
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                # process gone or inaccessible, skip it
+                if self.verbose_logging:
+                    self.debug("Ignoring process '{}', it is gone or inacessible".format(proc.pid))
+                continue
+
+        return total_rss
 
     def handle_oom(self) -> None:
         """
@@ -129,10 +163,9 @@ class OutOfMemory(Module):
         reservation = self.option('reservation')
         limit = self.option('limit')
 
-        with open(self.option('monitoring-path')) as f:
-            memory_consumed = int(f.read()) / 1024**2
+        memory_consumed = self.total_rss_memory() / 1024**2
 
-        if self.option('verbose'):
+        if self.verbose_logging:
             log_dict(self.debug, 'out-of-memory check', {
                 'memory': '{:.2f} MiB'.format(memory_consumed),
                 'reserved': '{} MiB'.format(reservation),
@@ -158,15 +191,13 @@ class OutOfMemory(Module):
             self._oom_timer = None
 
     def execute(self) -> None:
-        if not normalize_bool_option(self.option('enabled')):
+        if not self.enabled:
             self.info('Out-of-memory monitoring is disabled')
             return
 
-        monitoring_path = self.option('monitoring-path')
-
-        if not os.path.exists(monitoring_path):
+        if not self.available and not self.force:
             self.warn(
-                "Out-of-memory monitoring is unavailable, '{}' not available".format(monitoring_path)
+                "Out-of-memory monitoring is unavailable, not running in a container"
             )
             return
 
@@ -175,8 +206,7 @@ class OutOfMemory(Module):
             'Starting out-of-memory monitoring, check every {} seconds'.format(self.option('tick')),
             {
                 'reserved': '{} MiB'.format(self.option('reservation')),
-                'limit': '{} MiB'.format(self.option('limit')),
-                'monitoring': monitoring_path
+                'limit': '{} MiB'.format(self.option('limit'))
             }
         )
 

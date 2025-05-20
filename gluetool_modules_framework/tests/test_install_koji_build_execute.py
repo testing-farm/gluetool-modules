@@ -258,7 +258,11 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
         [call('command -v dnf')] * 2 +
         [call(c) for c in koji_commands]
     )
-    calls += [call('command -v dnf')] * 2 + [call(c) for c in copr_commands]
+    calls += (
+        [call('type bootc && sudo bootc status && ((sudo bootc status --format yaml | grep -e "booted: null" -e "image: null") && exit 1 || exit 0)')] +
+        [call('command -v dnf')] * 2 +
+        [call(c) for c in copr_commands]
+    )
     execute_mock.assert_has_calls(calls, any_order=False)
     assert execute_mock.call_count == len(calls)
 

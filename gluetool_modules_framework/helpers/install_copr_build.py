@@ -5,6 +5,7 @@ import os
 import re
 
 import gluetool
+from gluetool.utils import Command
 from gluetool.log import log_dict
 from gluetool.result import Ok, Error
 from gluetool_modules_framework.infrastructure.copr import CoprTask
@@ -98,17 +99,27 @@ class InstallCoprBuild(gluetool.Module):
             '{}-{}'.format(self.option('log-dir-name'), guest.name)
         )
 
+        try:
+            guest.execute('type bootc && sudo bootc status && ((sudo bootc status --format yaml | grep -e "booted: null" -e "image: null") && exit 1 || exit 0)')  # noqa: E501
+            has_bootc = True
+        except gluetool.glue.GlueCommandError:
+            has_bootc = False
+
         # TODO: `builds[0]` might be misleading - it is passing a single artifact to the `SUTInstallation` class even
         # though the object is used to process all artifacts. This shouldn't affect the functionality, the single passed
         # artifact is used only for logging purposes.
         sut_installation = SUTInstallation(self, installation_log_dirpath, builds[0], logger=guest.logger)
 
         # create artifacts directory
-        sut_installation.add_step(
-            'Create artifacts directory',
-            'mkdir -pv {}'.format(download_path),
-            ignore_exception=True
-        )
+        create_command = 'mkdir -pv {}'.format(download_path)
+        if not has_bootc:
+            sut_installation.add_step(
+                'Create artifacts directory',
+                create_command,
+                ignore_exception=True
+            )
+        else:
+            Command(['bash', '-c', create_command], logger=guest.logger).run()
 
         rpm_urls: List[str] = []
 
@@ -119,24 +130,35 @@ class InstallCoprBuild(gluetool.Module):
             has_dnf = False
 
         for number, (build, artifact) in enumerate(zip(builds, artifacts), 1):
-            sut_installation.add_step(
-                'Download copr repository',
-                'curl -v {{}} --retry 5 --output /etc/yum.repos.d/copr_build-{}-{}.repo'.format(
-                    build.project.replace('/', '_'), number
-                ),
-                items=build.repo_url
-            )
+
+            if not has_bootc:
+                sut_installation.add_step(
+                    'Download copr repository',
+                    'curl -v {{}} --retry 5 --output /etc/yum.repos.d/copr_build-{}-{}.repo'.format(
+                        build.project.replace('/', '_'), number
+                    ),
+                    items=build.repo_url
+                )
+            else:
+                download_repo_command = 'curl -v {} --retry 5 --output /etc/yum.repos.d/copr_build-{}-{}.repo'.format(
+                    build.repo_url, build.project.replace('/', '_'), number
+                )
+                Command(['bash', '-c', download_repo_command], logger=guest.logger).run()
 
             # download all artifacts, including excluded
-            sut_installation.add_step(
-                'Download rpms from copr',
-                (
-                    'cd {} && '
-                    'curl -sL --retry 5 --remote-name-all -w "Downloaded: %{{url_effective}}\\n" {}'
-                ).format(download_path, ' '.join(build.rpm_urls + build.srpm_urls))
-            )
+            download_command = (
+                'cd {} && '
+                'curl -sL --retry 5 --remote-name-all -w "Downloaded: %{{url_effective}}\\n" {}'
+            ).format(download_path, ' '.join(build.rpm_urls + build.srpm_urls))
 
-            create_repo(sut_installation, 'test-artifacts', download_path)
+            if not has_bootc:
+                sut_installation.add_step(
+                    'Download rpms from copr',
+                    download_command
+                )
+                create_repo(sut_installation, 'test-artifacts', download_path)
+            else:
+                Command(['bash', '-c', download_command], logger=guest.logger).run()
 
             if artifact.install is False:
                 continue
@@ -155,17 +177,18 @@ class InstallCoprBuild(gluetool.Module):
                     if not re.search(excluded_packages_regexp_compiled, rpm_url)
                 ]
 
-            # reinstall command has to be called for each rpm separately, hence list of rpms is used
-            if copr_build_rpm_urls:
-                if has_dnf:
-                    # HACK: this is really awkward wrt. error handling:
-                    #       https://bugzilla.redhat.com/show_bug.cgi?id=1831022
-                    sut_installation.add_step(
-                        'Reinstall packages', 'dnf -y reinstall {} || true', items=copr_build_rpm_urls
-                    )
-                else:
-                    sut_installation.add_step('Reinstall packages', 'yum -y reinstall {}',
-                                              items=copr_build_rpm_urls, ignore_exception=True)
+            if not has_bootc:
+                # reinstall command has to be called for each rpm separately, hence list of rpms is used
+                if copr_build_rpm_urls:
+                    if has_dnf:
+                        # HACK: this is really awkward wrt. error handling:
+                        #       https://bugzilla.redhat.com/show_bug.cgi?id=1831022
+                        sut_installation.add_step(
+                            'Reinstall packages', 'dnf -y reinstall {} || true', items=copr_build_rpm_urls
+                        )
+                    else:
+                        sut_installation.add_step('Reinstall packages', 'yum -y reinstall {}',
+                                                  items=copr_build_rpm_urls, ignore_exception=True)
 
             # install command is called just once with all rpms followed, hence list of
             # rpms is joined to one item
@@ -173,35 +196,36 @@ class InstallCoprBuild(gluetool.Module):
 
         joined_rpm_urls = ' '.join(rpm_urls)
 
-        if joined_rpm_urls:
-            if has_dnf:
-                sut_installation.add_step('Install packages', 'dnf -y install {}', items=joined_rpm_urls)
-            else:
-                # yum install refuses downgrades, do it explicitly
-                sut_installation.add_step('Downgrade packages', 'yum -y downgrade {}',
-                                          items=joined_rpm_urls, ignore_exception=True)
-                sut_installation.add_step('Install packages', 'yum -y install {}',
-                                          items=joined_rpm_urls, ignore_exception=True)
+        if not has_bootc:
+            if joined_rpm_urls:
+                if has_dnf:
+                    sut_installation.add_step('Install packages', 'dnf -y install {}', items=joined_rpm_urls)
+                else:
+                    # yum install refuses downgrades, do it explicitly
+                    sut_installation.add_step('Downgrade packages', 'yum -y downgrade {}',
+                                              items=joined_rpm_urls, ignore_exception=True)
+                    sut_installation.add_step('Install packages', 'yum -y install {}',
+                                              items=joined_rpm_urls, ignore_exception=True)
 
-        for build, artifact in zip(builds, artifacts):
-            if artifact.install is False:
-                continue
+            for build, artifact in zip(builds, artifacts):
+                if artifact.install is False:
+                    continue
 
-            rpm_names = build.rpm_names
+                rpm_names = build.rpm_names
 
-            if excluded_packages:
-                # create regexp for excluding packages, note that we will filtering rpm names,
-                # so start with beginning of line
-                excluded_packages_regexp = '|'.join(['^{}'.format(package) for package in excluded_packages])
-                excluded_packages_regexp_compiled = re.compile(r'({})'.format(excluded_packages_regexp))
-                rpm_names = [
-                    rpm_name
-                    for rpm_name in build.rpm_names
-                    if not re.search(excluded_packages_regexp_compiled, rpm_name)
-                ]
+                if excluded_packages:
+                    # create regexp for excluding packages, note that we will filtering rpm names,
+                    # so start with beginning of line
+                    excluded_packages_regexp = '|'.join(['^{}'.format(package) for package in excluded_packages])
+                    excluded_packages_regexp_compiled = re.compile(r'({})'.format(excluded_packages_regexp))
+                    rpm_names = [
+                        rpm_name
+                        for rpm_name in build.rpm_names
+                        if not re.search(excluded_packages_regexp_compiled, rpm_name)
+                    ]
 
-            if rpm_names:
-                sut_installation.add_step('Verify packages installed', 'rpm -q {}', items=rpm_names)
+                if rpm_names:
+                    sut_installation.add_step('Verify packages installed', 'rpm -q {}', items=rpm_names)
 
         sut_result = sut_installation.run(guest)
 
@@ -221,6 +245,28 @@ class InstallCoprBuild(gluetool.Module):
                 guest_setup_output,
                 sut_result.error
             ))
+
+        if has_bootc:
+            if not rpm_urls:
+                self.warn('Nothing to install, rpm URLs list is empty')
+                return Ok(guest_setup_output)
+
+            packages = ['--package=' + rpm for rpm in rpm_urls if rpm]
+
+            command = self.shared('tmt_command')
+            command.extend([
+                '-vvv',
+                'run',
+                'provision',
+                '--how', 'connect',
+                '--guest', guest.hostname,
+                '--key', guest.key,
+                '--port', str(guest.port),
+                'prepare',
+                '--how', 'install',
+                ] + packages
+            )
+            Command(command, logger=guest.logger).run(env={'DEBUG': '1'})
 
         return Ok(guest_setup_output)
 

@@ -73,6 +73,10 @@ RUN    virtualenv -p python3.9 /opt/gluetool \
     && rm -f gluetool_modules_framework*.whl \
     && rm -rf ~/.cache
 
+# install guest-setup profiles
+RUN ansible-galaxy collection install git+https://gitlab.com/testing-farm/profiles,add-public-worker-guest-setup-profile
+RUN ansible-galaxy collection install git+https://gitlab.com/testing-farm/profiles#profiles,add-public-worker-guest-setup-profile
+
 # run citool as entrypoint
 ENTRYPOINT ["citool"]
 CMD ["--help"]

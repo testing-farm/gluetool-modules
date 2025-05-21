@@ -5,14 +5,15 @@ import os
 from contextlib import nullcontext
 
 import psutil
+import six
 from gluetool import Failure, Module
 from gluetool.log import log_dict
-from gluetool.utils import cached_property, normalize_bool_option
+from gluetool.utils import cached_property, normalize_bool_option, normalize_multistring_option
 from gluetool_modules_framework.libs.threading import RepeatTimer
 
 # Type annotations
 # pylint: disable=unused-import,wrong-import-order
-from typing import Any, Optional  # noqa
+from typing import Any, Dict, List, Optional  # noqa
 
 # Default tick in seconds between checks for OOM
 DEFAULT_OOM_CHECK_TICK = 5
@@ -22,7 +23,7 @@ class OutOfMemory(Module):
     """
     Handle out-of-memory events for the pipeline.
 
-    Checks memory consumption by counting the rss of all processes if running in a container,
+    Checks memory consumption by counting the RSS memory of all processes if running in a container,
     except toolbox container.
 
     If the process is running outside of a container or in a toolbox container, the check
@@ -50,6 +51,15 @@ class OutOfMemory(Module):
                     "type": int,
                     "metavar": "MiB",
                 },
+                "count-once": {
+                    "help": """
+                        List of process names counted only once, maximum RSS memory.
+                        Matches as substrings in the process command line.
+                        Used to mitigate multiplication of memory usage for tools using multiple
+                        processes and shared memory.
+                    """,
+                    "action": "append"
+                }
             },
         ),
         (
@@ -77,6 +87,11 @@ class OutOfMemory(Module):
                     "action": "store_true",
                     "default": "no"
                 },
+                "print-usage-only": {
+                    "help": "Only print the usage and do not start out-of-memory monitoring. (default: %(default)s",
+                    "action": "store_true",
+                    "default": "no"
+                }
             },
         ),
     ]
@@ -116,6 +131,10 @@ class OutOfMemory(Module):
     def force(self) -> bool:
         return normalize_bool_option(self.option('force'))
 
+    @cached_property
+    def count_once(self) -> List[str]:
+        return normalize_multistring_option(self.option('count-once'))
+
     def terminate_pipeline(self) -> None:
         """
         Terminate the pipeline by terminating the current process.
@@ -144,14 +163,33 @@ class OutOfMemory(Module):
         """
         total_rss = 0
 
+        rss_max: Dict[str, int] = {
+            cmd: 0
+            for cmd in self.count_once
+        }
+
         for proc in psutil.process_iter():
             try:
-                total_rss += proc.memory_info().rss
+                cmdline = " ".join(proc.cmdline())
+                rss = proc.memory_info().rss
+
+                # count certain processes only once, maximum value
+                # used to mitigate counting multiple processes with shared memory
+                for cmd in self.count_once:
+                    if cmd in cmdline:
+                        rss_max[cmd] = max(rss_max[cmd], rss)
+                        break
+                else:
+                    total_rss += rss
+
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 # process gone or inaccessible, skip it
                 if self.verbose_logging:
                     self.debug("Ignoring process '{}', it is gone or inacessible".format(proc.pid))
                 continue
+
+        # add processes counted only once
+        total_rss += sum(rss for rss in six.itervalues(rss_max))
 
         return total_rss
 
@@ -209,6 +247,10 @@ class OutOfMemory(Module):
                 'limit': '{} MiB'.format(self.option('limit'))
             }
         )
+
+        if normalize_bool_option(self.option("print-usage-only")):
+            self.info("Detected memory usage: {:.2f} MiB".format(self.total_rss_memory() / 1024**2))
+            return
 
         self._oom_timer = RepeatTimer(
             self.option('tick'), self.handle_oom

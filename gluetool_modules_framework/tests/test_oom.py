@@ -22,6 +22,7 @@ def fixture_module():
     module._config['reservation'] = 1
     module._config['limit'] = 2
     module._config['force'] = True
+    module._config['count-once'] = ['special-process', 'other-process']
 
     return module
 
@@ -101,6 +102,16 @@ def test_check_unavailable(module, log, monkeypatch):
     assert len(log.records) == 1
 
 
+def test_print_usage_only(module, log):
+    module._config['print-usage-only'] = True
+
+    module.execute()
+
+    assert log.records[-1].message.startswith('Detected memory usage:')
+    assert log.records[-1].levelno == logging.INFO
+    assert len(log.records) == 2
+
+
 @pytest.mark.parametrize(
     'memory_bytes,terminated', (
         (1024, False),
@@ -155,6 +166,12 @@ def test_total_rss_memory(module, monkeypatch, log):
     memory_info_mock.rss = 100
     pmock.memory_info = MagicMock(return_value=memory_info_mock)
 
+    pmock_only_once = MagicMock()
+    memory_info_mock = MagicMock()
+    memory_info_mock.rss = 1000
+    pmock_only_once.memory_info = MagicMock(return_value=memory_info_mock)
+    pmock_only_once.cmdline = MagicMock(return_value=['special-process', 'some-arg'])
+
     pmock_raise = MagicMock()
     pmock_raise.pid = 1
     pmock_raise.memory_info = MagicMock(side_effect=psutil.NoSuchProcess(1))
@@ -162,9 +179,9 @@ def test_total_rss_memory(module, monkeypatch, log):
     monkeypatch.setattr(
         psutil,
         'process_iter',
-        MagicMock(return_value=[pmock, pmock, pmock, pmock_raise])
+        MagicMock(return_value=[pmock, pmock, pmock, pmock_raise, pmock_only_once, pmock_only_once])
     )
 
-    assert module.total_rss_memory() == 300
+    assert module.total_rss_memory() == 1300
     assert log.records[-1].message == "Ignoring process '1', it is gone or inacessible"
     assert log.records[-1].levelno == logging.DEBUG

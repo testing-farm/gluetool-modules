@@ -60,7 +60,11 @@ RUN    ln -s /CONFIG /etc/citool.d \
     && bash -c "echo '  UserKnownHostsFile /dev/null' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  SendEnv -LC_* -LANG_*' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  ServerAliveInterval 60' >> /etc/ssh/ssh_config" \
-    && bash -c "echo '  ServerAliveCountMax 5' >> /etc/ssh/ssh_config"
+    && bash -c "echo '  ServerAliveCountMax 5' >> /etc/ssh/ssh_config" \
+    # TFT-3381 - needed to support RHEL6
+    && bash -c "echo '  HostKeyAlgorithms +ssh-rsa' >> /etc/ssh/ssh_config" \
+    && bash -c "echo '  PubkeyAcceptedKeyTypes +ssh-rsa' >> /etc/ssh/ssh_config" \
+    && bash -c "sed -i '/\[ evp_properties \]/a rh-allow-sha1-signatures = yes' /etc/ssl/openssl.cnf"
 
 # copy the built package
 COPY dist/gluetool_modules_framework*.whl .

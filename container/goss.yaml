@@ -72,6 +72,17 @@ file:
       - SendEnv -LC_* -LANG_*
       - ServerAliveInterval 60
       - ServerAliveCountMax 5
+      - HostKeyAlgorithms +ssh-rsa
+      - PubkeyAcceptedKeyTypes +ssh-rsa
+
+  /etc/ssl/openssl.cnf:
+    exists: true
+    mode: "0644"
+    owner: root
+    group: root
+    filetype: file
+    contains:
+      - "rh-allow-sha1-signatures = yes"
 
 command:
   ansible-galaxy collection list:

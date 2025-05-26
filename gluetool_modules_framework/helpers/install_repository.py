@@ -123,10 +123,17 @@ class InstallRepository(gluetool.Module):
         artifacts: List[Artifact]
     ) -> None:
 
+        try:
+            guest.execute('type bootc && sudo bootc status && ((sudo bootc status --format yaml | grep -e "booted: null" -e "image: null") && exit 1 || exit 0)')  # noqa: E501
+            has_bootc = True
+        except gluetool.glue.GlueCommandError:
+            has_bootc = False
+
         download_path = self.option('download-path')
 
-        sut_installation.add_step('Create artifacts directory', 'mkdir -pv {}'.format(download_path),
-                                  ignore_exception=True)
+        if not has_bootc:
+            sut_installation.add_step('Create artifacts directory', 'mkdir -pv {}'.format(download_path),
+                                      ignore_exception=True)
         packages = []
 
         for artifact in artifacts:
@@ -180,21 +187,21 @@ class InstallRepository(gluetool.Module):
 
             packages += packages_to_install
 
-        # Create a temporary file with list of packages to install with NamedTemporaryFile and save its name
-        download_packages_filename = ""
-        with NamedTemporaryFile(mode='w+', delete=False) as tmp_file:
-            download_packages_filename = tmp_file.name
-            tmp_file.write(' '.join(packages))
-            tmp_file.flush()
+        if not has_bootc:
+            # Create a temporary file with list of packages to install with NamedTemporaryFile and save its name
+            download_packages_filename = ""
+            with NamedTemporaryFile(mode='w+', delete=False) as tmp_file:
+                download_packages_filename = tmp_file.name
+                tmp_file.write(' '.join(packages))
+                tmp_file.flush()
 
-        # Copy the package list to the guest
-        guest.copy_to(download_packages_filename, download_packages_filename)
+            # Copy the package list to the guest
+            guest.copy_to(download_packages_filename, download_packages_filename)
 
-        # First download all found .rpm files
-        sut_installation.add_step('Download packages',
-                                  'cd {}; cat {} | xargs -n1 curl -sO'.format(
-                                      download_path, download_packages_filename),
-                                  ignore_exception=True)
+            # First download all found .rpm files
+            sut_installation.add_step('Download packages', 'cd {}; cat {} | xargs -n1 curl -sO'.format(
+                download_path, download_packages_filename),
+                ignore_exception=True)
 
         # Remove .src.rpm packages
         packages = [package for package in packages if ".src.rpm" not in package]
@@ -212,30 +219,60 @@ class InstallRepository(gluetool.Module):
                 if not re.search(excluded_packages_regexp, rpm_file)
             ]
 
-        install_packages_filename = ""
-        with NamedTemporaryFile(mode='w+', delete=False) as tmp_file:
-            install_packages_filename = tmp_file.name
-            tmp_file.write(' '.join(packages))
-            tmp_file.flush()
+        if not has_bootc:
+            install_packages_filename = ""
+            with NamedTemporaryFile(mode='w+', delete=False) as tmp_file:
+                install_packages_filename = tmp_file.name
+                tmp_file.write(' '.join(packages))
+                tmp_file.flush()
 
-        # Copy the package list to the guest
-        guest.copy_to(install_packages_filename, install_packages_filename)
+            # Copy the package list to the guest
+            guest.copy_to(install_packages_filename, install_packages_filename)
 
-        # note: the `SUTInstallation` library does the magic of using DNF where it is needed \o/
-        # but we need to keep yum in the first place for it to work
-        sut_installation.add_step('Reinstall packages',
-                                  'yum -y reinstall $(cat {})'.format(install_packages_filename), ignore_exception=True)
-        sut_installation.add_step('Downgrade packages',
-                                  'yum -y downgrade $(cat {})'.format(install_packages_filename), ignore_exception=True)
-        sut_installation.add_step('Update packages',
-                                  'yum -y update $(cat {})'.format(install_packages_filename), ignore_exception=True)
-        sut_installation.add_step('Install packages',
-                                  'yum -y install $(cat {})'.format(install_packages_filename), ignore_exception=True)
+            # note: the `SUTInstallation` library does the magic of using DNF where it is needed \o/
+            # but we need to keep yum in the first place for it to work
+            sut_installation.add_step(
+                'Reinstall packages',
+                'yum -y reinstall $(cat {})'.format(install_packages_filename), ignore_exception=True
+            )
+            sut_installation.add_step(
+                'Downgrade packages',
+                'yum -y downgrade $(cat {})'.format(install_packages_filename), ignore_exception=True
+            )
+            sut_installation.add_step(
+                'Update packages',
+                'yum -y update $(cat {})'.format(install_packages_filename), ignore_exception=True
+            )
+            sut_installation.add_step(
+                'Install packages',
+                'yum -y install $(cat {})'.format(install_packages_filename), ignore_exception=True)
 
-        sut_installation.add_step(
-            'Verify all packages installed',
-            'cat {} | xargs basename --suffix=.rpm | xargs rpm -q'.format(install_packages_filename)
-        )
+            sut_installation.add_step(
+                'Verify all packages installed',
+                'cat {} | xargs basename --suffix=.rpm | xargs rpm -q'.format(install_packages_filename)
+            )
+
+        else:
+            if not packages:
+                self.warn('Nothing to install, rpms-list is empty')
+                return
+
+            packages = ['--package=' + package for package in packages if package]
+
+            command = self.shared('tmt_command')
+            command.extend([
+                '-vvv',
+                'run',
+                'provision',
+                '--how', 'connect',
+                '--guest', guest.hostname,
+                '--key', guest.key,
+                '--port', str(guest.port),
+                'prepare',
+                '--how', 'install',
+                ] + packages
+            )
+            Command(command, logger=guest.logger).run(env={'DEBUG': '1'})
 
     def _install_repository_file_artifacts(
         self,

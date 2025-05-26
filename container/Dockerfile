@@ -5,7 +5,8 @@
 #    /CONFIG            - place for configuration
 #
 
-FROM quay.io/containers/podman:v5.1.1
+# NOTE: last version on Fedora 41
+FROM quay.io/containers/podman:v5.3.2
 LABEL maintainer="tft@redhat.com"
 
 # workdir needs to be a writable path in all supported operating systems, a tmt requirement
@@ -50,10 +51,10 @@ RUN    ln -s /CONFIG /etc/citool.d \
     # Pull in tmt from @teemtee/stable copr repository
     && dnf copr -y enable @teemtee/stable \
     && dnf -y install fmf-1.7.0 \
-                      tmt-1.47.0 \
-                      tmt+provision-container-1.47.0 \
-                      tmt+provision-virtual-1.47.0 \
-                      tmt+report-polarion-1.47.0 \
+                      tmt-1.49.0 \
+                      tmt+provision-container-1.49.0 \
+                      tmt+provision-virtual-1.49.0 \
+                      tmt+report-polarion-1.49.0 \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \

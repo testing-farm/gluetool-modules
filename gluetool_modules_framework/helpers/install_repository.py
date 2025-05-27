@@ -136,8 +136,6 @@ class InstallRepository(gluetool.Module):
                 'dnf',
                 'repoquery',
                 '-q',
-                '--queryformat',
-                '"%{{name}}"',
                 '--repofrompath=artifacts-repo,{}'.format(artifact.id),
                 '--repo',
                 'artifacts-repo',

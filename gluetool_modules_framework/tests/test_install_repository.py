@@ -129,9 +129,9 @@ def test_guest_setup(module, environment_index, tmpdir, monkeypatch):
         return
 
     command_calls = [
-        call(['dnf', 'repoquery', '-q', '--queryformat', '"%{{name}}"', '--repofrompath=artifacts-repo,https://example.com/repo1', '--repo', 'artifacts-repo', '--location', '--disable-modular-filtering']),  # noqa
-        call(['dnf', 'repoquery', '-q', '--queryformat', '"%{{name}}"', '--repofrompath=artifacts-repo,https://example.com/repo2', '--repo', 'artifacts-repo', '--location', '--disable-modular-filtering']),  # noqa
-        call(['dnf', 'repoquery', '-q', '--queryformat', '"%{{name}}"', '--repofrompath=artifacts-repo,https://example.com/repo3', '--repo', 'artifacts-repo', '--location', '--disable-modular-filtering']),  # noqa
+        call(['dnf', 'repoquery', '-q', '--repofrompath=artifacts-repo,https://example.com/repo1', '--repo', 'artifacts-repo', '--location', '--disable-modular-filtering']),  # noqa
+        call(['dnf', 'repoquery', '-q', '--repofrompath=artifacts-repo,https://example.com/repo2', '--repo', 'artifacts-repo', '--location', '--disable-modular-filtering']),  # noqa
+        call(['dnf', 'repoquery', '-q', '--repofrompath=artifacts-repo,https://example.com/repo3', '--repo', 'artifacts-repo', '--location', '--disable-modular-filtering']),  # noqa
     ]
     mock_command_init.assert_has_calls(command_calls)
 
@@ -204,7 +204,7 @@ def test_guest_setup_forced_artifacts(module, tmpdir, monkeypatch):
         id='https://example.com/forced-repo', packages=None, type='repository')])
 
     command_calls = [
-        call(['dnf', 'repoquery', '-q', '--queryformat', '"%{{name}}"', '--repofrompath=artifacts-repo,https://example.com/forced-repo', '--repo', 'artifacts-repo', '--location', '--disable-modular-filtering']),  # noqa
+        call(['dnf', 'repoquery', '-q', '--repofrompath=artifacts-repo,https://example.com/forced-repo', '--repo', 'artifacts-repo', '--location', '--disable-modular-filtering']),  # noqa
     ]
     mock_command_init.assert_has_calls(command_calls)
 

@@ -1643,8 +1643,10 @@ class TestScheduleTMT(Module):
                 if log_to_add not in test_case.logs:
                     test_case.logs.append(log_to_add)
 
-                # test output can contain invalid utf characters, make sure to replace them
-                if os.path.isfile(artifact.path):
+                # Add test output to system_out, used only for "native" xunit
+                # Process only 'testout.log' (output.txt) which contains reasonable human output
+                if os.path.isfile(artifact.path) and artifact.name == 'testout.log':
+                    # test output can contain invalid utf characters, make sure to replace them
                     with open(artifact.path, 'r', errors='replace') as f:
                         log_size = os.path.getsize(artifact.path)
                         max_log_size = self.option('result-log-max-size') * 1024 * 1024

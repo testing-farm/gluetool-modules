@@ -171,9 +171,9 @@ class JenkinsProxy(Proxy):
                 module.option('url'),
                 job_name
             ),
-            # 201 is indeed the only expected response, Jenkins reports "201 Created" since a new build is spawned
-            # from this job.
-            accepted_codes=[201],
+            # Jenkins reports "201 Created" since a new build is spawned from this job.
+            # In case the same request is already queued, jenkins response "200 OK"
+            accepted_codes=[200, 201],
             **build_params
         )
 

@@ -671,7 +671,8 @@ class TestScheduleTMT(Module):
         }),
     ]
 
-    shared_functions = ['create_test_schedule', 'run_test_schedule_entry', 'serialize_test_schedule_entry_results']
+    shared_functions = ['create_test_schedule', 'run_test_schedule_entry',
+                        'serialize_test_schedule_entry_results', 'tmt_command']
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(TestScheduleTMT, self).__init__(*args, **kwargs)
@@ -809,6 +810,9 @@ class TestScheduleTMT(Module):
         if tf_request and tf_request.tmt and tf_request.tmt.path:
             return ['--root', tf_request.tmt.path]
         return []
+
+    def tmt_command(self) -> List[str]:
+        return [self.option('command')] + self._root_option
 
     def _prepare_tmt_env_file(self,
                               testing_environment_constraints: TestingEnvironment,

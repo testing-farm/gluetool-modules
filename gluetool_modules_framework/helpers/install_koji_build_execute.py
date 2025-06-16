@@ -6,7 +6,6 @@ import gluetool
 from gluetool.action import Action
 from gluetool.log import log_dict
 from gluetool.result import Ok, Error
-from gluetool.utils import Command
 
 from gluetool_modules_framework.libs.artifacts import DEFAULT_DOWNLOAD_PATH
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage, \
@@ -128,16 +127,15 @@ class InstallKojiBuildExecute(gluetool.Module):
             else:
                 download_arches = cast(str, arch)
 
-            download_command = (
-                '( {0} download-build --debuginfo --task-id --arch noarch --arch {2} --arch src {1} || '
-                '{0} download-task --arch noarch --arch {2} --arch src {1} ) | '
-                'egrep Downloading | cut -d " " -f 3 | tee rpms-list-{1}'
-            ).format(koji_command, artifact.id, download_arches)
-
-            if not has_bootc:
-                sut_installation.add_step('Download task id {}'.format(artifact.id), download_command)
-            else:
-                Command(['bash', '-c', download_command], logger=guest.logger).run()
+            sut_installation.add_step(
+                'Download task id {}'.format(artifact.id),
+                (
+                    '( {0} download-build --debuginfo --task-id --arch noarch --arch {2} --arch src {1} || '
+                    '{0} download-task --arch noarch --arch {2} --arch src {1} ) | '
+                    'egrep Downloading | cut -d " " -f 3 | tee rpms-list-{1}'
+                ).format(koji_command, artifact.id, download_arches),
+                local=has_bootc
+            )
 
             if artifact.install is False:
                 rpms_lists_to_skip_install.append('rpms-list-{}'.format(artifact.id))
@@ -153,28 +151,23 @@ class InstallKojiBuildExecute(gluetool.Module):
 
         excluded_packages_regexp = '|'.join(['^{} '.format(package) for package in excluded_packages])
 
-        list_command = (
-            'ls *[^.src].rpm | '
-            'sed -r "s/(.*)-.*-.*/\\1 \\0/" | '
-            '{}'  # Do not install excluded packages in the tmt plan
-            '{}'  # Do not install packages with "install: false" specified in the TF API
-            '{}'  # Do not install i686 builds
-            'awk "{{print \\$2}}" | '
-            '{}'  # For bootc we need to have a full path to the RPMs
-            'tee rpms-list'
-        ).format(
-            'egrep -v "({})" | '.format(excluded_packages_regexp) if excluded_packages_regexp else '',
-            ''.join(['grep -Fv "$(cat {})" | '.format(rpm) for rpm in rpms_lists_to_skip_install]),
-            'egrep -v "i686" | ' if arch == 'x86_64' and self.option('download-i686-builds') else '',
-            'xargs realpath | ' if has_bootc else '',
+        sut_installation.add_step(
+            'Get package list',
+            (
+                'ls *[^.src].rpm | '
+                'sed -r "s/(.*)-.*-.*/\\1 \\0/" | '
+                '{}'  # Do not install excluded packages in the tmt plan
+                '{}'  # Do not install packages with "install: false" specified in the TF API
+                '{}'  # Do not install i686 builds
+                'awk "{{print \\$2}}" | '
+                'tee rpms-list'
+            ).format(
+                'egrep -v "({})" | '.format(excluded_packages_regexp) if excluded_packages_regexp else '',
+                ''.join(['grep -Fv "$(cat {})" | '.format(rpm) for rpm in rpms_lists_to_skip_install]),
+                'egrep -v "i686" | ' if arch == 'x86_64' and self.option('download-i686-builds') else '',
+            ),
+            local=has_bootc
         )
-
-        if not has_bootc:
-            sut_installation.add_step('Get package list', list_command)
-        else:
-            output = Command(['bash', '-c', list_command], logger=guest.logger).run()
-            if output.stdout is None:
-                raise gluetool.GlueError('Command did not produce usable output')
 
         try:
             guest.execute('command -v dnf')
@@ -216,17 +209,36 @@ class InstallKojiBuildExecute(gluetool.Module):
                     'yum -y install $(cat rpms-list)',
                     ignore_exception=True,
                 )
-
             # Use printf to correctly quote the package name, we encountered '^' in the NVR, which is actually a valid
             # character in NVR - https://docs.fedoraproject.org/en-US/packaging-guidelines/Versioning/#_snapshots
             #
             # Explicitely pass delimiter for xargs to mitigate special handling of quotes, which would break the
             # quoting done previously by printf
+
+            # The step won't work for image mode because rpms-list is gone between reboots.
             sut_installation.add_step(
                 'Verify all packages installed',
                 r"""if [ ! -z "$(sed 's/\s//g' rpms-list)" ];"""
                 "then sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q;"
                 "else echo 'Nothing to verify, rpms-list is empty'; fi"
+            )
+
+        else:
+            command = (
+                "cat rpms-list | xargs realpath | tee rpms-list-paths && "
+                "if [ -s rpms-list-paths ] && grep -q '\\S' rpms-list-paths; then "
+                "{} -vvv run provision --how connect --guest {} --key {} --port {} prepare --how install "
+                "$(awk '{{print \"--package=\"$0}}' rpms-list-paths); else echo 'Nothing to install'; fi"
+            ).format(" ".join(self.shared('tmt_command')), guest.hostname, guest.key, guest.port)
+
+            sut_installation.add_step(
+                label='Install koji build with TMT',
+                command=command,
+                items=[],
+                ignore_exception=False,
+                callback=None,
+                local=True,
+                env={'DEBUG': '1'}
             )
 
         assert request is not None
@@ -262,30 +274,6 @@ class InstallKojiBuildExecute(gluetool.Module):
                 guest_setup_output,
                 sut_result.error
             ))
-
-        if has_bootc:
-            if not output.stdout:
-                self.warn('Nothing to install, rpms-list is empty')
-                return Ok(guest_setup_output)
-
-            rpms_list = output.stdout.split('\n')
-
-            packages = ['--package=' + rpm for rpm in rpms_list if rpm]
-
-            command = self.shared('tmt_command')
-            command.extend([
-                '-vvv',
-                'run',
-                'provision',
-                '--how', 'connect',
-                '--guest', guest.hostname,
-                '--key', guest.key,
-                '--port', str(guest.port),
-                'prepare',
-                '--how', 'install',
-                ] + packages
-            )
-            Command(command, logger=guest.logger).run(env={'DEBUG': '1'})
 
         return Ok(guest_setup_output)
 

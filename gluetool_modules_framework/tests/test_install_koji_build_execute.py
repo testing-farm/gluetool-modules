@@ -56,7 +56,7 @@ def mock_guest(execute_mock, artifacts=None, environment=None):
 
 
 def get_execute_mock():
-    def side_effect(cmd):
+    def side_effect(cmd, **kwargs):
         if 'bootc' in cmd:
             raise gluetool.glue.GlueCommandError('dummy_error', MagicMock(exit_code=1, stdout='', stderr=''))
         else:
@@ -307,8 +307,8 @@ def test_guest_setup_yum(module, local_guest, tmpdir):
         [  # Expected install commands
             ['bash', '-c', '( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123123'],  # noqa
             ['bash', '-c', '( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123124 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123124'],  # noqa
-            ['bash', '-c', 'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "i686" | awk "{print \\$2}" | xargs realpath | tee rpms-list'],  # noqa
-            ['tmt', '-vvv', 'run', 'provision', '--how', 'connect', '--guest', 'guest0', '--key', 'guest-key', '--port', '22', 'prepare', '--how', 'install', '--package=test', '--package=test2'],  # noqa
+            ['bash', '-c', 'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list'],  # noqa
+            ['bash', '-c', 'cat rpms-list | xargs realpath | tee rpms-list-paths && if [ -s rpms-list-paths ] && grep -q \'\\S\' rpms-list-paths; then tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install $(awk \'{print "--package="$0}\' rpms-list-paths); else echo \'Nothing to install\'; fi'],  # noqa
         ],
         None
     ),
@@ -325,8 +325,8 @@ def test_guest_setup_yum(module, local_guest, tmpdir):
             ['bash', '-c', '( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123124 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123124'],  # noqa
             ['bash', '-c', '( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src skip-installing-me-1 || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src skip-installing-me-1 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-skip-installing-me-1'],  # noqa
             ['bash', '-c', '( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src skip-installing-me-2 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src skip-installing-me-2 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-skip-installing-me-2'],  # noqa
-            ['bash', '-c', 'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | grep -Fv "$(cat rpms-list-skip-installing-me-1)" | grep -Fv "$(cat rpms-list-skip-installing-me-2)" | egrep -v "i686" | awk "{print \\$2}" | xargs realpath | tee rpms-list'],  # noqa
-            ['tmt', '-vvv', 'run', 'provision', '--how', 'connect', '--guest', 'guest0', '--key', 'guest-key', '--port', '22', 'prepare', '--how', 'install', '--package=test', '--package=test2'],  # noqa
+            ['bash', '-c', 'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | grep -Fv "$(cat rpms-list-skip-installing-me-1)" | grep -Fv "$(cat rpms-list-skip-installing-me-2)" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list'],  # noqa
+            ['bash', '-c', 'cat rpms-list | xargs realpath | tee rpms-list-paths && if [ -s rpms-list-paths ] && grep -q \'\\S\' rpms-list-paths; then tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install $(awk \'{print "--package="$0}\' rpms-list-paths); else echo \'Nothing to install\'; fi'],  # noqa
         ],
         None
     ),
@@ -337,8 +337,8 @@ def test_guest_setup_yum(module, local_guest, tmpdir):
         None,  # No additional input artifacts, see `mock_guest` function for the base artifacts
         [  # Expected install commands
             ['bash', '-c', '( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src forced-artifact || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src forced-artifact ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-forced-artifact'],  # noqa
-            ['bash', '-c', 'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "i686" | awk "{print \\$2}" | xargs realpath | tee rpms-list'],  # noqa
-            ['tmt', '-vvv', 'run', 'provision', '--how', 'connect', '--guest', 'guest0', '--key', 'guest-key', '--port', '22', 'prepare', '--how', 'install', '--package=test', '--package=test2']
+            ['bash', '-c', 'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list'],  # noqa
+            ['bash', '-c', 'cat rpms-list | xargs realpath | tee rpms-list-paths && if [ -s rpms-list-paths ] && grep -q \'\\S\' rpms-list-paths; then tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install $(awk \'{print "--package="$0}\' rpms-list-paths); else echo \'Nothing to install\'; fi'],  # noqa
         ],
         [Artifact(id='forced-artifact', packages=None, type='fedora-koji-build')],
     ),
@@ -357,6 +357,7 @@ def test_guest_setup_bootc(module, local_guest, tmpdir, guest_artifacts, expecte
 
     module.setup_guest(guest, stage=stage, log_dirpath=str(tmpdir), forced_artifacts=forced_artifacts)
 
-    calls = [call(c, logger=guest.logger) for c in expected_commands]
+    calls = [call(c) for c in expected_commands]
+
     mock_command_init.assert_has_calls(calls, any_order=False)
     assert mock_command_init.call_count == len(calls)

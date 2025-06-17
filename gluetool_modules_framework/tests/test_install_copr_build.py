@@ -595,11 +595,10 @@ def test_repo_download_fails(module_shared_patched, tmpdir):
                 'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm')],
-            [
-                'tmt', '-vvv', 'run', 'provision', '--how', 'connect', '--guest', 'guest0', '--key', 'guest-key', '--port', '22',
-                'prepare', '--how', 'install', '--package=https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm',
-                '--package=https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm'
-            ]
+            ['bash', '-c', (
+                'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install '
+                '--package=https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm '
+                '--package=https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm')]
         ],
         None,  # No expected generated files - use the default ones in `assert_log_files()`
         None
@@ -633,13 +632,14 @@ def test_repo_download_fails(module_shared_patched, tmpdir):
                 'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
                 'https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm '
                 'https://example.com/dummy3_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.src.rpm')],
-            [
-                    'tmt', '-vvv', 'run', 'provision', '--how', 'connect', '--guest', 'guest0', '--key', 'guest-key', '--port',
-                    '22', 'prepare', '--how', 'install', '--package=https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm',
-                    '--package=https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm', '--package=https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm',
-                    '--package=https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm', '--package=https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm',
-                    '--package=https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm'
-            ]
+            ['bash', '-c', (
+                'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install '
+                '--package=https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm '
+                '--package=https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
+                '--package=https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm '
+                '--package=https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm '
+                '--package=https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm '
+                '--package=https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm')]
         ],
         [  # Expected generated files
             '0-Create-artifacts-directory.txt',
@@ -696,11 +696,10 @@ def test_repo_download_fails(module_shared_patched, tmpdir):
                 'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
                 'https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm '
                 'https://example.com/dummy3_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.src.rpm')],
-            [
-                'tmt', '-vvv', 'run', 'provision', '--how', 'connect', '--guest', 'guest0', '--key', 'guest-key', '--port', '22',
-                'prepare', '--how', 'install', '--package=https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm',
-                '--package=https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm'
-            ]
+            ['bash', '-c', (
+                'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install '
+                '--package=https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm '
+                '--package=https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm')]
         ],
         [  # Expected generated files
             '0-Create-artifacts-directory.txt',
@@ -780,11 +779,10 @@ def test_repo_download_fails(module_shared_patched, tmpdir):
                 'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
                 'https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm '
                 'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm')],
-            [
-                'tmt', '-vvv', 'run', 'provision', '--how', 'connect', '--guest', 'guest0', '--key', 'guest-key', '--port', '22',
-                'prepare', '--how', 'install', '--package=https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm',
-                '--package=https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm'
-            ]
+            ['bash', '-c', (
+                'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install '
+                '--package=https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm '
+                '--package=https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm')]
         ],
         [  # Expected generated files
             '0-Create-artifacts-directory.txt',
@@ -819,11 +817,10 @@ def test_repo_download_fails(module_shared_patched, tmpdir):
                 'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm')],
-            [
-                'tmt', '-vvv', 'run', 'provision', '--how', 'connect', '--guest', 'guest0', '--key', 'guest-key', '--port', '22',
-                'prepare', '--how', 'install', '--package=https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm',
-                '--package=https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm'
-            ],
+            ['bash', '-c', (
+                'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install '
+                '--package=https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm '
+                '--package=https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm')],
         ],
         None,  # No expected generated files - use the default ones in `assert_log_files()`
         [Artifact(type='fedora-copr-build', id='artifact1')]  # This artifact should be installed
@@ -846,6 +843,6 @@ def test_setup_guest_bootc(module_shared_patched, tmpdir, guest_artifacts, guest
     module.setup_guest(guest, stage=GuestSetupStage.ARTIFACT_INSTALLATION,
                        log_dirpath=str(tmpdir), forced_artifacts=forced_artifacts)
 
-    calls = [call(c, logger=guest.logger) for c in expected_commands]
+    calls = [call(c) for c in expected_commands]
     mock_command_init.assert_has_calls(calls, any_order=False)
     assert mock_command_init.call_count == len(calls)

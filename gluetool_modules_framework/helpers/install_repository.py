@@ -255,25 +255,28 @@ class InstallRepository(gluetool.Module):
 
         else:
             if not packages:
-                self.warn('Nothing to install, rpms-list is empty')
+                self.warn('Nothing to install, package list is empty')
                 return
 
-            packages = ['--package=' + package for package in packages if package]
-
-            command = self.shared('tmt_command')
-            command.extend([
-                '-vvv',
-                'run',
-                'provision',
-                '--how', 'connect',
-                '--guest', guest.hostname,
-                '--key', guest.key,
-                '--port', str(guest.port),
-                'prepare',
-                '--how', 'install',
-                ] + packages
+            command = (
+                '{} -vvv run provision --how connect --guest {} --key {} --port {} '
+                'prepare --how install {}'.format(
+                    " ".join(self.shared('tmt_command')),
+                    guest.hostname,
+                    guest.key,
+                    guest.port,
+                    ' '.join(['--package=' + package for package in packages if package]))
             )
-            Command(command, logger=guest.logger).run(env={'DEBUG': '1'})
+
+            sut_installation.add_step(
+                label='Install repository with TMT',
+                command=command,
+                items=[],
+                ignore_exception=False,
+                callback=None,
+                local=True,
+                env={'DEBUG': '1'}
+            )
 
     def _install_repository_file_artifacts(
         self,

@@ -32,6 +32,9 @@ ENV PATH="/opt/gluetool/bin:$PATH"
 # Note that podman v6.x will drop cgroup v1 support
 ENV PODMAN_IGNORE_CGROUPSV1_WARNING=1
 
+# tmt policies
+ENV TMT_POLICY_ROOT=/etc/tmt/policies
+
 # Ansible requirements
 COPY container/requirements.yml /etc/ansible/requirements.yml
 
@@ -55,6 +58,12 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       tmt+provision-container-1.51.0 \
                       tmt+provision-virtual-1.51.0 \
                       tmt+report-polarion-1.51.0 \
+    # Pull in tmt policies
+    && mkdir -p /etc/tmt/policies \
+    && git clone --branch main --depth 1 https://gitlab.com/testing-farm/profiles.git /tmp/profiles \
+    && cp -rv /tmp/profiles/policies/* ${TMT_POLICY_ROOT}/ \
+    && find ${TMT_POLICY_ROOT} -type f -print0 | xargs -0 chmod "ugo=r" \
+    && rm -rf /tmp/profiles \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \

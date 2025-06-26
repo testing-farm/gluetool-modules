@@ -84,6 +84,13 @@ file:
     contains:
       - "rh-allow-sha1-signatures = yes"
 
+  /etc/tmt/policies/rhel-ci.yaml:
+    exists: true
+    mode: "0444"
+    owner: root
+    group: root
+    filetype: file
+
 command:
   ansible-galaxy collection list:
     exit-status: 0

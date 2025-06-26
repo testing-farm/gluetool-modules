@@ -1458,5 +1458,4 @@ class TestScheduleTMTMultihost(Module):
             if test_case.guest and (test_case.guest.name, test_case.guest.role) not in [
                 (guest.name, guest.role) for guest in test_suite.guests
             ]:
-                if test_case not in test_suite.test_cases:
-                    test_suite.guests.append(test_case.guest)
+                test_suite.guests.append(test_case.guest)

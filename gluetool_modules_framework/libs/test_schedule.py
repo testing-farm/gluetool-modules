@@ -10,6 +10,8 @@ from gluetool_modules_framework.libs.guest import NetworkedGuest
 from gluetool_modules_framework.libs.artifacts import artifacts_location
 from gluetool_modules_framework.libs import GlueEnum
 
+import re
+
 # Type annotations
 from typing import TYPE_CHECKING, cast, Any, Dict, List, Optional, NamedTuple  # noqa
 
@@ -434,3 +436,24 @@ class TestSchedule(List[TestScheduleEntry]):
                 table,
                 headers='firstrow', tablefmt='psql'
             )
+
+
+_SANITIZE_NAME_PATTERN: re.Pattern[str] = re.compile(r'[^\w/-]+')
+_SANITIZE_NAME_PATTERN_NO_SLASH: re.Pattern[str] = re.compile(r'[^\w-]+')
+
+
+# NOTE: This function was copied from tmt code, would be nice if it could be imported directly instead
+def sanitize_name(name: str, allow_slash: bool = True) -> str:
+    """
+    Create a safe variant of a name that does not contain special characters.
+
+    Spaces and other special characters are removed to prevent problems with
+    tools which do not expect them (e.g. in directory names).
+
+    :param name: a name to sanitize.
+    :param allow_slash: if set, even a slash character, ``/``, would be replaced.
+    """
+
+    pattern = _SANITIZE_NAME_PATTERN if allow_slash else _SANITIZE_NAME_PATTERN_NO_SLASH
+
+    return pattern.sub('-', name).strip('-')

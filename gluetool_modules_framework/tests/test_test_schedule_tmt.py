@@ -217,9 +217,9 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     # Checking end-time
     assert testcase_docs.end_time == '2024-04-09T13:09:02.744369+00:00'
     # Checking serial number
-    assert testcase_docs.serial_number == None
+    assert testcase_docs.serial_number == 1
     # Checking properties (properties are sorted by name)
-    assert len(testcase_docs.properties) == 8
+    assert len(testcase_docs.properties) == 9
     assert testcase_docs.properties[0].name == 'baseosci.arch'
     assert testcase_docs.properties[0].value == 'None'
     assert testcase_docs.properties[1].name == 'baseosci.connectable_host'
@@ -232,10 +232,12 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     assert testcase_docs.properties[4].value == ''
     assert testcase_docs.properties[5].name == 'baseosci.variant'
     assert testcase_docs.properties[5].value == ''
-    assert testcase_docs.properties[6].name == 'contact'
-    assert testcase_docs.properties[6].value == 'John Doe <jdoe@example.com>'
+    assert testcase_docs.properties[6].name == 'id'
+    assert testcase_docs.properties[6].value == '{}_some-suite_1_default-0'.format(os.path.join(tmpdir, 'some-workdir'))
     assert testcase_docs.properties[7].name == 'contact'
-    assert testcase_docs.properties[7].value == 'John Smith <jsmith@example.com>'
+    assert testcase_docs.properties[7].value == 'John Doe <jdoe@example.com>'
+    assert testcase_docs.properties[8].name == 'contact'
+    assert testcase_docs.properties[8].value == 'John Smith <jsmith@example.com>'
 
     # Checking testcase_dry
     assert testcase_dry.name == '/tests/core/dry'
@@ -261,9 +263,9 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     # Checking end-time
     assert testcase_dry.end_time == None
     # Checking serial number
-    assert testcase_dry.serial_number == None
+    assert testcase_dry.serial_number == 2
     # Checking properties (properties are sorted by name)
-    assert len(testcase_dry.properties) == 6
+    assert len(testcase_dry.properties) == 7
     assert testcase_dry.properties[0].name == 'baseosci.arch'
     assert testcase_dry.properties[0].value == 'None'
     assert testcase_dry.properties[1].name == 'baseosci.connectable_host'
@@ -276,6 +278,8 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     assert testcase_dry.properties[4].value == ''
     assert testcase_dry.properties[5].name == 'baseosci.variant'
     assert testcase_dry.properties[5].value == ''
+    assert testcase_dry.properties[6].name == 'id'
+    assert testcase_dry.properties[6].value == '{}_some-suite_2_default-0'.format(os.path.join(tmpdir, 'some-workdir'))
 
     shutil.rmtree(schedule_entry.work_dirpath)
 

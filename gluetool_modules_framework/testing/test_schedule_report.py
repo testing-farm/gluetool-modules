@@ -11,7 +11,7 @@ from gluetool_modules_framework.libs import sort_children
 from gluetool_modules_framework.libs.artifacts import artifacts_location
 import gluetool_modules_framework.libs.guest_setup
 from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleResult, TestScheduleEntryStage, \
-    TestScheduleEntryState
+    TestScheduleEntryState, sanitize_name
 
 from gluetool_modules_framework.infrastructure.koji_fedora import KojiTask
 from gluetool_modules_framework.infrastructure.copr import CoprTask
@@ -247,14 +247,21 @@ class TestScheduleReport(gluetool.Module):
             self._results.polarion_project_id = self.option('polarion-project-id')
 
         for schedule_entry in schedule:
+            test_suite_name = schedule_entry.testsuite_name or schedule_entry.id
             test_suite = TestSuite(
-                name=schedule_entry.testsuite_name or schedule_entry.id,
+                name=test_suite_name,
                 result=schedule_entry.result.name.lower(),
                 stage=schedule_entry.stage.name.lower(),
-                properties=[
-                    Property(name='baseosci.result', value=schedule_entry.result.name.lower())
-                ]
+                properties=[Property(name='baseosci.result', value=schedule_entry.result.name.lower())]
             )
+
+            if schedule_entry.work_dirpath:
+                test_suite.properties.append(
+                    Property(name='id', value='{}_{}'.format(
+                        schedule_entry.work_dirpath,
+                        sanitize_name(test_suite_name, allow_slash=False)
+                    ))
+                )
 
             for stage in gluetool_modules_framework.libs.guest_setup.STAGES_ORDERED:
                 for output in schedule_entry.guest_setup_outputs.get(stage, []):

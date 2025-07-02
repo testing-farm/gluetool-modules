@@ -147,3 +147,7 @@ command:
     stderr:
       - "how: reportportal"
       - "No ReportPortal endpoint url provided."
+
+  /opt/artemis-cli/bin/artemis-cli status tasks:
+    exit-status: 0
+    timeout: 100000

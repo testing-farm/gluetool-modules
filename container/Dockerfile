@@ -78,6 +78,14 @@ RUN    virtualenv -p python3.9 /opt/gluetool \
     && rm -f gluetool_modules_framework*.whl \
     && rm -rf ~/.cache
 
+# install artemis
+RUN    virtualenv -p python3.9 /opt/artemis-cli \
+    && source /opt/artemis-cli/bin/activate \
+    && pip3.9 install tft-artemis-cli \
+    && rm -rf ~/.cache
+
+COPY container/artemis-cli-config.yaml /root/.config/artemis-cli/config.yaml
+
 # run citool as entrypoint
 ENTRYPOINT ["citool"]
 CMD ["--help"]

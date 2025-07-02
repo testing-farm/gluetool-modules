@@ -620,6 +620,12 @@ class TestScheduleTMT(Module):
                 'type': int
             }
         }),
+        ('Artemis options', {
+            'artemis-command': {
+                'help': 'Artemis command to use. (default: %(default)s).',
+                'default': '/opt/artemis-cli/bin/artemis-cli',
+            }
+        })
     ]
 
     shared_functions = ['create_test_schedule', 'run_test_schedule_entry', 'serialize_test_schedule_entry_results']
@@ -1336,12 +1342,20 @@ class TestScheduleTMT(Module):
             assert schedule_entry.guest.key is not None
             assert schedule_entry.guest.hostname is not None
 
+            reboot_command = " ".join(
+                self.option('artemis-command'),
+                'guest',
+                'reboot',
+                schedule_entry.guest.artemis_id
+            )
+
             command.extend([
                 'provision',
                 '--how', 'connect',
                 '--guest', schedule_entry.guest.hostname,
                 '--key', schedule_entry.guest.key,
                 '--port', str(schedule_entry.guest.port),
+                '--hard-reboot', reboot_command
             ])
 
         # `finish` step in case of extra arguments

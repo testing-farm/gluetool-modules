@@ -1,0 +1,4 @@
+---
+
+artemis_api_url: http://artemis.production.testing-farm.io
+artemis_api_version: '0.0.74'

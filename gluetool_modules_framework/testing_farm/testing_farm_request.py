@@ -268,7 +268,7 @@ class TestingFarmAPI(LoggerMixin, object):
 
         return response.json()
 
-    def decrypt_secret(self, git_url: str, message: str, api_key: str) -> str:
+    def decrypt_secret(self, git_url: str, message: str, api_key: str) -> Optional[str]:
         response = self._post_request(
             'v0.1/secrets/decrypt',
             payload={'url': git_url, 'message': message},
@@ -277,7 +277,8 @@ class TestingFarmAPI(LoggerMixin, object):
         )
 
         if response.status_code != 200:
-            raise gluetool.GlueError("Error while decrypting secret '{}'.".format(message))
+            self.debug("Error while decrypting secret '{}': {}.".format(message, response.text))
+            return None
 
         decrypted_message = cast(str, response.json())
 
@@ -646,14 +647,18 @@ class TestingFarmRequest(LoggerMixin, object):
             for secret_value_encrypted in secret_values_encrypted:
                 if not isinstance(secret_value_encrypted, str):
                     self.warn('Invalid secret with key `{}`, skipping.'.format(secret_key))
-                    return
+                    continue
 
                 if secret_value_encrypted.startswith(self.token_id):
-                    secrets.update(
-                        {secret_key: self._api.decrypt_secret(git_url, secret_value_encrypted, self._api_key)}
-                    )
+                    secret_value_decrypted = self._api.decrypt_secret(git_url, secret_value_encrypted, self._api_key)
+                    if secret_value_decrypted is None:
+                        continue
+
+                    secrets.update({secret_key: secret_value_decrypted})
                     self.info('Adding secret with key `{}` to the requested environments.'.format(secret_key))
                     break
+            else:
+                self.warn('No valid secret value found for key `{}`.'.format(secret_key))
 
         if secrets:
             for environment in self.environments_requested:

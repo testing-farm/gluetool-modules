@@ -55,6 +55,14 @@ class ResponseDecrypt():
         return "hello world"
 
 
+class ResponseDecryptError():
+    status_code = 400
+    text = "Decryption failed"
+
+    def json(self):
+        return {"error": "Decryption failed"}
+
+
 class Response404(ResponseMock):
     status_code = 404
 
@@ -102,6 +110,9 @@ class RequestsMock():
 
     def request_decrypt(self, url, json, headers=None):
         return ResponseDecrypt()
+
+    def request_decrypt_error(self, url, json, headers=None):
+        return ResponseDecryptError()
 
 
 @contextlib.contextmanager
@@ -476,6 +487,73 @@ def test_in_repository_config(module, requests_mock, request1, log, config, expe
     for env in request.environments_requested:
         if 'SECRET_TOKEN_KEY' in env.secrets:
             del env.secrets['SECRET_TOKEN_KEY']
+
+
+@pytest.mark.parametrize('config, expected_secrets, expected_logs', [
+    (  # Config with decryption error for first secret, success for second
+        {'environments': {'secrets': {'SECRET_TOKEN_KEY': [
+            'token,invalid_encrypted_string', 'token,base64encodedencryptedstring']}}},
+        [
+            {'some': 'secrets', 'SECRET_TOKEN_KEY': 'hello world'},
+            {'secret_key': 'secret-value', 'SECRET_TOKEN_KEY': 'hello world'}
+        ],
+        []
+    ),
+    (  # Config with decryption error for all secrets
+        {'environments': {'secrets': {'SECRET_TOKEN_KEY': [
+            'token,invalid_encrypted_string1', 'token,invalid_encrypted_string2']}}},
+        [
+            {'some': 'secrets'},
+            {'secret_key': 'secret-value'}
+        ],
+        ['No valid secret value found for key `SECRET_TOKEN_KEY`.']
+    ),
+    (  # Config with non-matching token prefix
+        {'environments': {'secrets': {'SECRET_TOKEN_KEY': [
+            'wrong-token,base64encodedencryptedstring', 'another-token,base64encodedencryptedstring']}}},
+        [
+            {'some': 'secrets'},
+            {'secret_key': 'secret-value'}
+        ],
+        ['No valid secret value found for key `SECRET_TOKEN_KEY`.']
+    ),
+])
+def test_in_repository_config_secret_search(module, requests_mock, request1, log, config, expected_secrets, expected_logs):
+    # Mock different responses for different encrypted strings
+    original_post = RequestsMock.post
+
+    def mock_post_with_decrypt_logic(self, url, json, headers=None):
+        if 'secrets/decrypt' in url:
+            encrypted_message = json.get('message', '')
+            if encrypted_message in ['token,invalid_encrypted_string', 'token,invalid_encrypted_string1', 'token,invalid_encrypted_string2']:
+                return ResponseDecryptError()
+            elif encrypted_message == 'token,base64encodedencryptedstring':
+                return ResponseDecrypt()
+        return original_post(url, json, headers)
+
+    RequestsMock.post = mock_post_with_decrypt_logic
+
+    request = module._tf_request
+
+    assert [
+        {'some': 'secrets'},
+        {'secret_key': 'secret-value'}
+    ] == [env.secrets for env in request.environments_requested]
+
+    request.modify_with_config(config, 'https://example.com/git/repo')
+
+    assert expected_secrets == [env.secrets for env in request.environments_requested]
+
+    for expected_log in expected_logs:
+        assert log.match(levelno=logging.WARN, message=expected_log)
+
+    # Cleanup, the change would persist into other tests
+    for env in request.environments_requested:
+        if 'SECRET_TOKEN_KEY' in env.secrets:
+            del env.secrets['SECRET_TOKEN_KEY']
+
+    # Restore original post method
+    RequestsMock.post = original_post
 
 
 # TestingFarmRequestModule class tests

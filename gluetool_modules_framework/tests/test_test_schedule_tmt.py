@@ -56,6 +56,7 @@ def _set_run_outputs(monkeypatch, *outputs):
 def fixture_module(monkeypatch):
     module = create_module(gluetool_modules_framework.testing.test_schedule_tmt.TestScheduleTMT)[1]
     module._config['command'] = 'dummytmt'
+    module._config['artemis-command'] = 'dummyartemis'
     module._config['reproducer-comment'] = '# tmt reproducer'
     module._config['result-log-max-size'] = 10
     patch_shared(

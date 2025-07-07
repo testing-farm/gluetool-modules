@@ -63,6 +63,14 @@ class Property:
     value: str
 
 
+@attrs.define(frozen=True)
+class FmfId:
+    url: str
+    ref: str
+    name: str
+    path: Optional[str]
+
+
 @attrs.define
 class TestCase:
     name: str
@@ -82,6 +90,7 @@ class TestCase:
     duration: Optional[datetime.timedelta] = None
     start_time: Optional[str] = None
     end_time: Optional[str] = None
+    fmf_id: Optional[FmfId] = None
 
     # Properties used in BaseOS CI results.xml
     parameters: List[str] = attrs.field(factory=list)

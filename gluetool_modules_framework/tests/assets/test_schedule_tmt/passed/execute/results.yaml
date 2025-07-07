@@ -13,6 +13,10 @@
     role:
   subresult: []
   check: []
+  fmf-id:
+    url: https://gitlab.com/testing-farm/gluetool-modules
+    ref: main
+    name: /tests/core/docs
 - name: /tests/core/dry
   result: pass
   note: 'original result: fail'
@@ -27,3 +31,8 @@
     role:
   subresult: []
   check: []
+  fmf-id:
+    url: https://gitlab.com/testing-farm/gluetool-modules
+    ref: main
+    name: /tests/core/dry
+    path: /some/path

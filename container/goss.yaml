@@ -118,7 +118,7 @@ command:
     exit-status: 0
     timeout: 100000
     stderr:
-      - gluetool 2.16
+      - gluetool 2.17
 
   koji version:
     exit-status: 0

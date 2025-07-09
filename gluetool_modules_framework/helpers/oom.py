@@ -5,6 +5,7 @@ import os
 from contextlib import nullcontext
 
 import psutil
+import signal
 import six
 from gluetool import Failure, Module
 from gluetool.log import log_dict
@@ -154,8 +155,8 @@ class OutOfMemory(Module):
             self._oom_timer.cancel()
             self._oom_timer = None
 
-        # cancel the pipeline
-        psutil.Process().terminate()
+        # cancel the pipeline using the SIGUSR2 signal - pipeline killed
+        psutil.Process().send_signal(signal.SIGUSR2)
 
     def total_rss_memory(self) -> int:
         """

@@ -12,6 +12,10 @@
     role:
   subresult: []
   check: []
+  fmf-id:
+    url: https://gitlab.com/testing-farm/gluetool-modules
+    ref: main
+    name: /install
 - name: /update
   result: fail
   log:
@@ -25,6 +29,10 @@
     role:
   subresult: []
   check: []
+  fmf-id:
+    url: https://gitlab.com/testing-farm/gluetool-modules
+    ref: main
+    name: /update
 - name: /remove
   result: fail
   log:
@@ -38,3 +46,7 @@
     role:
   subresult: []
   check: []
+  fmf-id:
+    url: https://gitlab.com/testing-farm/gluetool-modules
+    ref: main
+    name: /remove

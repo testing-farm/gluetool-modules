@@ -240,6 +240,14 @@ class XUnitTFTestCaseSubresults:
 
 
 @attrs.define(kw_only=True)
+class XUnitTFFmfId:
+    url: str = attrs.field(metadata={'type': 'Attribute'})
+    ref: str = attrs.field(metadata={'type': 'Attribute'})
+    name: str = attrs.field(metadata={'type': 'Attribute'})
+    path: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
+
+
+@attrs.define(kw_only=True)
 class XUnitTFTestCase:
     name: str = attrs.field(metadata={'type': 'Attribute'})
     result: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
@@ -249,6 +257,7 @@ class XUnitTFTestCase:
     note: List[str] = attrs.field(factory=list)
 
     properties: Optional[XUnitTFProperties]
+    fmf_id: Optional[XUnitTFFmfId] = attrs.field(default=None, metadata={'name': 'fmf-id'})
     parameters: Optional[XUnitTFParameters] = None  # Property used in BaseOS CI results.xml
     logs: Optional[XUnitTFLogs]
     phases: Optional[XUnitTFPhases] = None  # Property used in BaseOS CI results.xml
@@ -287,6 +296,12 @@ class XUnitTFTestCase:
             result=test_case.result,
             note=test_case.note,
             properties=XUnitTFProperties.construct(test_case.properties) if test_case.properties else None,
+            fmf_id=XUnitTFFmfId(
+                url=test_case.fmf_id.url,
+                ref=test_case.fmf_id.ref,
+                name=test_case.fmf_id.name,
+                path=test_case.fmf_id.path,
+            ) if test_case.fmf_id is not None else None,
             logs=XUnitTFLogs.construct(test_case.logs) if test_case.logs else None,
             testing_environment=environments,
             failure=XUnitTFFailure(message=test_case.failure if isinstance(test_case.failure, str) else None)

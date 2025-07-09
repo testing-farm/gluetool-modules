@@ -43,7 +43,7 @@ from gluetool_modules_framework.provision.artemis import ArtemisGuest
 from typing import cast, Any, Dict, List, Optional, Tuple, Union, Set  # noqa
 
 from gluetool_modules_framework.libs.results import TestSuite, Log, TestCase, TestCaseCheck, \
-    Guest, TestCaseSubresult, Property
+    Guest, TestCaseSubresult, Property, FmfId
 from secret_type import Secret
 
 GUESTS_YAML = "provision/guests.yaml"
@@ -91,6 +91,7 @@ class TestResult:
     end_time: Optional[str] = None
     subresults: List[TestCaseSubresult]
     contacts: List[str] = attrs.field(factory=list)
+    fmf_id: Optional[FmfId] = None
 
 
 @attrs.define
@@ -150,6 +151,17 @@ class TMTResultGuest:
     role: Optional[str] = attrs.field(validator=attrs.validators.optional(attrs.validators.instance_of(str)))
 
 
+@attrs.define
+class TMTResultFmfId:
+    url: str = attrs.field(validator=attrs.validators.instance_of(str))
+    ref: str = attrs.field(validator=attrs.validators.instance_of(str))
+    name: str = attrs.field(validator=attrs.validators.instance_of(str))
+    path: Optional[str] = attrs.field(
+        default=None,
+        validator=attrs.validators.optional(attrs.validators.instance_of(str))
+    )
+
+
 @attrs.define(kw_only=True)
 class TMTResult:
     """
@@ -187,6 +199,9 @@ class TMTResult:
         member_validator=attrs.validators.instance_of(TMTResultSubresult),
         iterable_validator=attrs.validators.instance_of(list)
     ))
+    fmf_id: Optional[TMTResultFmfId] = attrs.field(
+        validator=attrs.validators.optional(attrs.validators.instance_of(TMTResultFmfId))
+    )
 
     @classmethod
     def _structure(cls, data: Dict[str, Any], converter: cattrs.Converter) -> 'TMTResult':
@@ -207,7 +222,8 @@ class TMTResult:
             duration=duration,
             start_time=data['start-time'],
             end_time=data['end-time'],
-            subresult=converter.structure(data['subresult'], List[TMTResultSubresult])
+            subresult=converter.structure(data['subresult'], List[TMTResultSubresult]),
+            fmf_id=converter.structure(data['fmf-id'], TMTResultFmfId) if data['fmf-id'] else None,
         )
 
 
@@ -464,6 +480,14 @@ def gather_plan_results(
             serial_number=result.serial_number,
             subresults=subresults,
             contacts=get_test_contacts(result.name, result.serial_number, discovered_tests),
+            # NOTE: We're creating a new branch with 'gluetool/' prefixing the ref when checking out requested ref.
+            # Removing the prefix here from the results.
+            fmf_id=FmfId(
+                url=result.fmf_id.url,
+                ref=result.fmf_id.ref.removeprefix('gluetool/'),
+                name=result.fmf_id.name,
+                path=result.fmf_id.path,
+            ) if result.fmf_id is not None else None,
         ))
 
     # count the maximum result weight encountered, i.e. the overall result
@@ -1392,6 +1416,7 @@ class TestScheduleTMTMultihost(Module):
                     environment=TestingEnvironment(arch=guest.arch, compose=guest.image) if guest else None
                 ) if task.guest else None,
                 serial_number=task.serial_number,
+                fmf_id=task.fmf_id,
             )
 
             if schedule_entry.work_dirpath:

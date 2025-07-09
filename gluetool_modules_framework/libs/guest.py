@@ -303,16 +303,6 @@ class NetworkedGuest(Guest):
         if not self._module.has_shared('setup_guest'):
             raise gluetool.GlueError("Module 'guest-setup' is required to actually set the guests up.")
 
-        variables = variables or {}
-
-        if 'UPDATE_FROM_ARTIFACTS' not in variables:
-            update_from_artifacts = False
-            if self.environment:
-                update_from_artifacts = (self.environment.settings or {}).get(
-                    'pipeline', {}).get('update_from_artifacts', False)
-
-            variables['UPDATE_FROM_ARTIFACTS'] = update_from_artifacts
-
         return self._module.shared('setup_guest', self, variables=variables, **kwargs)
 
     def _execute(self, cmd: List[str], **kwargs: Any) -> gluetool.utils.ProcessOutput:

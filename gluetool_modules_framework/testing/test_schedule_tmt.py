@@ -35,7 +35,7 @@ from gluetool_modules_framework.libs.test_schedule_tmt import \
     DISCOVERED_TESTS_YAML, \
     PLAN_OUTCOME, PLAN_OUTCOME_WITH_ERROR, \
     RESULTS_YAML, RESULT_OUTCOME, RESULT_WEIGHT, \
-    TMTDiscoveredTest, TMTDiscoveredTest, TMTExitCodes, \
+    TMTDiscoveredTest, TMTDiscoveredTest, TMTExitCodes, TMTPlan, TMTResult, TestResult, TestArtifact, \
     TMT_ENV_FILE, TMT_LOG, TMT_REPRODUCER, TMT_VERBOSE_LOG, \
     get_test_contacts, safe_name
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest

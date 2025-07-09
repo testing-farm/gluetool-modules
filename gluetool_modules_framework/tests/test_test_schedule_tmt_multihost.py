@@ -28,8 +28,7 @@ from gluetool_modules_framework.libs.results import TestSuite
 from gluetool_modules_framework.libs.git import SecretGitUrl
 from gluetool_modules_framework.provision.artemis import ArtemisGuest, ArtemisGuestLog
 from gluetool_modules_framework.testing.test_schedule_tmt_multihost import gather_plan_results, TestScheduleEntry
-from gluetool_modules_framework.testing.test_schedule_tmt_multihost import (gather_plan_results, TestScheduleEntry,
-                                                                            TMTPlan, TMTPlanProvision)
+from gluetool_modules_framework.libs.test_schedule_tmt import TMTPlan, TMTPlanProvision, TMTPlanPrepare
 from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact
 
 from . import create_module, check_loadable, patch_shared
@@ -1277,10 +1276,13 @@ EMPTY_PROVISION_STEP = TMTPlanProvision(how=None)
      TMTPlan(name='some-plan', provision=[EMPTY_PROVISION_STEP])),
     (None, MagicMock(stdout=TMT_PLANS[1]), TestingEnvironment(),
      ['dummytmt', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
-     TMTPlan(name='some-plan', provision=[EMPTY_PROVISION_STEP])),
+     TMTPlan(name='some-plan', provision=[EMPTY_PROVISION_STEP],
+             prepare=[TMTPlanPrepare(how='somehow', exclude=['exclude1', 'exclude2'])])),
     (None, MagicMock(stdout=TMT_PLANS[2]), TestingEnvironment(),
      ['dummytmt', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
-     TMTPlan(name='some-plan', provision=[EMPTY_PROVISION_STEP])),
+     TMTPlan(name='some-plan', provision=[EMPTY_PROVISION_STEP],
+             prepare=[TMTPlanPrepare(how='somehow1', exclude=['prep1_exclude1', 'prep1_exclude2']),
+                      TMTPlanPrepare(how='somehow2', exclude=['prep2_exclude1', 'prep2_exclude2'])])),
     (None, MagicMock(stdout='[]'), TestingEnvironment(),
      ['dummytmt', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
      None),

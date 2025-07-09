@@ -308,8 +308,8 @@ class NetworkedGuest(Guest):
         if 'UPDATE_FROM_ARTIFACTS' not in variables:
             update_from_artifacts = False
             if self.environment:
-                update_from_artifacts = ((self.environment.settings or {}).get(
-                    'pipeline', {}) or {}).get('update_from_artifacts', False)
+                update_from_artifacts = (self.environment.settings or {}).get(
+                    'pipeline', {}).get('update_from_artifacts', False)
 
             variables['UPDATE_FROM_ARTIFACTS'] = update_from_artifacts
 

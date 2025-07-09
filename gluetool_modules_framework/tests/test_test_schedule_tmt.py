@@ -28,8 +28,8 @@ from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 from gluetool_modules_framework.libs.results import TestSuite
 from gluetool_modules_framework.libs.git import SecretGitUrl
 from gluetool_modules_framework.provision.artemis import ArtemisGuest, ArtemisGuestLog
-from gluetool_modules_framework.testing.test_schedule_tmt import (gather_plan_results, TestScheduleEntry, TMTPlan,
-                                                                  TMTPlanProvision, TMTPlanPrepare)
+from gluetool_modules_framework.testing.test_schedule_tmt import gather_plan_results, TestScheduleEntry
+from gluetool_modules_framework.libs.test_schedule_tmt import TMTPlan, TMTPlanProvision, TMTPlanPrepare
 from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact
 
 from . import create_module, check_loadable, patch_shared

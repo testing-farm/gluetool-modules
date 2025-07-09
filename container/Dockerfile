@@ -49,7 +49,9 @@ RUN    ln -s /CONFIG /etc/citool.d \
     && dnf -y install ansible-core autoconf automake crun gcc git krb5-devel libcurl-devel \
                       libpq-devel libtool libxml2-devel make openssl-devel popt-devel \
                       postgresql-devel python3.9 python3-libselinux \
-                      redhat-rpm-config koji python3-virtualenv standard-test-roles \
+                      redhat-rpm-config koji python3-virtualenv \
+                      # NOTE(mvadkert): not yet in stable repos https://bodhi.fedoraproject.org/updates/?search=standard-test-roles
+                      https://kojipkgs.fedoraproject.org//packages/standard-test-roles/4.13/1.fc41/noarch/standard-test-roles-4.13-1.fc41.noarch.rpm \
                       rsync beakerlib-libraries rpm-build rpm-devel awscli \
     # Pull in tmt from @teemtee/stable copr repository
     && dnf copr -y enable @teemtee/stable \

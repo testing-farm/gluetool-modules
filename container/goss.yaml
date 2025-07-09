@@ -22,6 +22,8 @@ package:
 
   standard-test-roles:
     installed: true
+    versions:
+      - "4.13"
 
   fmf:
     installed: true

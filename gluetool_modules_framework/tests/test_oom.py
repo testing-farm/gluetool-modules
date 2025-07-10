@@ -7,6 +7,7 @@ import psutil
 import pytest
 import gluetool_modules_framework.helpers.oom
 import time
+import signal
 from mock import MagicMock
 
 from . import create_module
@@ -128,8 +129,8 @@ def test_print_usage_only(module, log):
 )
 def test_oom_event(module, monkeypatch, log, memory_bytes, terminated):
     process_mock = MagicMock()
-    terminate_mock = MagicMock()
-    process_mock.terminate = terminate_mock
+    send_signal = MagicMock()
+    process_mock.send_signal = send_signal
     monkeypatch.setattr(psutil, 'Process', MagicMock(return_value=process_mock))
     monkeypatch.setattr(module, 'total_rss_memory', MagicMock(return_value=memory_bytes))
 
@@ -147,7 +148,7 @@ def test_oom_event(module, monkeypatch, log, memory_bytes, terminated):
     time.sleep(1)
 
     if terminated:
-        terminate_mock.assert_called_once()
+        send_signal.assert_called_once_with(signal.SIGUSR2)
 
     if terminated:
         assert module.oom_message() == "Worker out-of-memory, more than {} MiB consumed.".format(

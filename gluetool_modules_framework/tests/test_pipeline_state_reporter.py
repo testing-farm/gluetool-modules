@@ -541,6 +541,53 @@ def test_execute_reason_in_note_new_message(
     strptime(generated_at, "%Y-%m-%dT%H:%M:%S.%fZ")
 
 
+def test_execute_note_old_message(
+    ci_info,
+    evaluate,
+    monkeypatch,
+    module,
+    mock_namespace,
+    publish_old_messages
+):
+
+    note_space = 'some reason'
+    separator = '^%'
+    note_sep = note_space.replace(' ', separator)
+
+    module._config.update({
+        'note': note_sep,
+        'note-separator': separator
+    })
+
+    module.execute()
+
+    assert publish_old_messages['message'].body['note'] == note_space
+
+
+def test_execute_note_new_message(
+    ci_info,
+    evaluate,
+    monkeypatch,
+    module,
+    mock_namespace,
+    publish_new_messages
+):
+    message_content, message_path = publish_new_messages
+
+    note_space = 'some reason'
+    separator = '^%'
+    note_sep = note_space.replace(' ', separator)
+
+    module._config.update({
+        'note': note_sep,
+        'note-separator': separator
+    })
+
+    module.execute()
+
+    assert message_content['message'].body['note'] == note_space
+
+
 def test_destroy_sysexit(module):
     assert module.destroy(failure=MagicMock(exc_info=[None, SystemExit()])) == None
 

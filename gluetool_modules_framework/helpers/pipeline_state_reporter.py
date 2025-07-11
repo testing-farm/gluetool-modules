@@ -32,6 +32,8 @@ STATE_RUNNING = 'running'
 STATE_COMPLETE = 'complete'
 STATE_ERROR = 'error'
 
+DEFAULT_NOTE_SEPARATOR = '#'
+
 
 class PipelineStateReporter(gluetool.Module):
     """
@@ -218,8 +220,22 @@ class PipelineStateReporter(gluetool.Module):
                 'default': None
             },
             'note': {
-                'help': 'Custom, arbitrary note or comment (default: %(default)s).',
+                'help':
+                    """
+                    Custom, arbitrary note or comment, see ``--note-separator`` option when the note contains
+                    spaces (default: %(default)s).
+                    """,
                 'default': None
+            },
+            'note-separator': {
+                'help':
+                    """
+                    Due to escaping issues, when jobs need to pass argument to ``--note`` option that contains
+                    spaces, they have to be replaced by some other character/string (default: %(default)s).
+                    """,
+                'type': str,
+                'action': 'store',
+                'default': DEFAULT_NOTE_SEPARATOR
             },
             'version': {
                 'help': 'Current version of emitted messages (default: %(default)s).',
@@ -447,7 +463,11 @@ class PipelineStateReporter(gluetool.Module):
         elif self.has_shared('thread_id'):
             umb_message.pipeline_id = self.shared('thread_id')
 
-        umb_message.note = self.option('note')
+        if self.option('note-separator') is not None and self.option('note') is not None:
+            umb_message.note = self.option('note').replace(self.option('note-separator'), ' ')
+        else:
+            umb_message.note = self.option('note')
+
         umb_message.generated_at = datetime.datetime.utcnow().isoformat() + 'Z'
         umb_message.version = self.option('version')
 
@@ -484,7 +504,7 @@ class PipelineStateReporter(gluetool.Module):
         umb_message.error_reason = self._get_error_reason(error_message)
         umb_message.error_issue_url = error_url
 
-        # If the note wasn't been set by the module option, add error reason there.
+        # If the note was not set by the module option, add error reason there.
         # CI dashboard will show the note as a reason to failed or skipped test.
         if not umb_message.note:
             umb_message.note = self._get_error_reason(error_message)

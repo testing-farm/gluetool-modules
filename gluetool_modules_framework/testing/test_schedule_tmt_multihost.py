@@ -980,6 +980,12 @@ class TestScheduleTMTMultihost(Module):
 
             for plan in plans:
                 tmt_env_file = self._prepare_tmt_env_file(tec, plan, repodir)
+                # NOTE(mvadkert): Workaround for breaking change in tmt-1.52
+                # where the env file is now searched under tmt metadata root
+                # See https://github.com/teemtee/tmt/issues/3877
+                # Generate the env file also on the new expected location
+                if self._root_option:
+                    self._prepare_tmt_env_file(tec, plan, os.path.join(repodir, self._root_option[1]))
 
                 # Prepare environment for test schedule entry execution
                 schedule_entry = TestScheduleEntry(root_logger, tec, plan, repodir)

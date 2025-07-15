@@ -241,9 +241,9 @@ class XUnitTFTestCaseSubresults:
 
 @attrs.define(kw_only=True)
 class XUnitTFFmfId:
-    url: str = attrs.field(metadata={'type': 'Attribute'})
-    ref: str = attrs.field(metadata={'type': 'Attribute'})
-    name: str = attrs.field(metadata={'type': 'Attribute'})
+    url: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
+    ref: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
+    name: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
     path: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
 
 

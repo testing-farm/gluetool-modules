@@ -153,9 +153,18 @@ class TMTResultGuest:
 
 @attrs.define
 class TMTResultFmfId:
-    url: str = attrs.field(validator=attrs.validators.instance_of(str))
-    ref: str = attrs.field(validator=attrs.validators.instance_of(str))
-    name: str = attrs.field(validator=attrs.validators.instance_of(str))
+    url: Optional[str] = attrs.field(
+        default=None,
+        validator=attrs.validators.optional(attrs.validators.instance_of(str))
+    )
+    ref: Optional[str] = attrs.field(
+        default=None,
+        validator=attrs.validators.optional(attrs.validators.instance_of(str))
+    )
+    name: Optional[str] = attrs.field(
+        default=None,
+        validator=attrs.validators.optional(attrs.validators.instance_of(str))
+    )
     path: Optional[str] = attrs.field(
         default=None,
         validator=attrs.validators.optional(attrs.validators.instance_of(str))
@@ -484,7 +493,7 @@ def gather_plan_results(
             # Removing the prefix here from the results.
             fmf_id=FmfId(
                 url=result.fmf_id.url,
-                ref=result.fmf_id.ref.removeprefix('gluetool/'),
+                ref=result.fmf_id.ref.removeprefix('gluetool/') if result.fmf_id.ref else None,
                 name=result.fmf_id.name,
                 path=result.fmf_id.path,
             ) if result.fmf_id is not None else None,

@@ -65,9 +65,9 @@ class Property:
 
 @attrs.define(frozen=True)
 class FmfId:
-    url: str
-    ref: str
-    name: str
+    url: Optional[str]
+    ref: Optional[str]
+    name: Optional[str]
     path: Optional[str]
 
 

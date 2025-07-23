@@ -255,7 +255,8 @@ class InstallAncestors(gluetool.Module):
         for ancestor_component in ancestor_components:
             rpms = self.shared('component_rpms', ancestor_component, source_release, architectures)
             ancestor_rpms.extend(rpms)
-        ancestor_rpms.sort()
+        # There may be multiple rpms with the same name coming from different components, repos, modules...
+        ancestor_rpms = sorted(set(ancestor_rpms))
         if not ancestor_rpms:
             self.warning("No binary rpms for ancestors of component '{}' in release '{}' were built "
                          "for architectures '{}'.".format(component, source_release, ', '.join(architectures)))

@@ -101,7 +101,7 @@ class PESApi(LoggerMixin, object):
         if response.status_code == 404:
             return []
 
-        # Note state presence actually means two thing:
+        # Note state presence actually means two things:
         #
         # 1. package was present in previous release
         # 2. it is a new package, previously not present in previous release
@@ -214,7 +214,8 @@ class PES(gluetool.Module):
         :param str target_release: Target release in a 'RHEL X' format. Anything after that substring is ignored.
         """
         ancestors = self._pes_api.get_ancestor_components(component, target_release)
-        ancestors.sort()
+        # There may be multiple components with the same name coming from different repos, modules...
+        ancestors = sorted(set(ancestors))
 
         log_dict(self.info,
                  "Ancestors of component '{}' from target release '{}'".format(component, target_release),
@@ -232,7 +233,8 @@ class PES(gluetool.Module):
         """
 
         rpms = self._pes_api.get_component_rpms(component, release, architectures)
-        rpms.sort()
+        # There may be multiple rpms with the same name coming from different repos, modules...
+        rpms = sorted(set(rpms))
 
         log_dict(self.info,
                  "Binary rpms of component '{}' built in release '{}' for architectures '{}'".format(
@@ -252,7 +254,8 @@ class PES(gluetool.Module):
         :param str release: Version of targeted system in a RHEL X.Y format.
         """
         successors = self._pes_api.get_successor_components(component, initial_release, release)
-        successors.sort()
+        # There may be multiple components with the same name coming from different repos, modules...
+        successors = sorted(set(successors))
 
         log_dict(self.info,
                  "Successors of component '{}' ('{}') in release '{}'".format(component, initial_release, release),

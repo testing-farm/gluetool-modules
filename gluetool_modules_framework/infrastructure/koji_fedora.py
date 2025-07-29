@@ -38,6 +38,11 @@ InitDetailsType = TypedDict(
     }
 )
 
+TagHistoryType = TypedDict(
+    'TagHistoryType',
+    {'tag_listing': List[Dict[str, Any]]}
+)
+
 DEFAULT_COMMIT_FETCH_TIMEOUT = 300
 DEFAULT_COMMIT_FETCH_TICKS = 30
 DEFAULT_API_VERSION_RETRY_TIMEOUT = 300
@@ -195,7 +200,7 @@ class KojiTask(LoggerMixin, object):
 
     @overload  # noqa F811  # flake8 thinks the method is being redefined but only the types are being overloaded
     def _call_api(self, method: Literal['listBuilds'], *args: Any,  # noqa F811
-                  **kwargs: Any) -> Optional[List[Dict[str, str]]]:
+                  **kwargs: Any) -> Optional[List[Dict[str, Any]]]:
         pass
 
     @overload  # noqa F811
@@ -223,6 +228,10 @@ class KojiTask(LoggerMixin, object):
 
     @overload  # noqa F811
     def _call_api(self, method: Literal['getAPIVersion'], *args: Any, **kwargs: Any) -> str:  # noqa F811
+        pass
+
+    @overload  # noqa F811
+    def _call_api(self, method: Literal['queryHistory'], *args: Any, **kwargs: Any) -> TagHistoryType:  # noqa F811
         pass
 
     def _call_api(self, method: str, *args: Any, **kwargs: Any) -> Any:  # noqa F811
@@ -413,6 +422,33 @@ class KojiTask(LoggerMixin, object):
 
         log_dict(self.debug, 'task info', task_info)
 
+        if task_info['method'] == 'cg_import' and len(task_info['request']) < len(BuildTaskRequest._fields):
+            self.debug('Build was imported without tags and other info')
+
+            # cannot use self._build because of infinite recursion:
+            # * self._build uses self.scratch
+            # * self.scratch uses self._task_request
+            # * self._task_request uses self._task_info
+
+            builds = self._call_api('listBuilds', taskID=self.id)
+            if not builds:
+                raise GlueError("Imported task {} has no builds".format(self.id))
+            build = builds[0]
+
+            tag_history = self._call_api('queryHistory', build=build['build_id'])['tag_listing']
+            tags = sorted(tag_history, key=lambda tag_info: cast(float, tag_info['create_ts']))
+
+            # populate task request from other sources
+            task_info['request'] = BuildTaskRequest(
+                build['source'],
+                # use the first tag as build target
+                tags[0]['tag.name'],
+                build['extra']['_export_source']
+            )
+
+            # pretend the task is a 'build' task to pass the _is_valid check
+            task_info['method'] = 'build'
+
         KojiTask.swap_request_info(task_info, BuildTaskRequest, 3)
 
         return task_info
@@ -587,6 +623,14 @@ class KojiTask(LoggerMixin, object):
 
         if arches is not None:
             return TaskArches(False, [arch.strip() for arch in arches.split(' ')])
+
+        # workaround for imported konflux builds - they have no subtasks
+        if self._task_request.options.get('source', None) == 'konflux':
+            # get architectures of rpm artifacts
+            arches_unique = set(self.build_artifacts)
+            # and exclude sources
+            arches_unique.discard('src')
+            return TaskArches(True, list(arches_unique))
 
         children = self._build_arch_subtasks
         child_arches = []

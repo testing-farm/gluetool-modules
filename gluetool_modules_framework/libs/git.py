@@ -16,6 +16,7 @@ import git
 import gluetool.log
 import gluetool.utils
 from gluetool.utils import Result, load_yaml, cached_property
+from gluetool_modules_framework.libs.testing_farm import InRepoConfig
 
 from secret_type import Secret
 
@@ -140,10 +141,10 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         return 'git-{}'.format(self.branch or self.ref).replace('/', '-')
 
     @cached_property
-    def testing_farm_config(self) -> Optional[Any]:
+    def testing_farm_config(self) -> Optional[InRepoConfig]:
         config_filename = '.testing-farm.yaml'
         if self.is_cloned and self.path and os.path.isfile(os.path.join(self.path, config_filename)):
-            return load_yaml(os.path.join(self.path, config_filename))
+            return InRepoConfig.model_validate(load_yaml(os.path.join(self.path, config_filename)))
         return None
 
     @cached_property

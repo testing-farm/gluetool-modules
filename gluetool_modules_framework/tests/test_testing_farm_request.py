@@ -12,9 +12,11 @@ import time
 from mock import MagicMock
 from gluetool_modules_framework.testing_farm.testing_farm_request import RequestConflictError
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
+from gluetool_modules_framework.libs.testing_farm import InRepoConfig
 
 from . import create_module, patch_shared
 from requests.exceptions import HTTPError
+from pydantic import ValidationError
 
 ASSETS_DIR = os.path.join('gluetool_modules_framework', 'tests', 'assets', 'testing_farm')
 
@@ -116,7 +118,7 @@ class RequestsMock():
 
 
 @contextlib.contextmanager
-def requests_mock():
+def requests_mock_contextmanager():
     try:
         yield RequestsMock()
     finally:
@@ -124,11 +126,20 @@ def requests_mock():
 
 
 @pytest.fixture(name='module')
-def fixture_module():
+def fixture_module(monkeypatch):
+    # Reload data into REQUESTS variable
+    REQUESTS = {
+        'fakekey': {
+            '1': _load_assets('request1'),
+            '2': _load_assets('request2'),
+            '3': _load_assets('request3'),
+        }
+    }
+
     api = gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmAPI
-    api.get_request = lambda _, id, key: REQUESTS[key][id]
-    api.get_token = lambda _, id, key: REQUESTS_TOKEN[key][id]
-    api.put_request = lambda _, id, payload: PUT_REQUESTS.update({id: payload})
+    monkeypatch.setattr(api, 'get_request', lambda _, id, key: REQUESTS[key][id])
+    monkeypatch.setattr(api, 'get_token', lambda _, id, key: REQUESTS_TOKEN[key][id])
+    monkeypatch.setattr(api, 'put_request', lambda _, id, payload: PUT_REQUESTS.update({id: payload}))
     module = create_module(gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmRequestModule)[1]
     module._config.update({
         'internal-api-url': 'fake-internal-url',
@@ -139,15 +150,9 @@ def fixture_module():
     return module
 
 
-@pytest.fixture(name='module_request')
-def fixture_module_request():
-    module_request = create_module(gluetool_modules_framework.testing_farm.testing_farm_request.TestingFarmRequest)[1]
-    return module_request
-
-
 @pytest.fixture(name='requests_mock')
 def fixture_requests_mock():
-    gluetool_modules_framework.testing_farm.testing_farm_request.requests = requests_mock
+    gluetool_modules_framework.testing_farm.testing_farm_request.requests = requests_mock_contextmanager
 
 
 @pytest.fixture(name='module_api')
@@ -208,13 +213,13 @@ def test_request_type_error(module_api):
         module_api._request('', type='sometype')
 
 
-def test_get_request(module_api):
+def test_get_request(module_api, request1):
     module_api._module._config.update({'retry-timeout': 1, 'retry-tick': 1})
     module_api.get_request('1', 'fakekey')
 
 
-def test_get_request_404(module_api):
-    RequestsMock.get = RequestsMock.request_404
+def test_get_request_404(monkeypatch, module_api):
+    monkeypatch.setattr(RequestsMock, 'get', RequestsMock.request_404)
     module_api._module._config.update({'retry-timeout': 1, 'retry-tick': 1})
     with pytest.raises(gluetool.GlueError, match="Request '1' was not found"):
         module_api.get_request('1', 'fakekey')
@@ -225,15 +230,15 @@ def test_put_request(module_api):
     module_api.put_request('1', {'hello': 'world'})
 
 
-def test_put_request_409(module_api):
-    RequestsMock.put = RequestsMock.request_409
+def test_put_request_409(monkeypatch, module_api):
+    monkeypatch.setattr(RequestsMock, 'put', RequestsMock.request_409)
     module_api._module._config.update({'retry-timeout': 1, 'retry-tick': 1})
     with pytest.raises(RequestConflictError, match=""):
         module_api.put_request('1', 'fakekey')
 
 
-def test_get_request_123(module_api, log):
-    RequestsMock.get = RequestsMock.request_123
+def test_get_request_123(monkeypatch, module_api, log):
+    monkeypatch.setattr(RequestsMock, 'get', RequestsMock.request_123)
     module_api._module._config.update({'retry-timeout': 1, 'retry-tick': 1})
     with pytest.raises(gluetool.GlueError, match=""):
         module_api.get_request('1', 'fakekey')
@@ -247,8 +252,8 @@ def test_get_request_123(module_api, log):
     "response": {''' in log.records[-3].message
 
 
-def test_get_request_invalid_json(module_api):
-    RequestsMock.get = RequestsMock.request_invalid_json
+def test_get_request_invalid_json(monkeypatch, module_api):
+    monkeypatch.setattr(RequestsMock, 'get', RequestsMock.request_invalid_json)
     module_api._module._config.update({'retry-timeout': 1, 'retry-tick': 1})
     with pytest.raises(ValueError):
         module_api.get_request('1', 'fakekey')
@@ -259,8 +264,8 @@ def test_put_request_error(module_api):
         module_api.put_request('', None)
 
 
-def test_put_request_404(module_api):
-    RequestsMock.put = RequestsMock.request_404
+def test_put_request_404(monkeypatch, module_api):
+    monkeypatch.setattr(RequestsMock, 'put', RequestsMock.request_404)
     module_api._module._config.update({'retry-timeout': 1, 'retry-tick': 1})
     with pytest.raises(gluetool.GlueError, match="Request '1' not found."):
         module_api.put_request('1', {'hello': 'world'})
@@ -399,8 +404,8 @@ def test_webhook(module, requests_mock, request2):
     request.webhook()
 
 
-def test_webhook_http_error(module, requests_mock, request2, log):
-    RequestsMock.post = RequestsMock.request_http_error
+def test_webhook_http_error(monkeypatch, module, requests_mock, request2, log):
+    monkeypatch.setattr(RequestsMock, 'post', RequestsMock.request_http_error)
     module._config.update({'retry-timeout': 1, 'retry-tick': 1})
     request = module._tf_request
     request.webhook_url = 'someurl'
@@ -412,21 +417,48 @@ def test_webhook_http_error(module, requests_mock, request2, log):
     )
 
 
-@pytest.mark.parametrize('config, expected_secrets, expected_logs', [
-    (  # Normal config with `str` as secret value
+@pytest.mark.parametrize('config, expected_secrets, expected_tmt_environment, expected_result', [
+    (  # Normal config with `str` as secret value (secrets)
         {'environments': {'secrets': {'SECRET_TOKEN_KEY': 'token,base64encodedencryptedstring'}}},
         [
             {'some': 'secrets', 'SECRET_TOKEN_KEY': 'hello world'},
             {'secret_key': 'secret-value', 'SECRET_TOKEN_KEY': 'hello world'}
         ],
+        None,
         []
     ),
-    (  # Normal config with `list[str]` as secret value
+    (  # Normal config with `list[str]` as secret value (secrets)
         {'environments': {'secrets': {'SECRET_TOKEN_KEY': [
             'token-invalid,base64encodedencryptedstring', 'token,base64encodedencryptedstring']}}},
         [
             {'some': 'secrets', 'SECRET_TOKEN_KEY': 'hello world'},
             {'secret_key': 'secret-value', 'SECRET_TOKEN_KEY': 'hello world'}
+        ],
+        None,
+        []
+    ),
+    (  # Normal config with `str` as secret value (secrets)
+        {'environments': {'tmt': {'environment': {'SECRET_TOKEN_KEY': 'token-invalid,base64encodedencryptedstring'}}}},
+        [
+            {'some': 'secrets'},
+            {'secret_key': 'secret-value'}
+        ],
+        [
+            {'SECRET_TOKEN_KEY': 'hello world'},
+            {'foo': 'foo-value', 'bar': 'bar-value', 'SECRET_TOKEN_KEY': 'hello world'}
+        ],
+        []
+    ),
+    (  # Normal config with `list[str]` as secret value (tmt environment)
+        {'environments': {'tmt': {'environment': {'SECRET_TOKEN_KEY': [
+            'token-invalid,base64encodedencryptedstring', 'token,base64encodedencryptedstring']}}}},
+        [
+            {'some': 'secrets'},
+            {'secret_key': 'secret-value'}
+        ],
+        [
+            {'SECRET_TOKEN_KEY': 'hello world'},
+            {'foo': 'foo-value', 'bar': 'bar-value', 'SECRET_TOKEN_KEY': 'hello world'}
         ],
         []
     ),
@@ -437,6 +469,7 @@ def test_webhook_http_error(module, requests_mock, request2, log):
             {'some': 'secrets'},
             {'secret_key': 'secret-value'}
         ],
+        None,
         ['.testing-farm.yaml file exists but no useful data to modify environment found.']
     ),
     (  # Invalid config
@@ -446,6 +479,7 @@ def test_webhook_http_error(module, requests_mock, request2, log):
             {'some': 'secrets'},
             {'secret_key': 'secret-value'}
         ],
+        None,
         ['.testing-farm.yaml file exists but no useful data to modify environment found.']
     ),
     (  # Invalid config
@@ -455,6 +489,7 @@ def test_webhook_http_error(module, requests_mock, request2, log):
             {'some': 'secrets'},
             {'secret_key': 'secret-value'}
         ],
+        None,
         ['.testing-farm.yaml file exists but no useful data to modify environment found.']
     ),
     (  # Invalid config
@@ -463,11 +498,20 @@ def test_webhook_http_error(module, requests_mock, request2, log):
             {'some': 'secrets'},
             {'secret_key': 'secret-value'}
         ],
-        ['Invalid secret with key `SECRET_TOKEN_KEY`, skipping.']
+        None,
+        ValidationError
     ),
 ])
-def test_in_repository_config(module, requests_mock, request1, log, config, expected_secrets, expected_logs):
-    RequestsMock.post = RequestsMock.request_decrypt
+def test_in_repository_config(monkeypatch, module, requests_mock, request1, log, config, expected_secrets,
+                              expected_tmt_environment, expected_result):
+    monkeypatch.setattr(RequestsMock, 'post', RequestsMock.request_decrypt)
+
+    if expected_result == ValidationError:
+        with pytest.raises(expected_result):
+            config = InRepoConfig.model_validate(config)
+        return
+
+    config = InRepoConfig.model_validate(config)
 
     request = module._tf_request
 
@@ -479,14 +523,12 @@ def test_in_repository_config(module, requests_mock, request1, log, config, expe
     request.modify_with_config(config, 'https://example.com/git/repo')
 
     assert expected_secrets == [env.secrets for env in request.environments_requested]
+    if expected_tmt_environment:
+        assert expected_tmt_environment == [env.tmt['environment'] for env in request.environments_requested]
 
-    for expected_log in expected_logs:
-        assert log.match(levelno=logging.WARN, message=expected_log)
-
-    # Cleanup, the change would persist into other tests
-    for env in request.environments_requested:
-        if 'SECRET_TOKEN_KEY' in env.secrets:
-            del env.secrets['SECRET_TOKEN_KEY']
+    if isinstance(expected_result, list):
+        for expected_log in expected_result:
+            assert log.match(levelno=logging.WARN, message=expected_log)
 
 
 @pytest.mark.parametrize('config, expected_secrets, expected_logs', [
@@ -518,10 +560,7 @@ def test_in_repository_config(module, requests_mock, request1, log, config, expe
         ['No valid secret value found for key `SECRET_TOKEN_KEY`.']
     ),
 ])
-def test_in_repository_config_secret_search(module, requests_mock, request1, log, config, expected_secrets, expected_logs):
-    # Mock different responses for different encrypted strings
-    original_post = RequestsMock.post
-
+def test_in_repository_config_secret_search(monkeypatch, module, requests_mock, request1, log, config, expected_secrets, expected_logs):
     def mock_post_with_decrypt_logic(self, url, json, headers=None):
         if 'secrets/decrypt' in url:
             encrypted_message = json.get('message', '')
@@ -531,7 +570,9 @@ def test_in_repository_config_secret_search(module, requests_mock, request1, log
                 return ResponseDecrypt()
         return original_post(url, json, headers)
 
-    RequestsMock.post = mock_post_with_decrypt_logic
+    monkeypatch.setattr(RequestsMock, 'post', mock_post_with_decrypt_logic)
+
+    config = InRepoConfig.model_validate(config)
 
     request = module._tf_request
 
@@ -547,13 +588,53 @@ def test_in_repository_config_secret_search(module, requests_mock, request1, log
     for expected_log in expected_logs:
         assert log.match(levelno=logging.WARN, message=expected_log)
 
-    # Cleanup, the change would persist into other tests
-    for env in request.environments_requested:
-        if 'SECRET_TOKEN_KEY' in env.secrets:
-            del env.secrets['SECRET_TOKEN_KEY']
 
-    # Restore original post method
-    RequestsMock.post = original_post
+@pytest.mark.parametrize('config, expected_tmt_environment, expected_logs', [
+    (  # Config with decryption error for first secret, success for second
+        {'environments': {'tmt': {'environment': {'SECRET_TOKEN_KEY': [
+            'token,invalid_encrypted_string', 'token,base64encodedencryptedstring']}}}},
+        [
+            {'SECRET_TOKEN_KEY': 'hello world'},
+            {'foo': 'foo-value', 'bar': 'bar-value', 'SECRET_TOKEN_KEY': 'hello world'}
+        ],
+        []
+    ),
+    (  # Config with decryption error for all secrets, last value is used as a plaintext value
+        {'environments': {'tmt': {'environment': {'SECRET_TOKEN_KEY': [
+            'token,invalid_encrypted_string1', 'plaintext string']}}}},
+        [
+            {'SECRET_TOKEN_KEY': 'plaintext string'},
+            {'foo': 'foo-value', 'bar': 'bar-value', 'SECRET_TOKEN_KEY': 'plaintext string'}
+        ],
+        []
+    ),
+])
+def test_in_repository_config_tmt_environment_search(monkeypatch, module, requests_mock, request1, log, config,
+                                                     expected_tmt_environment, expected_logs):
+    def mock_post_with_decrypt_logic(self, url, json, headers=None):
+        encrypted_message = json.get('message', '')
+        if encrypted_message in ['token,invalid_encrypted_string', 'token,invalid_encrypted_string1', 'token,invalid_encrypted_string2']:
+            return ResponseDecryptError()
+        elif encrypted_message == 'token,base64encodedencryptedstring':
+            return ResponseDecrypt()
+
+    monkeypatch.setattr(RequestsMock, 'post', mock_post_with_decrypt_logic)
+
+    config = InRepoConfig.model_validate(config)
+
+    request = module._tf_request
+
+    assert [
+        {'some': 'secrets'},
+        {'secret_key': 'secret-value'}
+    ] == [env.secrets for env in request.environments_requested]
+
+    request.modify_with_config(config, 'https://example.com/git/repo')
+
+    assert expected_tmt_environment == [env.tmt['environment'] for env in request.environments_requested]
+
+    for expected_log in expected_logs:
+        assert log.match(levelno=logging.WARN, message=expected_log)
 
 
 # TestingFarmRequestModule class tests

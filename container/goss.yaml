@@ -134,13 +134,13 @@ command:
   tmt --version:
     exit-status: 0
     stdout:
-      - "tmt version: 1.53.0"
+      - "tmt version: 1.55.0"
     timeout: 100000
 
   rpm -q tmt:
     exit-status: 0
     stdout:
-      - "tmt-1.53.0"
+      - "tmt-1.55.0"
     timeout: 100000
 
   tmt run report -h polarion:

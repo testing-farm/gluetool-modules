@@ -54,14 +54,12 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       https://kojipkgs.fedoraproject.org//packages/standard-test-roles/4.13/1.fc41/noarch/standard-test-roles-4.13-1.fc41.noarch.rpm \
                       rsync beakerlib-libraries rpm-build rpm-devel awscli \
     # Pull in tmt from @teemtee/stable copr repository
-    # && dnf copr -y enable @teemtee/stable \
-    # Workaround tmt#3877
-    && dnf copr -y enable packit/teemtee-tmt-3879 \
+    && dnf copr -y enable @teemtee/stable \
     && dnf -y install fmf-1.7.0 \
-                      tmt-1.53.0.dev1+gc660edbb-1.20250714210017883114.pr3879.1.gc660edbb.fc41.noarch \
-                      tmt+provision-container-1.53.0.dev1+gc660edbb-1.20250714210017883114.pr3879.1.gc660edbb.fc41.noarch \
-                      tmt+provision-virtual-1.53.0.dev1+gc660edbb-1.20250714210017883114.pr3879.1.gc660edbb.fc41.noarch \
-                      tmt+report-polarion-1.53.0.dev1+gc660edbb-1.20250714210017883114.pr3879.1.gc660edbb.fc41.noarch \
+                      tmt-1.55.0 \
+                      tmt+provision-container-1.55.0 \
+                      tmt+provision-virtual-1.55.0 \
+                      tmt+report-polarion-1.55.0 \
     # Pull in tmt policies
     && mkdir -p /etc/tmt/policies \
     && git clone --branch main --depth 1 https://gitlab.com/testing-farm/profiles.git /tmp/profiles \

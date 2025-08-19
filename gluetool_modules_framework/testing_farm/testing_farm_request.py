@@ -27,6 +27,7 @@ from requests.exceptions import ConnectionError, HTTPError, Timeout
 from typing import Any, Dict, List, Optional, Union, cast  # noqa
 from typing_extensions import TypedDict, NotRequired, Literal
 
+from gluetool_modules_framework.libs.testing_farm import InRepoConfig
 from gluetool_modules_framework.libs.threading import RepeatTimer
 from threading import Lock
 
@@ -614,7 +615,7 @@ class TestingFarmRequest(LoggerMixin, object):
         # inform webhooks about the state change
         self.webhook()
 
-    def modify_with_config(self, config: Dict[str, Any], git_url: str) -> None:
+    def modify_with_config(self, config: InRepoConfig, git_url: str) -> None:
         """
         Update self with data taken from .testing-farm.yaml file.
 
@@ -630,42 +631,95 @@ class TestingFarmRequest(LoggerMixin, object):
                 - "4a2599e8-cf75-4c04-8f8e-013e6ed4a70b,FTyFKFEsRogzR4K12zxFs19O4gFAnqeJz/W6...NhZwYBiGO0QjzLzXifmlQ=="
                 - "83ba2098-0902-494f-8381-fd33bdd2b3b4,PAg4zm7YCewlWwZtUkAQnXzWr/96rXkklxWF...BLblT8ZJDE2ZKT4dlTV8Ho="
         """
+        self.info('config ' + str(config))
 
-        if 'environments' not in config or \
-           'secrets' not in config['environments'] or \
-           not isinstance(config['environments']['secrets'], dict):
+
+        def _parse_secrets(config_secrets: Dict[str, List[str]]) -> Dict[str, str]:
+            secrets = {}
+            for secret_key, secret_values_encrypted in config_secrets.items():
+                if not isinstance(secret_values_encrypted, list):
+                    secret_values_encrypted = [secret_values_encrypted]
+
+                # Key can have multiple secret values tied to various TF API tokens, decrypt and use the first match
+                for secret_value_encrypted in secret_values_encrypted:
+                    if not isinstance(secret_value_encrypted, str):
+                        self.warn('Invalid secret with key `{}`, skipping.'.format(secret_key))
+                        continue
+
+                    if secret_value_encrypted.startswith(self.token_id):
+                        secret_value_decrypted = self._api.decrypt_secret(
+                            git_url,
+                            secret_value_encrypted,
+                            self._api_key
+                        )
+                        if secret_value_decrypted is None:
+                            continue
+
+                        secrets.update({secret_key: secret_value_decrypted})
+                        self.info(
+                            'Adding secret with key `{}` to the secrets of requested environments.'.format(secret_key)
+                        )
+                        break
+                else:
+                    self.warn('No valid secret value found for key `{}`.'.format(secret_key))
+            return secrets
+
+        def _parse_tmt_environment(config_environment: Dict[str, List[str]]) -> Dict[str, str]:
+            tmt_environment = {}
+            for secret_key, secret_values_encrypted in config_environment.items():
+                if not isinstance(secret_values_encrypted, list):
+                    secret_values_encrypted = [secret_values_encrypted]
+
+                # Key can have multiple secret values tied to various TF API tokens, decrypt and use the first match
+                for secret_value_encrypted in secret_values_encrypted:
+                    if not isinstance(secret_value_encrypted, str):
+                        self.warn('Invalid secret with key `{}`, skipping.'.format(secret_key))
+                        continue
+
+                    if secret_value_encrypted.startswith(self.token_id):
+                        secret_value_decrypted = self._api.decrypt_secret(
+                            git_url,
+                            secret_value_encrypted,
+                            self._api_key
+                        )
+                        if secret_value_decrypted is None:
+                            continue
+
+                        tmt_environment.update({secret_key: secret_value_decrypted})
+                        self.info(
+                            'Adding secret with key `{}` to the tmt environment of requested environments.'.format(
+                                secret_key
+                            )
+                        )
+                        break
+                else:
+                    self.warn('No valid secret value found for key `{}`, using the last value from the list as a '
+                              'plaintext value.'.format(secret_key))
+                    tmt_environment.update({secret_key: secret_value_encrypted})
+            return tmt_environment
+
+        secrets = {}
+        if config.environments and config.environments.secrets:
+            secrets = _parse_secrets(config.environments.secrets)
+
+        tmt_environment = {}
+        if config.environments and config.environments.tmt and config.environments.tmt.environment:
+            tmt_environment = _parse_tmt_environment(config.environments.tmt.environment)
+
+        if not secrets or not tmt_environment:
             self.warn('.testing-farm.yaml file exists but no useful data to modify environment found.')
             return
 
-        secrets = {}
+        for environment in self.environments_requested:
+            if environment.secrets is None:
+                environment.secrets = {}
+            environment.secrets.update(secrets)
 
-        for secret_key, secret_values_encrypted in config['environments']['secrets'].items():
-            if not isinstance(secret_values_encrypted, list):
-                secret_values_encrypted = [secret_values_encrypted]
-
-            # Secret key can have multiple secret values tied to various TF API tokens, decrypt and use the first match
-            for secret_value_encrypted in secret_values_encrypted:
-                if not isinstance(secret_value_encrypted, str):
-                    self.warn('Invalid secret with key `{}`, skipping.'.format(secret_key))
-                    continue
-
-                if secret_value_encrypted.startswith(self.token_id):
-                    secret_value_decrypted = self._api.decrypt_secret(git_url, secret_value_encrypted, self._api_key)
-                    if secret_value_decrypted is None:
-                        continue
-
-                    secrets.update({secret_key: secret_value_decrypted})
-                    self.info('Adding secret with key `{}` to the requested environments.'.format(secret_key))
-                    break
-            else:
-                self.warn('No valid secret value found for key `{}`.'.format(secret_key))
-
-        if secrets:
-            for environment in self.environments_requested:
-                if environment.secrets is None:
-                    environment.secrets = {}
-
-                environment.secrets.update(secrets)
+            if environment.tmt is None:
+                environment.tmt = {}
+            if environment.tmt['environment'] is None:
+                environment.tmt['environment'] = {}
+            environment.tmt['environment'].update(tmt_environment)
 
         self.info(
             'Requested environments after applying in-repository patch: {}'.format(str(self.environments_requested))

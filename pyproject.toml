@@ -177,6 +177,7 @@ xsdata-attrs = "^21.11"
 secret-type = "^0.3.0"
 types-psutil = "^5.9.5.17"
 pytest-xdist = "*"
+pydantic = "^2.11.7"
 
 [tool.poetry.dev-dependencies]
 flake8 = "3.7.8"

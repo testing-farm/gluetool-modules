@@ -153,6 +153,10 @@ class TestSuite:
     def skipped_count(self) -> int:
         return len([test_case for test_case in self.test_cases if test_case.result in ('error', 'errored', 'error:')])
 
+    @property
+    def pending_count(self) -> int:
+        return len([test_case for test_case in self.test_cases if test_case.result in ('pending', 'pending:')])
+
 
 @attrs.define
 class Results:

@@ -80,7 +80,7 @@ class XUnitTestSuite:
             name=test_suite.name,
             tests=str(test_suite.test_count),
             failures=str(test_suite.failure_count),
-            errors=str(test_suite.error_count),
+            errors=str(test_suite.error_count + test_suite.pending_count),
             skipped=str(test_suite.skipped_count),
             testcase=[XUnitTestCase.construct(test_case) for test_case in test_suite.test_cases]
         )

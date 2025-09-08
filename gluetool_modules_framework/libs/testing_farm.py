@@ -27,7 +27,7 @@ class InRepoConfigEnvironments(BaseModel):
 
 class InRepoConfig(BaseModel):
     """
-    Class model representing the structure of .testing-farm.yaml config file. Used to unserialize and validate the 
+    Class model representing the structure of .testing-farm.yaml config file. Used to unserialize and validate the
     contents of the file.
     """
     environments: Optional[InRepoConfigEnvironments] = None

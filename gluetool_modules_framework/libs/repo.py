@@ -23,6 +23,6 @@ def create_repo(sut_installation: SUTInstallation, repo_name: str, repo_path: st
     repo_str = io.StringIO()
     repo.write(repo_str, space_around_delimiters=False)
 
-    sut_installation.add_step('Create repository', f'dnf -y install createrepo; createrepo {shlex.quote(repo_path)}')
+    sut_installation.add_step('Create repository', f'yum install -y createrepo; createrepo {shlex.quote(repo_path)}')
     sut_installation.add_step(
         'Add repository', f'echo -e "{repo_str.getvalue()}" > /etc/yum.repos.d/{shlex.quote(repo_name)}.repo')

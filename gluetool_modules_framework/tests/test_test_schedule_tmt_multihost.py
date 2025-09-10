@@ -12,7 +12,7 @@ from typing import List
 import pytest
 import logging
 
-from gluetool_modules_framework.tests.test_libs_repo import generate_cmds as generate_createrepo_cmds
+from gluetool_modules_framework.tests.test_libs_repo import generate_translated_cmds as generate_createrepo_cmds
 
 import gluetool
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment

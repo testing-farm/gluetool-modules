@@ -15,13 +15,28 @@ from gluetool_modules_framework.libs.sut_installation import SUTInstallation
 
 def generate_cmds(repo_path: str = '/var/share/test-artifacts', repo_name: str = 'test-artifacts') -> List[str]:
     return [
-        f'dnf -y install --allowerasing createrepo; createrepo {shlex.quote(repo_path)}',
+        f'yum install -y createrepo; createrepo {shlex.quote(repo_path)}',
         f'echo -e "[{repo_name}]\nname={repo_name}\ndescription=Test artifacts repository\nbaseurl=file://{urllib.parse.quote(repo_path)}\npriority=1\nenabled=1\ngpgcheck=0\n\n" > /etc/yum.repos.d/{repo_name}.repo'
     ]
 
 
 def generate_calls(*args: Any, **kwargs: Any) -> List[_Call]:
     return [call(cmd) for cmd in generate_cmds(*args, **kwargs)]
+
+
+def generate_translated_cmds(repo_path: str = '/var/share/test-artifacts', repo_name: str = 'test-artifacts') -> List[str]:
+    # The functions `generate_cmds` and `generate_calls` are used in other tests.
+    # However, they are not called via `SUTInstallation.run`, which will change yum commands
+    # to dnf commands if dnf is available.
+    return [
+        f'dnf install --allowerasing -y createrepo; createrepo {shlex.quote(repo_path)}',
+        f'echo -e "[{repo_name}]\nname={repo_name}\ndescription=Test artifacts repository\nbaseurl=file://{urllib.parse.quote(repo_path)}\npriority=1\nenabled=1\ngpgcheck=0\n\n" > /etc/yum.repos.d/{repo_name}.repo'
+    ]
+
+
+def generate_translated_calls(*args: Any, **kwargs: Any) -> List[_Call]:
+    # See comment for generate_translated_cmds.
+    return [call(cmd) for cmd in generate_translated_cmds(*args, **kwargs)]
 
 
 @pytest.fixture(name='mock_execute')
@@ -53,4 +68,4 @@ def test_create_repo(guest, mock_execute, sut_installation):
     sut_installation.run(guest)
 
     assert mock_execute.call_count == 3
-    mock_execute.assert_has_calls(generate_calls(repo_path='some/path/to a/repo', repo_name='dummy-repo'))
+    mock_execute.assert_has_calls(generate_translated_calls(repo_path='some/path/to a/repo', repo_name='dummy-repo'))

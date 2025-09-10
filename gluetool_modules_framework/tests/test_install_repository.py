@@ -5,7 +5,7 @@ import pytest
 import tempfile
 
 from mock import MagicMock, call
-from gluetool_modules_framework.tests.test_libs_repo import generate_calls as generate_createrepo_calls
+from gluetool_modules_framework.tests.test_libs_repo import generate_translated_calls as generate_createrepo_calls
 
 import gluetool
 from gluetool import GlueError

@@ -2,12 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import base64
-import datetime
 import os
 import shutil
 import re
 from mock import MagicMock
-from typing import List
 
 import pytest
 import logging
@@ -15,7 +13,6 @@ import logging
 from gluetool_modules_framework.tests.test_libs_repo import generate_translated_cmds as generate_createrepo_cmds
 
 import gluetool
-from gluetool.utils import normalize_multistring_option
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 import gluetool_modules_framework.testing.test_schedule_tmt
 from gluetool_modules_framework.infrastructure.distgit import DistGit, DistGitRepository
@@ -26,7 +23,7 @@ import gluetool_modules_framework.helpers.install_koji_build_execute
 from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
 from gluetool_modules_framework.libs.sut_installation import INSTALL_COMMANDS_FILE
 from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
-from gluetool_modules_framework.libs.results import TestSuite
+from gluetool_modules_framework.libs.results import Results, TestSuite
 from gluetool_modules_framework.libs.git import SecretGitUrl
 from gluetool_modules_framework.provision.artemis import ArtemisGuest, ArtemisGuestLog
 from gluetool_modules_framework.testing.test_schedule_tmt import gather_plan_results, TestScheduleEntry
@@ -159,7 +156,8 @@ def test_gather_results(module, asset, monkeypatch):
     _assert_results(results, expected_results['results'])
 
 
-def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, monkeypatch, tmpdir):
+@pytest.mark.parametrize('asset', ['passed', 'failed', 'error', 'skipped'])
+def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, monkeypatch, tmpdir, asset):
     # this doesn't appear anywhere in results.xml, but _run_plan() needs it
     module.glue.add_shared('dist_git_repository', module_dist_git)
 
@@ -167,7 +165,7 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     schedule_entry = TestScheduleEntry(
         gluetool.log.Logging().get_logger(),
         test_env,
-        '/passed',
+        '/{}'.format(asset),
         'some-repo-dir'
     )
     schedule_entry.guest = guest
@@ -180,7 +178,7 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     orig_gather_plan_results = gluetool_modules_framework.testing.test_schedule_tmt.gather_plan_results
 
     def inject_gather_plan_results(module, schedule_entry, work_dir, recognize_errors=False):
-        shutil.copytree(os.path.join(ASSETS_DIR, 'passed'), os.path.join(work_dir, 'passed'))
+        shutil.copytree(os.path.join(ASSETS_DIR, asset), os.path.join(work_dir, asset))
         return orig_gather_plan_results(module, schedule_entry, work_dir, recognize_errors=recognize_errors)
 
     # run tmt with the mock plan
@@ -198,99 +196,18 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     # Second call shouldn't produce duplicated results
     module.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
 
-    assert test_suite.test_count == 2
-    testcase_docs, testcase_dry = test_suite.test_cases[0], test_suite.test_cases[1]
-    # Checking testcase_docs
-    assert testcase_docs.name == '/tests/core/docs'
-    assert testcase_docs.result == 'passed'
-    # Checking notes
-    assert testcase_docs.note == []
-    # expecting log_dir, testout.log, and journal.txt, in exactly that order
-    assert len(testcase_docs.logs) == 4
-    assert testcase_docs.logs[0].name == 'log_dir'
-    assert testcase_docs.logs[0].href.endswith('/passed/execute/logs/tests/core/docs')
-    assert testcase_docs.logs[1].name == 'data'
-    assert testcase_docs.logs[1].href.endswith('/passed/execute/logs/tests/core/docs/data')
-    assert testcase_docs.logs[2].name == 'journal.txt'
-    assert testcase_docs.logs[2].href.endswith('/passed/execute/logs/tests/core/docs/journal.txt')
-    assert testcase_docs.logs[3].name == 'testout.log'
-    assert testcase_docs.logs[3].href.endswith('/passed/execute/logs/tests/core/docs/out.log')
-    # Checking subresults
-    assert len(testcase_docs.subresults) == 0
-    # Checking checks
-    assert len(testcase_docs.checks) == 0
-    # Checking duration
-    assert testcase_docs.duration == datetime.timedelta(hours=1, minutes=23, seconds=45)
-    # Checking start-time
-    assert testcase_docs.start_time == '2024-04-09T13:09:02.727749+00:00'
-    # Checking end-time
-    assert testcase_docs.end_time == '2024-04-09T13:09:02.744369+00:00'
-    # Checking serial number
-    assert testcase_docs.serial_number == 1
-    # Checking properties (properties are sorted by name)
-    assert len(testcase_docs.properties) == 9
-    assert testcase_docs.properties[0].name == 'baseosci.arch'
-    assert testcase_docs.properties[0].value == 'None'
-    assert testcase_docs.properties[1].name == 'baseosci.connectable_host'
-    assert testcase_docs.properties[1].value == 'guest0'
-    assert testcase_docs.properties[2].name == 'baseosci.distro'
-    assert testcase_docs.properties[2].value == 'guest-compose'
-    assert testcase_docs.properties[3].name == 'baseosci.status'
-    assert testcase_docs.properties[3].value == 'Created'
-    assert testcase_docs.properties[4].name == 'baseosci.testcase.source.url'
-    assert testcase_docs.properties[4].value == ''
-    assert testcase_docs.properties[5].name == 'baseosci.variant'
-    assert testcase_docs.properties[5].value == ''
-    assert testcase_docs.properties[6].name == 'id'
-    assert testcase_docs.properties[6].value == '{}_some-suite_1_default-0'.format(os.path.join(tmpdir, 'some-workdir'))
-    assert testcase_docs.properties[7].name == 'contact'
-    assert testcase_docs.properties[7].value == 'John Doe <jdoe@example.com>'
-    assert testcase_docs.properties[8].name == 'contact'
-    assert testcase_docs.properties[8].value == 'John Smith <jsmith@example.com>'
-
-    # Checking testcase_dry
-    assert testcase_dry.name == '/tests/core/dry'
-    assert testcase_dry.result == 'passed'
-    # Checking notes
-    assert testcase_dry.note == ['original result: fail']
-    # expecting log_dir, testout.log, and journal.txt, in exactly that order
-    assert len(testcase_dry.logs) == 3
-    assert testcase_dry.logs[0].name == 'log_dir'
-    assert testcase_dry.logs[0].href.endswith('/passed/execute/logs/tests/core/dry')
-    assert testcase_dry.logs[1].name == 'data'
-    assert testcase_dry.logs[1].href.endswith('/passed/execute/logs/tests/core/dry/data')
-    assert testcase_dry.logs[2].name == 'testout.log'
-    assert testcase_dry.logs[2].href.endswith('/passed/execute/logs/tests/core/dry/out.log')
-    # Checking subresults
-    assert len(testcase_dry.subresults) == 0
-    # Checking checks
-    assert len(testcase_dry.checks) == 0
-    # Checking duration
-    assert testcase_dry.duration == None
-    # Checking start-time
-    assert testcase_dry.start_time == None
-    # Checking end-time
-    assert testcase_dry.end_time == None
-    # Checking serial number
-    assert testcase_dry.serial_number == 2
-    # Checking properties (properties are sorted by name)
-    assert len(testcase_dry.properties) == 7
-    assert testcase_dry.properties[0].name == 'baseosci.arch'
-    assert testcase_dry.properties[0].value == 'None'
-    assert testcase_dry.properties[1].name == 'baseosci.connectable_host'
-    assert testcase_dry.properties[1].value == 'guest0'
-    assert testcase_dry.properties[2].name == 'baseosci.distro'
-    assert testcase_dry.properties[2].value == 'guest-compose'
-    assert testcase_dry.properties[3].name == 'baseosci.status'
-    assert testcase_dry.properties[3].value == 'Created'
-    assert testcase_dry.properties[4].name == 'baseosci.testcase.source.url'
-    assert testcase_dry.properties[4].value == ''
-    assert testcase_dry.properties[5].name == 'baseosci.variant'
-    assert testcase_dry.properties[5].value == ''
-    assert testcase_dry.properties[6].name == 'id'
-    assert testcase_dry.properties[6].value == '{}_some-suite_2_default-0'.format(os.path.join(tmpdir, 'some-workdir'))
-
     shutil.rmtree(schedule_entry.work_dirpath)
+
+    results = Results(test_suites=[test_suite])
+
+    with open(os.path.join(ASSETS_DIR, asset, 'expected-results.xml.j2'), 'r') as expected_results_j2:
+        assert gluetool.utils.render_template(
+            expected_results_j2.read(),
+            WORK_DIRPATH=schedule_entry.work_dirpath
+        ) == results.xunit_testing_farm.to_xml_string(pretty_print=True).rstrip()
+
+    with open(os.path.join(ASSETS_DIR, asset, 'expected-results-junit.xml'), 'r') as expected_results_junit:
+        assert expected_results_junit.read() == results.xunit.to_xml_string(pretty_print=True)
 
 
 def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest, monkeypatch, tmpdir):

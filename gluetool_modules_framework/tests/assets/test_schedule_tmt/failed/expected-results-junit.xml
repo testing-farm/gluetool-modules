@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+ <testsuite name="some-suite" tests="3" failures="2" errors="0" skipped="0">
+  <testcase name="/install" classname="tests" time="5025" start-time="2024-04-09T13:09:02.727749+00:00" end-time="2024-04-09T13:09:02.744369+00:00"/>
+  <testcase name="/update" classname="tests" time="5025" start-time="2024-04-09T13:09:02.727749+00:00" end-time="2024-04-09T13:09:02.744369+00:00">
+   <failure type="FAIL" message='Test "/update" failed.'/>
+  </testcase>
+  <testcase name="/remove" classname="tests" time="5025">
+   <failure type="FAIL" message='Test "/remove" failed.'/>
+  </testcase>
+ </testsuite>
+</testsuites>

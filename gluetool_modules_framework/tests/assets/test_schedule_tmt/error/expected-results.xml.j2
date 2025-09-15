@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+ <testsuite name="some-suite" result="some-result" tests="4">
+  <logs>
+   <log href="{{ WORK_DIRPATH }}/console-guest0.log" name="console.log"/>
+   <log href="{{ WORK_DIRPATH }}/tmt-run.log" name="tmt-log"/>
+   <log href="{{ WORK_DIRPATH }}/tmt-reproducer.sh" name="tmt-reproducer"/>
+   <log href="{{ WORK_DIRPATH }}" name="workdir"/>
+  </logs>
+  <testcase name="/install" result="passed" time="5025" start-time="2024-04-09T13:09:02.727749+00:00" end-time="2024-04-09T13:09:02.744369+00:00" serial-number="1">
+   <properties>
+    <property name="baseosci.arch" value="None"/>
+    <property name="baseosci.connectable_host" value="guest0"/>
+    <property name="baseosci.distro" value="guest-compose"/>
+    <property name="baseosci.status" value="Created"/>
+    <property name="baseosci.testcase.source.url" value=""/>
+    <property name="baseosci.variant" value=""/>
+    <property name="id" value="{{ WORK_DIRPATH }}_some-suite_1_default-0"/>
+   </properties>
+   <fmf-id url="https://gitlab.com/testing-farm/gluetool-modules" ref="main" name="/install"/>
+   <logs>
+    <log href="{{ WORK_DIRPATH }}/error/execute/logs/install/data" name="data" schedule-entry="rhel-9:x86_64:/error" schedule-stage="running"/>
+    <log href="{{ WORK_DIRPATH }}/error/execute/logs/install" name="log_dir" schedule-entry="rhel-9:x86_64:/error" schedule-stage="running"/>
+    <log href="{{ WORK_DIRPATH }}/error/execute/logs/install/out.log" name="testout.log" schedule-entry="rhel-9:x86_64:/error" schedule-stage="running"/>
+   </logs>
+   <testing-environment name="requested">
+    <property name="arch" value="x86_64"/>
+    <property name="compose" value="rhel-9"/>
+    <property name="snapshots" value="False"/>
+   </testing-environment>
+   <testing-environment name="provisioned">
+    <property name="compose" value="guest-compose"/>
+    <property name="snapshots" value="False"/>
+   </testing-environment>
+   <guest name="default-0"/>
+  </testcase>
+  <testcase name="/update" result="failed" time="5025" start-time="2024-04-09T13:09:02.727749+00:00" end-time="2024-04-09T13:09:02.744369+00:00" serial-number="2">
+   <properties>
+    <property name="baseosci.arch" value="None"/>
+    <property name="baseosci.connectable_host" value="guest0"/>
+    <property name="baseosci.distro" value="guest-compose"/>
+    <property name="baseosci.status" value="Created"/>
+    <property name="baseosci.testcase.source.url" value=""/>
+    <property name="baseosci.variant" value=""/>
+    <property name="id" value="{{ WORK_DIRPATH }}_some-suite_2_default-0"/>
+   </properties>
+   <fmf-id url="https://gitlab.com/testing-farm/gluetool-modules" ref="main" name="/update"/>
+   <logs>
+    <log href="{{ WORK_DIRPATH }}/error/execute/logs/update/data" name="data" schedule-entry="rhel-9:x86_64:/error" schedule-stage="running"/>
+    <log href="{{ WORK_DIRPATH }}/error/execute/logs/update" name="log_dir" schedule-entry="rhel-9:x86_64:/error" schedule-stage="running"/>
+    <log href="{{ WORK_DIRPATH }}/error/execute/logs/update/out.log" name="testout.log" schedule-entry="rhel-9:x86_64:/error" schedule-stage="running"/>
+   </logs>
+   <failure/>
+   <testing-environment name="requested">
+    <property name="arch" value="x86_64"/>
+    <property name="compose" value="rhel-9"/>
+    <property name="snapshots" value="False"/>
+   </testing-environment>
+   <testing-environment name="provisioned">
+    <property name="compose" value="guest-compose"/>
+    <property name="snapshots" value="False"/>
+   </testing-environment>
+   <guest name="default-0"/>
+  </testcase>
+  <testcase name="/remove" result="error" serial-number="3">
+   <properties>
+    <property name="baseosci.arch" value="None"/>
+    <property name="baseosci.connectable_host" value="guest0"/>
+    <property name="baseosci.distro" value="guest-compose"/>
+    <property name="baseosci.status" value="Created"/>
+    <property name="baseosci.testcase.source.url" value=""/>
+    <property name="baseosci.variant" value=""/>
+    <property name="id" value="{{ WORK_DIRPATH }}_some-suite_3_default-0"/>
+   </properties>
+   <fmf-id url="https://gitlab.com/testing-farm/gluetool-modules" ref="main" name="/remove"/>
+   <logs>
+    <log href="{{ WORK_DIRPATH }}/error/execute/logs/remove/data" name="data" schedule-entry="rhel-9:x86_64:/error" schedule-stage="running"/>
+    <log href="{{ WORK_DIRPATH }}/error/execute/logs/remove" name="log_dir" schedule-entry="rhel-9:x86_64:/error" schedule-stage="running"/>
+    <log href="{{ WORK_DIRPATH }}/error/execute/logs/remove/out.log" name="testout.log" schedule-entry="rhel-9:x86_64:/error" schedule-stage="running"/>
+   </logs>
+   <error/>
+   <testing-environment name="requested">
+    <property name="arch" value="x86_64"/>
+    <property name="compose" value="rhel-9"/>
+    <property name="snapshots" value="False"/>
+   </testing-environment>
+   <testing-environment name="provisioned">
+    <property name="compose" value="guest-compose"/>
+    <property name="snapshots" value="False"/>
+   </testing-environment>
+   <guest name="default-0"/>
+  </testcase>
+  <testcase name="/todo" result="pending" serial-number="4">
+   <properties>
+    <property name="baseosci.arch" value="None"/>
+    <property name="baseosci.connectable_host" value="guest0"/>
+    <property name="baseosci.distro" value="guest-compose"/>
+    <property name="baseosci.status" value="Created"/>
+    <property name="baseosci.testcase.source.url" value=""/>
+    <property name="baseosci.variant" value=""/>
+    <property name="id" value="{{ WORK_DIRPATH }}_some-suite_4_default-0"/>
+   </properties>
+   <fmf-id url="https://gitlab.com/testing-farm/gluetool-modules" ref="main" name="/todo"/>
+   <logs>
+    <log href="{{ WORK_DIRPATH }}/error/execute/logs/todo/data" name="data" schedule-entry="rhel-9:x86_64:/error" schedule-stage="running"/>
+    <log href="{{ WORK_DIRPATH }}/error/execute/logs/todo" name="log_dir" schedule-entry="rhel-9:x86_64:/error" schedule-stage="running"/>
+    <log href="{{ WORK_DIRPATH }}/error/execute/logs/todo/out.log" name="testout.log" schedule-entry="rhel-9:x86_64:/error" schedule-stage="running"/>
+   </logs>
+   <testing-environment name="requested">
+    <property name="arch" value="x86_64"/>
+    <property name="compose" value="rhel-9"/>
+    <property name="snapshots" value="False"/>
+   </testing-environment>
+   <testing-environment name="provisioned">
+    <property name="compose" value="guest-compose"/>
+    <property name="snapshots" value="False"/>
+   </testing-environment>
+   <guest name="default-0"/>
+  </testcase>
+  <testing-environment name="requested">
+   <property name="arch" value="x86_64"/>
+   <property name="compose" value="rhel-9"/>
+   <property name="snapshots" value="False"/>
+  </testing-environment>
+  <testing-environment name="provisioned">
+   <property name="compose" value="guest-compose"/>
+   <property name="snapshots" value="False"/>
+  </testing-environment>
+ </testsuite>
+</testsuites>

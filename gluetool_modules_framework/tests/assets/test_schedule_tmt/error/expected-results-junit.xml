@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuites>
- <testsuite name="some-suite" tests="4" failures="2" errors="2" skipped="1">
+ <testsuite name="some-suite" tests="4" failures="1" errors="2" skipped="0">
   <testcase name="/install" classname="tests" time="5025" start-time="2024-04-09T13:09:02.727749+00:00" end-time="2024-04-09T13:09:02.744369+00:00"/>
   <testcase name="/update" classname="tests" time="5025" start-time="2024-04-09T13:09:02.727749+00:00" end-time="2024-04-09T13:09:02.744369+00:00">
    <failure type="FAIL" message='Test "/update" failed.'/>

@@ -584,6 +584,7 @@ class TestScheduleRunner(gluetool.Module):
             on_job_complete=_on_job_complete,
             on_job_error=_on_job_error,
             on_job_done=_on_job_done,
+            max_workers=self.parallel_limit or None
         )
 
         if self.parallelize:

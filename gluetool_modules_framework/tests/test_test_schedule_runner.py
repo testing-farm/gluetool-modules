@@ -45,7 +45,10 @@ class GuestMock(MagicMock):
 
 @pytest.fixture(name='module')
 def fixture_module():
-    return create_module(gluetool_modules_framework.testing.test_schedule_runner.TestScheduleRunner)[1]
+    module = create_module(gluetool_modules_framework.testing.test_schedule_runner.TestScheduleRunner)[1]
+    module._config['parallel-limit'] = '8'
+    module._config['max-parallel-limit'] = 32
+    return module
 
 
 def create_test_schedule(entry_properties):
@@ -102,7 +105,6 @@ def test_execute(module, monkeypatch):
 def test_execute_destroy_if_fail(module, monkeypatch):
     module._config['reuse-guests'] = True
     module._config['destroy-if-fail'] = True
-    module._config['parallel-limit'] = 1
     guest_mock = GuestMock(
         hostname='foo',
         environment=TestingEnvironment(arch='x86_64', compose='Fedora37'),
@@ -138,7 +140,6 @@ def test_execute_destroy_if_fail(module, monkeypatch):
 
 def test_execute_reuse_guests(module, monkeypatch):
     module._config['reuse-guests'] = True
-    module._config['parallel-limit'] = 1
     guest_mock = GuestMock(
         hostname='foo',
         environment=TestingEnvironment(arch='x86_64', compose='Fedora37'),

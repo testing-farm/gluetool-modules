@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import collections
+import contextlib
 import logging
 import os
 import re
@@ -630,3 +631,97 @@ def test_console_log_and_workdir(monkeypatch, module, scenario, tmpdir):
 ])
 def test_expand_post_install_script(module, input_script, expected_script):
     assert module.expand_post_install_script(input_script) == expected_script
+
+
+@pytest.mark.parametrize('scenario', ['successful'], indirect=True)
+def test_guest_destroy_acquires_pipeline_lock(monkeypatch, module, scenario):
+    """Test that guest.destroy() properly acquires the pipeline cancellation lock"""
+    environment, _, _, _ = scenario
+    module.provision(environment)
+
+    # Mock the shared method to track calls
+    mock_lock = MagicMock()
+    mock_lock.__enter__ = MagicMock(return_value=mock_lock)
+    mock_lock.__exit__ = MagicMock(return_value=None)
+
+    patch_shared(monkeypatch, module, {
+        'pipeline_cancellation_lock': mock_lock
+    })
+
+    module.guests[0].destroy()
+
+    # Verify context manager was properly used
+    mock_lock.__enter__.assert_called_once()
+    mock_lock.__exit__.assert_called_once()
+
+
+@pytest.mark.parametrize('scenario', ['successful'], indirect=True)
+def test_guest_destroy_fallback_to_nullcontext(monkeypatch, module, scenario):
+    """Test that guest.destroy() falls back to nullcontext when no lock is available"""
+    environment, _, _, _ = scenario
+    module.provision(environment)
+
+    # Mock shared to return None (no lock available)
+    patch_shared(monkeypatch, module, {
+        'pipeline_cancellation_lock': None
+    })
+
+    # This should not raise an exception - nullcontext should handle it
+    module.guests[0].destroy()
+
+
+@pytest.mark.parametrize('scenario', ['successful'], indirect=True)
+def test_guest_destroy_operations_within_lock_context(monkeypatch, module, scenario):
+    """Test that guest destroy operations happen within the lock context"""
+    environment, _, _, _ = scenario
+    module.provision(environment)
+
+    # Track the order of operations
+    call_order = []
+
+    # Mock the lock to track enter/exit
+    mock_lock = MagicMock()
+
+    def track_enter(self):
+        call_order.append('lock_enter')
+        return mock_lock
+
+    def track_exit(self, *args):
+        call_order.append('lock_exit')
+        return None
+
+    mock_lock.__enter__ = track_enter
+    mock_lock.__exit__ = track_exit
+
+    patch_shared(monkeypatch, module, {
+        'pipeline_cancellation_lock': mock_lock
+    })
+
+    # Mock some methods called during destroy to track their order
+    original_stop_guest_logging = module.guests[0].stop_guest_logging
+
+    def track_stop_logging():
+        call_order.append('stop_guest_logging')
+        # Required to finish the logging thread
+        return original_stop_guest_logging()
+
+    def track_dump_events(_):
+        call_order.append('dump_events')
+
+    monkeypatch.setattr(module.guests[0], 'stop_guest_logging', track_stop_logging)
+    monkeypatch.setattr(module.guests[0].api, 'dump_events', track_dump_events)
+
+    module.guests[0].destroy()
+
+    # Verify operations happened within the lock context
+    assert 'lock_enter' in call_order
+    assert 'lock_exit' in call_order
+    assert 'stop_guest_logging' in call_order
+
+    # Verify stop_guest_logging happened between enter and exit
+    enter_idx = call_order.index('lock_enter')
+    exit_idx = call_order.index('lock_exit')
+    stop_idx = call_order.index('stop_guest_logging')
+    dump_idx = call_order.index('dump_events')
+
+    assert enter_idx < stop_idx < dump_idx < exit_idx, f"Operations not properly within lock context: {call_order}"

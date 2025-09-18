@@ -420,9 +420,8 @@ class ArtemisAPI(object):
 
         return events
 
-    def dump_events(self, guest: 'ArtemisGuest', events: Optional[List[Any]] = None) -> None:
-        if events is None:
-            self.get_guest_events(guest)
+    def dump_events(self, guest: 'ArtemisGuest') -> None:
+        events = self.get_guest_events(guest)
 
         tmpname = '{}.tmp'.format(guest.event_log_path)
 
@@ -764,22 +763,25 @@ class ArtemisGuest(NetworkedGuest):
         '''
         Destroy the guest.
         '''
-        self.stop_guest_logging()
+        # TFT-3841 - make sure guest destroy is not interrupted
+        with self._module.shared('pipeline_cancellation_lock') or nullcontext():
+            self.stop_guest_logging()
 
-        guest_events_list = self.api.get_guest_events(self)
-        self.api.dump_events(self, guest_events_list)
+            if self._module.option('keep'):
+                self.api.dump_events(self)
+                self.warn("keeping guest provisioned as requested")
+                return
 
-        if self._module.option('keep'):
-            self.warn("keeping guest provisioned as requested")
-            return
+            self.info('destroying guest')
 
-        self.info('destroying guest')
+            self._release_snapshots()
+            self._release_instance()
+            cast(ArtemisProvisioner, self._module).remove_from_list(self)
 
-        self._release_snapshots()
-        self._release_instance()
-        cast(ArtemisProvisioner, self._module).remove_from_list(self)
+            self.info('successfully released')
 
-        self.info('successfully released')
+            # Dump events after destroy
+            self.api.dump_events(self)
 
     def _save_guest_log(self, filename: str, data: str) -> None:
         filepath = os.path.join(self.workdir, filename)
@@ -1618,7 +1620,6 @@ class ArtemisProvisioner(gluetool.Module):
 
         for guest in self.guests[:]:
             guest.destroy()
-            self.api.dump_events(guest)
 
     def _adj_timeout(self) -> int:
         timeout = int(self.option('ready-timeout'))

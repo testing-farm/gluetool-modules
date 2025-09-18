@@ -361,6 +361,10 @@ class ArtemisAPI(object):
 
         log_dict(self.module.debug, 'guest data', data)
 
+        # TFT-3851 - if pipeline was cancelled, do not start a new guest provisioning
+        if self.module.pipeline_cancelled:
+            raise PipelineCancelled()
+
         response = self.api_call('guests/', method='POST', expected_status_codes=[201, 400], data=data)
 
         if response.status_code == 400:

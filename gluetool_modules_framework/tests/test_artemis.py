@@ -531,6 +531,20 @@ def test_provision(monkeypatch, module, scenario, tmpdir, log):
         assert log.match(levelno=logging.INFO, message='no guests to remove during module destroy')
 
 
+@pytest.mark.parametrize('scenario', ['successful'], indirect=True)
+def test_provision_pipeline_cancelled(monkeypatch, module, scenario, tmpdir):
+    environment, _, _, _ = scenario
+
+    module.glue.pipeline_cancelled = True
+
+    # Save guest events yaml file to a tmp directory
+    with monkeypatch.context() as m:
+        m.chdir(tmpdir)
+
+        with pytest.raises(PipelineCancelled):
+            module.provision(environment)
+
+
 def test_adj_timeout(monkeypatch, module, log):
     request = MagicMock()
     request.pipeline_timeout = 50

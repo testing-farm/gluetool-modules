@@ -103,8 +103,7 @@ def test_testing_farm_reporter_destroy_failure(module, request_empty, evaluate):
         'state': 'error',
         'summary': str(GlueError('message')),
         'overall_result': 'unknown',
-        'artifacts_url': None,
-        'destroying': True
+        'artifacts_url': None
     }
 
 
@@ -120,8 +119,7 @@ def test_testing_farm_reporter_destroy_failure_mapping(module, request_empty, ev
         'state': 'some-mapped-state',
         'summary': str(GlueError('message')),
         'overall_result': 'some-mapped-overall-result',
-        'artifacts_url': None,
-        'destroying': True
+        'artifacts_url': None
     }
 
 
@@ -141,8 +139,7 @@ def test_testing_farm_reporter_destroy_oom(module, monkeypatch, request_empty, e
         'state': 'some-mapped-state',
         'summary': 'out-of-memory',
         'overall_result': 'some-mapped-overall-result',
-        'artifacts_url': None,
-        'destroying': True
+        'artifacts_url': None
     }
 
 
@@ -153,8 +150,7 @@ def test_testing_farm_reporter_destroy_no_result(module, request_running, evalua
         'state': 'complete',
         'overall_result': 'unknown',
         'summary': None,
-        'artifacts_url': None,
-        'destroying': True
+        'artifacts_url': None
     }
 
 
@@ -165,6 +161,5 @@ def test_testing_farm_reporter_destroy_result(module, request_empty, results, ev
         'state': 'complete',
         'overall_result': 'unknown',
         'artifacts_url': None,
-        'summary': None,
-        'destroying': True
+        'summary': None
     }

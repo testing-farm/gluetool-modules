@@ -525,8 +525,7 @@ class TestingFarmRequest(LoggerMixin, object):
                state: Optional[str] = None,
                overall_result: Optional[str] = None,
                summary: Optional[str] = None,
-               artifacts_url: Optional[str] = None,
-               destroying: bool = False) -> None:
+               artifacts_url: Optional[str] = None) -> None:
         """
         Update the test request. Only a subset of changes is supported according to the use cases
         we have in the pipeline.
@@ -535,7 +534,6 @@ class TestingFarmRequest(LoggerMixin, object):
         :param str overall_result: New overall result of the test request.
         :param str summary: New result summary to set.
         :param str artifacts_url: The URL to the artifacts to set.
-        :param str destroying: A flag to indicate that the update is happening during pipeline destroy phase.
         """
         payload: Dict[str, Any] = {}
         result = {}
@@ -600,7 +598,7 @@ class TestingFarmRequest(LoggerMixin, object):
 
             # if the request is in cancel-requested state, cancel it now and ignore the update
             if current_state == PipelineState.cancel_requested:
-                self._module.cancel_pipeline(destroying=destroying)
+                self._module.cancel_pipeline()
                 return
 
             # if the request is canceled, ignore the update, there is nothing to do
@@ -866,13 +864,11 @@ class TestingFarmRequestModule(gluetool.Module):
 
         return PipelineState(request['state'])
 
-    def cancel_pipeline(self, destroying: bool = False) -> None:
+    def cancel_pipeline(self) -> None:
         """
         Cancel the pipeline by updating the pipeline state to `canceled` state
         and terminating the current process. During pipeline destroy we want to skip
         the process termination, as the pipeline is being destroyed anyway.
-
-        :param: bool destroying: Flag to indicate cancellation during pipeline destroy.
         """
         self.warn('Cancelling pipeline as requested')
 
@@ -887,7 +883,7 @@ class TestingFarmRequestModule(gluetool.Module):
         # update the state
         self._tf_request.update(state=PipelineState.canceled)
 
-        if not destroying:
+        if not self.pipeline_destroying:
             # cancel the pipeline
             psutil.Process().terminate()
 

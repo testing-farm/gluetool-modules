@@ -92,10 +92,7 @@ class TestingFarmRequestStateReporter(gluetool.Module):
                 failure
             ),
             summary=self._get_summary(failure),
-            artifacts_url=self.shared('coldstore_url'),
-            # We are indicating that we are updating the state during destroying to deal with
-            # some corner cases for request cancellation.
-            destroying=True
+            artifacts_url=self.shared('coldstore_url')
         )
 
     def _get_state(self, failure: Any) -> str:

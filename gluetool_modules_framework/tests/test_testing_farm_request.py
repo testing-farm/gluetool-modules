@@ -331,10 +331,9 @@ def test_update_conflict(module, request2, monkeypatch, log):
     module.cancel_pipeline = MagicMock()
     module._tf_api_internal.get_request = MagicMock(return_value={'state': 'cancel-requested'})
     request.update(
-        state='error',
-        destroying=True
+        state='error'
     )
-    module.cancel_pipeline.assert_called_once_with(destroying=True)
+    module.cancel_pipeline.assert_called_once()
 
 
 def test_update_state_ignored(module, request2, monkeypatch, log):

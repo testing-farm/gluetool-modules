@@ -76,7 +76,7 @@ class TestScheduleRunner(gluetool.Module):
                 Maximum number of entries running in parallel. Value is treated as a template. (default: %(default)s)
             """,
             'type': str,
-            'default': '0',
+            'default': '32',
             'metavar': 'NUMBER'
         },
         'max-parallel-limit': {
@@ -584,7 +584,7 @@ class TestScheduleRunner(gluetool.Module):
             on_job_complete=_on_job_complete,
             on_job_error=_on_job_error,
             on_job_done=_on_job_done,
-            max_workers=self.parallel_limit or None
+            max_workers=self.parallel_limit
         )
 
         if self.parallelize:

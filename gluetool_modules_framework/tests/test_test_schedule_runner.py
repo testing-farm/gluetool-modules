@@ -47,7 +47,7 @@ class GuestMock(MagicMock):
 def fixture_module():
     module = create_module(gluetool_modules_framework.testing.test_schedule_runner.TestScheduleRunner)[1]
     module._config['parallel-limit'] = '8'
-    module._config['max-parallel-limit'] = 32
+    module._config['max-parallel-limit'] = 64
     return module
 
 
@@ -297,7 +297,6 @@ def test_execute_schedule_entry_attribute_map(module, monkeypatch):
 ], ids=['string', 'template', "under limit", "over limit"])
 def test_parallel_limit(module, option, expected, monkeypatch):
     module._config['parallel-limit'] = option
-    module._config['max-parallel-limit'] = 64
 
     patch_shared(monkeypatch, module, {
         'eval_context': {

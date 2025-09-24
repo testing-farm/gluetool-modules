@@ -128,7 +128,15 @@ RUN = {
 
 @pytest.fixture(name='module')
 def fixture_module():
-    return create_module(gluetool_modules_framework.helpers.pipeline_state_reporter.PipelineStateReporter)[1]
+    module = create_module(gluetool_modules_framework.helpers.pipeline_state_reporter.PipelineStateReporter)[1]
+    # set defaults that should not be `None`
+    module._config['upload-url-pending'] = True
+    module._config['upload-url-finished'] = True
+    module._config['note-separator'] = \
+        gluetool_modules_framework.helpers.pipeline_state_reporter.DEFAULT_NOTE_SEPARATOR
+    module._config['report-running'] = True
+
+    return module
 
 
 def test_sanity_shared(module):
@@ -136,9 +144,9 @@ def test_sanity_shared(module):
 
 
 def test_dont_report_running(module, log):
-    module._config['dont-report-running'] = True
+    module._config['report-running'] = False
 
-    # make sure dont-report-running does nothing
+    # make sure report-running=no does nothing
     assert module.execute() == None
 
     assert log.match(message='not reporting the beginning of the pipeline', levelno=logging.INFO)

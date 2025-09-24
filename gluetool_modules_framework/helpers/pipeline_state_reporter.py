@@ -46,7 +46,7 @@ class PipelineStateReporter(gluetool.Module):
         * the first when the module is executed, reporting the pipeline just started. Depending
           on the module position in the pipeline, there were definitely actions taken before sending
           this message.
-          This message can be disabled by ``--dont-report-running`` option.
+          This message can be disabled by ``--report-running=no`` option.
 
         * the second message is sent when the pipeline is being destroyed. it can contain information
           about the error causing pipeline to crash, or export testing results.
@@ -152,13 +152,15 @@ class PipelineStateReporter(gluetool.Module):
                         shared function.
                         """
             },
-            'dont-upload-url-pending': {
-                'help': 'Do not upload URL with pending message',
-                'action': 'store_false'
+            'upload-url-pending': {
+                'help': 'Upload URL with pending message (default: %(default)s).',
+                'metavar': 'yes|no',
+                'default': 'Yes'
             },
-            'dont-upload-url-finished': {
-                'help': 'Do not upload URL with test finished message',
-                'action': 'store_false'
+            'upload-url-finished': {
+                'help': 'Upload URL with test finished message (default: %(default)s).',
+                'metavar': 'yes|no',
+                'default': 'yes'
             },
         }),
         ('Test options', {
@@ -246,10 +248,10 @@ class PipelineStateReporter(gluetool.Module):
             }
         }),
         ('General options', {
-            'dont-report-running': {
-                'help': "Do not send out a 'running' message automatically (default: %(default)s).",
-                'action': 'store_true',
-                'default': 'no'
+            'report-running': {
+                'help': "Send out a 'running' message (default: %(default)s).",
+                'metavar': 'yes|no',
+                'default': 'yes'
             },
             'bus-topic': {
                 'help': 'Topic of the messages sent to the message bus.'
@@ -554,14 +556,15 @@ class PipelineStateReporter(gluetool.Module):
                     target_url=pr_status_url)
 
     def execute(self) -> None:
-        if normalize_bool_option(self.option('dont-report-running')):
+        if not normalize_bool_option(self.option('report-running')):
             self.info('not reporting the beginning of the pipeline')
             return
 
         self.info('reporting pipeline beginning')
 
         if self.option('pr-label'):
-            self._set_pr_status('pending', 'Test started', self.option('dont-upload-url-pending'))
+            self._set_pr_status('pending', 'Test started',
+                                normalize_bool_option(self.option('upload-url-pending')))
 
         self.report_pipeline_state(STATE_RUNNING)
 
@@ -765,7 +768,8 @@ class PipelineStateReporter(gluetool.Module):
             })
 
         if self.option('pr-label'):
-            self._set_pr_status(overall_result, 'Test finished', self.option('dont-upload-url-finished'))
+            self._set_pr_status(overall_result, 'Test finished',
+                                normalize_bool_option(self.option('upload-url-finished')))
 
         self.report_pipeline_state(
             self._get_final_state(failure),

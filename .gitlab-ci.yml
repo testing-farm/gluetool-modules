@@ -145,8 +145,10 @@ testing-farm:
     INFRA_BRANCH: main
     # Use the worker image build in the "container" step
     WORKER_IMAGE: quay.io/testing-farm/worker-public:$CI_PIPELINE_ID
-    CI_ARTIFACT_URL_PREFIX:
+    CI_ARTIFACT_URL_PREFIX_FILE:
       "https://testing-farm.gitlab.io/-/gluetool-modules/-/jobs/$CI_JOB_ID/artifacts/infrastructure"
+    CI_ARTIFACT_URL_PREFIX_DIR:
+      "https://gitlab.com/testing-farm/gluetool-modules/-/jobs/$CI_JOB_ID/artifacts/browse/infrastructure"
     STAGING_CI_API_TAG: latest
   rules:
     - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^release\/.*/

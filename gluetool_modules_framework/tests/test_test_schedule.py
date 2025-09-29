@@ -26,7 +26,10 @@ ASSETS_DIR = os.path.join('gluetool_modules_framework', 'tests', 'assets')
 
 @pytest.fixture(name='module')
 def fixture_module():
-    return create_module(gluetool_modules_framework.testing.test_schedule_runner.TestScheduleRunner)[1]
+    module = create_module(gluetool_modules_framework.testing.test_schedule_runner.TestScheduleRunner)[1]
+    module._config['parallel-limit'] = '8'
+    module._config['max-parallel-limit'] = 32
+    return module
 
 
 @pytest.fixture(name='guest')

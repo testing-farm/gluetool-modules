@@ -43,7 +43,12 @@ class GuestMock(MagicMock):
 
 @pytest.fixture(name='module')
 def fixture_module():
-    return create_module(gluetool_modules_framework.testing.test_schedule_runner_multihost.TestScheduleRunnerMultihost)[1]
+    module = create_module(
+        gluetool_modules_framework.testing.test_schedule_runner_multihost.TestScheduleRunnerMultihost
+    )[1]
+    module._config['parallel-limit'] = '8'
+    module._config['max-parallel-limit'] = 32
+    return module
 
 
 def create_test_schedule(entry_properties):

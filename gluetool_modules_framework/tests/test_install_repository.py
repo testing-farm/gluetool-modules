@@ -164,7 +164,11 @@ def test_guest_setup(module, environment_index, tmpdir, monkeypatch):
         call('command -v dnf'),
         call('curl --output /etc/yum.repos.d/repo4.repo.repo -LO https://example.com/repo4.repo'),
         call('mkdir -pv dummy-path'),
-        call('cd dummy-path; cat dummy.txt | xargs -n1 curl -sO'),
+        call((
+            'cd dummy-path && cat dummy.txt | xargs -n1 curl -sL --retry 5 --remote-name-all -w '
+            '"%{http_code} %{url_effective} %{filename_effective}\\n" '
+            '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
+        )),
         *generate_createrepo_calls(repo_name='test-artifacts', repo_path='dummy-path'),
         call('dnf -y reinstall $(cat dummy.txt)'),
         call('dnf -y downgrade --allowerasing $(cat dummy.txt)'),
@@ -237,7 +241,11 @@ def test_guest_setup_forced_artifacts(module, tmpdir, monkeypatch):
         call('type bootc && sudo bootc status && ((sudo bootc status --format yaml | grep -e "booted: null" -e "image: null") && exit 1 || exit 0)'),
         call('command -v dnf'),
         call('mkdir -pv dummy-path'),
-        call('cd dummy-path; cat dummy.txt | xargs -n1 curl -sO'),
+        call((
+            'cd dummy-path && cat dummy.txt | xargs -n1 curl -sL --retry 5 --remote-name-all -w '
+            '"%{http_code} %{url_effective} %{filename_effective}\\n" '
+            '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
+        )),
         *generate_createrepo_calls(repo_name='test-artifacts', repo_path='dummy-path'),
         call('dnf -y reinstall $(cat dummy.txt)'),
         call('dnf -y downgrade --allowerasing $(cat dummy.txt)'),

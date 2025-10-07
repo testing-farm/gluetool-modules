@@ -16,7 +16,7 @@ from gluetool.result import Ok, Error
 from gluetool.utils import Command
 from gluetool.glue import GlueCommandError, GlueError
 
-from gluetool_modules_framework.libs.artifacts import DEFAULT_DOWNLOAD_PATH, splitFilename
+from gluetool_modules_framework.libs.artifacts import DEFAULT_DOWNLOAD_PATH, splitFilename, packages_download_cmd
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage, \
     SetupGuestReturnType
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
@@ -197,9 +197,10 @@ class InstallRepository(gluetool.Module):
             guest.copy_to(download_packages_filename, download_packages_filename)
 
             # First download all found .rpm files
-            sut_installation.add_step('Download packages', 'cd {}; cat {} | xargs -n1 curl -sO'.format(
-                download_path, download_packages_filename),
-                ignore_exception=True)
+            sut_installation.add_step(
+                'Download packages', packages_download_cmd(download_path, rpm_urls_file=download_packages_filename),
+                ignore_exception=True
+            )
 
             # Create a repository with all the artifacts
             create_repo(sut_installation, 'test-artifacts', download_path)

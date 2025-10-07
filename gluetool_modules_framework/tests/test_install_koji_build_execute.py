@@ -130,7 +130,7 @@ def test_extract_artifacts(module, monkeypatch):
         [  # Expected install commands
             'set -o pipefail; ( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123123',  # noqa
             'set -o pipefail; ( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123124 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123124',  # noqa
-            'mkdir -pv dummy-path; cat rpms-list-* | xargs cp -t dummy-path',
+            'mkdir -pv dummy-path; cat rpms-list-* | xargs -n1 bash -c "cp -t dummy-path \\$1 && echo $(basename \\$1) >> dummy-path/pkglist" --',
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='dummy-path'),
             'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list',  # noqa
             'dnf -y reinstall $(cat rpms-list) || true',
@@ -152,7 +152,7 @@ def test_extract_artifacts(module, monkeypatch):
             'set -o pipefail; ( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123124 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123124',  # noqa
             'set -o pipefail; ( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src skip-installing-me-1 || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src skip-installing-me-1 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-skip-installing-me-1',  # noqa
             'set -o pipefail; ( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src skip-installing-me-2 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src skip-installing-me-2 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-skip-installing-me-2',  # noqa
-            'mkdir -pv dummy-path; cat rpms-list-* | xargs cp -t dummy-path',
+            'mkdir -pv dummy-path; cat rpms-list-* | xargs -n1 bash -c "cp -t dummy-path \\$1 && echo $(basename \\$1) >> dummy-path/pkglist" --',
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='dummy-path'),
             'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | grep -Fv "$(cat rpms-list-skip-installing-me-1)" | grep -Fv "$(cat rpms-list-skip-installing-me-2)" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list',  # noqa
             'dnf -y reinstall $(cat rpms-list) || true',
@@ -168,7 +168,7 @@ def test_extract_artifacts(module, monkeypatch):
         None,  # No additional input artifacts, see `mock_guest` function for the base artifacts
         [  # Expected install commands
             'set -o pipefail; ( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src forced-artifact || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src forced-artifact ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-forced-artifact',  # noqa
-            'mkdir -pv dummy-path; cat rpms-list-* | xargs cp -t dummy-path',
+            'mkdir -pv dummy-path; cat rpms-list-* | xargs -n1 bash -c "cp -t dummy-path \\$1 && echo $(basename \\$1) >> dummy-path/pkglist" --',
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='dummy-path'),
             'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list',  # noqa
             'dnf -y reinstall $(cat rpms-list) || true',
@@ -234,7 +234,7 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
     koji_commands = [
         'set -o pipefail; ( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123123',  # noqa
         'set -o pipefail; ( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123124 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123124',  # noqa
-        'mkdir -pv dummy-path; cat rpms-list-* | xargs cp -t dummy-path',
+        'mkdir -pv dummy-path; cat rpms-list-* | xargs -n1 bash -c "cp -t dummy-path \\$1 && echo $(basename \\$1) >> dummy-path/pkglist" --',
         *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='dummy-path'),
         'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list',  # noqa
         'dnf -y reinstall $(cat rpms-list) || true',
@@ -245,7 +245,12 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
     copr_commands = [
         'mkdir -pv dummy-path',
         'curl -v dummy_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-dummy_project-1.repo',
-        'cd dummy-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" dummy_rpm_url1 dummy_rpm_url2 dummy_srpm_url1 dummy_srpm_url2',  # noqa
+        (
+            'cd dummy-path && curl -sL --retry 5 --remote-name-all -w '
+            '"%{http_code} %{url_effective} %{filename_effective}\\n" '
+            'dummy_rpm_url1 dummy_rpm_url2 dummy_srpm_url1 dummy_srpm_url2 '
+            '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
+        ),
         *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='dummy-path'),
         'dnf -y reinstall dummy_rpm_url1 || true',
         'dnf -y reinstall dummy_rpm_url2 || true',
@@ -290,7 +295,7 @@ def test_guest_setup_yum(module, local_guest, tmpdir):
         call('command -v dnf'),
         call('set -o pipefail; ( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123123 || koji download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123123'),  # noqa
         call('set -o pipefail; ( brew download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch i686 --arch src 123123124 || brew download-task --arch noarch --arch x86_64 --arch i686 --arch src 123123124 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123123124'),  # noqa
-        call('mkdir -pv dummy-path; cat rpms-list-* | xargs cp -t dummy-path'),
+        call('mkdir -pv dummy-path; cat rpms-list-* | xargs -n1 bash -c "cp -t dummy-path \\$1 && echo $(basename \\$1) >> dummy-path/pkglist" --'),
         *generate_createrepo_calls(repo_name='test-artifacts', repo_path='dummy-path'),
         call('ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list'),  # noqa
         call('yum -y reinstall $(cat rpms-list)'),

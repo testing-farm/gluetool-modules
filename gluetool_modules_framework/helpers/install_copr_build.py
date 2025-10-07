@@ -8,7 +8,7 @@ import gluetool
 from gluetool.log import log_dict
 from gluetool.result import Ok, Error
 from gluetool_modules_framework.infrastructure.copr import CoprTask
-from gluetool_modules_framework.libs.artifacts import DEFAULT_DOWNLOAD_PATH
+from gluetool_modules_framework.libs.artifacts import DEFAULT_DOWNLOAD_PATH, packages_download_cmd
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage, \
     SetupGuestReturnType
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
@@ -139,10 +139,7 @@ class InstallCoprBuild(gluetool.Module):
             # download all artifacts, including excluded
             sut_installation.add_step(
                 'Download rpms from copr',
-                (
-                    'cd {} && '
-                    'curl -sL --retry 5 --remote-name-all -w "Downloaded: %{{url_effective}}\\n" {}'
-                ).format(download_path, ' '.join(build.rpm_urls + build.srpm_urls)),
+                packages_download_cmd(download_path, rpm_urls=(build.rpm_urls + build.srpm_urls)),
                 local=has_bootc
             )
 

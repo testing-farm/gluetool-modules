@@ -151,11 +151,13 @@ def test_loadable(module):
             'mkdir -pv some-download-path',
             'curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo',
             (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm '
                 'https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm '
-                'https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
+                'https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
             ),
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'dnf -y reinstall https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm || true',
@@ -183,33 +185,39 @@ def test_loadable(module):
             'mkdir -pv some-download-path',
             'curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo',
             (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm '
                 'https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm '
-                'https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
+                'https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
             ),
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'dnf -y reinstall https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm || true',
             'dnf -y reinstall https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm || true',
             'curl -v dummy2_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project2-2.repo',
             (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm '
                 'https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm '
                 'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm '
-                'https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm'
+                'https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
             ),
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'dnf -y reinstall https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm || true',
             'dnf -y reinstall https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm || true',
             'curl -v dummy3_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project3-3.repo',
             (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm '
                 'https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm '
                 'https://example.com/dummy3_rpm_name1-1.0.1-el7.src.rpm '
-                'https://example.com/dummy3_rpm_name2-1.0.1-el7.src.rpm'
+                'https://example.com/dummy3_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
             ),
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'dnf -y reinstall https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm || true',
@@ -272,23 +280,29 @@ def test_loadable(module):
             'mkdir -pv some-download-path',
             'curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo',
             (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
             ),
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'curl -v dummy2_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project2-2.repo',
             (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm'
+                'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
             ),
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'curl -v dummy3_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project3-3.repo',
             (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy3_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.src.rpm'
+                'https://example.com/dummy3_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
             ),
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'dnf -y reinstall https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm || true',
@@ -335,16 +349,20 @@ def test_loadable(module):
             'mkdir -pv some-download-path',
             'curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo',
             (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
             ),
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'curl -v dummy2_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project2-2.repo',
             (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm'
+                'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
             ),
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path')
         ],
@@ -374,16 +392,20 @@ def test_loadable(module):
             'mkdir -pv some-download-path',
             'curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo',
             (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
             ),
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'curl -v dummy2_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project2-2.repo',
             (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm'
+                'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
             ),
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'dnf -y reinstall https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm || true',
@@ -422,11 +444,13 @@ def test_loadable(module):
             'mkdir -pv some-download-path',
             'curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo',
             (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm '
                 'https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm '
-                'https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
+                'https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
             ),
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             'dnf -y reinstall https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm || true',
@@ -487,11 +511,13 @@ def test_no_dnf(module_shared_patched, tmpdir):
         call('mkdir -pv some-download-path'),
         call('curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo'),
         call(
-            'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+            'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+            '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
             'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm '
             'https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
             'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm '
-            'https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm'
+            'https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm '
+            '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
         ),
         *generate_createrepo_calls(repo_name='test-artifacts', repo_path='some-download-path'),
         call('yum -y reinstall https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm'),
@@ -592,9 +618,11 @@ def test_repo_download_fails(module_shared_patched, tmpdir):
             ['bash', '-c', 'mkdir -pv some-download-path'],
             ['bash', '-c', 'curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo'],
             ['bash', '-c', (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm')],
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\'')],
             ['bash', '-c', (
                 'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install '
                 '--package=https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm '
@@ -619,19 +647,25 @@ def test_repo_download_fails(module_shared_patched, tmpdir):
             ['bash', '-c', 'mkdir -pv some-download-path'],
             ['bash', '-c', 'curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo'],
             ['bash', '-c', (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm')],
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\'')],
             ['bash', '-c', 'curl -v dummy2_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project2-2.repo'],
             ['bash', '-c', (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm')],
+                'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\'')],
             ['bash', '-c', 'curl -v dummy3_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project3-3.repo'],
             ['bash', '-c', (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy3_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.src.rpm')],
+                'https://example.com/dummy3_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\'')],
             ['bash', '-c', (
                 'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install '
                 '--package=https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm '
@@ -683,19 +717,25 @@ def test_repo_download_fails(module_shared_patched, tmpdir):
             ['bash', '-c', 'mkdir -pv some-download-path'],
             ['bash', '-c', 'curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo'],
             ['bash', '-c', (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm')],
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\'')],
             ['bash', '-c', 'curl -v dummy2_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project2-2.repo'],
             ['bash', '-c', (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm')],
+                'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\'')],
             ['bash', '-c', 'curl -v dummy3_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project3-3.repo'],
             ['bash', '-c', (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy3_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.src.rpm')],
+                'https://example.com/dummy3_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\'')],
             ['bash', '-c', (
                 'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install '
                 '--package=https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm '
@@ -736,14 +776,18 @@ def test_repo_download_fails(module_shared_patched, tmpdir):
             ['bash', '-c', 'mkdir -pv some-download-path'],
             ['bash', '-c', 'curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo'],
             ['bash', '-c', (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm')],
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\'')],
             ['bash', '-c', 'curl -v dummy2_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project2-2.repo'],
             ['bash', '-c', (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm')],
+                'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\'')],
         ],
         [  # Expected generated files
             '0-Create-artifacts-directory.txt',
@@ -771,14 +815,18 @@ def test_repo_download_fails(module_shared_patched, tmpdir):
             ['bash', '-c', 'mkdir -pv some-download-path'],
             ['bash', '-c', 'curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo'],
             ['bash', '-c', (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm')],
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\'')],
             ['bash', '-c', 'curl -v dummy2_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project2-2.repo'],
             ['bash', '-c', (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm')],
+                'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\'')],
             ['bash', '-c', (
                 'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install '
                 '--package=https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm '
@@ -814,9 +862,11 @@ def test_repo_download_fails(module_shared_patched, tmpdir):
             ['bash', '-c', 'mkdir -pv some-download-path'],
             ['bash', '-c', 'curl -v dummy1_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project1-1.repo'],
             ['bash', '-c', (
-                'cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" '
+                'cd some-download-path && curl -sL --retry 5 --remote-name-all '
+                '-w "%{http_code} %{url_effective} %{filename_effective}\\n" '
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm')],
+                'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm '
+                '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\'')],
             ['bash', '-c', (
                 'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install '
                 '--package=https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm '

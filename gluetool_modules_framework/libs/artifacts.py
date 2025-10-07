@@ -1,16 +1,20 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+from os import PathLike
+from pathlib import Path
+
 import gluetool
 
 # Type annotations
-from typing import TYPE_CHECKING, cast, Any, Optional, Tuple  # noqa
+from typing import TYPE_CHECKING, cast, Any, List, Optional, Tuple, Union  # noqa
 
 if TYPE_CHECKING:
     from gluetool.log import ContextAdapter  # noqa
 
 
 DEFAULT_DOWNLOAD_PATH = '/var/share/test-artifacts'
+DEFAULT_PACKAGE_LIST = 'pkglist'
 
 
 class NoArtifactsError(gluetool.glue.SoftGlueError):
@@ -59,6 +63,52 @@ def artifacts_location(module: gluetool.Module, local_path: str, logger: Optiona
         )
 
     return local_path
+
+
+def package_list_path(pkglist: Union[str, PathLike[str]] = DEFAULT_PACKAGE_LIST, *,
+                      basepath: Optional[Union[str, PathLike[str]]] = None) -> PathLike[str]:
+    """
+    Helper to resolve package list path.
+
+    :param pkglist: Custom package list path.
+    :param basepath: Optional path to prepend to the package list path if it is relative.
+    :returns: Path object of the package list.
+    """
+
+    filepath = Path(pkglist)
+
+    if not filepath.is_absolute() and basepath is not None:
+        filepath = Path(basepath) / filepath
+
+    return filepath
+
+
+def packages_download_cmd(download_path: str, rpm_urls: Optional[List[str]] = None,
+                          rpm_urls_file: Optional[str] = None, *, pkglist: str = DEFAULT_PACKAGE_LIST) -> str:
+    """
+    Helper to generate a command to download package files to a directory.
+
+    :param download_path: Path of the target directory.
+    :param rpm_urls: List of RPM URLs to fetch.
+    :param rpm_urls_file: Path to a file on the target containing the list of URLs to download.
+    :patam pkglist: Optional override for the location of the list of downloaded packages.
+    :raises :py:class:`ValueError` if incorrect arguments are passed in.
+    """
+
+    if (rpm_urls is None) is (rpm_urls_file is None):
+        raise ValueError("Exactly one of 'rpm_urls' or 'rpm_urls_file' is required.")
+
+    # Base curl command, which outputs the downloaded filename to a file
+    curl_cmd = 'curl -sL --retry 5 --remote-name-all -w "%{http_code} %{url_effective} %{filename_effective}\\n"'
+
+    if rpm_urls is not None:
+        curl_cmd = '{} {}'.format(curl_cmd, ' '.join(rpm_urls))
+    else:
+        curl_cmd = 'cat {} | xargs -n1 {}'.format(rpm_urls_file, curl_cmd)
+
+    return (
+        'cd {} && {} | awk -v pkglist="{}" \'{{if ($1 == "200") {{print "Downloaded:", $2; print $3 >> pkglist}}}}\''
+    ).format(download_path, curl_cmd, package_list_path(pkglist))
 
 
 # With python3 we can use `Subject` from `dnf` package

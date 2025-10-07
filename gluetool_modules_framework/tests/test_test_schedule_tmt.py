@@ -1117,7 +1117,7 @@ def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir, cl
             '''\
 mkdir -pv some-download-path
 curl -v http://copr/project.repo --retry 5 --output /etc/yum.repos.d/copr_build-owner_project-1.repo
-cd some-download-path && curl -sL --retry 5 --remote-name-all -w "Downloaded: %{url_effective}\\n" http://copr/project/one.rpm http://copr/project/two.rpm http://copr/project/one.src.rpm http://copr/project/two.src.rpm''',
+cd some-download-path && curl -sL --retry 5 --remote-name-all -w "%{http_code} %{url_effective} %{filename_effective}\\n" http://copr/project/one.rpm http://copr/project/two.rpm http://copr/project/one.src.rpm http://copr/project/two.src.rpm | awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\'''',
             *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             '''\
 dnf -y reinstall http://copr/project/one.rpm || true
@@ -1215,7 +1215,7 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir, cl
     with open(os.path.join(tmpdir, 'artifact-installation-guest0', INSTALL_COMMANDS_FILE)) as f:
         assert f.read() == '\n'.join([
             r'''set -o pipefail; ( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123 || koji download-task --arch noarch --arch x86_64 --arch src 123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123''',
-            r'''mkdir -pv some-download-path; cat rpms-list-* | xargs cp -t some-download-path''',
+            r'''mkdir -pv some-download-path; cat rpms-list-* | xargs -n1 bash -c "cp -t some-download-path \$1 && echo $(basename \$1) >> some-download-path/pkglist" --''',
             *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             r'''ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\1 \0/" | awk "{print \$2}" | tee rpms-list
 dnf -y reinstall $(cat rpms-list) || true

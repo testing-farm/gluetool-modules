@@ -7,7 +7,7 @@ from gluetool.action import Action
 from gluetool.log import log_dict
 from gluetool.result import Ok, Error
 
-from gluetool_modules_framework.libs.artifacts import DEFAULT_DOWNLOAD_PATH
+from gluetool_modules_framework.libs.artifacts import DEFAULT_DOWNLOAD_PATH, package_list_path
 from gluetool_modules_framework.libs.guest_setup import guest_setup_log_dirpath, GuestSetupOutput, GuestSetupStage, \
     SetupGuestReturnType
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
@@ -143,11 +143,13 @@ class InstallKojiBuildExecute(gluetool.Module):
 
         # Copy all rpms to the destination directory and make them available in a repo. The files are duplicated to
         # avoid breaking anything relying on them being present under the original path.
+        # Package names are appended to the repo package list once successfuly copied.
         if not has_bootc:
-            sut_installation.add_step(
-                'Copy rpms to the repo directory',
-                f'mkdir -pv {download_path}; cat rpms-list-* | xargs cp -t {download_path}'
-            )
+            sut_installation.add_step('Copy rpms to the repo directory', (
+                f'mkdir -pv {download_path}; cat rpms-list-* | xargs -n1 bash -c '
+                f'"cp -t {download_path} \\$1 && '
+                f'echo $(basename \\$1) >> {package_list_path(basepath=download_path)}" --'
+            ))
             create_repo(sut_installation, 'test-artifacts', download_path)
 
         excluded_packages_regexp = '|'.join(['^{} '.format(package) for package in excluded_packages])

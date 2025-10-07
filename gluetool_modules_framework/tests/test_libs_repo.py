@@ -13,9 +13,13 @@ from gluetool_modules_framework.libs.guest import Guest
 from gluetool_modules_framework.libs.sut_installation import SUTInstallation
 
 
-def generate_cmds(repo_path: str = '/var/share/test-artifacts', repo_name: str = 'test-artifacts') -> List[str]:
+def generate_cmds(repo_path: str = '/var/share/test-artifacts', repo_name: str = 'test-artifacts', pkglist: str = 'pkglist') -> List[str]:
+    pkglist = f'{repo_path}/{pkglist}'
     return [
-        f'yum install -y createrepo; createrepo {shlex.quote(repo_path)}',
+        (
+            f'yum install -y createrepo && cd {shlex.quote(repo_path)} && '
+            f'touch {shlex.quote(pkglist)} && createrepo --pkglist {shlex.quote(pkglist)} .'
+        ),
         f'echo -e "[{repo_name}]\nname={repo_name}\ndescription=Test artifacts repository\nbaseurl=file://{urllib.parse.quote(repo_path)}\npriority=1\nenabled=1\ngpgcheck=0\n\n" > /etc/yum.repos.d/{repo_name}.repo'
     ]
 
@@ -24,12 +28,16 @@ def generate_calls(*args: Any, **kwargs: Any) -> List[_Call]:
     return [call(cmd) for cmd in generate_cmds(*args, **kwargs)]
 
 
-def generate_translated_cmds(repo_path: str = '/var/share/test-artifacts', repo_name: str = 'test-artifacts') -> List[str]:
+def generate_translated_cmds(repo_path: str = '/var/share/test-artifacts', repo_name: str = 'test-artifacts', pkglist: str = 'pkglist') -> List[str]:
     # The functions `generate_cmds` and `generate_calls` are used in other tests.
     # However, they are not called via `SUTInstallation.run`, which will change yum commands
     # to dnf commands if dnf is available.
+    pkglist = f'{repo_path}/{pkglist}'
     return [
-        f'dnf install --allowerasing -y createrepo; createrepo {shlex.quote(repo_path)}',
+        (
+            f'dnf install --allowerasing -y createrepo && cd {shlex.quote(repo_path)} && '
+            f'touch {shlex.quote(pkglist)} && createrepo --pkglist {shlex.quote(pkglist)} .'
+        ),
         f'echo -e "[{repo_name}]\nname={repo_name}\ndescription=Test artifacts repository\nbaseurl=file://{urllib.parse.quote(repo_path)}\npriority=1\nenabled=1\ngpgcheck=0\n\n" > /etc/yum.repos.d/{repo_name}.repo'
     ]
 

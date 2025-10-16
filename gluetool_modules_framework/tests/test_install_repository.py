@@ -57,6 +57,7 @@ def fixture_module(monkeypatch):
                 Artifact(id='https://example.com/repo2', packages=None, type='repository'),
                 Artifact(id='https://example.com/repo3', packages=['package-install-1', 'package2'], type='repository'),
                 Artifact(id='https://example.com/repo4.repo', type='repository-file'),
+                Artifact(id='https://example.com/repo5', type='repository-file'),
                 Artifact(id='wrongid', packages=None, type='wongtype'),
             ]),
             TestingEnvironment(artifacts=[Artifact(id='wrongid', packages=None, type='wongtype')]),
@@ -162,7 +163,8 @@ def test_guest_setup(module, environment_index, tmpdir, monkeypatch):
     execute_calls = [
         call('type bootc && sudo bootc status && ((sudo bootc status --format yaml | grep -e "booted: null" -e "image: null") && exit 1 || exit 0)'),
         call('command -v dnf'),
-        call('curl --output /etc/yum.repos.d/repo4.repo.repo -LO https://example.com/repo4.repo'),
+        call('curl -sL --retry 5 https://example.com/repo4.repo | tee /etc/yum.repos.d/repo4.repo'),
+        call('curl -sL --retry 5 https://example.com/repo5 | tee /etc/yum.repos.d/repo5.repo'),
         call('mkdir -pv dummy-path'),
         call((
             'cd dummy-path && cat dummy.txt | xargs -n1 curl -sL --retry 5 --remote-name-all -w '
@@ -374,7 +376,8 @@ def test_guest_setup_bootc(module, environment_index, tmpdir, monkeypatch):
     execute_calls = [
         call('type bootc && sudo bootc status && ((sudo bootc status --format yaml | grep -e "booted: null" -e "image: null") && exit 1 || exit 0)'),
         call('command -v dnf'),
-        call('curl --output /etc/yum.repos.d/repo4.repo.repo -LO https://example.com/repo4.repo'),
+        call('curl -sL --retry 5 https://example.com/repo4.repo | tee /etc/yum.repos.d/repo4.repo'),
+        call('curl -sL --retry 5 https://example.com/repo5 | tee /etc/yum.repos.d/repo5.repo'),
     ]
 
     execute_mock.assert_has_calls(execute_calls)

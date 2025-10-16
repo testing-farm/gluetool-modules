@@ -289,7 +289,10 @@ class InstallRepository(gluetool.Module):
             repo_name = artifact.id.split('/')[-1]
             sut_installation.add_step(
                 'Download repository file',
-                'curl --output /etc/yum.repos.d/{}.repo -LO {}'.format(repo_name, artifact.id)
+                'curl -sL --retry 5 {} | tee /etc/yum.repos.d/{}'.format(
+                    artifact.id,
+                    repo_name if repo_name.endswith('.repo') else '{}.repo'.format(repo_name)
+                )
             )
 
     def setup_guest_install_repository(

@@ -23,7 +23,7 @@ from gluetool.result import Result
 from gluetool.utils import cached_property, dict_update, wait, normalize_multistring_option, render_template
 from gluetool.utils import IncompatibleOptionsError
 
-from typing import Any, Dict, List, NamedTuple, Optional, Union, Tuple, Callable, Type, cast, overload  # noqa
+from typing import Any, Dict, List, Mapping, NamedTuple, Optional, Union, Tuple, Callable, Type, cast, overload  # noqa
 from typing_extensions import TypedDict, Literal, NotRequired
 from gluetool_modules_framework.helpers.rules_engine import ContextType
 
@@ -156,6 +156,31 @@ TaskInfoType = TypedDict(
         'label': NotRequired[str]
     }
 )
+
+
+def flatten_dict(dictionary: Mapping[Any, Any], parent_key: str = '', separator: str = '.') -> Dict[str, Any]:
+    """
+    Flatten a nested dictionary
+    :param dictionary: The dictionary to flatten.
+    :param parent_key: The string to prepend to dictionary's keys
+    :param separator: The string used to separate flattened keys
+    :return: A flattened dictionary
+    """
+
+    items: List[Tuple[str, Any]] = []
+    for key, value in dictionary.items():
+        new_key = str(parent_key) + separator + str(key) if parent_key else str(key)
+        if isinstance(value, collections.abc.Mapping):
+            items.extend(flatten_dict(value, new_key, separator).items())
+        elif isinstance(value, (str, bytes)):
+            # handle strings before iterables to avoid infinite recursion (strings are iterables)
+            items.append((new_key, value))
+        elif isinstance(value, collections.abc.Iterable):
+            for k, v in enumerate(value):
+                items.extend(flatten_dict({str(k): v}, new_key, separator).items())
+        else:
+            items.append((new_key, value))
+    return dict(items)
 
 
 def _call_api(session: Any, logger: ContextAdapter, method: str, *args: Any, **kwargs: Any) -> Any:
@@ -457,7 +482,8 @@ class KojiTask(LoggerMixin, object):
                 build['source'],
                 # use the first tag as build target
                 tags[0]['tag.name'],
-                build['extra']['_export_source']
+                # store the whole extra info in task's options
+                flatten_dict(build['extra']) | {'method': 'cg_import'}
             )
 
             # pretend the task is a 'build' task to pass the _is_valid check
@@ -657,18 +683,18 @@ class KojiTask(LoggerMixin, object):
         if arches is not None:
             return TaskArches(False, [arch.strip() for arch in arches.split(' ')])
 
-        # workaround for imported konflux builds - they have no subtasks
-        if self._task_request.options.get('source', None) == 'konflux':
+        children = self._build_arch_subtasks
+        child_arches = []
+
+        # workaround for imported builds without subtasks (e.g. from konflux)
+        if not children and self.is_cg_imported_task:
             # get architectures of rpm artifacts
             arches_unique = set(self.build_artifacts)
             # and exclude sources
             arches_unique.discard('src')
             return TaskArches(True, list(arches_unique))
 
-        children = self._build_arch_subtasks
-        child_arches = []
-
-        # Workarond for TFT-2460
+        # Workaround for TFT-2460
         # If there is a noarch build subtask, or noarch label, we can assume that the task is noarch
         # even if task arch is not noarch
         for child in children:
@@ -1342,6 +1368,10 @@ class KojiTask(LoggerMixin, object):
     @cached_property
     def is_newer_than_latest(self) -> bool:
         return self.compare_nvr(self.latest) > 0
+
+    @cached_property
+    def is_cg_imported_task(self) -> bool:
+        return bool(self._task_request.options.get('method') == 'cg_import')
 
 
 class BrewTask(KojiTask):

@@ -87,7 +87,8 @@ def fixture_koji_module(monkeypatch, rules_engine):
         'web-url': 'https://koji.fedoraproject.org/koji',
         'baseline-tag-map': testing_asset('koji', 'baseline-tag-map.yaml'),
         'api-version-retry-tick': 1,
-        'api-version-retry-timeout': 2
+        'api-version-retry-timeout': 2,
+        'tag-history-retry-tick': gluetool_modules_framework.infrastructure.koji_fedora.DEFAULT_TAG_HISTORY_RETRY_TICK
     }
 
     patch_shared(monkeypatch, mod, {}, callables={
@@ -131,7 +132,8 @@ def fixture_brew_module(monkeypatch, rules_engine):
         'docker-image-url-template': "{{ MODULE.option('pkgs-url') }}/packages/{{ TASK.component }}/{{ TASK.version }}/{{ TASK.release }}/images/{{ ARCHIVE['filename'] }}",
         'baseline-tag-map': testing_asset('koji', 'baseline-tag-map.yaml'),
         'api-version-retry-tick': 1,
-        'api-version-retry-timeout': 2
+        'api-version-retry-timeout': 2,
+        'tag-history-retry-tick': gluetool_modules_framework.infrastructure.koji_fedora.DEFAULT_TAG_HISTORY_RETRY_TICK
     }
 
     patch_shared(monkeypatch, mod, {}, callables={
@@ -195,7 +197,8 @@ def test_task_by_id(koji_session, koji_module):
 
 
 @pytest.mark.parametrize('koji_session', [
-    48742482
+    48742482,
+    69327928
 ], indirect=True)
 def test_brew_task_by_id(koji_session, brew_module):
     """
@@ -507,3 +510,40 @@ def test_artifact_namespace(koji_session, koji_module, brew_module, log):
             levelno=logging.WARN,
             message="Forcing ARTIFACT_NAMESPACE to '{}'".format(artifact)
         )
+
+
+@pytest.mark.parametrize('koji_session', [
+    69327928
+], indirect=True)
+def test_brew_task_cg_import(koji_session, brew_module):
+    """
+    Test if artifact is correctly reported as cg imported.
+    """
+
+    brew_module.tasks(task_ids=[koji_session])
+
+    assert brew_module.primary_task().is_cg_imported_task
+
+
+def test_flatten_dict():
+    """
+    Test if ``flattend_dict`` is behaving as expected.
+    """
+
+    flatten_dict = gluetool_modules_framework.infrastructure.koji_fedora.flatten_dict
+
+    # flat dictionaries remain the same
+    d = {'spam': 1, 'bacon': 2}
+    assert flatten_dict(d) == d
+
+    # iterables are unpacked and the key is extended by enumeration
+    d = {'spam': 1, 'bacon': [2, 3, 4]}
+    assert flatten_dict(d) == {'spam': 1, 'bacon.0': 2, 'bacon.1': 3, 'bacon.2': 4}
+
+    # make sure that strigs values (also iterables) are handled correctly
+    d = {'spam': 1, 'bacon': ['spam', 'egg', 'sausage']}
+    assert flatten_dict(d) == {'spam': 1, 'bacon.0': 'spam', 'bacon.1': 'egg', 'bacon.2': 'sausage'}
+
+    # yo dawg I heard you like dicts so I put nested dict in a dict so you can have dict nest in a dict
+    d = {'spam': 1, 'bacon': {2: 'egg', 3: {'sausage': 4, 'aubergine': 5}}}
+    assert flatten_dict(d) == {'spam': 1, 'bacon.2': 'egg', 'bacon.3.sausage': 4, 'bacon.3.aubergine': 5}

@@ -1,0 +1,30 @@
+---
+
+baseline: None
+build_id: 3879853
+component: cuda-opencl-13-0
+destination_tag: None
+full_name: task '69327928' build 'cuda-opencl-13-0-13.0.85-1' target 'supp-rhel-10.1-z-gate-bypass'
+has_artifacts: true
+issuer: rhel-accelerators-bot
+owner: rhel-accelerators-bot
+nvr: cuda-opencl-13-0-13.0.85-1
+nvr_promoted: cuda-opencl-13-0-13.0.85-1
+pkgs_url: http://kojipkgs.fedoraproject.org/brewroot
+release: '1'
+scratch: false
+draft: false
+short_name: 69327928:cuda-opencl-13-0-13.0.85-1
+srpm_names:
+  - cuda-opencl-13-0-13.0.85-1.src.rpm
+srpm_urls:
+  - http://kojipkgs.fedoraproject.org/brewroot/packages/cuda-opencl-13-0/13.0.85/1/src/cuda-opencl-13-0-13.0.85-1.src.rpm
+rpm_urls:
+  - http://kojipkgs.fedoraproject.org/brewroot/packages/cuda-opencl-13-0/13.0.85/1/x86_64/cuda-opencl-13-0-13.0.85-1.x86_64.rpm
+  - http://kojipkgs.fedoraproject.org/brewroot/packages/cuda-opencl-13-0/13.0.85/1/x86_64/cuda-opencl-devel-13-0-13.0.85-1.x86_64.rpm
+target: supp-rhel-10.1-z-gate-bypass
+id: 69327928
+dispatch_id: 69327928
+url: https://kojipkgs.fedoraproject.org.com/brew/taskinfo?taskID=69327928
+version: '13.0.85'
+rhel: '10'

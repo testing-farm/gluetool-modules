@@ -1,0 +1,166 @@
+---
+
+# Represents a task not built by brew but imported from content generator
+
+getAPIVersion: Mock Koji Session 1.0
+
+getBuildTarget:
+  supp-rhel-10.1-z-gate-bypass:
+    dest_tag_name: null
+
+getTaskInfo:
+  69327928:
+    arch: noarch
+    awaited: null
+    channel_id: 1
+    completion_time: '2025-10-30 14:30:56.983053'
+    completion_ts: 1761834656.98305
+    create_time: '2025-10-30 14:30:56.983053'
+    create_ts: 1761834656.98305
+    host_id: null
+    id: 69327928
+    label: null
+    method: cg_import
+    owner: 7841
+    parent: null
+    priority: 20
+    request: []
+    start_time: null
+    start_ts: null
+    state: 2
+    waiting: null
+    weight: 1.0
+
+listBuilds:
+  69327928:
+    - build_id: 3879853
+      completion_time: '2025-10-30 13:52:19'
+      completion_ts: 1761832339.0
+      creation_event_id: 65907310
+      creation_time: '2025-10-30 14:30:57.004100'
+      creation_ts: 1761834657.0041
+      draft: false
+      epoch: null
+      extra:
+        typeinfo: {}
+      name: cuda-opencl-13-0
+      nvr: cuda-opencl-13-0-13.0.85-1
+      owner_id: 7841
+      owner_name: rhel-accelerators-bot
+      package_id: 87440
+      package_name: cuda-opencl-13-0
+      promoter_id: null
+      promoter_name: null
+      promotion_time: null
+      promotion_ts: null
+      release: '1'
+      source: ''
+      start_time: '2025-10-30 13:52:19'
+      start_ts: 1761832339.0
+      state: 1
+      task_id: 69327928
+      version: 13.0.85
+      volume_id: 0
+      volume_name: DEFAULT
+
+getTaskChildren:
+  69327928: []
+
+getUser:
+  7841:
+    id: 7841
+    krb_principals:
+    name: rhel-accelerators-bot
+    status: 0
+    usertype: 0
+
+queryHistory:
+  tag_listing:
+    - active: null
+      build.state: 1
+      build_id: 3879853
+      create_event: 65909302
+      create_ts: 1761839201.4031
+      creator_id: 7089
+      creator_name: releng-jenkins-csb-rhelcmp
+      epoch: null
+      name: cuda-opencl-13-0
+      release: '1'
+      revoke_event: 66043738
+      revoke_ts: 1762890295.62324
+      revoker_id: 7089
+      revoker_name: releng-jenkins-csb-rhelcmp
+      tag.name: supp-rhel-10.1-z-pending
+      tag_id: 159104
+      version: 13.0.85
+    - active: true
+      build.state: 1
+      build_id: 3879853
+      create_event: 65908743
+      create_ts: 1761836137.12559
+      creator_id: 7841
+      creator_name: rhel-accelerators-bot
+      epoch: null
+      name: cuda-opencl-13-0
+      release: '1'
+      revoke_event: null
+      revoke_ts: null
+      revoker_id: null
+      revoker_name: null
+      tag.name: supp-rhel-10.1-z-gate-bypass
+      tag_id: 173936
+      version: 13.0.85
+    - active: true
+      build.state: 1
+      build_id: 3879853
+      create_event: 65909507
+      create_ts: 1761840648.94043
+      creator_id: 6825
+      creator_name: spmm-release-bot
+      epoch: null
+      name: cuda-opencl-13-0
+      release: '1'
+      revoke_event: null
+      revoke_ts: null
+      revoker_id: null
+      revoker_name: null
+      tag.name: RHEA-2025:21025-released
+      tag_id: 175082
+      version: 13.0.85
+
+listBuildRPMs:
+  3879853:
+    - arch: x86_64
+      build_id: 3879853
+      buildroot_id: 14212283
+      buildtime: 1755228043
+      draft: false
+      epoch: null
+      external_repo_id: 0
+      external_repo_name: INTERNAL
+      extra: null
+      id: 15724407
+      metadata_only: false
+      name: cuda-opencl-13-0
+      nvr: cuda-opencl-13-0-13.0.85-1
+      payloadhash: 11143882de6d9181c5f0bba08fcb1b0c
+      release: '1'
+      size: 36706
+      version: 13.0.85
+    - arch: x86_64
+      build_id: 3879853
+      buildroot_id: 14212283
+      buildtime: 1755228043
+      draft: false
+      epoch: null
+      external_repo_id: 0
+      external_repo_name: INTERNAL
+      extra: null
+      id: 15724408
+      metadata_only: false
+      name: cuda-opencl-devel-13-0
+      nvr: cuda-opencl-devel-13-0-13.0.85-1
+      payloadhash: 51706f086e74c1738f8255e7720e0fbb
+      release: '1'
+      size: 124250
+      version: 13.0.85

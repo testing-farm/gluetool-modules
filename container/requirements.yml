@@ -3,6 +3,7 @@
 # List of collections used by the guest-setup tests
 #
 collections:
+  - community.crypto
   - community.general
   # Version 1.6+ breaks standard-test-roles
   # Unsupported parameters for (ansible.posix.synchronize) module: ssh_args

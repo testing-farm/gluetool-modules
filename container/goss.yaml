@@ -98,6 +98,7 @@ command:
     exit-status: 0
     stdout:
       - /ansible.posix[[:space:]]+1.5.4/
+      - community.crypto
       - community.general
     timeout: 100000
 

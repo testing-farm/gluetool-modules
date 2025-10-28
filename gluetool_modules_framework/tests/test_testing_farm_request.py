@@ -412,7 +412,7 @@ def test_webhook_http_error(monkeypatch, module, requests_mock, request2, log):
     request.webhook()
     assert log.match(
         levelno=logging.WARNING,
-        message="failed to post to webhook: Condition 'posting update to webhook someurl' failed to pass within given time"
+        message="failed to post to webhook: Condition 'posting update to webhook someurl' failed to pass within given time."
     )
 
 

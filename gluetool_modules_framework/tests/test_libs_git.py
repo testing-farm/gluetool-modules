@@ -208,7 +208,14 @@ def test_clone_shallow_failed(remote_git_repository, monkeypatch, log, attribute
 
     monkeypatch.setattr(gluetool.utils, 'Command', MockCommand)
 
-    with pytest.raises(gluetool.GlueError, match="Condition 'cloning with timeout 2s, tick 1s' failed to pass within given time"):
+    with pytest.raises(
+        gluetool.GlueError,
+        match=(
+            "Condition 'cloning repository clone-url \\({}\\)' with timeout 2s, tick 1s' "
+            "failed to pass within given time.\n\nFailed to clone git repository: "
+            "dumb http transport does not support shallow capabilities".format(value)
+        )
+    ):
         remote_git_repository.clone(clone_timeout=2, clone_tick=1)
 
     for message in messages:

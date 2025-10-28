@@ -335,12 +335,17 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
                         ref=ref,
                         clone_args=clone_args
                     )]
-                return Result.Error('Failed to clone git repository: {}, retrying'.format(exc.output.stderr))
+                return Result.Error('Failed to clone git repository: {}'.format(exc.output.stderr))
 
             return Result.Ok(None)
 
         gluetool.utils.wait(
-            "cloning with timeout {}s, tick {}s".format(clone_timeout, clone_tick),
+            "cloning repository {} ({})' with timeout {}s, tick {}s".format(
+                clone_url,
+                branch or ref,
+                clone_timeout,
+                clone_tick
+            ),
             _clone,
             timeout=clone_timeout,
             tick=clone_tick

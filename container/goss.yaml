@@ -97,9 +97,10 @@ command:
   ansible-galaxy collection list:
     exit-status: 0
     stdout:
-      - /ansible.posix[[:space:]]+1.5.4/
-      - community.crypto
-      - community.general
+      - /ansible.posix[[:space:]]+1\.5\.4/
+      - /community.crypto[[:space:]]+2\.26\.6/
+      - /community.general[[:space:]]+11\.4\.1/
+      - /community.postgresql[[:space:]]+4\.1\.0/
     timeout: 100000
 
   citool -l:

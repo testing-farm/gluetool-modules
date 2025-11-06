@@ -524,6 +524,18 @@ class KojiTask(LoggerMixin, object):
         return cast(int, self._build['build_id'])
 
     @cached_property
+    def draft(self) -> bool:
+        """
+        Whether the task represents a draft built.
+
+        See https://docs.pagure.org/koji/draft_builds/ for more info.
+
+        :rtype: bool
+        """
+
+        return cast(bool, self._task_request.options.get('draft', False))
+
+    @cached_property
     def owner(self) -> str:
         """
         Name of the owner of the task.
@@ -972,8 +984,9 @@ class KojiTask(LoggerMixin, object):
         if not self.is_build_task:
             return []
 
-        # For standard (non-scratch) builds, we may fetch an associated build and dig info from it
-        if self.has_build:
+        # For standard non-scratch and non-draft builds, we may fetch an associated build and dig info from it
+        # For draft builds the nvr contains the draft build information and is thus not usable
+        if self.has_build and not self.draft:
             assert self._build
             self.debug('srpm name deduced from build')
             return ['{}.src.rpm'.format(self._build['nvr'])]
@@ -1064,7 +1077,8 @@ class KojiTask(LoggerMixin, object):
             return []
 
         # If build_id is around, use listRPMs to get all the builds
-        if self.build_id:
+        # For draft builds fallback to subtasks, the release is spoiled with draft build information
+        if self.build_id and not self.draft:
             return self._rpm_urls_from_build
 
         # For scratch build tasks, our only option is to resolve RPMs from task.
@@ -1080,7 +1094,9 @@ class KojiTask(LoggerMixin, object):
         if not self.srpm_names:
             return []
 
-        if not self.scratch:
+        # For non-scratch and non-draft builds we can construct the src.rpm well from the build information.
+        # For draft builds this cannot work as release is spoiled with draft information.
+        if not self.scratch and not self.draft:
             assert self._build is not None
             return ["{}/packages/{}/{}/{}/src/{}.src.rpm".format(
                 self.pkgs_url,
@@ -1123,12 +1139,39 @@ class KojiTask(LoggerMixin, object):
         :rtype: str
         """
 
-        if self.is_build_task:
-            name, version, release, _, _ = self._split_srcrpm
+        if not self.is_build_task:
+            raise GlueError('Cannot deduce NVR for task {}'.format(self.id))
 
-            return six.ensure_str('-'.join([name, version, release]))
+        # For draft builds we cannot use src.rpm name, as it does not contain the draft build information
+        if self.draft:
+            assert self._build
+            return self._build['nvr']
 
-        raise GlueError('Cannot deduce NVR for task {}'.format(self.id))
+        name, version, release, _, _ = self._split_srcrpm
+
+        return six.ensure_str('-'.join([name, version, release]))
+
+    @cached_property
+    def nvr_promoted(self) -> str:
+        """
+        NVR of the built package if it would be promoted from a draft build.
+        For draft builds this removes the ``,draft_{build_id}`` suffix.
+        For non-draft builds this returns the ``nvr`` value.
+
+        :rtype: str
+        """
+
+        if not self.draft:
+            return self.nvr
+
+        match = re.fullmatch(r"(.*),draft_\d+", self.nvr)
+
+        if not match:
+            raise GlueError(
+                'The draft build NVR {} does not contain draft build information.'.format(self.nvr)
+            )
+
+        return match.group(1)
 
     @cached_property
     def component(self) -> str:
@@ -1186,10 +1229,15 @@ class KojiTask(LoggerMixin, object):
         :rtype: str
         """
 
-        if self.is_build_task:
-            return self._split_srcrpm[2]
+        if not self.is_build_task:
+            raise GlueError('Cannot find release info for task {}'.format(self.id))
 
-        raise GlueError('Cannot find release info for task {}'.format(self.id))
+        # For draft builds we cannot use src.rpm name, as it does not contain the draft build information
+        if self.draft:
+            assert self._build
+            return self._build['release']
+
+        return self._split_srcrpm[2]
 
     @cached_property
     def full_name(self) -> str:
@@ -1207,6 +1255,9 @@ class KojiTask(LoggerMixin, object):
 
         if self.scratch:
             name.append('(scratch)')
+
+        if self.draft:
+            name.append('(draft)')
 
         if not self.has_artifacts:
             name.append('(no artifacts)')

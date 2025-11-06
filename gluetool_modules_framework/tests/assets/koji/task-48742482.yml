@@ -10,9 +10,11 @@ has_artifacts: true
 issuer: rhel8-errata-bot/prod.user-cont.example.com
 owner: rhel8-errata-bot/prod.user-cont.example.com
 nvr: tang-container-1-104
+nvr_promoted: tang-container-1-104
 pkgs_url: http://kojipkgs.fedoraproject.org/brewroot
 release: '104'
 scratch: false
+draft: false
 short_name: 48742482:tang-container-1-104
 source: git://pkgs.example.com/containers/tang#53ebaec552f7c93eff1576558a19c3b394a2c056
 srpm_names: []

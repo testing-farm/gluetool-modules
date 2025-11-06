@@ -5,7 +5,7 @@ build_id: 805705
 component: 'bash'
 dist_git_repository_name: 'bash'
 destination_tag: 'f25-updates-candidate'
-full_name: task '15869828' build 'bash-4.3.43-4.fc25' target 'f25-candidate'
+full_name: task '15869829' build 'bash-4.3.43-4.fc25' target 'f25-candidate' (draft)
 has_artifacts: true
 issuer: 'svashisht'
 owner: 'svashisht'
@@ -15,8 +15,8 @@ nvr_promoted: 'bash-4.3.43-4.fc25'
 pkgs_url: 'https://kojipkgs.fedoraproject.org'
 release: '4.fc25'
 scratch: false
-draft: false
-short_name: '15869828:bash-4.3.43-4.fc25'
+draft: true
+short_name: '15869829:bash-4.3.43-4.fc25'
 source: 'git://pkgs.fedoraproject.org/rpms/bash?#b1104ec130056866f3bdce51a3f77685b702fbde'
 srpm_names:
   - 'bash-4.3.43-4.fc25.src.rpm'
@@ -33,7 +33,7 @@ rpm_urls:
   - 'https://kojipkgs.fedoraproject.org/packages/bash/4.3.43/4.fc25/i686/bash-debuginfo-4.3.43-4.fc25.i686.rpm'
   - 'https://kojipkgs.fedoraproject.org/packages/bash/4.3.43/4.fc25/i686/bash-4.3.43-4.fc25.i686.rpm'
 target: 'f25-candidate'
-id: 15869828
-dispatch_id: 15869828
-url: 'https://koji.fedoraproject.org/koji/taskinfo?taskID=15869828'
+id: 15869829
+dispatch_id: 15869829
+url: 'https://koji.fedoraproject.org/koji/taskinfo?taskID=15869829'
 version: '4.3.43'

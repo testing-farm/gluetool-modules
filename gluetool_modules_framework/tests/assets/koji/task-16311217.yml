@@ -47,9 +47,11 @@ issuer: mprchlik
 owner: mprchlik
 latest: flex-2.5.37-3.el7
 nvr: flex-2.5.37-3.el7_3
+nvr_promoted: flex-2.5.37-3.el7_3
 pkgs_url: https://kojipkgs.fedoraproject.org
 release: 3.el7_3
 scratch: true
+draft: false
 short_name: '16311217:S:flex-2.5.37-3.el7_3'
 source: cli-build/1526458933.094723.gjtyjVKt/flex-2.5.37-3.el7_3.src.rpm
 srpm_names:

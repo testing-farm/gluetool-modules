@@ -56,10 +56,10 @@ RUN    ln -s /CONFIG /etc/citool.d \
     # Pull in tmt from @teemtee/stable copr repository
     && dnf copr -y enable @teemtee/stable \
     && dnf -y install fmf-1.7.0 \
-                      tmt-1.59.0 \
-                      tmt+provision-container-1.59.0 \
-                      tmt+provision-virtual-1.59.0 \
-                      tmt+report-polarion-1.59.0 \
+                      tmt-1.60.0 \
+                      tmt+provision-container-1.60.0 \
+                      tmt+provision-virtual-1.60.0 \
+                      tmt+report-polarion-1.60.0 \
     # Pull in tmt policies
     && mkdir -p /etc/tmt/policies \
     && git clone --branch main --depth 1 https://gitlab.com/testing-farm/profiles.git /tmp/profiles \

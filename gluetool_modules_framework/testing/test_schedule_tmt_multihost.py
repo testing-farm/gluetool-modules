@@ -776,6 +776,14 @@ class TestScheduleTMTMultihost(Module):
                         if provision_phase.how == 'artemis':
                             self.warn('The `how` key in provision phase should not be `artemis`.')
 
+                # Copy tmt dict to avoid sharing it across multiple plans
+                # Each plan needs its own copy since we'll add guest_id to it in _run_plan
+                tmt_copy = None
+                if tec.tmt is not None:
+                    tmt_copy = dict(tec.tmt)
+                    if 'context' in tmt_copy:
+                        tmt_copy['context'] = dict(tmt_copy['context'])
+
                 schedule_entry.testing_environment = TestingEnvironment(
                     arch=tec.arch,
                     compose=tec.compose,
@@ -785,7 +793,7 @@ class TestScheduleTMTMultihost(Module):
                     secrets=tec.secrets,
                     artifacts=tec.artifacts,
                     settings=tec.settings,
-                    tmt=tec.tmt,
+                    tmt=tmt_copy,
                 )
 
                 schedule_entry.tmt_reproducer.extend(repository.commands)
@@ -869,6 +877,25 @@ class TestScheduleTMTMultihost(Module):
         command.extend(self._root_option)
 
         assert schedule_entry.testing_environment
+
+        # add Artemis guest_id to tmt context if available
+        # Note: We need to copy the tmt dict to avoid modifying shared state across multiple plans
+        if schedule_entry.guest and isinstance(schedule_entry.guest, ArtemisGuest):
+            # Copy the tmt dict to avoid sharing it with other schedule entries
+            if schedule_entry.testing_environment.tmt is None:
+                schedule_entry.testing_environment.tmt = {}
+            else:
+                # Create a deep copy to avoid modifying shared state
+                schedule_entry.testing_environment.tmt = dict(schedule_entry.testing_environment.tmt)
+
+            # Copy the context dict if it exists
+            if 'context' in schedule_entry.testing_environment.tmt:
+                schedule_entry.testing_environment.tmt['context'] = \
+                        dict(schedule_entry.testing_environment.tmt['context'])
+            else:
+                schedule_entry.testing_environment.tmt['context'] = {}
+
+            schedule_entry.testing_environment.tmt['context']['guest_id'] = schedule_entry.guest.artemis_id
 
         # add context from request
         if schedule_entry.testing_environment.tmt and 'context' in schedule_entry.testing_environment.tmt:

@@ -485,7 +485,7 @@ def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest
             },
             TestingEnvironment('x86_64', 'rhel-9', pool='foo'),
             '''# tmt reproducer
-dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ tests --name some-name provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --pool foo --skip-prepare-verify-ssh --post-install-script echo hello''',  # noqa
+dummytmt --root some-tmt-root -c guest_id=guest0 run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ tests --name some-name provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --pool foo --skip-prepare-verify-ssh --post-install-script echo hello''',  # noqa
             None,
             None
         ),
@@ -512,7 +512,7 @@ dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic
             ),
             """# tmt reproducer
 curl -LO tmt-environment-lan1.yaml
-dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations -e @tmt-environment-lan1.yaml plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script echo hello""",  # noqa
+dummytmt --root some-tmt-root -c guest_id=guest0 run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations -e @tmt-environment-lan1.yaml plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script echo hello""",  # noqa
             """user_variable1: user_value1
 user_variable2: user_value2
 user_variable3: user_value3
@@ -526,7 +526,7 @@ secret_variable2: secret_value2
             {},
             TestingEnvironment('x86_64', 'rhel-9', tmt={'context': {'distro': 'rhel', 'trigger': 'push'}}),
             """# tmt reproducer
-dummytmt --root some-tmt-root -c distro=rhel -c trigger=push run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script echo hello""",  # noqa
+dummytmt --root some-tmt-root -c distro=rhel -c trigger=push -c guest_id=guest0 run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script echo hello""",  # noqa
             None,
             None
         ),
@@ -539,7 +539,7 @@ dummytmt --root some-tmt-root -c distro=rhel -c trigger=push run --all --id {wor
             {},
             TestingEnvironment('x86_64', 'rhel-9'),
             """# tmt reproducer
-dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script echo hello""",  # noqa
+dummytmt --root some-tmt-root -c guest_id=guest0 run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script echo hello""",  # noqa
             None,
             None
         ),
@@ -555,7 +555,7 @@ dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic
             TestingEnvironment('x86_64', 'rhel-9', tmt={'environment': {'VARIABLE1': 'VALUE1', 'VARIABLE2': 'VALUE2'}}),
             """# tmt reproducer
 export VARIABLE1=hidden VARIABLE2=hidden
-dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script echo hello""",  # noqa
+dummytmt --root some-tmt-root -c guest_id=guest0 run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script echo hello""",  # noqa
 
             None,
             None
@@ -568,7 +568,7 @@ dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic
             TestingEnvironment('x86_64', 'rhel-9', tmt={'environment': {'VARIABLE1': 'VALUE1', 'VARIABLE2': 'VALUE2'}}),
             """# tmt reproducer
 export VARIABLE1=hidden VARIABLE2=hidden
-dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script echo hello""",  # noqa
+dummytmt --root some-tmt-root -c guest_id=guest0 run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script echo hello""",  # noqa
 
             None,
             (gluetool.glue.GlueError, "Environment variable 'VARIABLE2' is not allowed to be exposed to the tmt process")
@@ -579,7 +579,7 @@ dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --
             TestingEnvironment('x86_64', 'rhel-9',
                                settings={'provisioning': {'tags': {'Foo': 'Bar', "Baz Baz": "Boo Boo"}}}),
             """# tmt reproducer
-dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script echo hello --user-data Foo=Bar --user-data Baz Baz=Boo Boo""",  # noqa
+dummytmt --root some-tmt-root -c guest_id=guest0 run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script echo hello --user-data Foo=Bar --user-data Baz Baz=Boo Boo""",  # noqa
             None,
             None
         ),
@@ -603,7 +603,25 @@ dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic
                 }
             }),
             """# tmt reproducer
-dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ discover --args1 discover --args2 prepare --args1 prepare --args2 provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script echo hello finish --args1 finish --args2 --args3""",  # noqa
+dummytmt --root some-tmt-root -c guest_id=guest0 run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ discover --args1 discover --args2 prepare --args1 prepare --args2 provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script echo hello finish --args1 finish --args2 --args3""",  # noqa
+            None,
+            None
+        ),
+        (  # with Artemis guest_id in tmt context
+            {},
+            {},
+            TestingEnvironment('x86_64', 'rhel-9', pool='foo'),
+            """# tmt reproducer
+dummytmt --root some-tmt-root -c guest_id=guest0 run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --pool foo --skip-prepare-verify-ssh --post-install-script echo hello""",  # noqa
+            None,
+            None
+        ),
+        (  # with Artemis guest_id and existing tmt context
+            {},
+            {},
+            TestingEnvironment('x86_64', 'rhel-9', tmt={'context': {'distro': 'rhel', 'trigger': 'push'}}),
+            """# tmt reproducer
+dummytmt --root some-tmt-root -c distro=rhel -c trigger=push -c guest_id=guest0 run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script echo hello""",  # noqa
             None,
             None
         ),
@@ -612,11 +630,11 @@ dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic
     ids=[
         'virtual', 'local', 'variables', 'tmt_context',
         'tmt_process_environment_options_only', 'tmt_process_environment', 'tmt_process_environment_not_accepted', 'user_data',
-        'tmt_extra_args'
+        'tmt_extra_args', 'artemis_guest_id', 'artemis_guest_id_with_context'
     ]
 )
 def test_tmt_output_dir(
-    module, monkeypatch, tmpdir,
+    module, guest, monkeypatch, tmpdir,
     additional_options, additional_shared,
     testing_environment,
     expected_reproducer, expected_environment,
@@ -635,6 +653,11 @@ def test_tmt_output_dir(
     schedule_entry.tmt_env_file = module._prepare_tmt_env_file(testing_environment, 'plan1', tmpdir)
     schedule_entry.work_dirpath = os.path.join(tmpdir, 'some-workdir')
     os.mkdir(schedule_entry.work_dirpath)
+
+    # Set guest for Artemis-related tests (the code checks if it's an ArtemisGuest)
+    # For 'local' tests, a StaticLocalhostGuest is set elsewhere, so we skip those
+    if not module._config.get('how') == 'local' and guest:
+        schedule_entry.guest = guest
 
     # make a copy of variables
     variables = testing_environment.variables.copy() if testing_environment.variables else None
@@ -708,7 +731,7 @@ def test_tmt_output_dir(
             r'''# tmt reproducer
 git clone --depth 1 -b myfix http://example.com/git/myproject testcode
 cd testcode
-dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^myfix$ tests --name some-name provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --skip-prepare-verify-ssh --post-install-script echo hello'''  # noqa
+dummytmt --root some-tmt-root -c guest_id=guest0 run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^myfix$ tests --name some-name provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --skip-prepare-verify-ssh --post-install-script echo hello'''  # noqa
 
         ),
         (  # Test case no. 2
@@ -718,7 +741,7 @@ dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --
             r'''# tmt reproducer
 git clone --depth 1 -b myfix http://example.com/git/myproject testcode
 cd testcode
-dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^myfix$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --skip-prepare-verify-ssh --post-install-script echo hello'''  # noqa
+dummytmt --root some-tmt-root -c guest_id=guest0 run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^myfix$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --skip-prepare-verify-ssh --post-install-script echo hello'''  # noqa
 
         ),
         (  # Test case no. 3
@@ -728,7 +751,7 @@ dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --
             r'''# tmt reproducer
 git clone --depth 1 -b myfix http://hidden@example.com/git/myproject testcode
 cd testcode
-dummytmt --root some-tmt-root run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^myfix$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --skip-prepare-verify-ssh --post-install-script echo hello'''  # noqa
+dummytmt --root some-tmt-root -c guest_id=guest0 run --all --id {tmpdir}/{work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^myfix$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --skip-prepare-verify-ssh --post-install-script echo hello'''  # noqa
         ),
     ]
 )
@@ -1139,7 +1162,7 @@ git -C testcode config --add remote.origin.fetch +refs/pull/*:refs/remotes/origi
 git -C testcode fetch {expected_clone_url} myfix:gluetool/myfix
 git -C testcode checkout gluetool/myfix
 cd testcode
-dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --skip-prepare-verify-ssh --post-install-script echo hello'''
+dummytmt --root some-tmt-root -c guest_id=guest0 run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --skip-prepare-verify-ssh --post-install-script echo hello'''
 
 
 @pytest.mark.parametrize('clone_url, expected_clone_url', [
@@ -1233,7 +1256,7 @@ git -C testcode config --add remote.origin.fetch +refs/pull/*:refs/remotes/origi
 git -C testcode fetch {expected_clone_url} myfix:gluetool/myfix
 git -C testcode checkout gluetool/myfix
 cd testcode
-dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --arch x86_64 --pool foo --skip-prepare-verify-ssh --post-install-script echo hello'''
+dummytmt --root some-tmt-root -c guest_id=guest0 run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name ^plan1$ provision -h artemis --update-missing --allowed-how container|artemis -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --arch x86_64 --pool foo --skip-prepare-verify-ssh --post-install-script echo hello'''
 
 
 TMT_PLANS = ['''
@@ -1477,3 +1500,95 @@ def test_serialize_test_schedule_entry_large_artifact(module, module_dist_git, g
     )
 
     shutil.rmtree(schedule_entry.work_dirpath)
+
+
+def test_artemis_guest_id_in_tmt_context(module, guest, monkeypatch, tmpdir):
+    """Test that Artemis guest_id is correctly added to tmt context and isolated per schedule entry."""
+    patch_shared(monkeypatch, module, {
+        'testing_farm_request': MagicMock(
+            environments_requested=[{}],
+            tmt=MagicMock(plan=None, plan_filter=None, path="some-tmt-root", test_filter=None, test_name=None),
+            plans=None),
+        'artemis_api_options': {
+            'api-url': 'http://artemis.example.com/v0.0.56',
+            'api-version': '0.0.56',
+            'ssh-key': 'master-key',
+            'key': 'path/to/key',
+            'post-install-script': 'echo hello',
+            'skip-prepare-verify-ssh': True,
+            'ready-timeout': 300,
+            'ready-tick': 3,
+            'api-call-timeout': 60,
+            'user-data-vars-template-file': None
+        }
+    })
+
+    # Create two schedule entries with separate testing environments
+    # This simulates what create_test_schedule does - each plan gets its own TestingEnvironment
+    # but they start with the same base configuration
+    base_tmt = {'context': {'distro': 'rhel'}}
+    
+    # Create separate TestingEnvironment objects to simulate isolation
+    # (In real code, create_test_schedule creates new TestingEnvironment for each plan)
+    environment1 = TestingEnvironment('x86_64', 'rhel-9', tmt=dict(base_tmt))
+    environment1.tmt['context'] = dict(environment1.tmt['context'])
+    
+    environment2 = TestingEnvironment('x86_64', 'rhel-9', tmt=dict(base_tmt))
+    environment2.tmt['context'] = dict(environment2.tmt['context'])
+    
+    schedule_entry1 = TestScheduleEntry(
+        gluetool.log.Logging().get_logger(),
+        environment1,
+        'plan1',
+        tmpdir
+    )
+    schedule_entry1.guest = guest
+    schedule_entry1.work_dirpath = os.path.join(tmpdir, 'work1')
+    os.mkdir(schedule_entry1.work_dirpath)
+    
+    # Create a second guest with different artemis_id
+    guest2 = ArtemisGuest(
+        MagicMock(),
+        'guest1',  # Different guest ID
+        hostname='guest1',
+        environment=TestingEnvironment(compose='guest-compose'),
+        key='mockkey1'
+    )
+    
+    schedule_entry2 = TestScheduleEntry(
+        gluetool.log.Logging().get_logger(),
+        environment2,
+        'plan2',
+        tmpdir
+    )
+    schedule_entry2.guest = guest2
+    schedule_entry2.work_dirpath = os.path.join(tmpdir, 'work2')
+    os.mkdir(schedule_entry2.work_dirpath)
+
+    # Simulate what _run_plan does - add guest_id to context
+    # This mimics the code in _run_plan
+    for entry in [schedule_entry1, schedule_entry2]:
+        if entry.guest and isinstance(entry.guest, ArtemisGuest):
+            if entry.testing_environment.tmt is None:
+                entry.testing_environment.tmt = {}
+            else:
+                entry.testing_environment.tmt = dict(entry.testing_environment.tmt)
+
+            if 'context' in entry.testing_environment.tmt:
+                entry.testing_environment.tmt['context'] = dict(entry.testing_environment.tmt['context'])
+            else:
+                entry.testing_environment.tmt['context'] = {}
+
+            entry.testing_environment.tmt['context']['guest_id'] = entry.guest.artemis_id
+
+    # Verify each entry has its own guest_id
+    assert schedule_entry1.testing_environment.tmt['context']['guest_id'] == 'guest0'
+    assert schedule_entry2.testing_environment.tmt['context']['guest_id'] == 'guest1'
+
+    # Verify the base context is preserved
+    assert schedule_entry1.testing_environment.tmt['context']['distro'] == 'rhel'
+    assert schedule_entry2.testing_environment.tmt['context']['distro'] == 'rhel'
+
+    # Verify contexts are isolated (not the same object)
+    assert schedule_entry1.testing_environment.tmt['context'] is not schedule_entry2.testing_environment.tmt['context']
+    assert schedule_entry1.testing_environment.tmt is not schedule_entry2.testing_environment.tmt

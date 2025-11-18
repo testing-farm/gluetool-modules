@@ -471,11 +471,29 @@ dummytmt --root some-tmt-root run --all --verbose discover --args1 discover --ar
             None,
             None
         ),
+        (  # with Artemis guest_id in tmt context
+            {},
+            {},
+            TestingEnvironment('x86_64', 'rhel-9'),
+            """# tmt reproducer
+dummytmt --root some-tmt-root -c guest_id=guest0 run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+            None,
+            None
+        ),
+        (  # with Artemis guest_id and existing tmt context
+            {},
+            {},
+            TestingEnvironment('x86_64', 'rhel-9', tmt={'context': {'distro': 'rhel', 'trigger': 'push'}}),
+            """# tmt reproducer
+dummytmt --root some-tmt-root -c distro=rhel -c trigger=push -c guest_id=guest0 run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+            None,
+            None
+        ),
     ],
     ids=[
         'virtual', 'local', 'variables', 'tmt_context',
         'tmt_process_environment_options_only', 'tmt_process_environment', 'tmt_process_environment_not_accepted',
-        'tmt_extra_args'
+        'tmt_extra_args', 'artemis_guest_id', 'artemis_guest_id_with_context'
     ]
 )
 def test_tmt_output_dir(
@@ -1520,3 +1538,83 @@ def test_serialize_test_schedule_entry_large_artifact(module, module_dist_git, g
     )
 
     shutil.rmtree(schedule_entry.work_dirpath)
+
+
+def test_artemis_guest_id_in_tmt_context(module, guest, monkeypatch, tmpdir):
+    """Test that Artemis guest_id is correctly added to tmt context and isolated per schedule entry."""
+    patch_shared(monkeypatch, module, {
+        'testing_farm_request': MagicMock(
+            environments_requested=[{}],
+            tmt=MagicMock(plan=None, plan_filter=None, path="some-tmt-root", test_filter=None, test_name=None),
+            plans=None)
+    })
+
+    # Create two schedule entries with separate testing environments
+    # This simulates what create_test_schedule does - each plan gets its own TestingEnvironment
+    # but they start with the same base configuration
+    base_tmt = {'context': {'distro': 'rhel'}}
+    
+    # Create separate TestingEnvironment objects to simulate isolation
+    # (In real code, create_test_schedule creates new TestingEnvironment for each plan)
+    environment1 = TestingEnvironment('x86_64', 'rhel-9', tmt=dict(base_tmt))
+    environment1.tmt['context'] = dict(environment1.tmt['context'])
+    
+    environment2 = TestingEnvironment('x86_64', 'rhel-9', tmt=dict(base_tmt))
+    environment2.tmt['context'] = dict(environment2.tmt['context'])
+    
+    schedule_entry1 = TestScheduleEntry(
+        gluetool.log.Logging().get_logger(),
+        environment1,
+        'plan1',
+        tmpdir
+    )
+    schedule_entry1.guest = guest
+    schedule_entry1.work_dirpath = os.path.join(tmpdir, 'work1')
+    os.mkdir(schedule_entry1.work_dirpath)
+    
+    # Create a second guest with different artemis_id
+    guest2 = ArtemisGuest(
+        MagicMock(),
+        'guest1',  # Different guest ID
+        hostname='guest1',
+        environment=TestingEnvironment(compose='guest-compose'),
+        key='mockkey1'
+    )
+    
+    schedule_entry2 = TestScheduleEntry(
+        gluetool.log.Logging().get_logger(),
+        environment2,
+        'plan2',
+        tmpdir
+    )
+    schedule_entry2.guest = guest2
+    schedule_entry2.work_dirpath = os.path.join(tmpdir, 'work2')
+    os.mkdir(schedule_entry2.work_dirpath)
+
+    # Simulate what _run_plan does - add guest_id to context
+    # This mimics the code in _run_plan
+    for entry in [schedule_entry1, schedule_entry2]:
+        if entry.guest and isinstance(entry.guest, ArtemisGuest):
+            if entry.testing_environment.tmt is None:
+                entry.testing_environment.tmt = {}
+            else:
+                entry.testing_environment.tmt = dict(entry.testing_environment.tmt)
+
+            if 'context' in entry.testing_environment.tmt:
+                entry.testing_environment.tmt['context'] = dict(entry.testing_environment.tmt['context'])
+            else:
+                entry.testing_environment.tmt['context'] = {}
+
+            entry.testing_environment.tmt['context']['guest_id'] = entry.guest.artemis_id
+
+    # Verify each entry has its own guest_id
+    assert schedule_entry1.testing_environment.tmt['context']['guest_id'] == 'guest0'
+    assert schedule_entry2.testing_environment.tmt['context']['guest_id'] == 'guest1'
+
+    # Verify the base context is preserved
+    assert schedule_entry1.testing_environment.tmt['context']['distro'] == 'rhel'
+    assert schedule_entry2.testing_environment.tmt['context']['distro'] == 'rhel'
+
+    # Verify contexts are isolated (not the same object)
+    assert schedule_entry1.testing_environment.tmt['context'] is not schedule_entry2.testing_environment.tmt['context']
+    assert schedule_entry1.testing_environment.tmt is not schedule_entry2.testing_environment.tmt

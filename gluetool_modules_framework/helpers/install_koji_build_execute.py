@@ -3,6 +3,7 @@
 
 import os
 import gluetool
+from uuid import uuid4
 from gluetool.action import Action
 from gluetool.log import log_dict
 from gluetool.result import Ok, Error
@@ -111,6 +112,8 @@ class InstallKojiBuildExecute(gluetool.Module):
 
         arch = guest.environment.arch
 
+        uuid_suffix = str(uuid4())
+
         rpms_lists_to_skip_install = []
 
         try:
@@ -133,20 +136,20 @@ class InstallKojiBuildExecute(gluetool.Module):
                     'set -o pipefail; '
                     '( {0} download-build --debuginfo --task-id --arch noarch --arch {2} --arch src {1} || '
                     '{0} download-task --arch noarch --arch {2} --arch src {1} ) | '
-                    'egrep Downloading | cut -d " " -f 3 | tee rpms-list-{1}'
-                ).format(koji_command, artifact.id, download_arches),
+                    'egrep Downloading | cut -d " " -f 3 | tee rpms-list-{1}-{3}'
+                ).format(koji_command, artifact.id, download_arches, uuid_suffix),
                 local=has_bootc
             )
 
             if artifact.install is False:
-                rpms_lists_to_skip_install.append('rpms-list-{}'.format(artifact.id))
+                rpms_lists_to_skip_install.append('rpms-list-{}-{}'.format(artifact.id, uuid_suffix))
 
         # Copy all rpms to the destination directory and make them available in a repo. The files are duplicated to
         # avoid breaking anything relying on them being present under the original path.
         # Package names are appended to the repo package list once successfuly copied.
         if not has_bootc:
             sut_installation.add_step('Copy rpms to the repo directory', (
-                f'mkdir -pv {download_path}; cat rpms-list-* | xargs -n1 bash -c '
+                f'mkdir -pv {download_path}; cat rpms-list-*-{uuid_suffix} | xargs -n1 bash -c '
                 f'"cp -t {download_path} \\$1 && '
                 f'echo $(basename \\$1) >> {package_list_path(basepath=download_path)}" --'
             ))
@@ -163,11 +166,12 @@ class InstallKojiBuildExecute(gluetool.Module):
                 '{}'  # Do not install packages with "install: false" specified in the TF API
                 '{}'  # Do not install i686 builds
                 'awk "{{print \\$2}}" | '
-                'tee rpms-list'
+                'tee rpms-list-{}'
             ).format(
                 'egrep -v "({})" | '.format(excluded_packages_regexp) if excluded_packages_regexp else '',
                 ''.join(['grep -Fv "$(cat {})" | '.format(rpm) for rpm in rpms_lists_to_skip_install]),
                 'egrep -v "i686" | ' if arch == 'x86_64' and self.option('download-i686-builds') else '',
+                uuid_suffix,
             ),
             local=has_bootc
         )
@@ -184,32 +188,34 @@ class InstallKojiBuildExecute(gluetool.Module):
                 # https://bugzilla.redhat.com/show_bug.cgi?id=1831022
                 sut_installation.add_step(
                     'Reinstall packages',
-                    'dnf -y reinstall $(cat rpms-list) || true'
+                    'dnf -y reinstall $(cat rpms-list-{}) || true'.format(uuid_suffix)
                 )
 
                 sut_installation.add_step(
                     'Install packages',
-                    r"""if [ ! -z "$(sed 's/\s//g' rpms-list)" ];"""
-                    'then dnf -y install $(cat rpms-list);'
-                    'else echo "Nothing to install, rpms-list is empty"; fi'
+                    (
+                        r"""if [ ! -z "$(sed 's/\s//g' rpms-list-{0})" ];"""
+                        'then dnf -y install $(cat rpms-list-{0});'
+                        'else echo "Nothing to install, rpms-list is empty"; fi'
+                    ).format(uuid_suffix)
                 )
             else:
                 sut_installation.add_step(
                     'Reinstall packages',
-                    'yum -y reinstall $(cat rpms-list)',
+                    'yum -y reinstall $(cat rpms-list-{})'.format(uuid_suffix),
                     ignore_exception=True,
                 )
 
                 # yum install refuses downgrades, do it explicitly
                 sut_installation.add_step(
                     'Downgrade packages',
-                    'yum -y downgrade $(cat rpms-list)',
+                    'yum -y downgrade $(cat rpms-list-{})'.format(uuid_suffix),
                     ignore_exception=True,
                 )
 
                 sut_installation.add_step(
                     'Install packages',
-                    'yum -y install $(cat rpms-list)',
+                    'yum -y install $(cat rpms-list-{})'.format(uuid_suffix),
                     ignore_exception=True,
                 )
             # Use printf to correctly quote the package name, we encountered '^' in the NVR, which is actually a valid
@@ -221,18 +227,20 @@ class InstallKojiBuildExecute(gluetool.Module):
             # The step won't work for image mode because rpms-list is gone between reboots.
             sut_installation.add_step(
                 'Verify all packages installed',
-                r"""if [ ! -z "$(sed 's/\s//g' rpms-list)" ];"""
-                "then sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q;"
-                "else echo 'Nothing to verify, rpms-list is empty'; fi"
+                (
+                    r"""if [ ! -z "$(sed 's/\s//g' rpms-list-{0})" ];"""
+                    "then sed 's/.rpm$//' rpms-list-{0} | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q;"
+                    "else echo 'Nothing to verify, rpms-list-{0} is empty'; fi"
+                ).format(uuid_suffix)
             )
 
         else:
             command = (
-                "cat rpms-list | xargs realpath | tee rpms-list-paths && "
-                "if [ -s rpms-list-paths ] && grep -q '\\S' rpms-list-paths; then "
-                "{} -vvv run provision --how connect --guest {} --key {} --port {} prepare --how install "
-                "$(awk '{{print \"--package=\"$0}}' rpms-list-paths); else echo 'Nothing to install'; fi"
-            ).format(" ".join(self.shared('tmt_command')), guest.hostname, guest.key, guest.port)
+                "cat rpms-list-{4} | xargs realpath | tee rpms-list-paths-{4} && "
+                "if [ -s rpms-list-paths-{4} ] && grep -q '\\S' rpms-list-paths-{4}; then "
+                "{0} -vvv run provision --how connect --guest {1} --key {2} --port {3} prepare --how install "
+                "$(awk '{{print \"--package=\"$0}}' rpms-list-paths-{4}); else echo 'Nothing to install'; fi"
+            ).format(" ".join(self.shared('tmt_command')), guest.hostname, guest.key, guest.port, uuid_suffix)
 
             sut_installation.add_step(
                 label='Install koji build with TMT',

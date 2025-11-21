@@ -21,6 +21,7 @@ from gluetool_modules_framework.infrastructure.distgit import DistGit, DistGitRe
 from gluetool_modules_framework.infrastructure.static_guest import StaticLocalhostGuest
 from gluetool_modules_framework.helpers.install_copr_build import InstallCoprBuild
 from gluetool_modules_framework.helpers.install_koji_build_execute import InstallKojiBuildExecute
+import gluetool_modules_framework.helpers.install_koji_build_execute
 from gluetool_modules_framework.libs.guest_setup import GuestSetupStage
 from gluetool_modules_framework.libs.sut_installation import INSTALL_COMMANDS_FILE
 from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
@@ -1152,6 +1153,9 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir, cl
     module_koji._config['log-dir-name'] = 'artifact-installation'
     module_koji._config['download-path'] = 'some-download-path'
 
+    # Patch `uuid4` in the module to return a fixed value
+    monkeypatch.setattr(gluetool_modules_framework.helpers.install_koji_build_execute, 'uuid4', lambda: '123')
+
     guest.environment = TestingEnvironment(
         compose='guest-compose',
         arch='x86_64',
@@ -1209,18 +1213,18 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir, cl
         assert 'dummy test done\n' in f.read()
 
     # koji installation actually happened
-    guest.execute.assert_any_call(r'''if [ ! -z "$(sed 's/\s//g' rpms-list)" ];then dnf -y install --allowerasing $(cat rpms-list);else echo "Nothing to install, rpms-list is empty"; fi''')  # noqa
+    guest.execute.assert_any_call(r'''if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then dnf -y install --allowerasing $(cat rpms-list-123);else echo "Nothing to install, rpms-list is empty"; fi''')  # noqa
 
     # ... and is shown in sut_install_commands.sh
     with open(os.path.join(tmpdir, 'artifact-installation-guest0', INSTALL_COMMANDS_FILE)) as f:
         assert f.read() == '\n'.join([
-            r'''set -o pipefail; ( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123 || koji download-task --arch noarch --arch x86_64 --arch src 123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123
-mkdir -pv some-download-path; cat rpms-list-* | xargs -n1 bash -c "cp -t some-download-path \$1 && echo $(basename \$1) >> some-download-path/pkglist" --''',
+            r'''set -o pipefail; ( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123 || koji download-task --arch noarch --arch x86_64 --arch src 123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123-123
+mkdir -pv some-download-path; cat rpms-list-*-123 | xargs -n1 bash -c "cp -t some-download-path \$1 && echo $(basename \$1) >> some-download-path/pkglist" --''',
             *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
-            r'''ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\1 \0/" | awk "{print \$2}" | tee rpms-list
-dnf -y reinstall $(cat rpms-list) || true
-if [ ! -z "$(sed 's/\s//g' rpms-list)" ];then dnf -y install --allowerasing $(cat rpms-list);else echo "Nothing to install, rpms-list is empty"; fi
-if [ ! -z "$(sed 's/\s//g' rpms-list)" ];then sed 's/.rpm$//' rpms-list | xargs -n1 command printf '%q\n' | xargs -d'\n' rpm -q;else echo 'Nothing to verify, rpms-list is empty'; fi
+            r'''ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\1 \0/" | awk "{print \$2}" | tee rpms-list-123
+dnf -y reinstall $(cat rpms-list-123) || true
+if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then dnf -y install --allowerasing $(cat rpms-list-123);else echo "Nothing to install, rpms-list is empty"; fi
+if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then sed 's/.rpm$//' rpms-list-123 | xargs -n1 command printf '%q\n' | xargs -d'\n' rpm -q;else echo 'Nothing to verify, rpms-list-123 is empty'; fi
 '''
         ])
 

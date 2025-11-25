@@ -3,9 +3,11 @@
 stages:
   - build
   - build-worker-public  # worker-public build needs to happen after gluetool-modules build
+  - build-worker-redhat  # worker-redhat build needs to happen after worker-public build
   - test
   - deploy
   - deploy-worker-public  # worker-public deploy needs to happen after gluetool-modules deploy
+  - deploy-worker-redhat  # worker-redhat deploy needs to happen after worker-public deploy
 
 # Use our custom image. See https://gitlab.com/testing-farm/images/-/tree/master/python-ci-image
 image: "quay.io/testing-farm/python-ci-image:2023-09-21-f3e8c41e"
@@ -68,6 +70,24 @@ container-worker-public:
   trigger:
     project: testing-farm/worker-public
 
+container-worker-redhat:
+  extends: .merge-request
+  stage: build-worker-redhat
+  image: quay.io/testing-farm/cli:latest
+  variables:
+    IMAGE_TAG: $CI_PIPELINE_ID
+    BASE_IMAGE: quay.io/testing-farm/worker-public:$CI_PIPELINE_ID
+  needs: [container-worker-public]
+  script:
+    - >
+      TESTING_FARM_API_TOKEN=$TESTING_FARM_API_TOKEN_REDHAT testing-farm request \
+        --git-url https://gitlab.cee.redhat.com/baseos-qe/gluetool-modules-internal \
+        --git-ref testing-farm \
+        --environment BUILD_ARGS="--build-arg=BASE_IMAGE=$BASE_IMAGE" \
+        --environment IMAGE_TAG="$IMAGE_TAG" \
+        --environment ENABLE_PUSH="yes" \
+        --environment AUTH_JSON_BASE64="IMAGE_PAAS_AUTH_JSON_BASE64" \
+        --plan /container/build
 
 # Run unit tests
 #
@@ -261,6 +281,30 @@ publish/container-worker-public/latest:
     IMAGE_TAG: latest
   trigger:
     project: testing-farm/worker-public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
+
+publish/container-worker-redhat/latest:
+  stage: deploy-worker-redhat
+  image: quay.io/testing-farm/cli:latest
+  variables:
+    IMAGE: images.paas.redhat.com/testingfarm/worker-redhat:latest
+    BASE_IMAGE: quay.io/testing-farm/worker-public:latest
+    TESTING_FARM_API_TOKEN: $TESTING_FARM_API_TOKEN_REDHAT
+  needs: [publish/container-worker-public/latest]
+  script:
+    - >
+      testing-farm request \
+        --git-url https://gitlab.com/testing-farm/tests \
+        --git-ref container-build-add-build-args \
+        --environment GIT_URL=https://gitlab.cee.redhat.com/baseos-qe/gluetool-modules-internal.git \
+        --environment GIT_REF=testing-farm \
+        --environment TARGET_IMAGE=$IMAGE \
+        --environment PLATFORMS=linux/amd64 \
+        --environment BUILD_DIR=container \
+        --environment BUILD_ARGS="--build-arg=BASE_IMAGE=$BASE_IMAGE" \
+        --environment CONTAINER_FILE=Dockerfile \
+        --plan /container/build
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
 

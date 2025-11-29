@@ -2,10 +2,8 @@
 
 stages:
   - build
-  - build-worker-public  # worker-public build needs to happen after gluetool-modules build
   - test
   - deploy
-  - deploy-worker-public  # worker-public deploy needs to happen after gluetool-modules deploy
 
 # Use our custom image. See https://gitlab.com/testing-farm/images/-/tree/master/python-ci-image
 image: "quay.io/testing-farm/python-ci-image:2023-09-21-f3e8c41e"
@@ -61,7 +59,8 @@ container:
 
 container-worker-public:
   extends: .merge-request
-  stage: build-worker-public
+  stage: build
+  needs: [container]
   variables:
     GM_TAG: $CI_PIPELINE_ID
     IMAGE_TAG: $CI_PIPELINE_ID
@@ -255,7 +254,8 @@ publish/container/latest:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
 
 publish/container-worker-public/latest:
-  stage: deploy-worker-public
+  stage: deploy
+  needs: [publish/container/latest]
   variables:
     GM_TAG: latest
     IMAGE_TAG: latest
@@ -276,7 +276,8 @@ publish/container/tag:
     - if: $CI_COMMIT_TAG =~ /^release\/.*/
 
 publish/container-worker-public/tag:
-  stage: deploy-worker-public
+  stage: deploy
+  needs: [publish/container/tag]
   variables:
     GM_TAG: $CI_COMMIT_TAG
     IMAGE_TAG: $CI_COMMIT_TAG

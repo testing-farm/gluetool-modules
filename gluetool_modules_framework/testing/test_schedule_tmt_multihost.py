@@ -4,6 +4,7 @@
 import re
 import os
 import os.path
+import shlex
 import stat
 import sys
 import tempfile
@@ -1014,7 +1015,13 @@ class TestScheduleTMTMultihost(Module):
             command.extend(['--pool', schedule_entry.testing_environment.pool])
         if artemis_skip_prepare_verify_ssh:
             command.extend(['--skip-prepare-verify-ssh'])
-        if artemis_post_install_script:
+
+        provisioning = (schedule_entry.testing_environment.settings or {}).get('provisioning') or {}
+        post_install_script = provisioning.get('post_install_script')
+
+        if post_install_script:
+            command.extend(['--post-install-script', post_install_script])
+        elif artemis_post_install_script:
             command.extend(['--post-install-script', artemis_post_install_script])
 
         user_data = self.user_data(schedule_entry)
@@ -1029,7 +1036,8 @@ class TestScheduleTMTMultihost(Module):
                 command.extend(['finish'] + gluetool.utils.normalize_shell_option(extra_args))
 
         # add tmt reproducer suitable for local execution
-        schedule_entry.tmt_reproducer.append(' '.join(command))
+        # use shlex.join to properly escape the options in case of spaces, etc.
+        schedule_entry.tmt_reproducer.append(shlex.join(command))
 
         # run plan via tmt, note that the plan MUST be run in the artifact_dirpath
         try:

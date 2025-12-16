@@ -689,6 +689,7 @@ def test_create_schedule(module, monkeypatch, log, tec, expected_schedule, expec
                          '',       # git config #2
                          '',       # git fetch
                          '',       # git checkout
+                         '',       # git submodule update --init --recursive
                          'plan1',  # tmt plan ls
                          'plan1',   # tmt run discover plan --name plan1 test --filter filter1
                          '[]')     # tmt plan export
@@ -1087,6 +1088,7 @@ def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir, cl
                          '',       # git config #2
                          '',       # git fetch
                          '',       # git checkout
+                         '',       # git submodule update --init --recursive
                          'plan1',  # tmt plan ls
                          'plan1',  # tmt run discover plan --name plan1
                          '[]')     # tmt plan export
@@ -1136,7 +1138,8 @@ git clone {expected_clone_url} testcode
 git -C testcode config --add remote.origin.fetch +refs/merge-requests/*:refs/remotes/origin/merge-requests/*
 git -C testcode config --add remote.origin.fetch +refs/pull/*:refs/remotes/origin/pull/*
 git -C testcode fetch {expected_clone_url} myfix:gluetool/myfix
-git -C testcode checkout gluetool/myfix
+git -C testcode checkout --no-recurse-submodules gluetool/myfix
+git -C testcode submodule update --init --recursive
 cd testcode
 curl -o guest-setup-0.sh -L {tmpdir}/artifact-installation-guest0/{INSTALL_COMMANDS_FILE}
 dummytmt --root some-tmt-root run --until provision --verbose provision --how virtual --image guest-compose plan --name ^plan1$
@@ -1185,6 +1188,7 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir, cl
                          '',       # git config #2
                          '',       # git fetch
                          '',       # git checkout
+                         '',       # git submodule update --init --recursive
                          'plan1',  # tmt plan ls
                          'plan1',   # tmt run discover plan --name plan1
                          ' - name: plan1\n'  # tmt plan export
@@ -1235,7 +1239,8 @@ git clone {expected_clone_url} testcode
 git -C testcode config --add remote.origin.fetch +refs/merge-requests/*:refs/remotes/origin/merge-requests/*
 git -C testcode config --add remote.origin.fetch +refs/pull/*:refs/remotes/origin/pull/*
 git -C testcode fetch {expected_clone_url} myfix:gluetool/myfix
-git -C testcode checkout gluetool/myfix
+git -C testcode checkout --no-recurse-submodules gluetool/myfix
+git -C testcode submodule update --init --recursive
 cd testcode
 curl -o guest-setup-0.sh -L {tmpdir}/artifact-installation-guest0/{INSTALL_COMMANDS_FILE}
 dummytmt --root some-tmt-root run --until provision --verbose provision --how virtual --image guest-compose plan --name ^plan1$
@@ -1448,6 +1453,7 @@ def test_tmt_plan_export(module, monkeypatch, exported_plan, expected_environmen
                          '',       # git config #2
                          '',       # git fetch
                          '',       # git checkout
+                         '',       # git submodule update --init --recursive
                          'plan1',  # tmt plan ls
                          'plan1',  # tmt run discover plan --name plan1
                          exported_plan)     # tmt plan export

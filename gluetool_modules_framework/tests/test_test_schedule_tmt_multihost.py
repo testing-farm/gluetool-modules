@@ -839,6 +839,7 @@ def test_create_schedule(module, monkeypatch, log, tec, expected_schedule, expec
                          '',       # git config #2
                          '',       # git fetch
                          '',       # git checkout
+                         '',       # git submodule update --init --recursive
                          'plan1',  # tmt plan ls
                          'plan1',   # tmt run discover plan --name plan1 test --filter filter1
                          '[]')     # tmt plan export
@@ -1103,6 +1104,7 @@ def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir, cl
                          '',       # git config #2
                          '',       # git fetch
                          '',       # git checkout
+                         '',       # git submodule update --init --recursive
                          'plan1',  # tmt plan ls
                          'plan1',  # tmt run discover plan --name plan1
                          '[]')     # tmt plan export
@@ -1152,7 +1154,8 @@ git clone {expected_clone_url} testcode
 git -C testcode config --add remote.origin.fetch +refs/merge-requests/*:refs/remotes/origin/merge-requests/*
 git -C testcode config --add remote.origin.fetch +refs/pull/*:refs/remotes/origin/pull/*
 git -C testcode fetch {expected_clone_url} myfix:gluetool/myfix
-git -C testcode checkout gluetool/myfix
+git -C testcode checkout --no-recurse-submodules gluetool/myfix
+git -C testcode submodule update --init --recursive
 cd testcode
 dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name '^plan1$' provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --skip-prepare-verify-ssh --post-install-script ''' "'echo hello'"
 
@@ -1199,6 +1202,7 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir, cl
                          '',       # git config #2
                          '',       # git fetch
                          '',       # git checkout
+                         '',       # git submodule update --init --recursive
                          'plan1',  # tmt plan ls
                          'plan1',   # tmt run discover plan --name plan1
                          ' - name: plan1\n'  # tmt plan export
@@ -1249,7 +1253,8 @@ git clone {expected_clone_url} testcode
 git -C testcode config --add remote.origin.fetch +refs/merge-requests/*:refs/remotes/origin/merge-requests/*
 git -C testcode config --add remote.origin.fetch +refs/pull/*:refs/remotes/origin/pull/*
 git -C testcode fetch {expected_clone_url} myfix:gluetool/myfix
-git -C testcode checkout gluetool/myfix
+git -C testcode checkout --no-recurse-submodules gluetool/myfix
+git -C testcode submodule update --init --recursive
 cd testcode
 dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name '^plan1$' provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --arch x86_64 --pool foo --skip-prepare-verify-ssh --post-install-script ''' "'echo hello'"
 
@@ -1419,6 +1424,7 @@ def test_tmt_plan_export(module, monkeypatch, exported_plan, expected_environmen
                          '',       # git config #2
                          '',       # git fetch
                          '',       # git checkout
+                         '',       # git submodule update --init --recursive
                          'plan1',  # tmt plan ls
                          'plan1',  # tmt run discover plan --name plan1
                          exported_plan)     # tmt plan export

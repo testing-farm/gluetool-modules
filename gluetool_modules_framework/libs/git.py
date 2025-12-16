@@ -54,6 +54,10 @@ class FailedToMerge(RemoteGitRepositoryError):
     pass
 
 
+class FailedToUpdateSubmodules(RemoteGitRepositoryError):
+    pass
+
+
 class SecretGitUrl(Secret[str]):
     """
     Container for storing Git URLs which might contain secret values. Extends ``secret_type.Secret`` with implementing
@@ -449,12 +453,14 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         # Fetch the commit, in case it is from a merge/pull request ref
         checkout_ref = self._fetch_ref(clone_url, actual_path, ref)
 
-        # Checkout the ref of the merge request
+        # Checkout the ref of the merge request, do not initialize submodules
         try:
             command = [
                 'git',
                 '-C', actual_path,
-                'checkout', checkout_ref
+                'checkout',
+                '--no-recurse-submodules',
+                checkout_ref
             ]
 
             self.commands.append(' '.join(command).replace(actual_path, TESTCODE_DIR))
@@ -462,6 +468,23 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
         except gluetool.GlueCommandError as exc:
             raise FailedToCheckoutRef('Failed to checkout ref {}: {}'.format(ref, exc.output.stderr))
+
+        # Initialize submodules separately as only `update` have --init option.
+        try:
+            command = [
+                'git',
+                '-C', actual_path,
+                'submodule',
+                'update',
+                '--init',
+                '--recursive',
+            ]
+
+            self.commands.append(' '.join(command).replace(actual_path, TESTCODE_DIR))
+            gluetool.utils.Command(command).run()
+
+        except gluetool.GlueCommandError as exc:
+            raise FailedToUpdateSubmodules('Failed to update submodules {}: {}'.format(ref, exc.output.stderr))
 
     def _merge(self, clone_url: SecretGitUrl, ref: str, actual_path: str, logger: gluetool.log.ContextAdapter) -> None:
         """

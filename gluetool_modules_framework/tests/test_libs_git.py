@@ -259,7 +259,10 @@ def test_clone_invalid_ref(remote_git_repository, monkeypatch):
                 'some-ref:gluetool/some-ref'
             ],
             [
-                'git', '-C', 'some-path', 'checkout', 'gluetool/some-ref'
+                'git', '-C', 'some-path', 'checkout', '--no-recurse-submodules', 'gluetool/some-ref'
+            ],
+            [
+                'git', '-C', 'some-path', 'submodule', 'update', '--init', '--recursive'
             ]
         ]
     ),
@@ -279,7 +282,10 @@ def test_clone_invalid_ref(remote_git_repository, monkeypatch):
                 'refs/remotes/origin/merge-requests/1/head:gluetool/refs/remotes/origin/merge-requests/1/head'
             ],
             [
-                'git', '-C', 'some-path', 'checkout', 'gluetool/refs/remotes/origin/merge-requests/1/head'
+                'git', '-C', 'some-path', 'checkout', '--no-recurse-submodules', 'gluetool/refs/remotes/origin/merge-requests/1/head'
+            ],
+            [
+                'git', '-C', 'some-path', 'submodule', 'update', '--init', '--recursive'
             ]
         ]
     )

@@ -74,7 +74,8 @@ RUN    ln -s /CONFIG /etc/citool.d \
     # TFT-3381 - needed to support RHEL6
     && bash -c "echo '  HostKeyAlgorithms +ssh-rsa' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  PubkeyAcceptedKeyTypes +ssh-rsa' >> /etc/ssh/ssh_config" \
-    && bash -c "sed -i '/\[ evp_properties \]/a rh-allow-sha1-signatures = yes' /etc/ssl/openssl.cnf"
+    && bash -c "sed -i '/\[ evp_properties \]/a rh-allow-sha1-signatures = yes' /etc/ssl/openssl.cnf" \
+    && bash -c "sed -i 's/^rh-allow-sha1-signatures = no$/rh-allow-sha1-signatures = yes/g' /etc/crypto-policies/back-ends/opensslcnf.config"
 
 # copy the built package
 COPY dist/gluetool_modules_framework*.whl .

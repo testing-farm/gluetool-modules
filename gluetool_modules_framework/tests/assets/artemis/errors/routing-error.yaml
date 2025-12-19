@@ -1,0 +1,76 @@
+  - eventname: condemned
+    guestname: bbd2ae9e-9194-44a5-9dc7-9ea8e61b3a6e
+    details: {}
+    updated: '2026-01-13T16:47:51.469774'
+  - eventname: error
+    guestname: bbd2ae9e-9194-44a5-9dc7-9ea8e61b3a6e
+    details:
+        error: routing hook failed
+        failure:
+            environment:
+                hw:
+                    arch: ppc64le
+                    constraints:
+                os:
+                    compose: CentOS-Stream-9
+                kickstart:
+                    script:
+                    pre-install:
+                    post-install:
+                    metadata:
+                    kernel-options:
+                    kernel-options-post:
+                pool:
+                snapshots: false
+                spot_instance:
+            task: route-guest-request
+            message: failed to route guest request
+            recoverable: true
+            fail_guest_request: true
+            caused_by:
+                poolname: ibmcloud-ppc64le
+                message: failed to get pool can-acquire answer
+                recoverable: true
+                fail_guest_request: true
+                caused_by:
+                    imagename: CentOS-Stream-9
+                    environment:
+                        hw:
+                            arch: ppc64le
+                            constraints:
+                        os:
+                            compose: CentOS-Stream-9
+                        kickstart:
+                            script:
+                            pre-install:
+                            post-install:
+                            metadata:
+                            kernel-options:
+                            kernel-options-post:
+                        pool:
+                        snapshots: false
+                        spot_instance:
+                    message: cannot find image by name
+                    recoverable: true
+                    fail_guest_request: true
+    updated: '2026-01-13T15:51:24.180011'
+  - eventname: created
+    guestname: bbd2ae9e-9194-44a5-9dc7-9ea8e61b3a6e
+    details:
+        environment:
+            hw:
+                arch: ppc64le
+                constraints:
+            os:
+                compose: CentOS-Stream-9
+            kickstart:
+                script:
+                pre-install:
+                post-install:
+                metadata:
+                kernel-options:
+                kernel-options-post:
+            pool:
+            snapshots: false
+            spot_instance:
+    updated: '2026-01-13T10:38:14.077332'

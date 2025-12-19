@@ -739,3 +739,182 @@ def test_guest_destroy_operations_within_lock_context(monkeypatch, module, scena
     dump_idx = call_order.index('dump_events')
 
     assert enter_idx < stop_idx < dump_idx < exit_idx, f"Operations not properly within lock context: {call_order}"
+
+
+def test_event_log_error_no_events(module, log):
+    """Test event_log_error returns None when events is empty"""
+    result = module.event_log_error(None)
+
+    assert result is None
+    assert log.match(
+        levelno=logging.WARNING,
+        message="Skipping event log analysis, no events available."
+    )
+
+
+def test_event_log_error_no_template_file(module, log):
+    """Test event_log_error returns None when error_template_file is not set"""
+    module._config['error-template-file'] = None
+
+    events = [{'eventname': 'error', 'details': {}}]
+    result = module.event_log_error(events)
+
+    assert result is None
+    assert log.match(
+        levelno=logging.WARNING,
+        message="Skipping event log analysis, no error template file available."
+    )
+
+
+def test_event_log_error_no_error_events(module, log):
+    """Test event_log_error returns None when error_events is not set"""
+    module._config['error-template-file'] = testing_asset('artemis', 'errors', 'template.j2')
+    module._config['error-events'] = []
+
+    message = module.event_log_error([{'eventname': 'error', 'details': {}}])
+
+    assert message is None
+
+    assert log.match(
+        levelno=logging.WARNING,
+        message="Skipping event log analysis, no error events defined to analyze."
+    )
+
+
+def test_event_log_error_template_rendering_error(module, tmpdir, log):
+    """Test event_log_error handles template rendering errors gracefully"""
+    # Create an invalid template that will fail to render
+    template_content = "{% set foo = event.nonexistent.deeply.nested.path %}"
+
+    template_file = tmpdir.join('error-template.j2')
+    template_file.write(template_content)
+
+    events = [
+        {
+            'eventname': 'error',
+            'details': {}
+        }
+    ]
+
+    module._config['error-template-file'] = str(template_file)
+    module._config['error-events'] = ['error']
+
+    result = module.event_log_error(events)
+
+    assert result is None
+
+    # Check that the warning message contains the expected error
+    assert log.records
+    warning_messages = [r.message for r in log.records if r.levelno == logging.WARNING]
+    assert any('Could not render Artemis error template' in msg for msg in warning_messages)
+
+
+@pytest.mark.parametrize('event_file,error', [
+    (
+        'rhel7-aarch64-beaker.yaml',
+        'RHEL-7 product is not supported on aarch64.'
+    ),
+    (
+        'routing-error.yaml',
+        (
+            'Failed to find image CentOS-Stream-9 in ibmcloud-ppc64le pool for architecture ppc64le.\n'
+            'Please file an issue to Testing Farm, this is a infrastructure problem that needs fixing by the maintainers.'
+        )
+    )
+], ids=['rhel7-aarch64-beaker-unsupported', 'routing-error'])
+def test_event_log_error_full_template(module, event_file, error):
+    """Test event_log_error with the full error template from the configuration"""
+    module._config['error-template-file'] = testing_asset('artemis', 'errors', 'template.j2')
+    module._config['error-events'] = ['created', 'error', 'pool-resources-requested', 'acquisition-attempt']
+
+    # Load the test events
+    events = load_yaml(testing_asset('artemis', 'errors', event_file))
+
+    # The result should contain the error message about RHEL-7 not being supported on aarch64
+    assert error == module.event_log_error(events)
+
+
+def test_event_log_error_last_event_only(module, tmpdir):
+    """Test that event_log_error only uses the last occurrence of each event type"""
+    template_content = """{% if event.error %}Error message: {{ event.error.details.message }}{% endif %}"""
+
+    template_file = tmpdir.join('error-template.j2')
+    template_file.write(template_content)
+
+    # Create events with multiple error events
+    events = [
+        {
+            'eventname': 'other',
+        },
+        {
+            'eventname': 'error',
+            'details': {
+                'message': 'last error'
+            }
+        },
+        {
+            'eventname': 'error',
+            'details': {
+                'message': 'previous error'
+            }
+        },
+        {
+            'eventname': 'error',
+            'details': {
+                'message': 'previous error'
+            }
+        }
+    ]
+
+    module._config['error-template-file'] = str(template_file)
+    module._config['error-events'] = ['error']
+
+    message = module.event_log_error(events)
+
+    assert message == 'Error message: last error'
+
+
+def test_guest_event_log_from_file(module):
+    """Test guest_event_log loads events from a local file"""
+    module._config['analyze-event-log'] = testing_asset('artemis', 'errors', 'rhel7-aarch64-beaker.yaml')
+
+    events = module.guest_event_log
+
+    assert isinstance(events, list)
+    assert any(e.get('eventname') == 'created' for e in events)
+
+
+class MockHttpRequests:
+    status_code = 200
+    text = ''
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+    def get(self, url):
+        return Response(MockHttpRequests.status_code, {}, MockHttpRequests.text, lambda: None)
+
+
+@pytest.mark.parametrize('status_code,text,error', [
+    (200, '- eventname: created\n  details: {}', None),
+    (404, 'Not found', "Failed to download guest event log"),
+    (200, 'invalid content', "does not contain an Artemis guest event log"),
+])
+def test_guest_event_log_http(module, monkeypatch, status_code, text, error):
+    """Test guest_event_log HTTP loading paths"""
+    import gluetool.utils
+
+    MockHttpRequests.status_code = status_code
+    MockHttpRequests.text = text
+
+    monkeypatch.setattr(gluetool.utils, 'requests', MockHttpRequests)
+    module._config['analyze-event-log'] = 'https://example.com/log.yaml'
+
+    if error:
+        with pytest.raises(GlueError, match=error):
+            module.guest_event_log
+    else:
+        assert module.guest_event_log is not None

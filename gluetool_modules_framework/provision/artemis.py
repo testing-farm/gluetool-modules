@@ -29,6 +29,7 @@ from gluetool.utils import (
     normalize_bool_option,
     normalize_path,
     render_template,
+    from_yaml,
     load_yaml
 )
 from gluetool_modules_framework.libs.threading import RepeatTimer
@@ -125,8 +126,9 @@ SecurityGroupRules = List[SecurityGroupRule]
 
 
 class ArtemisResourceError(GlueError):
-    def __init__(self) -> None:
-        super(ArtemisResourceError, self).__init__("Artemis resource ended in 'error' state")
+    def __init__(self, error: Optional[str] = None) -> None:
+        error = error or "Artemis resource ended in 'error' state"
+        super(ArtemisResourceError, self).__init__(error)
 
 
 class PipelineCancelled(GlueError):
@@ -616,6 +618,14 @@ class ArtemisGuest(NetworkedGuest):
     def __str__(self) -> str:
         return 'ArtemisGuest({}, {}@{}, {})'.format(self.artemis_id, self.username, self.hostname, self.environment)
 
+    @property
+    def event_log_error(self) -> Optional[str]:
+        if not os.path.exists(self.event_log_path):
+            self.warn('Skipping event log analysis, no event log found for the guest')
+            return None
+
+        return self.module.event_log_error(load_yaml(self.event_log_path))
+
     def _check_ip_ready(self) -> Result[bool, str]:
 
         try:
@@ -628,7 +638,7 @@ class ArtemisGuest(NetworkedGuest):
                     return Result.Ok(True)
 
             if guest_state == 'error':
-                raise ArtemisResourceError()
+                raise ArtemisResourceError(error=self.event_log_error)
 
         except ArtemisResourceError:
             six.reraise(*sys.exc_info())
@@ -986,6 +996,36 @@ class ArtemisProvisioner(gluetool.Module):
                 'type': int
             }
         }),
+        ('Error options', {
+            'error-events': {
+                'help': """
+                        List of last guest log events provided to the error template rendering.
+                        Specified by the event name.
+                        """,
+                'metavar': 'EVENT1,EVENT2,...',
+                'action': 'append',
+                'default': []
+            },
+            'error-template-file': {
+                'help': """
+                        Jinja2 template used to generate Artemis error message.
+                        The template has access to last Artemis guest log events specified by
+                        the ``error-events`` option. The events are accessible under the ``event``
+                        dict variable in the template.
+                        """,
+                'metavar': 'JINJA_TEMPLATE',
+                'type': str
+            },
+            'analyze-event-log': {
+                'help': """
+                        Only analyze the given event log and print the error message.
+                        Can be a remote HTTP URL.
+                        Useful for testing.
+                        """,
+                'metavar': 'FILE_OR_URL',
+                'type': str
+            }
+        }),
         ('Guest options', {
             'ssh-options': {
                 'help': 'SSH options (default: none).',
@@ -1212,6 +1252,43 @@ class ArtemisProvisioner(gluetool.Module):
     def api_version(self) -> str:
         return render_template(self.option('api-version') or '', **self.shared('eval_context'))
 
+    @property
+    def error_events(self) -> List[str]:
+        return normalize_multistring_option(self.option('error-events'))
+
+    @property
+    def error_template_file(self) -> Optional[str]:
+        if not self.option('error-template-file'):
+            return None
+
+        return normalize_path(self.option('error-template-file'))
+
+    @gluetool.utils.cached_property
+    def guest_event_log(self) -> Any:
+        """
+        Load guest event log to analyze from a remote URL or a file.
+        """
+        analyzed_log = self.option('analyze-event-log')
+
+        if not analyzed_log:
+            return None
+
+        if analyzed_log.startswith('http'):
+
+            self.info("Downloading '{}'".format(analyzed_log))
+            with gluetool.utils.requests() as req:
+                response = req.get(analyzed_log)
+
+            if response.status_code != 200:
+                raise GlueError("Failed to download guest event log '{}'".format(analyzed_log))
+
+            if 'eventname: created' not in response.text:
+                raise GlueError("The url '{}' does not contain an Artemis guest event log".format(analyzed_log))
+
+            return from_yaml(response.text)
+        else:
+            return load_yaml(normalize_path(analyzed_log))
+
     def expand_post_install_script(self, post_install_script: str) -> str:
         """
         Converts post_install_script, which can either be a filename or a script itself, into the script by reading the
@@ -1326,6 +1403,12 @@ class ArtemisProvisioner(gluetool.Module):
 
         if self.option('guest-logs-enable') and not self.option('guest-logs-config'):
             raise GlueError('Option --guest-logs-config is required to enable guest logs.')
+
+        if self.option('provision') and self.option('analyze-event-log'):
+            raise GlueError('Option --provision and --analyze-event-log are mutually exclusive.')
+
+        if self.option('analyze-event-log') and not self.option('error-template-file'):
+            raise GlueError('Option --error-template-file is required with --analyze-event-log.')
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(ArtemisProvisioner, self).__init__(*args, **kwargs)
@@ -1560,6 +1643,41 @@ class ArtemisProvisioner(gluetool.Module):
         except GlueError as error:
             raise GlueError('Could not load {} file: {}'.format(logs_config, error))
 
+    def event_log_error(self, events: Any) -> Optional[str]:
+        """
+        Analyze guest event log and return a reasonable error rendered using the error template.
+        """
+        if not events:
+            self.warn("Skipping event log analysis, no events available.", sentry=True)
+            return None
+
+        if not self.error_template_file:
+            self.warn("Skipping event log analysis, no error template file available.")
+            return None
+
+        if not self.error_events:
+            self.warn("Skipping event log analysis, no error events defined to analyze.")
+            return None
+
+        last_events = {}
+
+        # Search for last events in the event log. The event log is ordered newest-first,
+        # so the first occurrence of each event type is the most recent one.
+        for eventname in self.error_events:
+            for event in events:
+                if event['eventname'] == eventname:
+                    last_events[eventname] = event
+                    break
+
+        with open(self.error_template_file, "r") as template_file:
+            error_template = template_file.read()
+
+        try:
+            return render_template(error_template, event=last_events)
+        except GlueError as error:
+            self.warn("Could not render Artemis error template: {}".format(str(error)), sentry=True)
+            return None
+
     def execute(self) -> None:
 
         self.api = ArtemisAPI(self,
@@ -1575,6 +1693,15 @@ class ArtemisProvisioner(gluetool.Module):
             if self.api.version < API_FEATURE_VERSIONS['log-types']:
                 raise GlueError('Artemis API version {} does not support guest logs.'.format(self.api.version))
             self.load_guest_logs_template()
+
+        # Analyze guest event log
+        if self.guest_event_log:
+            log_blob(
+                self.info,
+                "Guest event log error",
+                self.event_log_error(self.guest_event_log) or "Not available"
+            )
+            return
 
         if not self.option('provision'):
             return

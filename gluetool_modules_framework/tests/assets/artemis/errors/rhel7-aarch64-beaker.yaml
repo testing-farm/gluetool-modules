@@ -1,0 +1,107 @@
+---
+  - eventname: condemned
+    guestname: 1bc3806f-3c49-4b5a-82f7-4d04aaccd522
+    details: {}
+    updated: '2025-12-13T19:18:42.344429'
+  - eventname: finished-task
+    guestname: 1bc3806f-3c49-4b5a-82f7-4d04aaccd522
+    details:
+        task: route-guest-request
+    updated: '2025-12-13T19:17:45.707183'
+  - eventname: state-changed
+    guestname: 1bc3806f-3c49-4b5a-82f7-4d04aaccd522
+    details:
+        new_state: error
+        current_state: routing
+        poolname:
+    updated: '2025-12-13T19:17:45.701516'
+  - eventname: routing-cancelled
+    guestname: 1bc3806f-3c49-4b5a-82f7-4d04aaccd522
+    details:
+        task: route-guest-request
+    updated: '2025-12-13T19:17:45.696856'
+  - eventname: routing-report
+    guestname: 1bc3806f-3c49-4b5a-82f7-4d04aaccd522
+    details:
+        history:
+          - policyname: timeout-reached
+            allowed-pools: []
+            disallowed-pools: []
+            cancel: true
+            failure:
+    updated: '2025-12-13T19:17:45.693317'
+  - eventname: error
+    guestname: 1bc3806f-3c49-4b5a-82f7-4d04aaccd522
+    details:
+        error: failed to provision
+        failure:
+            job: "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<job retention_tag=\"Scratch\">\n <whiteboard>\n  [artemis] [artemis-production-02] 1bc3806f-3c49-4b5a-82f7-4d04aaccd522 https://artifacts.testing-farm.io/testing-farm/08505e02-214b-46fb-b677-980ca1f86ca3\n </whiteboard>\n"
+            task: acquire-guest-request
+            poolname: beaker
+            message: failed to submit job
+            recoverable: true
+            fail_guest_request: true
+            caused_by:
+                poolname: beaker
+                commandname: bkr.job-submit
+                message: error running CLI command
+                recoverable: true
+                fail_guest_request: true
+            sentry:
+                event_id: d96325c800e44bf3b4f6d3be4a949b0f
+                event_url: https://sentry.engineering.redhat.com/organizations/baseos/issues/?project=115&query=d96325c800e44bf3b4f6d3be4a949b0f
+    updated: '2025-12-13T19:17:40.401412'
+  - eventname: acquisition-attempt
+    guestname: 1bc3806f-3c49-4b5a-82f7-4d04aaccd522
+    details:
+        image:
+            name: RHEL-7.9
+            arch:
+            boot:
+                method: []
+            ssh:
+                username: root
+                port: 22
+            supports_kickstart: true
+            variant: Server
+            bootc_image:
+    updated: '2025-12-13T19:17:39.093964'
+  - eventname: entered-task
+    guestname: 1bc3806f-3c49-4b5a-82f7-4d04aaccd522
+    details:
+        task: acquire-guest-request
+    updated: '2025-12-13T19:17:39.054450'
+  - eventname: finished-task
+    guestname: 1bc3806f-3c49-4b5a-82f7-4d04aaccd522
+    details:
+        task: acquire-guest-request
+        poolname: beaker
+    updated: '2025-12-13T19:09:50.947697'
+  - eventname: guest-log-requested
+    guestname: 1bc3806f-3c49-4b5a-82f7-4d04aaccd522
+    details:
+        logname: console:dump
+        contenttype: blob
+    updated: '2025-12-13T13:09:07.655069'
+  - eventname: created
+    guestname: 1bc3806f-3c49-4b5a-82f7-4d04aaccd522
+    details:
+        environment:
+            hw:
+                arch: aarch64
+                constraints:
+            os:
+                compose: RHEL-7-LatestReleased
+            kickstart:
+                script:
+                pre-install:
+                post-install:
+                metadata:
+                kernel-options:
+                kernel-options-post:
+            pool: beaker
+            snapshots: false
+            spot_instance:
+        user_data:
+            COLDSTORE_URL: https://artifacts.testing-farm.io/testing-farm/08505e02-214b-46fb-b677-980ca1f86ca3
+    updated: '2025-12-13T13:09:07.537147'

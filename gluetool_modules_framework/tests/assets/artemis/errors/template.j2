@@ -1,0 +1,70 @@
+{% set failure_message = event.error.details.failure.message %}
+{% set pool = event.error.details.failure.poolname or event.error.details.failure.caused_by.poolname %}
+{% set arch = event.created.details.environment.hw.arch %}
+{% set forced_pool = event.created.details.environment.pool %}
+
+{#
+   ############################################################################
+
+   Handle routing errors
+
+   ############################################################################
+#}
+
+{% if failure_message == "failed to route guest request" %}
+
+  {% set routing_error = event.error.details.failure.caused_by.caused_by.message %}
+
+  {% if routing_error == "cannot find image by name" %}
+
+    {% set image = event.error.details.failure.caused_by.caused_by.imagename %}
+
+Failed to find image {{ image }} in {{ pool }} pool for architecture {{ arch }}.
+Please file an issue to Testing Farm, this is a infrastructure problem that needs fixing by the maintainers.
+
+  {% endif %}
+
+{#
+   ############################################################################
+
+   Handle provisioning errors
+
+   ############################################################################
+#}
+
+{% else %}
+
+  {% set compose = event["acquisition-attempt"].details.image.name %}
+
+  {% if "beaker" in pool %}
+
+    {% if failure_message == "failed to submit job" %}
+
+      {% if arch == "aarch64" and compose.startswith("RHEL-7") %}
+
+RHEL-7 product is not supported on aarch64.
+
+      {% else %}
+
+        {% set xml = event.error.details.failure.job %}
+
+  Failed to submit job to Beaker to provision {{ compose }} on {{ arch }} in {{ pool }} pool.
+  The xml Testing Farm tried to submit:
+
+{{ xml }}
+
+      {% endif %}
+
+    {% else %}
+
+      {% set beaker_job_id = event["pool-resources-requested"].details.pool_data.job_id %}
+      {% set beaker_job_status = event.error.details.failure.job_status %}
+
+Failed to provision {{ compose }} on {{ arch }} in {{ pool }} pool - {{ failure_message }} ({{ beaker_job_status | default("no job status") }}).
+For more information see the console log and the Beaker job https://beaker.engineering.redhat.com/jobs/{{ beaker_job_id[2:] }}.
+
+    {% endif %}
+
+  {% endif %}
+
+{% endif %}

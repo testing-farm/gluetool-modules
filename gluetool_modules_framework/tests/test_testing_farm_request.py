@@ -340,7 +340,7 @@ def test_update_state_ignored(module, request2, monkeypatch, log):
     patch_shared(monkeypatch, module, {'xunit_testing_farm_file': 'xunitfile', 'results': 'someresults'})
 
     request = module._tf_request
-    monkeypatch.setattr(module.glue, 'pipeline_cancelled', True)
+    module._request_cancelled = True
 
     request.update(
         state='somestate',

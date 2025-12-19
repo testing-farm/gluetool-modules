@@ -544,8 +544,8 @@ class TestingFarmRequest(LoggerMixin, object):
                 'api_key': self._api_key
             })
 
-        # TFT-3292 - do not update state if pipeline was cancelled
-        if state and not self._module.pipeline_cancelled:
+        # TFT-3292 - do not update state if request was cancelled, state transition is handled separately in that case
+        if state and not self._module._request_cancelled:
             payload.update({
                 'state': state
             })
@@ -808,6 +808,7 @@ class TestingFarmRequestModule(gluetool.Module):
         self._tf_api_internal: Optional[TestingFarmAPI] = None
         self._tf_api_public: Optional[TestingFarmAPI] = None
         self._pipeline_cancellation_timer: Optional[RepeatTimer] = None
+        self._request_cancelled = False
 
     @property
     def internal_api_url(self) -> str:
@@ -882,6 +883,11 @@ class TestingFarmRequestModule(gluetool.Module):
 
         # update the state
         self._tf_request.update(state=PipelineState.canceled)
+
+        # indicate request was canceled, gluetool's pipeline_cancelled has wider meaning and
+        # we cannot use it to detect if the pipeline was cancelled on user request or because
+        # of some other event, like timeout (TFT-4018)
+        self._request_cancelled = True
 
         if not self.pipeline_destroying:
             # cancel the pipeline

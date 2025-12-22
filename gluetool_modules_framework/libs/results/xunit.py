@@ -42,6 +42,16 @@ class XUnitFailure:
 
 
 @attrs.define(kw_only=True)
+class XUnitError:
+    # Do not show message in representation, it can be huge
+    message: str = attrs.field(metadata={'type': 'Attribute'}, repr=False)
+
+    @classmethod
+    def construct(cls, test_case: 'TestCase') -> 'XUnitError':
+        return XUnitError(message='Test "{}" errored.'.format(test_case.name))
+
+
+@attrs.define(kw_only=True)
 class XUnitTestCase:
     name: str = attrs.field(metadata={'type': 'Attribute'})
     # Do not show system_out in representation, it can be huge
@@ -49,6 +59,7 @@ class XUnitTestCase:
     # Ignore PEP8Bear  # Coala doesn't like this line for some reason
     classname: str = attrs.field(default='tests', metadata={'type': 'Attribute'})
     failure: Optional[XUnitFailure] = attrs.field(default=None)
+    error: Optional[XUnitError] = attrs.field(default=None)
     time: Optional[int] = attrs.field(default=None, metadata={'type': 'Attribute'})
     start_time: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute', 'name': 'start-time'})
     end_time: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute', 'name': 'end-time'})
@@ -58,7 +69,8 @@ class XUnitTestCase:
         return XUnitTestCase(
             name=test_case.name,
             system_out=_xml_friendly_encode(test_case.system_out),
-            failure=XUnitFailure.construct(test_case) if test_case.failure or test_case.error else None,
+            failure=XUnitFailure.construct(test_case) if test_case.failure else None,
+            error=XUnitError.construct(test_case) if test_case.error else None,
             time=int(test_case.duration.total_seconds()) if test_case.duration is not None else None,
             start_time=test_case.start_time,
             end_time=test_case.end_time,

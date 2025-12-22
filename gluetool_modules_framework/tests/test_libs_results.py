@@ -20,5 +20,5 @@ def test_xunit_repr():
     )
 
     assert str(testcase) == textwrap.dedent("""
-        XUnitTestCase(name='testcase', classname='class-name', failure=XUnitFailure(type='fail'), time=1, start_time=None, end_time=None)
+        XUnitTestCase(name='testcase', classname='class-name', failure=XUnitFailure(type='fail'), error=None, time=1, start_time=None, end_time=None)
     """).strip()

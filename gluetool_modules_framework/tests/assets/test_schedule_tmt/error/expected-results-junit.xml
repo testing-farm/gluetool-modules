@@ -6,7 +6,7 @@
    <failure type="FAIL" message='Test "/update" failed.'/>
   </testcase>
   <testcase name="/remove" classname="tests">
-   <failure type="FAIL" message='Test "/remove" failed.'/>
+   <error message='Test "/remove" errored.'/>
   </testcase>
   <testcase name="/todo" classname="tests"/>
  </testsuite>

@@ -5,8 +5,8 @@
 #    /CONFIG            - place for configuration
 #
 
-# NOTE: last version on Fedora 41
-FROM quay.io/containers/podman:v5.3.2
+# NOTE: last version on Fedora 42
+FROM quay.io/containers/podman:v5.6.1
 LABEL maintainer="tft@redhat.com"
 
 # workdir needs to be a writable path in all supported operating systems, a tmt requirement
@@ -49,17 +49,15 @@ RUN    ln -s /CONFIG /etc/citool.d \
     && dnf -y install ansible-core autoconf automake crun gcc git krb5-devel libcurl-devel \
                       libpq-devel libtool libxml2-devel make openssl-devel popt-devel \
                       postgresql-devel python3.9 python3-libselinux \
-                      redhat-rpm-config koji python3-virtualenv \
-                      # NOTE(mvadkert): not yet in stable repos https://bodhi.fedoraproject.org/updates/?search=standard-test-roles
-                      https://kojipkgs.fedoraproject.org//packages/standard-test-roles/4.13/1.fc41/noarch/standard-test-roles-4.13-1.fc41.noarch.rpm \
+                      redhat-rpm-config koji python3-virtualenv standard-test-roles \
                       rsync beakerlib-libraries rpm-build rpm-devel awscli \
     # Pull in tmt from @teemtee/stable copr repository
     && dnf copr -y enable @teemtee/stable \
     && dnf -y install fmf-1.7.0 \
-                      tmt-1.63.0 \
-                      tmt+provision-container-1.63.0 \
-                      tmt+provision-virtual-1.63.0 \
-                      tmt+report-polarion-1.63.0 \
+                      tmt-1.64.0 \
+                      tmt+provision-container-1.64.0 \
+                      tmt+provision-virtual-1.64.0 \
+                      tmt+report-polarion-1.64.0 \
     # Pull in tmt policies
     && mkdir -p /etc/tmt/policies \
     && git clone --branch main --depth 1 https://gitlab.com/testing-farm/profiles.git /tmp/profiles \

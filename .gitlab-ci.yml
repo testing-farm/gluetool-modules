@@ -66,7 +66,7 @@ container-worker-public:
     IMAGE_TAG: $CI_PIPELINE_ID
   trigger:
     project: testing-farm/worker-public
-
+    branch: pass-image-tag-to-downstream-pipeline
 
 # Run unit tests
 #

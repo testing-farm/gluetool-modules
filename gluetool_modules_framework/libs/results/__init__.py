@@ -142,8 +142,7 @@ class TestSuite:
     @property
     def failure_count(self) -> int:
         return len([test_case for test_case in self.test_cases if test_case.result in ('failed', 'fail', 'fail:',
-                                                                                       'needs_inspection', 'error',
-                                                                                       'errored', 'error:')])
+                                                                                       'needs_inspection')])
 
     @property
     def error_count(self) -> int:
@@ -151,7 +150,7 @@ class TestSuite:
 
     @property
     def skipped_count(self) -> int:
-        return len([test_case for test_case in self.test_cases if test_case.result in ('error', 'errored', 'error:')])
+        return len([test_case for test_case in self.test_cases if test_case.result in ('skip', 'skipped', 'skip:')])
 
     @property
     def pending_count(self) -> int:

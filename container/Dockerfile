@@ -49,7 +49,7 @@ RUN    ln -s /CONFIG /etc/citool.d \
     && dnf -y install ansible-core autoconf automake crun gcc git krb5-devel libcurl-devel \
                       libpq-devel libtool libxml2-devel make openssl-devel popt-devel \
                       postgresql-devel python3.9 python3-libselinux \
-                      redhat-rpm-config koji python3-virtualenv standard-test-roles \
+                      redhat-rpm-config koji python3-virtualenv \
                       rsync beakerlib-libraries rpm-build rpm-devel awscli \
     # Pull in tmt from @teemtee/stable copr repository
     && dnf copr -y enable @teemtee/stable \
@@ -75,7 +75,14 @@ RUN    ln -s /CONFIG /etc/citool.d \
     && bash -c "echo '  HostKeyAlgorithms +ssh-rsa' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  PubkeyAcceptedKeyTypes +ssh-rsa' >> /etc/ssh/ssh_config" \
     && bash -c "sed -i '/\[ evp_properties \]/a rh-allow-sha1-signatures = yes' /etc/ssl/openssl.cnf" \
-    && bash -c "sed -i 's/^rh-allow-sha1-signatures = no$/rh-allow-sha1-signatures = yes/g' /etc/crypto-policies/back-ends/opensslcnf.config"
+    && bash -c "sed -i 's/^rh-allow-sha1-signatures = no$/rh-allow-sha1-signatures = yes/g' /etc/crypto-policies/back-ends/opensslcnf.config" \
+    # Install standard-test-roles from git
+    # NOTE(mvadkert): there is no better way, mimics https://src.fedoraproject.org/rpms/standard-test-roles/blob/f42/f/standard-test-roles.spec
+    && git clone --depth 1 https://pagure.io/standard-test-roles.git /tmp/standard-test-roles \
+    && cp -rv /tmp/standard-test-roles/roles/standard-test-* /tmp/standard-test-roles/roles/str-common-* /etc/ansible/roles/ \
+    && cp -f /tmp/standard-test-roles/scripts/str-filter-tests /usr/bin \
+    && chmod +x /usr/bin/str-filter-tests \
+    && rm -rf /tmp/standard-test-roles
 
 # copy the built package
 COPY dist/gluetool_modules_framework*.whl .

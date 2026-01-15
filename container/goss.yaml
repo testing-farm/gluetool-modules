@@ -20,11 +20,6 @@ package:
   rpm-build:
     installed: true
 
-  standard-test-roles:
-    installed: true
-    versions:
-      - "4.13"
-
   fmf:
     installed: true
     versions:
@@ -89,6 +84,27 @@ file:
   /etc/tmt/policies/rhel-ci.yaml:
     exists: true
     mode: "0444"
+    owner: root
+    group: root
+    filetype: file
+
+  # standard-test-roles installed from git via ansible-galaxy
+  # https://pagure.io/standard-test-roles
+  /etc/ansible/roles/standard-test-basic:
+    exists: true
+    filetype: directory
+
+  /etc/ansible/roles/standard-test-beakerlib:
+    exists: true
+    filetype: directory
+
+  /etc/ansible/roles/standard-test-source:
+    exists: true
+    filetype: directory
+
+  /usr/bin/str-filter-tests:
+    exists: true
+    mode: "0755"
     owner: root
     group: root
     filetype: file

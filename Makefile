@@ -32,15 +32,15 @@ clean:  ## Remove gluetool-modules container image
 edit-image-test:  ## Edit goss file via dgoss
 	cd container && dgoss edit --stop-timeout 0 --entrypoint bash $(IMAGE):$(IMAGE_TAG)
 
-install-cs9:  ## Install required system dependencies in CentOS Stream 9
-	sudo dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
-		ansible autoconf automake gcc git krb5-devel libcurl-devel libtool \
+install-cs10:  ## Install required system dependencies in CentOS Stream 10
+	sudo dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
+	sudo dnf -y install ansible-core autoconf automake gcc git krb5-devel libcurl-devel libtool libffi-devel \
 		libxml2-devel openssl-devel popt-devel postgresql-devel python3-devel
 
 install-fedora:  ## Install required system dependencies in Fedora
-	sudo dnf -y install ansible autoconf automake gcc git krb5-devel libcurl-devel \
-		libpq-devel libtool libxml2-devel openssl-devel popt-devel postgresql-devel \
-		python3-libselinux redhat-rpm-config python3-rpm python3.9
+	sudo dnf -y install ansible autoconf automake gcc git krb5-devel libcurl-devel libffi-devel \
+		libpq-devel libtool libxml2-devel libxslt-devel openssl-devel popt-devel postgresql-devel \
+		python3-libselinux redhat-rpm-config python3-rpm python3.12
 
 # See https://www.thapaliya.com/en/writings/well-documented-makefiles/ for details.
 help:  ## Show this help

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import functools
-import imp
+import importlib.util
 import re
 import sys
 import ast
@@ -437,7 +437,15 @@ class RulesEngine(gluetool.Module):
             source_filepath = gluetool.utils.normalize_path(source_filename)
 
             try:
-                code = imp.load_source(source_filename.replace('/', '_'), source_filepath)
+                module_name = source_filename.replace('/', '_')
+                spec = importlib.util.spec_from_file_location(module_name, source_filepath)
+                if spec is None or spec.loader is None:
+                    raise GlueError('Failed to create module spec for {}'.format(source_filename))
+                code = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(code)
+
+            except GlueError:
+                raise
 
             except Exception as exc:
                 raise GlueError('Failed to load functions from {}: {}'.format(source_filename, exc))

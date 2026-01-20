@@ -6,7 +6,9 @@ import gluetool
 import mysql.connector
 
 # Type annotations
-from typing import Any  # noqa
+from typing import Any, Optional, Union  # noqa
+from mysql.connector.pooling import PooledMySQLConnection
+from mysql.connector.abstracts import MySQLConnectionAbstract
 
 
 class MySQL(gluetool.Module):
@@ -51,7 +53,7 @@ class MySQL(gluetool.Module):
 
         super(MySQL, self).__init__(*args, **kwargs)
 
-        self._connection = None
+        self._connection: Optional[Union[PooledMySQLConnection, MySQLConnectionAbstract]] = None
 
     @property
     def connection(self) -> Any:

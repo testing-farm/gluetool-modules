@@ -138,16 +138,16 @@ command:
     exit-status: 0
     timeout: 100000
     stderr:
-      - gluetool 2.19
+      - gluetool 3.0
 
   koji version:
     exit-status: 0
     timeout: 100000
 
-  python3.9 --version:
+  python3.12 --version:
     exit-status: 0
     stdout:
-      - Python 3.9
+      - Python 3.12
 
   tmt --version:
     exit-status: 0

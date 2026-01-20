@@ -8,12 +8,8 @@ import shlex
 import stat
 import sys
 import tempfile
-import datetime
 
-import enum
 import six
-import attrs
-import cattrs
 
 import gluetool
 from gluetool import GlueError, GlueCommandError, Module
@@ -33,7 +29,7 @@ from gluetool_modules_framework.libs.test_schedule_tmt import \
     DISCOVERED_TESTS_YAML, \
     PLAN_OUTCOME, PLAN_OUTCOME_WITH_ERROR, \
     RESULTS_YAML, RESULT_OUTCOME, RESULT_WEIGHT, \
-    TMTDiscoveredTest, TMTDiscoveredTest, TMTExitCodes, TMTPlan, TMTResult, TMTGuest, TestResult, TestArtifact, \
+    TMTDiscoveredTest, TMTExitCodes, TMTPlan, TMTResult, TMTGuest, TestResult, TestArtifact, \
     TMT_ENV_FILE, TMT_LOG, TMT_REPRODUCER, TMT_VERBOSE_LOG, \
     get_test_contacts, safe_name
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
@@ -749,7 +745,7 @@ class TestScheduleTMTMultihost(Module):
             logger.info('looking for plans')
 
             # Prepare tmt context files
-            context = gluetool.utils.dict_update(
+            gluetool.utils.dict_update(
                 self.shared('eval_context'),
                 {
                     'TEC': tec
@@ -875,8 +871,6 @@ class TestScheduleTMTMultihost(Module):
             self.option('command')
         ]
 
-        tf_request = cast(TestingFarmRequest, self.shared('testing_farm_request'))
-
         command.extend(self._root_option)
 
         assert schedule_entry.testing_environment
@@ -906,9 +900,9 @@ class TestScheduleTMTMultihost(Module):
         def _sanitize_environment_variables(variables: Dict[str, str]) -> str:
             return ' '.join(["{}=hidden".format(key) for key, _ in six.iteritems(variables)])
 
-        # using `# noqa` because flake8 and coala are confused by the walrus operator
+        # ruff and coala are confused by the walrus operator
         # Ignore PEP8Bear
-        if (tmt := schedule_entry.testing_environment.tmt) and 'environment' in tmt and tmt['environment']:  # noqa: E203 E231 E501
+        if (tmt := schedule_entry.testing_environment.tmt) and 'environment' in tmt and tmt['environment']:  # noqa: E203, E231, E501
 
             _check_accepted_environment_variables(tmt['environment'])
 
@@ -1294,7 +1288,6 @@ class TestScheduleTMTMultihost(Module):
                         else:
                             test_case.system_out.append(f.read())
 
-            plan_path = safe_name(schedule_entry.plan[1:])
             assert schedule_entry.work_dirpath is not None
 
             if test_case not in test_suite.test_cases:

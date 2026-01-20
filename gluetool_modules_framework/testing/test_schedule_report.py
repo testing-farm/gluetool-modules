@@ -4,10 +4,8 @@
 import threading
 
 import gluetool
-from gluetool.utils import new_xml_element
 from gluetool.log import log_blob
 
-from gluetool_modules_framework.libs import sort_children
 from gluetool_modules_framework.libs.artifacts import artifacts_location
 import gluetool_modules_framework.libs.guest_setup
 from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleResult, TestScheduleEntryStage, \
@@ -231,9 +229,9 @@ class TestScheduleReport(gluetool.Module):
         self._results = Results(overall_result=self._overall_result(schedule).name.lower())
 
         # TODO: More task types are possible, having a base class would be handy.
-        # using `# noqa` because flake8 and coala are confused by the walrus operator
+        # ruff and coala are confused by the walrus operator
         # Ignore PEP8Bear
-        if primary_task := cast(Union[KojiTask, CoprTask], self.shared('primary_task')):  # noqa: E203 E231 E701
+        if primary_task := cast(Union[KojiTask, CoprTask], self.shared('primary_task')):  # noqa: E203, E231, E701
             self._results.primary_task = primary_task
 
         self._results.test_schedule_result = schedule.result.name.lower()

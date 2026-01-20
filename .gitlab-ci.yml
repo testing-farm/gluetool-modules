@@ -6,7 +6,7 @@ stages:
   - deploy
 
 # Use our custom image. See https://gitlab.com/testing-farm/images/-/tree/master/python-ci-image
-image: "quay.io/testing-farm/python-ci-image:2023-09-21-f3e8c41e"
+image: "quay.io/testing-farm/python-ci-image:latest"
 
 #
 # Poetry and MyPy colors
@@ -22,7 +22,7 @@ image: "quay.io/testing-farm/python-ci-image:2023-09-21-f3e8c41e"
 # Common variables
 #
 variables:
-  BUILDAH_TAG: v1.29.0
+  BUILDAH_TAG: latest
   STAGING_CI_SUFFIX: $CI_MERGE_REQUEST_ID-$CI_JOB_ID
 
 #
@@ -49,7 +49,7 @@ container:
     GOSS_PATH: /usr/bin/goss
     GOSS_DOWNLOAD_URL: https://github.com/goss-org/goss/releases/download/v0.3.21
   script:
-    - dnf -y install make poetry python3.9 podman-docker
+    - dnf -y install make poetry python3.12 podman-docker
     - curl -L $GOSS_DOWNLOAD_URL/goss-linux-amd64 -o /usr/bin/goss && chmod +rx /usr/bin/goss
     - curl -L $GOSS_DOWNLOAD_URL/dgoss -o /usr/bin/dgoss && chmod +rx /usr/bin/dgoss
     - buildah login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
@@ -71,23 +71,23 @@ container-worker-public:
 # Run unit tests
 #
 # Note: this step also generates coverage report (HTML).
-py39-unit:
+py312-unit:
   extends: .tests
   stage: test
   needs: []
   script:
-    - tox -v -e py39-unit-tests -- --cov=gluetool_modules_framework --cov-report=html:coverage-report
+    - tox -v -e py312-unit-tests -- --cov=gluetool_modules_framework --cov-report=html:coverage-report
   artifacts:
     paths:
       - coverage-report
 
 # Static analysis - pylint, flake8
-py39-static:
+py312-static:
   extends: .tests
   stage: test
   needs: []
   script:
-    - tox -v -e py39-static-analysis
+    - tox -v -e py312-static-analysis
 
 # Static analysis - coala
 #
@@ -118,6 +118,18 @@ pre-commit:
     - poetry --version
     - pre-commit run --show-diff-on-failure --all-files
 
+trivy-scan:
+  stage: test
+  needs: []
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  script:
+    - trivy fs --exit-code 1 --scanners vuln,secret .
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
 # Run all tmt plans via Testing Farm
 testing-farm:
   extends: .merge-request
@@ -135,8 +147,8 @@ testing-farm:
   needs:
     - container
     - pre-commit
-    - py39-static
-    - py39-unit
+    - py312-static
+    - py312-unit
     - type-check
   variables:
     INFRA_REPO: https://gitlab.com/testing-farm/infrastructure
@@ -229,15 +241,15 @@ integration/container:
 # to generate the documentation - serves as a sort of a "test" on its own. citool
 # uses docstrings to generate command-line help, it is useful to check whether these
 # docstrings are readable and sane.
-py39-generate-docs:
+py312-generate-docs:
   extends: .tests
   stage: test
   needs: []
   script:
-    - tox -v -e py39-doctest -- ./docs
+    - tox -v -e py312-doctest -- ./docs
   artifacts:
     paths:
-      - .tox/py39-doctest/tmp/docs/build/html
+      - .tox/py312-doctest/tmp/docs/build/html
 
 #
 # DEPLOY steps
@@ -246,7 +258,7 @@ publish/container/latest:
   stage: deploy
   image: quay.io/buildah/stable:$BUILDAH_TAG
   script:
-    - dnf -y install make poetry python3.9
+    - dnf -y install make poetry python3.12
     - buildah login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
     - IMAGE_TAG=latest make build
     - IMAGE_TAG=latest make push
@@ -268,7 +280,7 @@ publish/container/tag:
   stage: deploy
   image: quay.io/buildah/stable:$BUILDAH_TAG
   script:
-    - dnf -y install make poetry python3.9
+    - dnf -y install make poetry python3.12
     - buildah login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
     - IMAGE_TAG=${CI_COMMIT_TAG#release/} make build
     - IMAGE_TAG=${CI_COMMIT_TAG#release/} make push

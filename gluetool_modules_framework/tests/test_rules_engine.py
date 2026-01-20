@@ -75,7 +75,7 @@ def test_compile_sanity(rule):
         '1 == ',
         RulesSyntaxError,
         r'Cannot parse rules',
-        'Position 1:5: unexpected EOF while parsing (<unknown>, line 1)'
+        'Position 1:0: invalid syntax (<unknown>, line 1)'
     ),
     (
         '1 * 1',

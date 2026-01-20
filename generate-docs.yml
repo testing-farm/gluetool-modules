@@ -58,13 +58,13 @@
       with_items: "{{ base_files }}"
 
     - name: Generate apidoc
-      command: sphinx-apidoc -T -e -o "{{ generate_dir }}/source/" gluetool_modules_framework/
+      command: poetry run sphinx-apidoc -T -e -o "{{ generate_dir }}/source/" gluetool_modules_framework/
 
     - name: Generate module page
-      command: python docs/generate-module-page.py "{{ generate_dir }}/source"
+      command: poetry run python docs/generate-module-page.py "{{ generate_dir }}/source"
 
     - name: Generate documentation
-      command: sphinx-build -M "{{ sphinx_builder }}" source build
+      command: poetry run sphinx-build -M "{{ sphinx_builder }}" source build
       register: sphinx_build
       args:
         chdir: "{{ generate_dir }}"

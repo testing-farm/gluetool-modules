@@ -103,7 +103,7 @@
         line: 'export PYCURL_SSL_LIBRARY={{ pycurl_ssl_library }}'
 
     - name: "Check if pycurl is installed"
-      shell: pip list --format=freeze | grep pycurl
+      shell: poetry run pip list --format=freeze | grep pycurl
       register: pycurl_installed
 
     - name: "Reinstall pycurl with correct backend"
@@ -112,9 +112,9 @@
         # We got hit by this after poetry 1.1.0 and later, which introduced caching.
         # https://stackoverflow.com/questions/64194634/why-pip-freeze-returns-some-gibberish-instead-of-package-version
         # https://github.com/pypa/pip/issues/8176
-        pycurl=$(pip list --format=freeze | grep pycurl)
-        pip uninstall -y pycurl
-        PYCURL_SSL_LIBRARY={{ pycurl_ssl_library }} pip install --no-cache-dir $pycurl
+        pycurl=$(poetry run pip list --format=freeze | grep pycurl)
+        poetry run pip uninstall -y pycurl
+        PYCURL_SSL_LIBRARY={{ pycurl_ssl_library }} poetry run pip install --no-cache-dir $pycurl
       when: pycurl_installed.rc == 0
 
     - name: "Force requests to use system CA bundle"

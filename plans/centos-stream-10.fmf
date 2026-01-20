@@ -1,0 +1,11 @@
+description: |
+  Test gluetool-modules installation on CentOS Stream 10.
+
+provision+:
+  image: quay.io/centos/centos:stream10
+
+prepare:
+  how: shell
+  script:
+    - dnf -y install make sudo
+    - make install-cs10

@@ -1706,10 +1706,14 @@ class BrewTask(KojiTask):
             return self.owner
 
         assert isinstance(self._parsed_commit_html, BeautifulSoup)
-        issuer = self._parsed_commit_html.find(class_='commit-info').find('td')
-        issuer = re.sub(".*lt;(.*)@.*", "\\1", str(issuer))
+        commit_info = self._parsed_commit_html.find(class_='commit-info')
+        if commit_info is None:
+            self.warn('could not find commit-info element', sentry=True)
+            return self.owner
+        issuer_element = commit_info.find('td')
+        issuer = re.sub(".*lt;(.*)@.*", "\\1", str(issuer_element))
 
-        return cast(str, issuer)
+        return issuer
 
     @cached_property
     def rhel(self) -> str:

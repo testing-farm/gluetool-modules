@@ -35,6 +35,9 @@ ENV PODMAN_IGNORE_CGROUPSV1_WARNING=1
 # tmt policies
 ENV TMT_POLICY_ROOT=/etc/tmt/policies
 
+# python version
+ENV PYTHON_VERSION=3.12
+
 # Ansible requirements
 COPY container/requirements.yml /etc/ansible/requirements.yml
 
@@ -46,9 +49,9 @@ RUN dnf -y update
 
 # install all required dependencies
 RUN    ln -s /CONFIG /etc/citool.d \
-    && dnf -y install ansible-core autoconf automake crun gcc git krb5-devel libcurl-devel \
+    && dnf -y install ansible-core autoconf automake crun gcc git krb5-devel libcurl-devel libffi-devel \
                       libpq-devel libtool libxml2-devel make openssl-devel popt-devel \
-                      postgresql-devel python3.9 python3-libselinux \
+                      postgresql-devel python${PYTHON_VERSION}-devel python3-libselinux \
                       redhat-rpm-config koji python3-virtualenv \
                       rsync beakerlib-libraries rpm-build rpm-devel awscli \
     # Pull in tmt from @teemtee/stable copr repository
@@ -88,17 +91,17 @@ RUN    ln -s /CONFIG /etc/citool.d \
 COPY dist/gluetool_modules_framework*.whl .
 
 # install gluetool-modules-framework with citool and required ansible collections
-RUN    virtualenv -p python3.9 /opt/gluetool \
+RUN    virtualenv -p python${PYTHON_VERSION} /opt/gluetool \
     && source /opt/gluetool/bin/activate \
-    && pip3.9 install gluetool_modules_framework*.whl \
+    && pip${PYTHON_VERSION} install gluetool_modules_framework*.whl \
     && ansible-galaxy install --timeout 120 -r /etc/ansible/requirements.yml \
     && rm -f gluetool_modules_framework*.whl \
     && rm -rf ~/.cache
 
 # install artemis
-RUN    virtualenv -p python3.9 /opt/artemis-cli \
+RUN    virtualenv -p python${PYTHON_VERSION} /opt/artemis-cli \
     && source /opt/artemis-cli/bin/activate \
-    && pip3.9 install tft-artemis-cli \
+    && pip${PYTHON_VERSION} install tft-artemis-cli \
     && rm -rf ~/.cache
 
 # run citool as entrypoint

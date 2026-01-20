@@ -8,7 +8,7 @@ Before moving on to the actual setup, there are few important notes:
 
 - **The only supported and (sort of tested) way of using and developing these modules is using Poetry!**
 
--  The tested distributions (as in "we're using these") are the recent releases of Fedora and CentOS Stream 9.
+-  The tested distributions (as in "we're using these") are the recent releases of Fedora and CentOS Stream 10.
    You could try other distributions but we didn't - please, let us know, and it'd be awesome if your first merge request
    could update this file :)
 
@@ -39,11 +39,11 @@ Following steps are necessary to install requirements for different distribution
 
 .. warning::
 
-    We support only CentOS Stream 9 and Fedora.
+    We support only CentOS Stream 10 and Fedora.
 
-**CentOS Stream 9**
+**CentOS Stream 10**
 
-Run all commands listed in the TMT test plan's ``prepare`` section. Test plan is located in the file `plans/centos9.fmf`.
+Run all commands listed in the TMT test plan's ``prepare`` section. Test plan is located in the file `plans/centos-stream-10.fmf`.
 
 **Fedora**
 

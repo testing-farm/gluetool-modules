@@ -5,7 +5,7 @@ provision:
 execute:
     how: tmt
     script:
-      - curl -sSL https://install.python-poetry.org | python3.9 - --version 1.4.2
+      - curl -sSL https://install.python-poetry.org | python3.12 - --version 1.4.2
       # NOTE:
       #   We have seen issues with Poetry and default parallel installation.
       #
@@ -14,7 +14,7 @@ execute:
       #   It is less likely to happen with Python3, in case it does, enable this configuration
       #   option which disables the new installer and also the parallel installation.
       # - /root/.local/bin/poetry config experimental.new-installer false
-      - /root/.local/bin/poetry env use python3.9
+      - /root/.local/bin/poetry env use python3.12
       - /root/.local/bin/poetry install -v
       - /root/.local/bin/poetry run /usr/bin/ansible-playbook inject-extra-requirements.yml
       - /root/.local/bin/poetry run citool -l |& grep koji

@@ -60,6 +60,11 @@ repos:
           - 'parsable'
           - '--strict'
 
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.1
+    hooks:
+      - id: ruff
+
   - repo: https://github.com/ansible-community/ansible-lint.git
     rev: v24.6.1
     hooks:
@@ -78,6 +83,6 @@ repos:
         name: poetry-lock
         files: pyproject.toml
         language: python
-        language_version: python3.9
+        language_version: python3.12
         entry: poetry lock --no-update
         pass_filenames: false

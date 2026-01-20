@@ -225,7 +225,7 @@ def _cut_up_log(log_records: str, index: int) -> tuple[list[str], list[str], lis
 def test_log(module, monkeypatch, log, guest):
     """
     The log table record looks like this and is not possible to use simple matching:
-    ``<LogRecord: gluetool, 20, /home/siwalter/repo/testing-farm/gluetool-modules/port-libs-test_schedule/.tox/py39-unit-tests/lib/python3.9/site-packages/gluetool/log.py, 611, "test schedule:``
+    ``<LogRecord: gluetool, 20, /home/user/gluetool-modules/.tox/py312-unit-tests/lib/python3.12/site-packages/gluetool/log.py, 611, "test schedule:``
     ``+----------+----------+---------+-----------+--------------------+--------------------+------------------+``
     ``| SE       | Stage    | State   | Result    | Environment        | Guest              | Runner           |``
     ``|----------+----------+---------+-----------+--------------------+--------------------+------------------|``

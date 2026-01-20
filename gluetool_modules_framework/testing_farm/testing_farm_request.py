@@ -1,7 +1,7 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
-from enum import Enum
+from enum import StrEnum
 from functools import partial
 from posixpath import join as urljoin
 
@@ -106,7 +106,7 @@ class RequestNotificationType(TypedDict):
     webhook: NotRequired[RequestWebhookType]
 
 
-class PipelineState(str, Enum):
+class PipelineState(StrEnum):
     new = 'new'
     queued = 'queued'
     running = 'running'

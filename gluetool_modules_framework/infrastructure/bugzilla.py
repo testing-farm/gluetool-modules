@@ -1,8 +1,8 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
-# Avoid importing this module instead of python-bugzilla in tests
-from __future__ import absolute_import
+# Note: this module is named 'bugzilla' - same as python-bugzilla module.
+# Python 3 uses absolute imports by default, avoiding the naming conflict.
 
 from collections import defaultdict, namedtuple
 from requests.exceptions import ConnectionError

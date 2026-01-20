@@ -110,7 +110,8 @@ def test_print_usage_only(module, log):
 
     assert log.records[-1].message.startswith('Detected memory usage:')
     assert log.records[-1].levelno == logging.INFO
-    assert len(log.records) == 2
+    # Count varies due to "Ignoring process" DEBUG messages depending on system state
+    assert len(log.records) >= 2
 
 
 @pytest.mark.parametrize(

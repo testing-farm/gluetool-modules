@@ -7,7 +7,6 @@ import mysql.connector
 
 # Type annotations
 from typing import Any, Optional, Union  # noqa
-
 from mysql.connector.pooling import PooledMySQLConnection
 from mysql.connector.abstracts import MySQLConnectionAbstract
 

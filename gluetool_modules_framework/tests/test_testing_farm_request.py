@@ -844,7 +844,7 @@ def test_pipeline_cancellation(module, request2, monkeypatch, log):
     # make sure the timer runs
     time.sleep(0.5)
 
-    assert process_mock.called_once()
+    process_mock.assert_called_once()
     assert PUT_REQUESTS['2']['state'] == 'canceled'
     assert log.records[-6].message == 'trying to acquire pipeline cancellation lock'
     assert log.records[-5].message == 'acquired pipeline cancellation lock'
@@ -866,5 +866,6 @@ def test_pipeline_cancellation_destroy(module, request1, monkeypatch, log):
     assert log.records[-1].message == 'Starting pipeline cancellation, check every 0.1 seconds'
     module.destroy()
 
-    assert process_mock.called_once()
+    # cancellation never had time to run
+    process_mock.assert_not_called()
     assert log.records[-1].message == 'Stopping pipeline cancellation check'

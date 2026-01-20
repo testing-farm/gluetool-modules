@@ -448,7 +448,7 @@ class GuessEnvironment(gluetool.Module):
 
         # [(text, href), ...]
         composes = [(link.string.replace('/', ''), link['href'])
-                    for link in soup.find_all('a') if link.string.startswith(hint)]
+                    for link in soup.find_all('a') if link.string and link.string.startswith(hint)]
 
         log_dict(self.debug, 'available composes:', composes)
 

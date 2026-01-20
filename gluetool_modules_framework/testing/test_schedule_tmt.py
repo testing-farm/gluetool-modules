@@ -7,12 +7,9 @@ import os.path
 import stat
 import sys
 import tempfile
-import datetime
 
-import enum
-import six
-import attrs
 import cattrs
+import six
 
 import gluetool
 from gluetool import GlueError, GlueCommandError, Module
@@ -35,7 +32,7 @@ from gluetool_modules_framework.libs.test_schedule_tmt import \
     DISCOVERED_TESTS_YAML, \
     PLAN_OUTCOME, PLAN_OUTCOME_WITH_ERROR, \
     RESULTS_YAML, RESULT_OUTCOME, RESULT_WEIGHT, \
-    TMTDiscoveredTest, TMTDiscoveredTest, TMTExitCodes, TMTPlan, TMTResult, TestResult, TestArtifact, \
+    TMTDiscoveredTest, TMTExitCodes, TMTPlan, TMTResult, TestResult, TestArtifact, \
     TMT_ENV_FILE, TMT_LOG, TMT_REPRODUCER, TMT_VERBOSE_LOG, \
     get_test_contacts, safe_name
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
@@ -1045,8 +1042,6 @@ class TestScheduleTMT(Module):
             self.option('command')
         ]
 
-        tf_request = cast(TestingFarmRequest, self.shared('testing_farm_request'))
-
         command.extend(self._root_option)
 
         # create guest setup reproducer command, this needs to include `--root`, `--context` is not needed
@@ -1090,7 +1085,7 @@ class TestScheduleTMT(Module):
         ])
 
         # update eval context with guest name
-        eval_context = dict_update(
+        dict_update(
             self.shared('eval_context'),
             {
                 'GUEST': schedule_entry.guest
@@ -1223,9 +1218,9 @@ class TestScheduleTMT(Module):
         def _sanitize_environment_variables(variables: Dict[str, str]) -> str:
             return ' '.join(["{}=hidden".format(key) for key, _ in six.iteritems(variables)])
 
-        # using `# noqa` because flake8 and coala are confused by the walrus operator
+        # ruff and coala are confused by the walrus operator
         # Ignore PEP8Bear
-        if (tmt := schedule_entry.testing_environment.tmt) and 'environment' in tmt and tmt['environment']:  # noqa: E203 E231 E501
+        if (tmt := schedule_entry.testing_environment.tmt) and 'environment' in tmt and tmt['environment']:  # noqa: E203, E231, E501
 
             _check_accepted_environment_variables(tmt['environment'])
 

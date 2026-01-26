@@ -321,18 +321,16 @@ def test_not_valid_build_tasks(koji_session, koji_module):
 @pytest.mark.parametrize('koji_session', [
     15869829,
 ], indirect=True)
-def test_not_valid_draft_build(koji_session, koji_module):
+def test_promoted_draft_build(koji_session, koji_module):
     """
-    Tasks IDs represent tasks that are not valid draft builds.
+    Test promoted draft builds - tasks with draft option set but no ',draft' suffix in the release.
+    These are builds that were originally drafts but have been promoted, so they should no longer
+    be considered drafts.
     """
 
     koji_module.tasks(task_ids=[koji_session])
 
-    with pytest.raises(
-        gluetool.GlueError,
-        match=r'The draft build NVR bash-4.3.43-4.fc25 does not contain draft build information.'
-    ):
-        assert_task_attributes(koji_module, koji_session)
+    assert_task_attributes(koji_module, koji_session)
 
 
 def test_missing_name_option(koji_module):

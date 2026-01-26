@@ -530,10 +530,17 @@ class KojiTask(LoggerMixin, object):
 
         See https://docs.pagure.org/koji/draft_builds/ for more info.
 
+        Note that promoted draft builds are no longer considered drafts,
+        as the ',draft' suffix is removed from the release during promotion.
+
         :rtype: bool
         """
 
-        return cast(bool, self._task_request.options.get('draft', False))
+        # Scratch builds don't have an associated build
+        if not self._build:
+            return False
+
+        return cast(bool, self._task_request.options.get('draft', False)) and ',draft' in self._build['release']
 
     @cached_property
     def owner(self) -> str:

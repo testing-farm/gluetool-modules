@@ -5,7 +5,7 @@ build_id: 805705
 component: 'bash'
 dist_git_repository_name: 'bash'
 destination_tag: 'f25-updates-candidate'
-full_name: task '15869829' build 'bash-4.3.43-4.fc25' target 'f25-candidate' (draft)
+full_name: task '15869829' build 'bash-4.3.43-4.fc25' target 'f25-candidate'
 has_artifacts: true
 issuer: 'svashisht'
 owner: 'svashisht'
@@ -15,7 +15,7 @@ nvr_promoted: 'bash-4.3.43-4.fc25'
 pkgs_url: 'https://kojipkgs.fedoraproject.org'
 release: '4.fc25'
 scratch: false
-draft: true
+draft: false
 short_name: '15869829:bash-4.3.43-4.fc25'
 source: 'git://pkgs.fedoraproject.org/rpms/bash?#b1104ec130056866f3bdce51a3f77685b702fbde'
 srpm_names:

@@ -533,7 +533,9 @@ class KojiTask(LoggerMixin, object):
         :rtype: bool
         """
 
-        return cast(bool, self._task_request.options.get('draft', False))
+        assert self._build
+
+        return cast(bool, self._task_request.options.get('draft', False)) and ',draft' in self._build['release']
 
     @cached_property
     def owner(self) -> str:

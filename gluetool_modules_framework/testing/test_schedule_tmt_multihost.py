@@ -575,7 +575,8 @@ class TestScheduleTMTMultihost(Module):
                        testing_environment: TestingEnvironment,
                        work_dirpath: str,
                        test_filter: Optional[str] = None,
-                       test_name: Optional[str] = None) -> bool:
+                       test_name: Optional[str] = None,
+                       tmt_id: Optional[str] = None) -> bool:
         """
         Return ``True`` if plan would have no tests after applying test selectors, otherwise return ``False``.
         """
@@ -595,6 +596,9 @@ class TestScheduleTMTMultihost(Module):
             command.extend(self._tmt_context_to_options(te_tmt['context']))
 
         command.append('run')
+
+        if tmt_id:
+            command.extend(['--id', tmt_id])
 
         if tmt_env_file:
             env_options = [
@@ -762,13 +766,19 @@ class TestScheduleTMTMultihost(Module):
                 work_dirpath = self._prepare_environment(schedule_entry)
                 schedule_entry.work_dirpath = work_dirpath
 
-                if self._is_plan_empty(plan, tmt_env_file, repodir, tec, work_dirpath):
-                    self.info("skipping empty plan '{}'".format(plan))
-                    schedule_entry.stage = TestScheduleEntryStage.COMPLETE
-                    schedule_entry.state = TestScheduleEntryState.OK
-                    schedule_entry.result = TestScheduleResult.SKIPPED
-                    schedule.append(schedule_entry)
-                    continue
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    if self._is_plan_empty(plan, tmt_env_file, repodir, tec, work_dirpath, tmt_id=tmpdir):
+                        self.info("skipping empty plan '{}'".format(plan))
+                        schedule_entry.stage = TestScheduleEntryStage.COMPLETE
+                        schedule_entry.state = TestScheduleEntryState.OK
+                        schedule_entry.result = TestScheduleResult.SKIPPED
+                        schedule.append(schedule_entry)
+                        continue
+
+                # gather discovered tests in plan and report them into the results
+                    _, test_results, _ = gather_plan_results(
+                        self, schedule_entry, tmpdir, self.option('recognize-errors'))
+                schedule_entry.results = test_results
 
                 exported_plan = self.export_plan(repodir, plan, tmt_env_file, tec)
 

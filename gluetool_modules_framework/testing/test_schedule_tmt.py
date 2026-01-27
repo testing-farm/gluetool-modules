@@ -636,7 +636,8 @@ class TestScheduleTMT(Module):
                        testing_environment: TestingEnvironment,
                        work_dirpath: str,
                        test_filter: Optional[str] = None,
-                       test_name: Optional[str] = None) -> bool:
+                       test_name: Optional[str] = None,
+                       tmt_id: Optional[str] = None) -> bool:
         """
         Return ``True`` if plan would have no tests after applying test selectors, otherwise return ``False``.
         """
@@ -662,6 +663,9 @@ class TestScheduleTMT(Module):
             command.extend(self._tmt_context_to_options(te_tmt['context']))
 
         command.append('run')
+
+        if tmt_id:
+            command.extend(['--id', tmt_id])
 
         if tmt_env_file:
             env_options = [
@@ -834,13 +838,21 @@ class TestScheduleTMT(Module):
                 work_dirpath = self._prepare_environment(schedule_entry)
                 schedule_entry.work_dirpath = work_dirpath
 
-                if self._is_plan_empty(plan, tmt_env_file, repodir, context_files, tec, work_dirpath):
-                    self.info("skipping empty plan '{}'".format(plan))
-                    schedule_entry.stage = TestScheduleEntryStage.COMPLETE
-                    schedule_entry.state = TestScheduleEntryState.OK
-                    schedule_entry.result = TestScheduleResult.SKIPPED
-                    schedule.append(schedule_entry)
-                    continue
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    if self._is_plan_empty(
+                        plan, tmt_env_file, repodir, context_files, tec, work_dirpath, tmt_id=tmpdir
+                    ):
+                        self.info("skipping empty plan '{}'".format(plan))
+                        schedule_entry.stage = TestScheduleEntryStage.COMPLETE
+                        schedule_entry.state = TestScheduleEntryState.OK
+                        schedule_entry.result = TestScheduleResult.SKIPPED
+                        schedule.append(schedule_entry)
+                        continue
+
+                # gather discovered tests in plan and report them into the results
+                    _, test_results = gather_plan_results(
+                        self, schedule_entry, tmpdir, self.option('recognize-errors'))
+                schedule_entry.results = test_results
 
                 exported_plan = self.export_plan(repodir, plan, context_files, tmt_env_file, tec)
 
@@ -1393,30 +1405,30 @@ class TestScheduleTMT(Module):
             if task.result == 'error':
                 test_case.error = True
 
-            # test properties
-            assert schedule_entry.guest is not None
-            assert schedule_entry.guest.environment is not None
-            assert schedule_entry.guest.hostname is not None
+            if schedule_entry.guest is not None:
+                # test properties
+                assert schedule_entry.guest.environment is not None
+                assert schedule_entry.guest.hostname is not None
 
-            test_case.properties.extend([
-                Property('baseosci.arch', str(schedule_entry.guest.environment.arch)),
-                Property('baseosci.connectable_host', schedule_entry.guest.hostname),
-                Property('baseosci.distro', str(schedule_entry.guest.environment.compose)),
-                Property('baseosci.status', schedule_entry.stage.value.capitalize()),
-                Property('baseosci.testcase.source.url',
-                         self.shared('dist_git_repository').web_url or ''),
-                Property('baseosci.variant', ''),
-            ])
+                test_case.properties.extend([
+                    Property('baseosci.arch', str(schedule_entry.guest.environment.arch)),
+                    Property('baseosci.connectable_host', schedule_entry.guest.hostname),
+                    Property('baseosci.distro', str(schedule_entry.guest.environment.compose)),
+                    Property('baseosci.status', schedule_entry.stage.value.capitalize()),
+                    Property('baseosci.testcase.source.url', self.shared('dist_git_repository').web_url or ''),
+                    Property('baseosci.variant', ''),
+                ])
 
-            if schedule_entry.work_dirpath:
-                test_case.properties.append(
-                    Property('id', '{}_{}_{}_{}'.format(
-                        schedule_entry.work_dirpath,
-                        sanitize_name(test_suite.name, allow_slash=False),
-                        test_case.serial_number,
-                        test_case.guest.name if test_case.guest else None
-                    ))
-                )
+                if schedule_entry.work_dirpath:
+                    test_case.properties.append(
+                        Property('id', '{}_{}_{}_{}'.format(
+                            schedule_entry.work_dirpath,
+                            sanitize_name(test_suite.name, allow_slash=False),
+                            test_case.serial_number,
+                            test_case.guest.name if test_case.guest else None
+                        ))
+                    )
+                test_case.provisioned_environment = schedule_entry.guest.environment
 
             if len(task.contacts) > 0:
                 test_case.properties.extend([
@@ -1475,7 +1487,6 @@ class TestScheduleTMT(Module):
 
             assert schedule_entry.testing_environment is not None
             test_case.requested_environment = schedule_entry.testing_environment
-            test_case.provisioned_environment = schedule_entry.guest.environment
 
             if test_case not in test_suite.test_cases:
                 test_suite.test_cases.append(test_case)

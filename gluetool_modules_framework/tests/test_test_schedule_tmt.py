@@ -378,6 +378,10 @@ dummytmt --root some-tmt-root run --all --verbose provision --how virtual --imag
                         '--args1',
                         '--args2'
                     ],
+                    'report': [
+                        '--args1',
+                        '--args2'
+                    ],
                     'finish': [
                         '--args1 --args2',
                         '--args3'
@@ -385,7 +389,7 @@ dummytmt --root some-tmt-root run --all --verbose provision --how virtual --imag
                 }
             }),
             """# tmt reproducer
-dummytmt --root some-tmt-root run --all --verbose discover --args1 discover --args2 prepare --args1 prepare --args2 provision --how virtual --image guest-compose finish --args1 --args2 finish --args3 plan --name ^plan1$""",  # noqa
+dummytmt --root some-tmt-root run --all --verbose discover --args1 discover --args2 prepare --args1 prepare --args2 provision --how virtual --image guest-compose report --args1 report --args2 finish --args1 --args2 finish --args3 plan --name ^plan1$""",  # noqa
             None,
             None
         ),
@@ -737,6 +741,10 @@ def test_plans_from_git_filter(module, monkeypatch):
                     '--args2'
                 ],
                 'discover': [
+                    '--args1',
+                    '--args2'
+                ],
+                'report': [
                     '--args1',
                     '--args2'
                 ],

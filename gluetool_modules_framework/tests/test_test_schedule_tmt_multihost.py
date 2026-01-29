@@ -597,6 +597,10 @@ dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic
                         '--args1',
                         '--args2'
                     ],
+                    'report': [
+                        '--args1',
+                        '--args2'
+                    ],
                     'finish': [
                         '--args1',
                         '--args2 --args3'
@@ -604,7 +608,7 @@ dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic
                 }
             }),
             """# tmt reproducer
-dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name '^plan1$' discover --args1 discover --args2 prepare --args1 prepare --args2 provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script 'echo hello' finish --args1 finish --args2 --args3""",  # noqa
+dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name '^plan1$' discover --args1 discover --args2 prepare --args1 prepare --args2 provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script 'echo hello' report --args1 report --args2 finish --args1 finish --args2 --args3""",  # noqa
             None,
             None
         ),

@@ -1113,6 +1113,13 @@ class TestScheduleTMT(Module):
                 '--hard-reboot', reboot_command
             ])
 
+        # `report` step in case of extra arguments
+        report_extra_args = dict_nested_value(schedule_entry.testing_environment.tmt, 'extra_args', 'report')
+        if report_extra_args:
+            for extra_args in report_extra_args:
+                command.extend(['report'] + gluetool.utils.normalize_shell_option(extra_args))
+                reproducer.extend(['report'] + gluetool.utils.normalize_shell_option(extra_args))
+
         # `finish` step in case of extra arguments
         finish_extra_args = dict_nested_value(schedule_entry.testing_environment.tmt, 'extra_args', 'finish')
         if finish_extra_args:

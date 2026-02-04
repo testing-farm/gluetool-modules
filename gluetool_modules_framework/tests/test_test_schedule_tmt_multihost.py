@@ -1240,7 +1240,7 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir, cl
     # ... and is shown in sut_install_commands.sh
     with open(os.path.join(tmpdir, 'artifact-installation-guest0', INSTALL_COMMANDS_FILE)) as f:
         assert f.read() == '\n'.join([
-            r'''set -o pipefail; ( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123 || koji download-task --arch noarch --arch x86_64 --arch src 123 ) | egrep Downloading | cut -d " " -f 3 | tee rpms-list-123-123
+            r'''set -o pipefail; ( koji download-build --debuginfo --task-id --arch noarch --arch x86_64 --arch src 123 || koji download-task --arch noarch --arch x86_64 --arch src 123 ) | egrep Downloading | awk '{print $NF}' | tee rpms-list-123-123
 mkdir -pv some-download-path; cat rpms-list-*-123 | xargs -n1 bash -c "cp -t some-download-path \$1 && echo $(basename \$1) >> some-download-path/pkglist" --''',
             *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             r'''ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\1 \0/" | awk "{print \$2}" | tee rpms-list-123

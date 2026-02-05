@@ -630,6 +630,13 @@ class Archive(gluetool.Module):
 
         # Before archiving in progress, let's regenerate results.xml
         if stage == 'progress':
+            # Refresh results from results.yaml for running schedule entries
+            # This allows partial test results to be shown during progress
+            schedule = self.shared('test_schedule')
+            if schedule and self.get_shared('refresh_test_schedule_entry_results'):
+                for entry in schedule:
+                    self.shared('refresh_test_schedule_entry_results', entry)
+
             self.shared('generate_results', 'test execution running', generate_xunit=False, report_results=False)
 
         map_stage = self.source_destination_map().get(stage, [])

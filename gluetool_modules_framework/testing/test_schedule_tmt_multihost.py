@@ -106,13 +106,21 @@ def gather_plan_results(
     module: gluetool.Module,
     schedule_entry: TestScheduleEntry,
     work_dir: str,
-    recognize_errors: bool = False
+    recognize_errors: bool = False,
+    in_progress: bool = False
 ) -> Tuple[TestScheduleResult, List[TestResult], Dict[str, TMTGuest]]:
     """
     Extracts plan results from tmt logs.
 
+    :param module: The calling module.
     :param TestScheduleEntry schedule_entry: Plan schedule entry.
     :param str work_dir: Plan working directory.
+    :param bool recognize_errors: If True, use PLAN_OUTCOME_WITH_ERROR for result mapping.
+    :param bool in_progress: If True, tolerate missing/partial data (for use during test execution).
+        When in_progress=True:
+        - Missing results.yaml returns UNDEFINED instead of ERROR
+        - Missing guests.yaml/tests.yaml is allowed
+        - Invalid result outcomes are skipped instead of causing ERROR
     :returns: A tuple with overall_result, List[TestResult] and Dict[str, TMTGuest].
     """
     test_results: List[TestResult] = []
@@ -127,7 +135,11 @@ def gather_plan_results(
     guests_yaml = os.path.join(work_dir, plan_path, GUESTS_YAML)
     discovered_tests_yaml = os.path.join(work_dir, plan_path, DISCOVERED_TESTS_YAML)
 
+    # Handle missing results.yaml
     if not os.path.exists(results_yaml):
+        if in_progress:
+            schedule_entry.debug("Results file '{}' not found yet during progress".format(results_yaml))
+            return TestScheduleResult.UNDEFINED, test_results, guests
         schedule_entry.warn("Could not find results file '{}' containing tmt results".format(results_yaml), sentry=True)
         return TestScheduleResult.ERROR, test_results, guests
 
@@ -137,29 +149,62 @@ def gather_plan_results(
         results = load_yaml(results_yaml, unserializer=gluetool.utils.create_cattrs_unserializer(List[TMTResult]))
         log_dict(schedule_entry.debug, "loaded results from '{}'".format(results_yaml), results)
     except GlueError as error:
+        if in_progress:
+            schedule_entry.debug('Could not load results.yaml file during progress: {}'.format(error))
+            return TestScheduleResult.UNDEFINED, test_results, guests
         schedule_entry.warn('Could not load results.yaml file: {}'.format(error))
         return TestScheduleResult.ERROR, test_results, guests
+    except cattrs.errors.IterableValidationError as error:
+        if in_progress:
+            schedule_entry.debug('Could not load results.yaml file during progress: {}'.format(error))
+            return TestScheduleResult.UNDEFINED, test_results, guests
+        raise gluetool.GlueError('Could not load results.yaml file: {}'.format(error))
 
     try:
         guests = load_yaml(guests_yaml, unserializer=gluetool.utils.create_cattrs_unserializer(Dict[str, TMTGuest]))
         log_dict(schedule_entry.debug, "loaded guests from '{}'".format(guests_yaml), guests)
     except GlueError as error:
-        schedule_entry.warn('Could not load guests.yaml file: {}'.format(error))
-        return TestScheduleResult.ERROR, test_results, guests
+        if in_progress:
+            schedule_entry.debug('Could not load guests.yaml file during progress: {}'.format(error))
+        else:
+            schedule_entry.warn('Could not load guests.yaml file: {}'.format(error))
+            return TestScheduleResult.ERROR, test_results, guests
+    except cattrs.errors.IterableValidationError as error:
+        if in_progress:
+            schedule_entry.debug('Could not load guests.yaml file during progress: {}'.format(error))
+            return TestScheduleResult.UNDEFINED, test_results, guests
+        raise gluetool.GlueError('Could not load guests.yaml file: {}'.format(error))
 
-    try:
-        discovered_tests = load_yaml(discovered_tests_yaml,
-                                     unserializer=gluetool.utils.create_cattrs_unserializer(List[TMTDiscoveredTest]))
-        log_dict(schedule_entry.debug,
-                 "loaded discovered tests from '{}'".format(discovered_tests_yaml),
-                 discovered_tests)
-    except GlueError as error:
-        schedule_entry.warn('Could not load discovered tests.yaml file: {}'.format(error))
-        return TestScheduleResult.ERROR, test_results, guests
+    if not os.path.exists(discovered_tests_yaml):
+        if not in_progress:
+            schedule_entry.warn(
+                "Could not find tests file '{}' containing discovered tests".format(discovered_tests_yaml),
+                sentry=True)
+            return TestScheduleResult.ERROR, test_results, guests
+        schedule_entry.debug("Tests file '{}' not found yet during progress".format(discovered_tests_yaml))
+    else:
+        try:
+            discovered_tests = load_yaml(
+                discovered_tests_yaml,
+                unserializer=gluetool.utils.create_cattrs_unserializer(List[TMTDiscoveredTest])
+            )
+            log_dict(schedule_entry.debug,
+                     "loaded discovered tests from '{}'".format(discovered_tests_yaml),
+                     discovered_tests)
+        except GlueError as error:
+            if not in_progress:
+                schedule_entry.warn('Could not load discovered tests.yaml file: {}'.format(error))
+                return TestScheduleResult.ERROR, test_results, guests
+            schedule_entry.debug('Could not load discovered tests.yaml file during progress: {}'.format(error))
+        except cattrs.errors.IterableValidationError as error:
+            if not in_progress:
+                raise gluetool.GlueError('Could not load discovered tests.yaml file: {}'.format(error))
+            schedule_entry.debug('Could not load discovered tests.yaml file during progress: {}'.format(error))
 
-    # Something went wrong, there should be results. There were tests, otherwise we wouldn't
-    # be running `tmt run`, but where are results? Reporting an error...
+    # Handle empty results
     if not results:
+        if in_progress:
+            return TestScheduleResult.UNDEFINED, test_results, guests
         schedule_entry.warn('Could not find any results in results.yaml file')
         return TestScheduleResult.ERROR, test_results, guests
 
@@ -169,6 +214,9 @@ def gather_plan_results(
         try:
             outcome = RESULT_OUTCOME[result.result]
         except KeyError:
+            if in_progress:
+                schedule_entry.debug("Encountered invalid result '{}' during progress, skipping".format(result.result))
+                continue
             schedule_entry.warn("Encountered invalid result '{}' in runner results".format(result.result))
             return TestScheduleResult.ERROR, test_results, guests
 
@@ -177,7 +225,7 @@ def gather_plan_results(
 
         # `artifacts_dir` is e.g. `work-sanitywft7y56u/testing-farm/sanity/execute`
         artifacts_dir = os.path.join(work_dir, plan_path, 'execute')
-        artifacts = set()
+        artifacts: Set[TestArtifact] = set()
 
         # attach the artifacts directory itself, useful for browsing;
         # usually all artifacts are in the same dir
@@ -197,12 +245,14 @@ def gather_plan_results(
             ))
 
             # list all artifacts under 'data'
-            for dir, _, files in os.walk(os.path.join(log_dir, 'data')):
-                for file in files:
-                    artifacts.add(TestArtifact(
-                        name=os.path.join(dir, file).removeprefix(log_dir).lstrip('/'),
-                        path=os.path.join(dir, file)
-                    ))
+            data_path = os.path.join(log_dir, 'data')
+            if os.path.exists(data_path):
+                for dir, _, files in os.walk(data_path):
+                    for file in files:
+                        artifacts.add(TestArtifact(
+                            name=os.path.join(dir, file).removeprefix(log_dir).lstrip('/'),
+                            path=os.path.join(dir, file)
+                        ))
 
             # the first log is the main one for developers, traditionally called "testout.log"
             testout = logs.pop(0)
@@ -265,6 +315,10 @@ def gather_plan_results(
                 path=result.fmf_id.path,
             ) if result.fmf_id is not None else None,
         ))
+
+    # If no results were processed, return UNDEFINED
+    if not test_results:
+        return TestScheduleResult.UNDEFINED, test_results, guests
 
     # count the maximum result weight encountered, i.e. the overall result
     max_weight = max(RESULT_WEIGHT[result.result] for result in results)
@@ -367,7 +421,8 @@ class TestScheduleTMTMultihost(Module):
         }),
     ]
 
-    shared_functions = ['create_test_schedule', 'run_test_schedule_entry', 'serialize_test_schedule_entry_results']
+    shared_functions = ['create_test_schedule', 'run_test_schedule_entry', 'serialize_test_schedule_entry_results',
+                        'refresh_test_schedule_entry_results']
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(TestScheduleTMTMultihost, self).__init__(*args, **kwargs)
@@ -1305,3 +1360,34 @@ class TestScheduleTMTMultihost(Module):
                 (guest.name, guest.role) for guest in test_suite.guests
             ]:
                 test_suite.guests.append(test_case.guest)
+
+    def refresh_test_schedule_entry_results(self, schedule_entry: TestScheduleEntry) -> None:
+        """
+        Refresh schedule entry results from results.yaml during progress.
+
+        This allows partial results to be shown while tests are still running.
+        Called before generating results.xml during progress archiving.
+
+        :param schedule_entry: The schedule entry to refresh results for.
+        """
+        # This schedule entry is not ours, pass it along
+        if schedule_entry.runner_capability != 'tmt':
+            self.overloaded_shared('refresh_test_schedule_entry_results', schedule_entry)
+            return
+
+        # Only refresh for running entries that have a work directory
+        if not schedule_entry.work_dirpath:
+            return
+
+        if schedule_entry.stage != TestScheduleEntryStage.RUNNING:
+            return
+
+        # Use gather_plan_results with in_progress=True to handle partial results
+        _, test_results, guests = gather_plan_results(
+            self, schedule_entry, schedule_entry.work_dirpath, in_progress=True
+        )
+
+        if test_results:
+            schedule_entry.results = test_results
+            schedule_entry.guests = guests
+            log_dict(schedule_entry.debug, 'refreshed results during progress', test_results)

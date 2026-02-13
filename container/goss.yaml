@@ -152,13 +152,31 @@ command:
   tmt --version:
     exit-status: 0
     stdout:
-      - "tmt version: 1.66.0"
+      - "tmt version: 1.67.0"
     timeout: 100000
 
   rpm -q tmt:
     exit-status: 0
     stdout:
-      - "tmt-1.66.0"
+      - "tmt-1.67.0"
+    timeout: 100000
+
+  rpm -q tmt+provision-container:
+    exit-status: 0
+    stdout:
+      - "tmt+provision-container-1.67.0"
+    timeout: 100000
+
+  rpm -q tmt+provision-virtual:
+    exit-status: 0
+    stdout:
+      - "tmt+provision-virtual-1.67.0"
+    timeout: 100000
+
+  rpm -q tmt+report-polarion:
+    exit-status: 0
+    stdout:
+      - "tmt+report-polarion-1.67.0"
     timeout: 100000
 
   tmt run report -h polarion:

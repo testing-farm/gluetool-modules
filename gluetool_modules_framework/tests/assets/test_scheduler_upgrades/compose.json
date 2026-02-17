@@ -54,7 +54,7 @@
                     "Box2D-0:2.4.1-7.el9.src": {
                         "Box2D-0:2.4.1-7.el9.x86_64": {
                             "category": "binary",
-                            "path": "AppStream/aarch64/os/Packages/Box2D-2.4.1-7.el9.x86_64.rpm",
+                            "path": "AppStream/x86_64/os/Packages/Box2D-2.4.1-7.el9.x86_64.rpm",
                             "sigkey": "fd431d51"
                         },
                         "Box2D-0:2.4.1-7.el9.src": {
@@ -117,6 +117,82 @@
                         "libstdc++-static-0:11.3.1-4.3.el9.x86_64": {
                             "category": "binary",
                             "path": "CRB/x86_64/os/Packages/libstdc++-static-11.3.1-4.3.el9.x86_64.rpm",
+                            "sigkey": "fd431d51"
+                        }
+                    }
+                }
+            },
+            "RT": {
+                "x86_64": {
+                    "kernel-0:5.14.0-570.79.1.el9_6.src": {
+                        "kernel-rt-0:5.14.0-570.79.1.el9_6.x86_64": {
+                            "category": "binary",
+                            "path": "RT/x86_64/os/Packages/kernel-rt-5.14.0-570.79.1.el9_6.x86_64.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "kernel-rt-core-0:5.14.0-570.79.1.el9_6.x86_64": {
+                            "category": "binary",
+                            "path": "RT/x86_64/os/Packages/kernel-rt-core-5.14.0-570.79.1.el9_6.x86_64.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "kernel-rt-debug-0:5.14.0-570.79.1.el9_6.x86_64": {
+                            "category": "binary",
+                            "path": "RT/x86_64/os/Packages/kernel-rt-debug-5.14.0-570.79.1.el9_6.x86_64.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "kernel-rt-debug-core-0:5.14.0-570.79.1.el9_6.x86_64": {
+                            "category": "binary",
+                            "path": "RT/x86_64/os/Packages/kernel-rt-debug-core-5.14.0-570.79.1.el9_6.x86_64.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "kernel-rt-debug-debuginfo-0:5.14.0-570.79.1.el9_6.x86_64": {
+                            "category": "debug",
+                            "path": "RT/x86_64/debug/tree/Packages/kernel-rt-debug-debuginfo-5.14.0-570.79.1.el9_6.x86_64.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "kernel-rt-debug-devel-0:5.14.0-570.79.1.el9_6.x86_64": {
+                            "category": "binary",
+                            "path": "RT/x86_64/os/Packages/kernel-rt-debug-devel-5.14.0-570.79.1.el9_6.x86_64.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "kernel-rt-debug-modules-0:5.14.0-570.79.1.el9_6.x86_64": {
+                            "category": "binary",
+                            "path": "RT/x86_64/os/Packages/kernel-rt-debug-modules-5.14.0-570.79.1.el9_6.x86_64.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "kernel-rt-debug-modules-core-0:5.14.0-570.79.1.el9_6.x86_64": {
+                            "category": "binary",
+                            "path": "RT/x86_64/os/Packages/kernel-rt-debug-modules-core-5.14.0-570.79.1.el9_6.x86_64.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "kernel-rt-debug-modules-extra-0:5.14.0-570.79.1.el9_6.x86_64": {
+                            "category": "binary",
+                            "path": "RT/x86_64/os/Packages/kernel-rt-debug-modules-extra-5.14.0-570.79.1.el9_6.x86_64.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "kernel-rt-debuginfo-0:5.14.0-570.79.1.el9_6.x86_64": {
+                            "category": "debug",
+                            "path": "RT/x86_64/debug/tree/Packages/kernel-rt-debuginfo-5.14.0-570.79.1.el9_6.x86_64.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "kernel-rt-devel-0:5.14.0-570.79.1.el9_6.x86_64": {
+                            "category": "binary",
+                            "path": "RT/x86_64/os/Packages/kernel-rt-devel-5.14.0-570.79.1.el9_6.x86_64.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "kernel-rt-modules-0:5.14.0-570.79.1.el9_6.x86_64": {
+                            "category": "binary",
+                            "path": "RT/x86_64/os/Packages/kernel-rt-modules-5.14.0-570.79.1.el9_6.x86_64.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "kernel-rt-modules-core-0:5.14.0-570.79.1.el9_6.x86_64": {
+                            "category": "binary",
+                            "path": "RT/x86_64/os/Packages/kernel-rt-modules-core-5.14.0-570.79.1.el9_6.x86_64.rpm",
+                            "sigkey": "fd431d51"
+                        },
+                        "kernel-rt-modules-extra-0:5.14.0-570.79.1.el9_6.x86_64": {
+                            "category": "binary",
+                            "path": "RT/x86_64/os/Packages/kernel-rt-modules-extra-5.14.0-570.79.1.el9_6.x86_64.rpm",
                             "sigkey": "fd431d51"
                         }
                     }

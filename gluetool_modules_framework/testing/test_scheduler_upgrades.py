@@ -43,6 +43,15 @@ class TestSchedulerUpgrades(gluetool.Module):
             'type': str,
             'default': []
         },
+        'exclude-rpms': {
+            'help': """
+                Names of rpms to be excluded from list of binary rpms  (default: none).
+                The rpm to be excluded can by specified either by plain string or regular expression.
+                """,
+            'action': 'append',
+            'type': str,
+            'default': []
+        },
         'compose-url': {
             'help': 'Url of compose.',
             'type': str
@@ -153,6 +162,20 @@ class TestSchedulerUpgrades(gluetool.Module):
 
         binary_rpms_list = sorted({splitFilename(package)[0] for package in binary_rpms_set})
         log_dict(self.info, 'binary rpm names found in compose', binary_rpms_list)
+
+        excluded_rpms: set[str] = set()
+        exclude_option = 'exclude-rpms'
+        if self.option(exclude_option):
+            for exclude_rpm in gluetool.utils.normalize_multistring_option(self.option(exclude_option)):
+                regex = re.compile(exclude_rpm)
+                excluded_rpms.update(filter(regex.fullmatch, binary_rpms_list))
+
+            if excluded_rpms:
+                log_dict(self.info, "Following items were filtered out by '{}' option".format(exclude_option),
+                         sorted(excluded_rpms))
+                binary_rpms_list = sorted(set(binary_rpms_list) - excluded_rpms)
+            else:
+                self.info("No items were filtered out by '{}' filter".format(exclude_option))
 
         if not binary_rpms_list:
             log_dict(self.warn, 'No x86_64 binary rpm names found for packages', components)

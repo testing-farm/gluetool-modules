@@ -90,6 +90,9 @@ def rpms_list(module, monkeypatch, repos: List[str], components: List[str]) -> L
 
 
 def test_rpms_component_not_found(module, monkeypatch):
+    """
+    Test if ``binary_rpms_list`` correctly works when compnent is not present.
+    """
     assert rpms_list(module, monkeypatch, ['AppStream'], ['Python']) == []
 
 
@@ -98,25 +101,40 @@ def test_rpms_found_1repo(module, monkeypatch):
 
 
 def test_rpms_arch(module, monkeypatch):
+    """
+    Test that only x86_64 builds are considered.
+    """
     assert rpms_list(module, monkeypatch, ['BaseOS'], ['ModemManager']) == []
 
 
 def test_rpms_found_morerepos(module, monkeypatch):
+    """
+    Test if ``binary_rpms_list`` correctly works when no rpms in multiple repos are found.
+    """
     assert rpms_list(module, monkeypatch, ['AppStream', 'CRB'], ['Box2D', 'CUnit', 'gcc']) ==\
         ['Box2D', 'CUnit-devel', 'gcc-plugin-devel', 'libstdc++-static']
 
 
 def test_rpms_nopackages(module, monkeypatch):
+    """
+    Test if ``binary_rpms_list`` correctly works when no rpm is found.
+    """
     assert rpms_list(module, monkeypatch, ['BaseOS'], ['gcc', 'bash']) == []
 
 
 def test_rpms_default(module, monkeypatch):
+    """
+    Test if ``binary_rpms_list`` correctly works with default parameters (no rpms and repos excluded).
+    """
     monkeypatch.setattr(requests, 'get', MagicMock(return_value=MockResponse))
     assert module.binary_rpms_list('', ['Box2D', 'ModemManager', 'CUnit', 'gcc', 'glibc']) ==\
         ['Box2D', 'CUnit-devel', 'gcc-plugin-devel', 'libstdc++-static']
 
 
-def test_rpms_exclude(module, monkeypatch):
+def test_rpms_exclude_repo(module, monkeypatch):
+    """
+    Test if 'exclude-repos' option correctly filters out rpms from given repository.
+    """
     monkeypatch.setattr(requests, 'get', MagicMock(return_value=MockResponse))
     module._config['exclude-repos'] = ['CRB']
     assert module.binary_rpms_list('', ['Box2D', 'ModemManager', 'CUnit', 'gcc', 'glibc']) ==\
@@ -124,15 +142,59 @@ def test_rpms_exclude(module, monkeypatch):
 
 
 def test_rpms_nodebug(module, monkeypatch):
+    """
+    Test if debug rpms are excluded.
+    """
     assert rpms_list(module, monkeypatch, ['CRB'], ['gcc']) == ['gcc-plugin-devel', 'libstdc++-static']
 
 
 def test_rpms_nosource(module, monkeypatch):
+    """
+    Test if source rpms are excluded.
+    """
     assert rpms_list(module, monkeypatch, ['AppStream'], ['Box2D']) == ['Box2D']
 
 
 def test_rpms_nomodule(module, monkeypatch):
+    """
+    Test if modular builds are excluded.
+    """
     assert rpms_list(module, monkeypatch, ['AppStream'], ['apache-commons-cli']) == ['apache-commons-cli']
+
+
+def test_rpms_exclude_rpm(module, monkeypatch):
+    """
+    Test if 'exclude-rpms' option correctly filters out rpms based on plain string.
+    """
+    module._config['exclude-rpms'] = 'kernel-rt'
+    assert rpms_list(module, monkeypatch, ['RT'], ['kernel']) == [
+        'kernel-rt-core',
+        'kernel-rt-debug',
+        'kernel-rt-debug-core',
+        'kernel-rt-debug-devel',
+        'kernel-rt-debug-modules',
+        'kernel-rt-debug-modules-core',
+        'kernel-rt-debug-modules-extra',
+        'kernel-rt-devel',
+        'kernel-rt-modules',
+        'kernel-rt-modules-core',
+        'kernel-rt-modules-extra'
+    ]
+
+
+def test_rpms_exclude_rpm_re(module, monkeypatch):
+    """
+    Test if 'exclude-rpms' option correctly filters out rpms based on regex.
+    """
+    module._config['exclude-rpms'] = 'kernel-rt-debug.*'
+    assert rpms_list(module, monkeypatch, ['RT'], ['kernel']) == [
+        'kernel-rt',
+        'kernel-rt-core',
+        'kernel-rt-devel',
+        'kernel-rt-modules',
+        'kernel-rt-modules-core',
+        'kernel-rt-modules-extra'
+    ]
 
 
 class MockFailedResponse:
@@ -144,6 +206,9 @@ class MockFailedResponse:
 
 
 def test_rpms_get_failed(module, monkeypatch):
+    """
+    Test if ``binary_rpms_list`` raises exception when compose metadata is not found.
+    """
     module._config['repos'] = ['AppStream', 'CRB', 'BaseOS']
     monkeypatch.setattr(requests, 'get', MagicMock(return_value=MockFailedResponse))
     with pytest.raises(GlueError, match=r'Unable to fetch compose metadata from: /metadata/rpms.json'):

@@ -235,19 +235,23 @@ class InstallRepository(gluetool.Module):
             # but we need to keep yum in the first place for it to work
             sut_installation.add_step(
                 'Reinstall packages',
-                'yum -y reinstall $(cat {})'.format(install_packages_filename), ignore_exception=True
+                'yum -y --setopt=gpgcheck=0 reinstall $(cat {})'.format(install_packages_filename),
+                ignore_exception=True
             )
             sut_installation.add_step(
                 'Downgrade packages',
-                'yum -y downgrade $(cat {})'.format(install_packages_filename), ignore_exception=True
+                'yum -y --setopt=gpgcheck=0 downgrade $(cat {})'.format(install_packages_filename),
+                ignore_exception=True
             )
             sut_installation.add_step(
                 'Update packages',
-                'yum -y update $(cat {})'.format(install_packages_filename), ignore_exception=True
+                'yum -y --setopt=gpgcheck=0 update $(cat {})'.format(install_packages_filename),
+                ignore_exception=True
             )
             sut_installation.add_step(
                 'Install packages',
-                'yum -y install $(cat {})'.format(install_packages_filename), ignore_exception=True)
+                'yum -y --setopt=gpgcheck=0 install $(cat {})'.format(install_packages_filename),
+                ignore_exception=True)
 
             sut_installation.add_step(
                 'Verify all packages installed',

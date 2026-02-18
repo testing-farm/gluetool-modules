@@ -172,10 +172,10 @@ def test_guest_setup(module, environment_index, tmpdir, monkeypatch):
             '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
         )),
         *generate_createrepo_calls(repo_name='test-artifacts', repo_path='dummy-path'),
-        call('dnf -y reinstall $(cat dummy.txt)'),
-        call('dnf -y downgrade --allowerasing $(cat dummy.txt)'),
-        call('dnf -y update --allowerasing $(cat dummy.txt)'),
-        call('dnf -y install --allowerasing $(cat dummy.txt)'),
+        call('dnf -y --setopt=gpgcheck=0 reinstall $(cat dummy.txt)'),
+        call('dnf -y --setopt=gpgcheck=0 downgrade --allowerasing $(cat dummy.txt)'),
+        call('dnf -y --setopt=gpgcheck=0 update --allowerasing $(cat dummy.txt)'),
+        call('dnf -y --setopt=gpgcheck=0 install --allowerasing $(cat dummy.txt)'),
         call('cat dummy.txt | xargs basename --suffix=.rpm | xargs rpm -q')
     ]
 
@@ -249,10 +249,10 @@ def test_guest_setup_forced_artifacts(module, tmpdir, monkeypatch):
             '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
         )),
         *generate_createrepo_calls(repo_name='test-artifacts', repo_path='dummy-path'),
-        call('dnf -y reinstall $(cat dummy.txt)'),
-        call('dnf -y downgrade --allowerasing $(cat dummy.txt)'),
-        call('dnf -y update --allowerasing $(cat dummy.txt)'),
-        call('dnf -y install --allowerasing $(cat dummy.txt)'),
+        call('dnf -y --setopt=gpgcheck=0 reinstall $(cat dummy.txt)'),
+        call('dnf -y --setopt=gpgcheck=0 downgrade --allowerasing $(cat dummy.txt)'),
+        call('dnf -y --setopt=gpgcheck=0 update --allowerasing $(cat dummy.txt)'),
+        call('dnf -y --setopt=gpgcheck=0 install --allowerasing $(cat dummy.txt)'),
         call('cat dummy.txt | xargs basename --suffix=.rpm | xargs rpm -q')
     ]
 

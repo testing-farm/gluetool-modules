@@ -1133,7 +1133,7 @@ def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir, cl
 
     # COPR installation actually happened
     guest.execute.assert_any_call(
-        'dnf -y install --allowerasing http://copr/project/one.rpm http://copr/project/two.rpm')
+        'dnf -y --setopt=gpgcheck=0 install --allowerasing http://copr/project/one.rpm http://copr/project/two.rpm')
 
     # ... and is shown in sut_install_commands.sh
     with open(os.path.join(tmpdir, 'artifact-installation-guest0', INSTALL_COMMANDS_FILE)) as f:
@@ -1144,9 +1144,9 @@ curl -v http://copr/project.repo --retry 5 --output /etc/yum.repos.d/copr_build-
 cd some-download-path && curl -sL --retry 5 --remote-name-all -w "%{http_code} %{url_effective} %{filename_effective}\\n" http://copr/project/one.rpm http://copr/project/two.rpm http://copr/project/one.src.rpm http://copr/project/two.src.rpm | awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\'''',
             *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             '''\
-dnf -y reinstall http://copr/project/one.rpm || true
-dnf -y reinstall http://copr/project/two.rpm || true
-dnf -y install --allowerasing http://copr/project/one.rpm http://copr/project/two.rpm
+dnf -y --setopt=gpgcheck=0 reinstall http://copr/project/one.rpm || true
+dnf -y --setopt=gpgcheck=0 reinstall http://copr/project/two.rpm || true
+dnf -y --setopt=gpgcheck=0 install --allowerasing http://copr/project/one.rpm http://copr/project/two.rpm
 rpm -q one
 rpm -q two
 '''
@@ -1236,7 +1236,7 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir, cl
         assert 'dummy test done\n' in f.read()
 
     # koji installation actually happened
-    guest.execute.assert_any_call(r'''if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then dnf -y install --allowerasing $(cat rpms-list-123);else echo "Nothing to install, rpms-list is empty"; fi''')  # noqa
+    guest.execute.assert_any_call(r'''if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then dnf -y --setopt=gpgcheck=0 install --allowerasing $(cat rpms-list-123);else echo "Nothing to install, rpms-list is empty"; fi''')  # noqa
 
     # ... and is shown in sut_install_commands.sh
     with open(os.path.join(tmpdir, 'artifact-installation-guest0', INSTALL_COMMANDS_FILE)) as f:
@@ -1245,8 +1245,8 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir, cl
 mkdir -pv some-download-path; cat rpms-list-*-123 | xargs -n1 bash -c "cp -t some-download-path \$1 && echo $(basename \$1) >> some-download-path/pkglist" --''',
             *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             r'''ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\1 \0/" | awk "{print \$2}" | tee rpms-list-123
-dnf -y reinstall $(cat rpms-list-123) || true
-if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then dnf -y install --allowerasing $(cat rpms-list-123);else echo "Nothing to install, rpms-list is empty"; fi
+dnf -y --setopt=gpgcheck=0 reinstall $(cat rpms-list-123) || true
+if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then dnf -y --setopt=gpgcheck=0 install --allowerasing $(cat rpms-list-123);else echo "Nothing to install, rpms-list is empty"; fi
 if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then sed 's/.rpm$//' rpms-list-123 | xargs -n1 command printf '%q\n' | xargs -d'\n' rpm -q;else echo 'Nothing to verify, rpms-list-123 is empty'; fi
 '''
         ])

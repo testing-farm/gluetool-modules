@@ -188,34 +188,34 @@ class InstallKojiBuildExecute(gluetool.Module):
                 # https://bugzilla.redhat.com/show_bug.cgi?id=1831022
                 sut_installation.add_step(
                     'Reinstall packages',
-                    'dnf -y reinstall $(cat rpms-list-{}) || true'.format(uuid_suffix)
+                    'dnf -y --setopt=gpgcheck=0 reinstall $(cat rpms-list-{}) || true'.format(uuid_suffix)
                 )
 
                 sut_installation.add_step(
                     'Install packages',
                     (
                         r"""if [ ! -z "$(sed 's/\s//g' rpms-list-{0})" ];"""
-                        'then dnf -y install $(cat rpms-list-{0});'
+                        'then dnf -y --setopt=gpgcheck=0 install $(cat rpms-list-{0});'
                         'else echo "Nothing to install, rpms-list is empty"; fi'
                     ).format(uuid_suffix)
                 )
             else:
                 sut_installation.add_step(
                     'Reinstall packages',
-                    'yum -y reinstall $(cat rpms-list-{})'.format(uuid_suffix),
+                    'yum -y --setopt=gpgcheck=0 reinstall $(cat rpms-list-{})'.format(uuid_suffix),
                     ignore_exception=True,
                 )
 
                 # yum install refuses downgrades, do it explicitly
                 sut_installation.add_step(
                     'Downgrade packages',
-                    'yum -y downgrade $(cat rpms-list-{})'.format(uuid_suffix),
+                    'yum -y --setopt=gpgcheck=0 downgrade $(cat rpms-list-{})'.format(uuid_suffix),
                     ignore_exception=True,
                 )
 
                 sut_installation.add_step(
                     'Install packages',
-                    'yum -y install $(cat rpms-list-{})'.format(uuid_suffix),
+                    'yum -y --setopt=gpgcheck=0 install $(cat rpms-list-{})'.format(uuid_suffix),
                     ignore_exception=True,
                 )
             # Use printf to correctly quote the package name, we encountered '^' in the NVR, which is actually a valid

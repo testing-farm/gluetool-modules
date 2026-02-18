@@ -136,8 +136,8 @@ def test_extract_artifacts(module, monkeypatch):
             'mkdir -pv dummy-path; cat rpms-list-*-123 | xargs -n1 bash -c "cp -t dummy-path \\$1 && echo $(basename \\$1) >> dummy-path/pkglist" --',
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='dummy-path'),
             'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list-123',  # noqa
-            'dnf -y reinstall $(cat rpms-list-123) || true',
-            r"""if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then dnf -y install --allowerasing $(cat rpms-list-123);else echo "Nothing to install, rpms-list is empty"; fi""",
+            'dnf -y --setopt=gpgcheck=0 reinstall $(cat rpms-list-123) || true',
+            r"""if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then dnf -y --setopt=gpgcheck=0 install --allowerasing $(cat rpms-list-123);else echo "Nothing to install, rpms-list is empty"; fi""",
             r"""if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then sed 's/.rpm$//' rpms-list-123 | xargs -n1 command printf '%q\n' | xargs -d'\n' rpm -q;else echo 'Nothing to verify, rpms-list-123 is empty'; fi""",
         ],
         None
@@ -158,8 +158,8 @@ def test_extract_artifacts(module, monkeypatch):
             'mkdir -pv dummy-path; cat rpms-list-*-123 | xargs -n1 bash -c "cp -t dummy-path \\$1 && echo $(basename \\$1) >> dummy-path/pkglist" --',
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='dummy-path'),
             'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | grep -Fv "$(cat rpms-list-skip-installing-me-1-123)" | grep -Fv "$(cat rpms-list-skip-installing-me-2-123)" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list-123',  # noqa
-            'dnf -y reinstall $(cat rpms-list-123) || true',
-            r"""if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then dnf -y install --allowerasing $(cat rpms-list-123);else echo "Nothing to install, rpms-list is empty"; fi""",
+            'dnf -y --setopt=gpgcheck=0 reinstall $(cat rpms-list-123) || true',
+            r"""if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then dnf -y --setopt=gpgcheck=0 install --allowerasing $(cat rpms-list-123);else echo "Nothing to install, rpms-list is empty"; fi""",
             r"""if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then sed 's/.rpm$//' rpms-list-123 | xargs -n1 command printf '%q\n' | xargs -d'\n' rpm -q;else echo 'Nothing to verify, rpms-list-123 is empty'; fi""",
         ],
         None
@@ -174,8 +174,8 @@ def test_extract_artifacts(module, monkeypatch):
             'mkdir -pv dummy-path; cat rpms-list-*-123 | xargs -n1 bash -c "cp -t dummy-path \\$1 && echo $(basename \\$1) >> dummy-path/pkglist" --',
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='dummy-path'),
             'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list-123',  # noqa
-            'dnf -y reinstall $(cat rpms-list-123) || true',
-            r"""if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then dnf -y install --allowerasing $(cat rpms-list-123);else echo "Nothing to install, rpms-list is empty"; fi""",
+            'dnf -y --setopt=gpgcheck=0 reinstall $(cat rpms-list-123) || true',
+            r"""if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then dnf -y --setopt=gpgcheck=0 install --allowerasing $(cat rpms-list-123);else echo "Nothing to install, rpms-list is empty"; fi""",
             r"""if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then sed 's/.rpm$//' rpms-list-123 | xargs -n1 command printf '%q\n' | xargs -d'\n' rpm -q;else echo 'Nothing to verify, rpms-list-123 is empty'; fi""",
         ],
         [Artifact(id='forced-artifact', packages=None, type='fedora-koji-build')],
@@ -240,8 +240,8 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
         'mkdir -pv dummy-path; cat rpms-list-*-123 | xargs -n1 bash -c "cp -t dummy-path \\$1 && echo $(basename \\$1) >> dummy-path/pkglist" --',
         *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='dummy-path'),
         'ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list-123',  # noqa
-        'dnf -y reinstall $(cat rpms-list-123) || true',
-        r"""if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then dnf -y install --allowerasing $(cat rpms-list-123);else echo "Nothing to install, rpms-list is empty"; fi""",
+        'dnf -y --setopt=gpgcheck=0 reinstall $(cat rpms-list-123) || true',
+        r"""if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then dnf -y --setopt=gpgcheck=0 install --allowerasing $(cat rpms-list-123);else echo "Nothing to install, rpms-list is empty"; fi""",
         r"""if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then sed 's/.rpm$//' rpms-list-123 | xargs -n1 command printf '%q\n' | xargs -d'\n' rpm -q;else echo 'Nothing to verify, rpms-list-123 is empty'; fi""",
     ]
 
@@ -255,9 +255,9 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
             '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
         ),
         *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='dummy-path'),
-        'dnf -y reinstall dummy_rpm_url1 || true',
-        'dnf -y reinstall dummy_rpm_url2 || true',
-        'dnf -y install --allowerasing dummy_rpm_url1 dummy_rpm_url2',
+        'dnf -y --setopt=gpgcheck=0 reinstall dummy_rpm_url1 || true',
+        'dnf -y --setopt=gpgcheck=0 reinstall dummy_rpm_url2 || true',
+        'dnf -y --setopt=gpgcheck=0 install --allowerasing dummy_rpm_url1 dummy_rpm_url2',
         'rpm -q dummy_rpm_names1',
         'rpm -q dummy_rpm_names2',
     ]
@@ -301,9 +301,9 @@ def test_guest_setup_yum(module, local_guest, tmpdir):
         call('mkdir -pv dummy-path; cat rpms-list-*-123 | xargs -n1 bash -c "cp -t dummy-path \\$1 && echo $(basename \\$1) >> dummy-path/pkglist" --'),
         *generate_createrepo_calls(repo_name='test-artifacts', repo_path='dummy-path'),
         call('ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\\1 \\0/" | egrep -v "i686" | awk "{print \\$2}" | tee rpms-list-123'),  # noqa
-        call('yum -y reinstall $(cat rpms-list-123)'),
-        call('yum -y downgrade $(cat rpms-list-123)'),
-        call('yum -y install $(cat rpms-list-123)'),
+        call('yum -y --setopt=gpgcheck=0 reinstall $(cat rpms-list-123)'),
+        call('yum -y --setopt=gpgcheck=0 downgrade $(cat rpms-list-123)'),
+        call('yum -y --setopt=gpgcheck=0 install $(cat rpms-list-123)'),
         call(r"""if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then sed 's/.rpm$//' rpms-list-123 | xargs -n1 command printf '%q\n' | xargs -d'\n' rpm -q;else echo 'Nothing to verify, rpms-list-123 is empty'; fi""")
     ]
 

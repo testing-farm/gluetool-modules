@@ -171,10 +171,12 @@ class InstallCoprBuild(gluetool.Module):
                         # HACK: this is really awkward wrt. error handling:
                         #       https://bugzilla.redhat.com/show_bug.cgi?id=1831022
                         sut_installation.add_step(
-                            'Reinstall packages', 'dnf -y reinstall {} || true', items=copr_build_rpm_urls
+                            'Reinstall packages',
+                            'dnf -y --setopt=gpgcheck=0 reinstall {} || true',
+                            items=copr_build_rpm_urls
                         )
                     else:
-                        sut_installation.add_step('Reinstall packages', 'yum -y reinstall {}',
+                        sut_installation.add_step('Reinstall packages', 'yum -y --setopt=gpgcheck=0 reinstall {}',
                                                   items=copr_build_rpm_urls, ignore_exception=True)
 
             # install command is called just once with all rpms followed, hence list of
@@ -186,12 +188,14 @@ class InstallCoprBuild(gluetool.Module):
         if not has_bootc:
             if joined_rpm_urls:
                 if has_dnf:
-                    sut_installation.add_step('Install packages', 'dnf -y install {}', items=joined_rpm_urls)
+                    sut_installation.add_step(
+                        'Install packages', 'dnf -y --setopt=gpgcheck=0 install {}', items=joined_rpm_urls
+                    )
                 else:
                     # yum install refuses downgrades, do it explicitly
-                    sut_installation.add_step('Downgrade packages', 'yum -y downgrade {}',
+                    sut_installation.add_step('Downgrade packages', 'yum -y --setopt=gpgcheck=0 downgrade {}',
                                               items=joined_rpm_urls, ignore_exception=True)
-                    sut_installation.add_step('Install packages', 'yum -y install {}',
+                    sut_installation.add_step('Install packages', 'yum -y --setopt=gpgcheck=0 install {}',
                                               items=joined_rpm_urls, ignore_exception=True)
         else:
             if rpm_urls:

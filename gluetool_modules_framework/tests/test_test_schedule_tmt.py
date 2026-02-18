@@ -27,6 +27,7 @@ from gluetool_modules_framework.libs.results import Results, TestSuite
 from gluetool_modules_framework.libs.git import SecretGitUrl
 from gluetool_modules_framework.provision.artemis import ArtemisGuest, ArtemisGuestLog
 from gluetool_modules_framework.testing.test_schedule_tmt import gather_plan_results, TestScheduleEntry
+from gluetool_modules_framework.libs.test_schedule import TestScheduleEntryStage
 from gluetool_modules_framework.libs.test_schedule_tmt import TMTPlan, TMTPlanProvision, TMTPlanPrepare
 from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact
 
@@ -117,7 +118,8 @@ def test_loadable(module):
 def test_shared(module):
     module.add_shared()
 
-    for functions in ['create_test_schedule', 'run_test_schedule_entry', 'serialize_test_schedule_entry_results']:
+    for functions in ['create_test_schedule', 'run_test_schedule_entry', 'serialize_test_schedule_entry_results',
+                      'refresh_test_schedule_entry_results']:
         assert module.glue.has_shared(functions)
 
 
@@ -1455,3 +1457,150 @@ def test_serialize_test_schedule_entry_large_artifact(module, module_dist_git, g
     )
 
     shutil.rmtree(schedule_entry.work_dirpath)
+
+
+def test_gather_plan_results_in_progress_no_results_yaml(module, tmpdir):
+    """Test gather_plan_results with in_progress=True when results.yaml doesn't exist yet."""
+    schedule_entry = TestScheduleEntry(
+        gluetool.log.Logging().get_logger(),
+        TestingEnvironment('x86_64', 'rhel-9'),
+        '/nonexistent',
+        'some-repo-dir'
+    )
+
+    # No results.yaml exists - should return UNDEFINED without errors
+    overall_result, results = gather_plan_results(module, schedule_entry, str(tmpdir), in_progress=True)
+
+    assert overall_result == TestScheduleResult.UNDEFINED
+    assert results == []
+
+
+def test_gather_plan_results_in_progress_with_results(module):
+    """Test gather_plan_results with in_progress=True and existing results.yaml."""
+    schedule_entry = TestScheduleEntry(
+        gluetool.log.Logging().get_logger(),
+        TestingEnvironment('x86_64', 'rhel-9'),
+        '/passed',
+        'some-repo-dir'
+    )
+
+    # Use existing test assets with results.yaml
+    overall_result, results = gather_plan_results(module, schedule_entry, ASSETS_DIR, in_progress=True)
+
+    assert len(results) > 0
+    assert results[0].name == '/tests/core/docs'
+    assert results[0].result == 'passed'
+
+
+def test_gather_plan_results_in_progress_missing_tests_yaml(module, tmpdir):
+    """Test gather_plan_results with in_progress=True when tests.yaml is missing (should not fail)."""
+    # Create a minimal results.yaml without tests.yaml
+    plan_dir = os.path.join(str(tmpdir), 'test_plan')
+    os.makedirs(plan_dir)
+    execute_dir = os.path.join(plan_dir, 'execute')
+    os.makedirs(execute_dir)
+
+    results_yaml_content = """
+- name: /test1
+  result: pass
+  log: []
+  check: []
+  subresult: []
+  serial-number: 1
+  note:
+  duration:
+  start-time:
+  end-time:
+  fmf-id:
+  guest:
+    name: default-0
+    role:
+"""
+    with open(os.path.join(execute_dir, 'results.yaml'), 'w') as f:
+        f.write(results_yaml_content)
+
+    schedule_entry = TestScheduleEntry(
+        gluetool.log.Logging().get_logger(),
+        TestingEnvironment('x86_64', 'rhel-9'),
+        '/test_plan',
+        'some-repo-dir'
+    )
+
+    # Should return results even without tests.yaml
+    overall_result, results = gather_plan_results(module, schedule_entry, str(tmpdir), in_progress=True)
+
+    assert len(results) == 1
+    assert results[0].name == '/test1'
+    assert results[0].result == 'passed'
+    # Contacts should be empty since tests.yaml is missing
+    assert results[0].contacts == []
+
+
+def test_refresh_test_schedule_entry_results(module, module_dist_git, guest, monkeypatch, tmpdir):
+    """Test refresh_test_schedule_entry_results updates schedule_entry.results during progress."""
+    module.glue.add_shared('dist_git_repository', module_dist_git)
+
+    test_env = TestingEnvironment('x86_64', 'rhel-9')
+    schedule_entry = TestScheduleEntry(
+        gluetool.log.Logging().get_logger(),
+        test_env,
+        '/passed',
+        'some-repo-dir'
+    )
+    schedule_entry.guest = guest
+    schedule_entry.testing_environment = test_env
+    schedule_entry.work_dirpath = str(tmpdir)
+    schedule_entry.stage = TestScheduleEntryStage.RUNNING
+
+    # Copy test assets to work_dirpath
+    shutil.copytree(os.path.join(ASSETS_DIR, 'passed'), os.path.join(str(tmpdir), 'passed'))
+
+    # Ensure results is None initially
+    assert schedule_entry.results is None
+
+    # Call refresh
+    module.refresh_test_schedule_entry_results(schedule_entry)
+
+    # Results should now be populated
+    assert schedule_entry.results is not None
+    assert len(schedule_entry.results) > 0
+    assert schedule_entry.results[0].name == '/tests/core/docs'
+
+
+def test_refresh_test_schedule_entry_results_not_running(module, tmpdir):
+    """Test refresh_test_schedule_entry_results does nothing for non-running entries."""
+    schedule_entry = TestScheduleEntry(
+        gluetool.log.Logging().get_logger(),
+        TestingEnvironment('x86_64', 'rhel-9'),
+        '/passed',
+        'some-repo-dir'
+    )
+    schedule_entry.work_dirpath = str(tmpdir)
+    schedule_entry.stage = TestScheduleEntryStage.COMPLETE  # Not running
+
+    # Copy test assets
+    shutil.copytree(os.path.join(ASSETS_DIR, 'passed'), os.path.join(str(tmpdir), 'passed'))
+
+    # Call refresh - should do nothing since entry is not RUNNING
+    module.refresh_test_schedule_entry_results(schedule_entry)
+
+    # Results should still be None
+    assert schedule_entry.results is None
+
+
+def test_refresh_test_schedule_entry_results_no_work_dirpath(module):
+    """Test refresh_test_schedule_entry_results does nothing when work_dirpath is not set."""
+    schedule_entry = TestScheduleEntry(
+        gluetool.log.Logging().get_logger(),
+        TestingEnvironment('x86_64', 'rhel-9'),
+        '/passed',
+        'some-repo-dir'
+    )
+    schedule_entry.stage = TestScheduleEntryStage.RUNNING
+    schedule_entry.work_dirpath = None  # No work directory
+
+    # Call refresh - should do nothing
+    module.refresh_test_schedule_entry_results(schedule_entry)
+
+    # Results should still be None
+    assert schedule_entry.results is None

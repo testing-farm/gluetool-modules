@@ -1247,7 +1247,7 @@ mkdir -pv some-download-path; cat rpms-list-*-123 | xargs -n1 bash -c "cp -t som
             r'''ls *[^.src].rpm | sed -r "s/(.*)-.*-.*/\1 \0/" | awk "{print \$2}" | tee rpms-list-123
 dnf -y --setopt=gpgcheck=0 reinstall $(cat rpms-list-123) || true
 if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then dnf -y --setopt=gpgcheck=0 install --allowerasing $(cat rpms-list-123);else echo "Nothing to install, rpms-list is empty"; fi
-if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then sed 's/.rpm$//' rpms-list-123 | xargs -n1 command printf '%q\n' | xargs -d'\n' rpm -q;else echo 'Nothing to verify, rpms-list-123 is empty'; fi
+if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then sed 's/.rpm$//' rpms-list-123 | while IFS= read -r pkg; do printf '%q\n' "$pkg"; done | xargs -d'\n' rpm -q;else echo 'Nothing to verify, rpms-list-123 is empty'; fi
 '''
         ])
 

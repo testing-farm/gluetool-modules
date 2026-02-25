@@ -229,8 +229,8 @@ class InstallKojiBuildExecute(gluetool.Module):
                 'Verify all packages installed',
                 (
                     r"""if [ ! -z "$(sed 's/\s//g' rpms-list-{0})" ];"""
-                    "then sed 's/.rpm$//' rpms-list-{0} | xargs -n1 command printf '%q\\n' | xargs -d'\\n' rpm -q;"
-                    "else echo 'Nothing to verify, rpms-list-{0} is empty'; fi"
+                    "then sed 's/.rpm$//' rpms-list-{0} | while IFS= read -r pkg; do printf '%q\\n' \"$pkg\"; done | "
+                    "xargs -d'\\n' rpm -q;else echo 'Nothing to verify, rpms-list-{0} is empty'; fi"
                 ).format(uuid_suffix)
             )
 

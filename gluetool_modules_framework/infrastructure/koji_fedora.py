@@ -47,6 +47,8 @@ DEFAULT_COMMIT_FETCH_TIMEOUT = 300
 DEFAULT_COMMIT_FETCH_TICKS = 30
 DEFAULT_API_VERSION_RETRY_TIMEOUT = 300
 DEFAULT_API_VERSION_RETRY_TICK = 30
+DEFAULT_TAG_HISTORY_RETRY_TIMEOUT = 300
+DEFAULT_TAG_HISTORY_RETRY_TICK = 30
 
 
 class NotBuildTaskError(SoftGlueError):
@@ -435,7 +437,19 @@ class KojiTask(LoggerMixin, object):
                 raise GlueError("Imported task {} has no builds".format(self.id))
             build = builds[0]
 
-            tag_history = self._call_api('queryHistory', build=build['build_id'])['tag_listing']
+            def _get_tag_history() -> Result[List[Any], bool]:
+                tag_listing = self._call_api('queryHistory', build=build['build_id'])['tag_listing']
+
+                if not tag_listing:
+                    self.warn('Tag history for build {} is empty, retrying'.format(build['build_id']))
+                    return Result.Error(False)
+
+                return Result.Ok(tag_listing)
+
+            tag_history = wait('waiting for tag history of build {}'.format(build['build_id']),
+                               _get_tag_history,
+                               timeout=self._module.option('tag-history-retry-timeout'),
+                               tick=self._module.option('tag-history-retry-tick'))
             tags = sorted(tag_history, key=lambda tag_info: cast(float, tag_info['create_ts']))
 
             # populate task request from other sources
@@ -2106,6 +2120,22 @@ class Koji(gluetool.Module):
                     """,
                 'type': int,
                 'default': DEFAULT_API_VERSION_RETRY_TICK
+            },
+            'tag-history-retry-timeout': {
+                'help': """
+                    The maximum time for trying to get tag history for imported builds
+                    (default: %(default)s).
+                    """,
+                'type': int,
+                'default': DEFAULT_TAG_HISTORY_RETRY_TIMEOUT
+            },
+            'tag-history-retry-tick': {
+                'help': """
+                    Delay between attempts to get tag history for imported builds
+                    (default: %(default)s).
+                    """,
+                'type': int,
+                'default': DEFAULT_TAG_HISTORY_RETRY_TICK
             },
         })
     ]

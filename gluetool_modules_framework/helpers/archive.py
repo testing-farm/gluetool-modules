@@ -174,6 +174,7 @@ class Archive(gluetool.Module):
         super(Archive, self).__init__(*args, **kwargs)
 
         self._archive_timer: Optional[RepeatTimer] = None
+        self._request_id: Optional[str] = None
         # List of created directories on the host.
         # We need to keep track of them to avoid creating them multiple times.
         self._created_directories: List[str] = []
@@ -316,9 +317,9 @@ class Archive(gluetool.Module):
         Creates directory on the host with ssh where artifacts will be stored.
         If directory is not set, it will create the root directory.
         """
-        request_id = self.shared('testing_farm_request').id
+        assert self._request_id is not None
 
-        path = os.path.join(self.artifacts_root, request_id)
+        path = os.path.join(self.artifacts_root, self._request_id)
         if directory:
             path = os.path.join(path, directory)
 
@@ -356,7 +357,9 @@ class Archive(gluetool.Module):
         Creates directory on the host with rsync where artifacts will be stored.
         If directory is not set, it will create the root directory.
         """
-        path = self.shared('testing_farm_request').id
+        assert self._request_id is not None
+
+        path = self._request_id
 
         if directory:
             path = os.path.join(path, directory)
@@ -398,9 +401,9 @@ class Archive(gluetool.Module):
         """
         Creates directory on the local host.
         """
-        request_id = self.shared('testing_farm_request').id
+        assert self._request_id is not None
 
-        path = os.path.join(self.artifacts_local_root, request_id)
+        path = os.path.join(self.artifacts_local_root, self._request_id)
 
         if directory:
             path = os.path.join(path, directory)
@@ -453,8 +456,6 @@ class Archive(gluetool.Module):
         options = options or []
         original_source = source
 
-        request_id = self.shared('testing_farm_request').id
-
         cmd = ['rsync']
 
         cmd += self.rsync_options
@@ -489,20 +490,22 @@ class Archive(gluetool.Module):
             destination = original_source
             destination = destination.lstrip('/')
 
+        assert self._request_id is not None
+
         if self.option('archive-mode') == 'daemon':
             full_destination = 'rsync://{}/{}'.format(
                 self.artifacts_rsync_host,
-                os.path.join(request_id, destination)
+                os.path.join(self._request_id, destination)
             )
 
         elif self.option('archive-mode') == 'ssh':
             full_destination = '{}:{}'.format(
                 self.artifacts_host,
-                os.path.join(self.artifacts_root, request_id, destination)
+                os.path.join(self.artifacts_root, self._request_id, destination)
             )
 
         else:
-            full_destination = os.path.join(self.artifacts_local_root, request_id, destination)
+            full_destination = os.path.join(self.artifacts_local_root, self._request_id, destination)
 
         # Before we start archiving, we need to hide secrets in files
         self.shared('hide_secrets', search_path=source)
@@ -545,8 +548,6 @@ class Archive(gluetool.Module):
         options = options or []
         original_source = source
 
-        request_id = self.shared('testing_farm_request').id
-
         env = os.environ.copy()
         env.update({
             'AWS_REGION': self.option('aws-region'),
@@ -582,9 +583,11 @@ class Archive(gluetool.Module):
             destination = original_source
             destination = destination.lstrip('/').lstrip('./')
 
+        assert self._request_id is not None
+
         full_destination = 's3://{}{}'.format(
             self.option('aws-s3-bucket'),
-            os.path.join(self.artifacts_root, request_id, destination)
+            os.path.join(self.artifacts_root, self._request_id, destination)
         )
 
         # Before we start archiving, we need to hide secrets in files
@@ -603,7 +606,7 @@ class Archive(gluetool.Module):
             try:
                 Command(cmd, logger=self.logger).run(env=env)
             except gluetool.GlueCommandError as exc:
-                self.warn('rsync command "{}" failed, retrying: {}'.format(" ".join(cmd), exc))
+                self.warn('aws command "{}" failed, retrying: {}'.format(" ".join(cmd), exc))
                 return Result.Error(False)
             return Result.Ok(True)
 
@@ -622,9 +625,7 @@ class Archive(gluetool.Module):
     # in the parallel archiving timer without calling it
     def archive_stage(self, stage: str = 'progress') -> None:
 
-        if not self.get_shared('testing_farm_request'):
-            # Request is not available, log it but do not raise error
-            # to avoid stucked threads
+        if not self._request_id:
             self.warn('No testing farm request found, skipping archiving', sentry=True)
             return
 
@@ -656,6 +657,10 @@ class Archive(gluetool.Module):
 
             # If the entry['source'] is a wildcard, we need to use glob to find all the files
             for source in glob(sources, recursive=True):
+
+                if stage == 'progress' and self._archive_timer and self._archive_timer.finished.is_set():
+                    self.debug('Archiving cancelled, stopping progress sync')
+                    return
 
                 try:
                     if excludes is not None and any(re.search(exclude_entry, source) for exclude_entry in excludes):
@@ -723,16 +728,28 @@ class Archive(gluetool.Module):
         """
         A wrapper around archive_stage that catches all exceptions to prevent thread from getting stuck.
         """
+
+        self.debug('Parallel archiving started')
         try:
             self.archive_stage(stage)
         except Exception as exc:
             # Log the exception but don't let it propagate and crash the thread
             self.error(f"Error during parallel archiving: {exc}", sentry=True)
+        self.debug('Parallel archiving finished')
 
     def execute(self) -> None:
         if self.option('disable-archiving'):
             self.info('Archiving is disabled, skipping')
             return
+
+        if not self.get_shared('testing_farm_request') or not self.shared('testing_farm_request'):
+            self.warn('No testing farm request found, skipping archiving', sentry=True)
+            return
+
+        self._request_id = self.shared('testing_farm_request').id
+
+        # Only needed for mypy, it can't be None at this point
+        assert self._request_id is not None
 
         if self.option('archive-mode') == 'ssh':
             self.create_archive_directory_ssh()
@@ -775,14 +792,15 @@ class Archive(gluetool.Module):
                         return Result.Error(True)
                     return Result.Ok(True)
 
-                gluetool.utils.wait(
-                    "wait for parallel archiving to finish",
-                    _wait_for_timer,
-                    timeout=self.option('parallel-archiving-finish-timeout'),
-                    tick=self.option('parallel-archiving-finish-tick')
-                )
-
-                self.debug('Parallel archiving finished')
+                try:
+                    gluetool.utils.wait(
+                        "wait for parallel archiving to finish",
+                        _wait_for_timer,
+                        timeout=self.option('parallel-archiving-finish-timeout'),
+                        tick=self.option('parallel-archiving-finish-tick')
+                    )
+                except GlueError:
+                    self.error('Parallel archiving did not finish in time', sentry=True)
 
                 self._archive_timer = None
 

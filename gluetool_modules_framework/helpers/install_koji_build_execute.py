@@ -122,6 +122,10 @@ class InstallKojiBuildExecute(gluetool.Module):
         except gluetool.glue.GlueCommandError:
             has_bootc = False
 
+        # Use a unique working directory for local (image mode) commands to prevent race conditions
+        # when multiple guests are set up in parallel on the same worker.
+        local_work_dir = '/tmp/koji-download-{}'.format(uuid_suffix) if has_bootc else None
+
         for artifact in artifacts:
             koji_command = 'koji' if 'fedora' in artifact.type else 'brew'
 
@@ -130,14 +134,21 @@ class InstallKojiBuildExecute(gluetool.Module):
             else:
                 download_arches = cast(str, arch)
 
+            download_command = (
+                'set -o pipefail; '
+                '( {0} download-build --debuginfo --task-id --arch noarch --arch {2} --arch src {1} || '
+                '{0} download-task --arch noarch --arch {2} --arch src {1} ) | '
+                "egrep Downloading | awk '{{print $NF}}' | tee rpms-list-{1}-{3}"
+            ).format(koji_command, artifact.id, download_arches, uuid_suffix)
+
+            if has_bootc:
+                download_command = 'mkdir -p {} && cd {} && {}'.format(
+                    local_work_dir, local_work_dir, download_command
+                )
+
             sut_installation.add_step(
                 'Download task id {}'.format(artifact.id),
-                (
-                    'set -o pipefail; '
-                    '( {0} download-build --debuginfo --task-id --arch noarch --arch {2} --arch src {1} || '
-                    '{0} download-task --arch noarch --arch {2} --arch src {1} ) | '
-                    "egrep Downloading | awk '{{print $NF}}' | tee rpms-list-{1}-{3}"
-                ).format(koji_command, artifact.id, download_arches, uuid_suffix),
+                download_command,
                 local=has_bootc
             )
 
@@ -157,22 +168,27 @@ class InstallKojiBuildExecute(gluetool.Module):
 
         excluded_packages_regexp = '|'.join(['^{} '.format(package) for package in excluded_packages])
 
+        get_package_list_command = (
+            'ls *[^.src].rpm | '
+            'sed -r "s/(.*)-.*-.*/\\1 \\0/" | '
+            '{}'  # Do not install excluded packages in the tmt plan
+            '{}'  # Do not install packages with "install: false" specified in the TF API
+            '{}'  # Do not install i686 builds
+            'awk "{{print \\$2}}" | '
+            'tee rpms-list-{}'
+        ).format(
+            'egrep -v "({})" | '.format(excluded_packages_regexp) if excluded_packages_regexp else '',
+            ''.join(['grep -Fv "$(cat {})" | '.format(rpm) for rpm in rpms_lists_to_skip_install]),
+            'egrep -v "i686" | ' if arch == 'x86_64' and self.option('download-i686-builds') else '',
+            uuid_suffix,
+        )
+
+        if has_bootc:
+            get_package_list_command = 'cd {} && {}'.format(local_work_dir, get_package_list_command)
+
         sut_installation.add_step(
             'Get package list',
-            (
-                'ls *[^.src].rpm | '
-                'sed -r "s/(.*)-.*-.*/\\1 \\0/" | '
-                '{}'  # Do not install excluded packages in the tmt plan
-                '{}'  # Do not install packages with "install: false" specified in the TF API
-                '{}'  # Do not install i686 builds
-                'awk "{{print \\$2}}" | '
-                'tee rpms-list-{}'
-            ).format(
-                'egrep -v "({})" | '.format(excluded_packages_regexp) if excluded_packages_regexp else '',
-                ''.join(['grep -Fv "$(cat {})" | '.format(rpm) for rpm in rpms_lists_to_skip_install]),
-                'egrep -v "i686" | ' if arch == 'x86_64' and self.option('download-i686-builds') else '',
-                uuid_suffix,
-            ),
+            get_package_list_command,
             local=has_bootc
         )
 
@@ -236,11 +252,18 @@ class InstallKojiBuildExecute(gluetool.Module):
 
         else:
             command = (
-                "cat rpms-list-{4} | xargs realpath | tee rpms-list-paths-{4} && "
+                "cd {5} && cat rpms-list-{4} | xargs realpath | tee rpms-list-paths-{4} && "
                 "if [ -s rpms-list-paths-{4} ] && grep -q '\\S' rpms-list-paths-{4}; then "
                 "{0} -vvv run provision --how connect --guest {1} --key {2} --port {3} prepare --how install "
                 "$(awk '{{print \"--package=\"$0}}' rpms-list-paths-{4}); else echo 'Nothing to install'; fi"
-            ).format(" ".join(self.shared('tmt_command')), guest.hostname, guest.key, guest.port, uuid_suffix)
+            ).format(
+                " ".join(self.shared('tmt_command')),
+                guest.hostname,
+                guest.key,
+                guest.port,
+                uuid_suffix,
+                local_work_dir
+            )
 
             sut_installation.add_step(
                 label='Install koji build with TMT',

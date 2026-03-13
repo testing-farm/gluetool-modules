@@ -831,14 +831,14 @@ test = ["coverage[toml]", "ddt (>=1.1.1,!=1.4.3)", "mock", "mypy (==1.18.2)", "p
 
 [[package]]
 name = "gluetool"
-version = "3.1"
+version = "3.2"
 description = "Python framework for constructing command-line pipelines."
 category = "main"
 optional = false
 python-versions = "<3.13,>=3.12"
 files = [
-    {file = "gluetool-3.1-py3-none-any.whl", hash = "sha256:4812a7e68fe22e2425249ca3c2d743a82b0a9627a6066973b412d690a128b506"},
-    {file = "gluetool-3.1.tar.gz", hash = "sha256:1888dac402216af5f47609baa09ac2c7aaec693aa65696c22c174361b3aaee4f"},
+    {file = "gluetool-3.2-py3-none-any.whl", hash = "sha256:8dc235765a625ac094b08c236fca836d5c7decb2eb130d81558fb7df168e2435"},
+    {file = "gluetool-3.2.tar.gz", hash = "sha256:03e3bfbd0d933bb1e8bc2c625085b0a431aea06d81c2ec081217da959352d5f6"},
 ]
 
 [package.dependencies]

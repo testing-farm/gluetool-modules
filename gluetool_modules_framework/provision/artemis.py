@@ -1314,7 +1314,9 @@ class ArtemisProvisioner(gluetool.Module):
         return post_install_script.replace('\\n', '\n')
 
     @property
-    def post_install_script(self) -> str:
+    def post_install_script(self) -> Optional[str]:
+        if not self.option('post-install-script'):
+            return None
         return self.expand_post_install_script(self.option('post-install-script'))
 
     @property

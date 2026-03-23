@@ -1306,8 +1306,9 @@ class ArtemisProvisioner(gluetool.Module):
         :param str post_install_script: script or filepath of the script.
         :rtype: str
         """
-        if os.path.isfile(post_install_script):
-            with open(normalize_path(post_install_script)) as f:
+        post_install_script_path = normalize_path(post_install_script)
+        if os.path.isfile(post_install_script_path):
+            with open(post_install_script_path) as f:
                 return f.read()
         # NOTE(ivasilev) Remove possible string escaping
         return post_install_script.replace('\\n', '\n')
@@ -1561,7 +1562,7 @@ class ArtemisProvisioner(gluetool.Module):
         priority = self.option('priority-group')
         options = normalize_multistring_option(self.option('ssh-options'))
         # NOTE(ivasilev) Use artemis module requested post-install-script or the one from the environment
-        post_install_script = self.option('post-install-script')
+        post_install_script = self.post_install_script
         provisioning = (environment.settings or {}).get('provisioning') or {}
         if not post_install_script:
             post_install_script = provisioning.get('post_install_script')

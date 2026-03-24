@@ -223,10 +223,17 @@ class OutOfMemory(Module):
                 self.terminate_pipeline()
 
     def destroy(self, failure: Optional[Failure] = None) -> None:
-        # stop the repeat timer, it will not be needed anymore
+        # Stop the repeat timer and wait for it to finish. The timer is a non-daemon thread,
+        # so we must wait for it to complete its current operation to ensure a clean exit.
         if self._oom_timer:
             self.info('Stopping out-of-memory monitoring')
             self._oom_timer.cancel()
+
+            self._oom_timer.join(timeout=60)
+
+            if self._oom_timer.is_alive():
+                self.warn('Out-of-memory timer thread did not finish in time')
+
             self._oom_timer = None
 
     def execute(self) -> None:

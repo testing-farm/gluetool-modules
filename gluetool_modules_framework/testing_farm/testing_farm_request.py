@@ -917,10 +917,17 @@ class TestingFarmRequestModule(gluetool.Module):
                 self.cancel_pipeline()
 
     def destroy(self, failure: Optional[gluetool.Failure] = None) -> None:
-        # stop the repeat timer, it will not be needed anymore
+        # Stop the repeat timer and wait for it to finish. The timer is a non-daemon thread,
+        # so we must wait for it to complete its current operation to ensure a clean exit.
         if self._pipeline_cancellation_timer:
             self.debug('Stopping pipeline cancellation check')
             self._pipeline_cancellation_timer.cancel()
+
+            self._pipeline_cancellation_timer.join(timeout=60)
+
+            if self._pipeline_cancellation_timer.is_alive():
+                self.warn('Pipeline cancellation timer thread did not finish in time')
+
             self._pipeline_cancellation_timer = None
 
     def execute(self) -> None:

@@ -810,3 +810,5 @@ class Archive(gluetool.Module):
             self.archive_stage('destroy')
         except GlueError as error:
             self.error(str(error), sentry=True)
+        except Exception as error:
+            self.error('Unexpected error during destroy stage archiving: {}'.format(error), sentry=True)

@@ -912,6 +912,14 @@ class ArtemisGuest(NetworkedGuest):
         self.debug('Stopping guest logging')
 
         self.guest_logs_timer.cancel()
+
+        # Wait for the timer thread to finish. The timer is a non-daemon thread,
+        # so we must wait for it to complete its current operation to ensure a clean exit.
+        self.guest_logs_timer.join(timeout=60)
+
+        if self.guest_logs_timer.is_alive():
+            self.warn('Guest logging timer thread did not finish in time')
+
         self.guest_logs_timer = None
 
         self.gather_guest_logs()

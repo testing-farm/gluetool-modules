@@ -743,7 +743,7 @@ def test_execute_log_request1(module, monkeypatch, log):
     with open(os.path.join(ASSETS_DIR, 'request1-log.log'), 'r') as request1_log_file:
         request1_log = ''.join(request1_log_file.readlines())
 
-    assert log.records[-1].message == request1_log
+    assert any(record.message == request1_log for record in log.records)
 
 
 def test_execute_request2(module):
@@ -839,7 +839,7 @@ def test_pipeline_cancellation(module, request2, monkeypatch, log):
 
     # pipeline cancellation is started in execute
     module.execute()
-    assert log.records[-1].message == 'Starting pipeline cancellation, check every 0.1 seconds'
+    assert any(r.message == 'Starting pipeline cancellation, check every 0.1 seconds' for r in log.records)
 
     # make sure the timer runs
     time.sleep(0.5)
@@ -863,9 +863,147 @@ def test_pipeline_cancellation_destroy(module, request1, monkeypatch, log):
 
     # pipeline cancellation is started in execute
     module.execute()
-    assert log.records[-1].message == 'Starting pipeline cancellation, check every 0.1 seconds'
+    assert any(r.message == 'Starting pipeline cancellation, check every 0.1 seconds' for r in log.records)
     module.destroy()
 
     # cancellation never had time to run
     process_mock.assert_not_called()
     assert log.records[-1].message == 'Stopping pipeline cancellation check'
+
+
+@pytest.fixture(name='redact')
+def fixture_redact_request():
+    from gluetool_modules_framework.testing_farm.testing_farm_request import redact_request
+    return redact_request
+
+
+def test_redact_request_removes_api_key(redact):
+    data = redact({'api_key': 'secret-key', 'id': '123'})
+
+    assert 'api_key' not in data
+    assert data['id'] == '123'
+
+
+@pytest.mark.parametrize('request_data, redacted_path, preserved_path, preserved_value', [
+    (
+        {'environments_requested': [{'secrets': {'db_password': 'hunter2'}, 'arch': 'x86_64'}]},
+        'environments_requested.0.secrets',
+        'environments_requested.0.arch',
+        'x86_64',
+    ),
+    (
+        {'environments_requested': [
+            {'tmt': {'context': {'key': 'val'}, 'environment': {'SECRET': 'value'}}}
+        ]},
+        'environments_requested.0.tmt.environment',
+        'environments_requested.0.tmt.context',
+        {'key': 'val'},
+    ),
+    (
+        {'environments_requested': [{
+            'settings': {'provisioning': {
+                'security_group_rules_ingress': [{'cidr': '10.0.0.0/8'}],
+                'post_install_skip': 'foo',
+            }}
+        }]},
+        'environments_requested.0.settings.provisioning.security_group_rules_ingress',
+        'environments_requested.0.settings.provisioning.post_install_skip',
+        'foo',
+    ),
+    (
+        {'environments_requested': [{
+            'settings': {'provisioning': {
+                'security_group_rules_egress': [{'cidr': '0.0.0.0/0'}],
+                'post_install_skip': 'bar',
+            }}
+        }]},
+        'environments_requested.0.settings.provisioning.security_group_rules_egress',
+        'environments_requested.0.settings.provisioning.post_install_skip',
+        'bar',
+    ),
+    (
+        {'notification': {'webhook': {'url': 'https://example.com', 'token': 'secret-token'}}},
+        'notification.webhook.token',
+        'notification.webhook.url',
+        'https://example.com',
+    ),
+], ids=['secrets', 'tmt-environment', 'security-rules-ingress', 'security-rules-egress', 'webhook-token'])
+def test_redact_request_sensitive_fields(redact, request_data, redacted_path, preserved_path, preserved_value):
+    data = redact(request_data)
+
+    def _resolve(obj, path):
+        for key in path.split('.'):
+            obj = obj[int(key)] if key.isdigit() else obj[key]
+        return obj
+
+    assert _resolve(data, redacted_path) == '<redacted>'
+    assert _resolve(data, preserved_path) == preserved_value
+
+
+@pytest.mark.parametrize('url, expected', [
+    ('https://user:pass@gitlab.com/repo.git', 'https://*****@gitlab.com/repo.git'),
+    ('https://gitlab.com/repo.git', 'https://gitlab.com/repo.git'),
+    ('git://gitlab.com/repo.git', 'git://gitlab.com/repo.git'),
+], ids=['credentials-stripped', 'plain-unchanged', 'non-http-unchanged'])
+def test_redact_request_git_urls(redact, url, expected):
+    data = redact({'test': {'fmf': {'url': url, 'ref': 'main'}, 'sti': None}})
+
+    assert data['test']['fmf']['url'] == expected
+    assert data['test']['fmf']['ref'] == 'main'
+
+
+@pytest.mark.parametrize('input_data, max_length, check', [
+    (
+        {'environments_requested': [{'variables': {'BIG': 'x' * 1000}}]},
+        100,
+        lambda d: '<truncated, 1000 total>' in d['environments_requested'][0]['variables']['BIG'],
+    ),
+    (
+        {'k' * 1000: 'value'},
+        50,
+        lambda d: '<truncated, 1000 total>' in list(d.keys())[0],
+    ),
+], ids=['long-value', 'long-key'])
+def test_redact_request_truncation(redact, input_data, max_length, check):
+    data = redact(input_data, max_value_length=max_length)
+    assert check(data)
+
+
+def test_redact_request_missing_fields(redact):
+    data = redact({'id': '123', 'test': {'fmf': {'url': 'testurl'}, 'sti': None}})
+
+    assert data['id'] == '123'
+    assert 'notification' not in data
+    assert 'environments_requested' not in data
+
+
+def test_redact_request_does_not_mutate_original(redact):
+    original = {
+        'api_key': 'secret',
+        'environments_requested': [{'secrets': {'key': 'val'}}],
+    }
+
+    redact(original)
+
+    assert original['api_key'] == 'secret'
+    assert original['environments_requested'][0]['secrets'] == {'key': 'val'}
+
+
+def test_redact_request_full_fixture(redact):
+    request = _load_assets('request1')
+    data = redact(request)
+
+    # secrets redacted
+    assert data['environments_requested'][0]['secrets'] == '<redacted>'
+    assert data['environments_requested'][1]['secrets'] == '<redacted>'
+
+    # tmt environment redacted
+    assert data['environments_requested'][1]['tmt']['environment'] == '<redacted>'
+
+    # tmt context preserved
+    assert data['environments_requested'][0]['tmt']['context'] == {'some': 'context'}
+
+    # non-sensitive fields preserved
+    assert data['environments_requested'][0]['arch'] == 'x86_64'
+    assert data['environments_requested'][1]['os']['compose'] == 'Fedora-37'
+    assert data['test']['fmf']['ref'] == 'testref'

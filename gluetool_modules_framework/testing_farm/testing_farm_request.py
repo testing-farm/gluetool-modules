@@ -5,9 +5,11 @@ from enum import StrEnum
 from functools import partial
 from posixpath import join as urljoin
 
+import json
 import os
 import psutil
 import re
+import sentry_sdk
 import six
 import sys
 import attrs
@@ -342,6 +344,82 @@ class Artifact():
     order: int = 50
 
 
+# Dot-separated paths to sensitive fields in the API request.
+# Paths starting with ``environments_requested[].`` are applied to each environment.
+#
+# NOTE: this should eventually move to the testing-farm Python client library.
+_REQUEST_REDACT_PATHS = [
+    'notification.webhook.token',
+    'environments_requested[].secrets',
+    'environments_requested[].tmt.environment',
+    'environments_requested[].settings.provisioning.security_group_rules_ingress',
+    'environments_requested[].settings.provisioning.security_group_rules_egress',
+]
+
+# Regex to strip embedded credentials from git URLs (``https://user:pass@host`` -> ``https://*****@host``)
+# NOTE: this is the same pattern used in nucleus ``hide_cred_in_url``, it may false-positive on
+# URLs with ports (e.g., ``https://host:8080/path``), to be fixed when moving to the client library.
+_CRED_URL_RE = re.compile(r'(https?://).+:.+@(.+)')
+
+
+def redact_request(request: Dict[str, Any], max_value_length: int = 512) -> Dict[str, Any]:
+    """
+    Return a sanitized deep copy of the raw API request suitable for Sentry context.
+
+    Redacts sensitive fields listed in :data:`_REQUEST_REDACT_PATHS`, strips credentials
+    from git URLs, and truncates oversized string keys and values.
+    """
+
+    # JSON round-trip produces a safe deep copy of the API response,
+    # with default=str as a fallback for any non-serializable values.
+    data = json.loads(json.dumps(request, default=str))
+
+    data.pop('api_key', None)
+
+    for path in _REQUEST_REDACT_PATHS:
+        if '[].' in path:
+            list_key, nested_path = path.split('[].', 1)
+            for item in data.get(list_key) or []:
+                _set_nested(item, nested_path, '<redacted>')
+        else:
+            _set_nested(data, path, '<redacted>')
+
+    for test_type in ('fmf', 'sti'):
+        url = _get_nested(data, 'test.{}.url'.format(test_type))
+        if url:
+            _set_nested(data, 'test.{}.url'.format(test_type), _CRED_URL_RE.sub(r'\1*****@\2', url))
+
+    return _truncate(data, max_value_length)
+
+
+def _get_nested(data: Any, path: str) -> Any:
+    for key in path.split('.'):
+        if not isinstance(data, dict):
+            return None
+        data = data.get(key)
+    return data
+
+
+def _set_nested(data: Any, path: str, value: Any) -> None:
+    keys = path.split('.')
+    for key in keys[:-1]:
+        if not isinstance(data, dict):
+            return
+        data = data.get(key)
+    if isinstance(data, dict) and keys[-1] in data:
+        data[keys[-1]] = value
+
+
+def _truncate(obj: Any, max_length: int) -> Any:
+    if isinstance(obj, str) and len(obj) > max_length:
+        return '{}... <truncated, {} total>'.format(obj[:max_length], len(obj))
+    if isinstance(obj, dict):
+        return {_truncate(k, max_length): _truncate(v, max_length) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_truncate(v, max_length) for v in obj]
+    return obj
+
+
 class TestingFarmRequest(LoggerMixin, object):
     ARTIFACT_NAMESPACE = 'testing-farm-request'
 
@@ -359,6 +437,10 @@ class TestingFarmRequest(LoggerMixin, object):
         self.id = cast(str, self._module.option('request-id'))
 
         request = self._api.get_request(self.id, self._api_key)
+
+        # Store a redacted copy of the raw API response for Sentry context
+        self.raw_request = redact_request(request)
+
         try:
             self.pipeline_timeout = int(((request.get('settings') or {}).get('pipeline') or {}).get('timeout') or 0)
         except(ValueError, TypeError):
@@ -969,3 +1051,19 @@ class TestingFarmRequestModule(gluetool.Module):
 
             self._pipeline_cancellation_lock = LoggingLock(logger=self.logger, name='pipeline cancellation lock')
             self._pipeline_cancellation_timer.start()
+
+        # Enrich Sentry events with request metadata
+        sentry_sdk.set_tag('request_id', request.id)
+        sentry_sdk.set_tag('request_type', request.type)
+        sentry_sdk.set_tag('token_name', request.request_tokenname)
+        sentry_sdk.set_tag('api_request_url', '{}/requests/{}'.format(self.public_api_url, request.id))
+
+        composes = sorted(set(env.compose for env in request.environments_requested if env.compose))
+        arches = sorted(set(env.arch for env in request.environments_requested if env.arch))
+
+        if composes:
+            sentry_sdk.set_tag('compose', ', '.join(composes))
+        if arches:
+            sentry_sdk.set_tag('arch', ', '.join(arches))
+
+        sentry_sdk.set_context('testing_farm_request', request.raw_request)

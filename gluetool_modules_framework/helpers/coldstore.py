@@ -1,6 +1,8 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+import sentry_sdk
+
 import gluetool
 
 import gluetool_modules_framework.libs
@@ -32,6 +34,10 @@ class ColdStore(gluetool.Module):
         },
         'coldstore-url-template': {
             'help': 'Template used for creating a cold store URL.'
+        },
+        'sentry-tag-name': {
+            'help': 'Sentry tag name for the cold store URL. Set to empty to disable. (default: %(default)s)',
+            'default': 'coldstore_url'
         }
     }
 
@@ -118,3 +124,7 @@ class ColdStore(gluetool.Module):
             return
 
         self.info('For the pipeline artifacts, see {}'.format(self.coldstore_url()))
+
+        sentry_tag_name = self.option('sentry-tag-name')
+        if sentry_tag_name:
+            sentry_sdk.set_tag(sentry_tag_name, self.coldstore_url())

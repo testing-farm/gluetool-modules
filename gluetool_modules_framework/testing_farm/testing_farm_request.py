@@ -250,10 +250,16 @@ class TestingFarmAPI(LoggerMixin, object):
             headers=self._get_headers(api_key)
         )
 
-        if not request:
-            raise gluetool.GlueError("Token '{}' was not found".format(token_id))
+        # Do not make this a fatal error, tokens can get deleted, and failing here would make
+        # debugging harder if we would try to rerun the pipeline with such request.
+        if request.status_code == 404:
+            self.warn("Token '{}' was not found".format(token_id))
+            return TokenType(id=token_id, name="unknown")
 
-        return cast(TokenType, request.json())
+        elif request.status_code == 200:
+            return cast(TokenType, request.json())
+
+        raise gluetool.GlueError("Unexpected error code while getting token '{}'".format(token_id))
 
     def put_request(self, request_id: str, payload: Optional[Dict[str, Any]]) -> Any:
         response = self._put_request('v0.1/requests/{}'.format(request_id), payload=payload)

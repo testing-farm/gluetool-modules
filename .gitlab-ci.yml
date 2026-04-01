@@ -66,6 +66,7 @@ container-worker-public:
     IMAGE_TAG: $CI_PIPELINE_ID
   trigger:
     project: testing-farm/worker-public
+    strategy: mirror
 
 
 # Run unit tests
@@ -274,6 +275,7 @@ publish/container-worker-public/latest:
     IMAGE_TAG: latest
   trigger:
     project: testing-farm/worker-public
+    strategy: mirror
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
 
@@ -296,5 +298,6 @@ publish/container-worker-public/tag:
     IMAGE_TAG: $CI_COMMIT_TAG
   trigger:
     project: testing-farm/worker-public
+    strategy: mirror
   rules:
     - if: $CI_COMMIT_TAG =~ /^release\/.*/

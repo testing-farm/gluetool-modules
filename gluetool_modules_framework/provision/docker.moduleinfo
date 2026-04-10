@@ -1,4 +1,0 @@
----
-
-name: docker-provisioner
-description: "Provision guests backed by docker containers."

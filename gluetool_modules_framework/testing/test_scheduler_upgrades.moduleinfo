@@ -1,4 +1,0 @@
----
-
-name: test-scheduler-upgrades
-description: "Prepare schedule for upgrade testing. Modify schedule entries provided by previous (STI) provider."

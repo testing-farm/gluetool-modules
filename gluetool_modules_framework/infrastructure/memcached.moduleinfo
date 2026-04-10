@@ -1,8 +1,0 @@
----
-
-name: memcached
-description: Provides access to Memcached server.
-
-dependencies:
-  pip:
-    - pymemcache==2.0.0

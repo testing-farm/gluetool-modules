@@ -1,4 +1,0 @@
----
-
-name: smtp
-description: Send e-mails over SMTP.

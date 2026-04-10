@@ -1,4 +1,0 @@
----
-
-name: envinject
-description: "Allow other modules to add variables that EnvInject module applies when job finishes."

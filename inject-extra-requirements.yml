@@ -2,10 +2,8 @@
 
 #
 # There's is *no* way around it - some modules have extra requirements, like Python packages that
-# are not available for pip, or system libraries that must be injected into the virtualenv. For
-# distribution, we expect moduleinfos to solve this, providing necessary tasks to solve such
-# situations when building RPMs or Docker images. In developer's environment, we have this playbook.
-# It's up to the developers to keep it in sync with corresponding moduleinfos.
+# are not available for pip, or system libraries that must be injected into the virtualenv.
+# In developer's environment, we have this playbook.
 #
 
 - hosts: 127.0.0.1

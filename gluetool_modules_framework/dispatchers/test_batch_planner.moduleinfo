@@ -1,8 +1,0 @@
----
-
-name: test-batch-planner
-description: Configurable test batch planner.
-
-dependencies:
-  pip:
-    - fmf==0.6.1

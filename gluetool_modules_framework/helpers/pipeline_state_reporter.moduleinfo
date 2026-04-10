@@ -1,4 +1,0 @@
----
-
-name: pipeline-state-reporter
-description: "Sends messages reporting the pipeline state."

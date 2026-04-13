@@ -200,6 +200,7 @@ testing-farm:
     - dnf -y install direnv libffi libffi-devel podman buildah
     - echo -n "$INFRA_VAULT_PASSWORD" > .vault_pass
     - podman login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
+    - poetry env use python3.12
   artifacts:
     paths:
       - $INFRA_PATH/.pytest

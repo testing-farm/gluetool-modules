@@ -357,8 +357,8 @@ _REQUEST_REDACT_PATHS = [
 ]
 
 # Regex to strip embedded credentials from git URLs (``https://user:pass@host`` -> ``https://*****@host``)
-# NOTE: this is the same pattern used in nucleus ``hide_cred_in_url``, it may false-positive on
-# URLs with ports (e.g., ``https://host:8080/path``), to be fixed when moving to the client library.
+# NOTE: this is the same pattern used in nucleus ``hide_cred_in_url``, ``@`` is required so
+# plain ``https://host:8080/path`` URLs are not affected.
 _CRED_URL_RE = re.compile(r'(https?://).+:.+@(.+)')
 
 
@@ -1061,9 +1061,8 @@ class TestingFarmRequestModule(gluetool.Module):
         composes = sorted(set(env.compose for env in request.environments_requested if env.compose))
         arches = sorted(set(env.arch for env in request.environments_requested if env.arch))
 
-        if composes:
-            sentry_sdk.set_tag('compose', ', '.join(composes))
-        if arches:
-            sentry_sdk.set_tag('arch', ', '.join(arches))
-
         sentry_sdk.set_context('testing_farm_request', request.raw_request)
+        sentry_sdk.set_context('testing_farm_environments', {
+            'composes': composes,
+            'arches': arches,
+        })

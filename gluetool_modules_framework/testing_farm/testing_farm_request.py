@@ -26,7 +26,7 @@ from requests.exceptions import ConnectionError, HTTPError, Timeout
 
 # Type annotations
 # pylint: disable=unused-import,wrong-import-order
-from typing import Any, Dict, List, Optional, Union, cast, Tuple  # noqa
+from typing import Any, Dict, List, Mapping, Optional, Union, cast, Tuple  # noqa
 from typing_extensions import TypedDict, NotRequired, Literal
 
 from gluetool_modules_framework.libs.testing_farm import InRepoConfig
@@ -362,7 +362,7 @@ _REQUEST_REDACT_PATHS = [
 _CRED_URL_RE = re.compile(r'(https?://).+:.+@(.+)')
 
 
-def redact_request(request: Dict[str, Any], max_value_length: int = 512) -> Dict[str, Any]:
+def redact_request(request: Mapping[str, Any], max_value_length: int = 512) -> Dict[str, Any]:
     """
     Return a sanitized deep copy of the raw API request suitable for Sentry context.
 
@@ -389,7 +389,7 @@ def redact_request(request: Dict[str, Any], max_value_length: int = 512) -> Dict
         if url:
             _set_nested(data, 'test.{}.url'.format(test_type), _CRED_URL_RE.sub(r'\1*****@\2', url))
 
-    return _truncate(data, max_value_length)
+    return cast(Dict[str, Any], _truncate(data, max_value_length))
 
 
 def _get_nested(data: Any, path: str) -> Any:
@@ -1058,8 +1058,8 @@ class TestingFarmRequestModule(gluetool.Module):
         sentry_sdk.set_tag('token_name', request.request_tokenname)
         sentry_sdk.set_tag('api_request_url', '{}/requests/{}'.format(self.public_api_url, request.id))
 
-        composes = sorted(set(env.compose for env in request.environments_requested if env.compose))
-        arches = sorted(set(env.arch for env in request.environments_requested if env.arch))
+        composes = sorted(set(str(env.compose) for env in request.environments_requested if env.compose))
+        arches = sorted(set(str(env.arch) for env in request.environments_requested if env.arch))
 
         sentry_sdk.set_context('testing_farm_request', request.raw_request)
         sentry_sdk.set_context('testing_farm_environments', {

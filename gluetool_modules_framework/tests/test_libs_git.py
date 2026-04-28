@@ -296,6 +296,7 @@ def test_checkout_ref(remote_git_repository, monkeypatch, path, ref, calls):
     mock_command_class = MagicMock(return_value=mock_command_instance)
 
     monkeypatch.setattr(gluetool.utils, 'Command', mock_command_class)
+    monkeypatch.setattr(gluetool.utils, 'wait', lambda label, check, **kwargs: check())
 
     remote_git_repository._checkout_ref('some-url', path, ref)
 
@@ -319,7 +320,8 @@ def test_clone_obeys_ref(self_ref, ref, expected, remote_git_repository, monkeyp
 
     remote_git_repository.clone(ref=ref)
 
-    remote_git_repository._checkout_ref.assert_called_with('foo', 'some-path', expected)
+    remote_git_repository._checkout_ref.assert_called_with('foo', 'some-path', expected,
+                                                           fetch_timeout=120, fetch_tick=20)
 
 
 @pytest.mark.parametrize('clone_url, branch, ref, repr, prefix', [
@@ -360,6 +362,7 @@ def test_merge(remote_git_repository, monkeypatch):
     mock_command_class = MagicMock(return_value=mock_command_instance)
 
     monkeypatch.setattr(gluetool.utils, 'Command', mock_command_class)
+    monkeypatch.setattr(gluetool.utils, 'wait', lambda label, check, **kwargs: check())
 
     logger = Logging.get_logger()
 

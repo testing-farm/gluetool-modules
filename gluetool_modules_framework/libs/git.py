@@ -256,12 +256,14 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         # Refs starting with `refs/` are used for checking out merge requests and need special handling.
         # Otherwise fallback to checkout a general git ref.
         if ref:
-            self._checkout_ref(clone_url, actual_path, ref)
+            self._checkout_ref(clone_url, actual_path, ref,
+                               fetch_timeout=clone_timeout, fetch_tick=clone_tick)
 
         # If specified, merge ref into the currently checked out ref
         if merge:
             if merge != ref:
-                self._merge(clone_url, merge, actual_path, logger)
+                self._merge(clone_url, merge, actual_path, logger,
+                            fetch_timeout=clone_timeout, fetch_tick=clone_tick)
             else:
                 logger.warning('ref and merge are the same: {}. Skipping merging'.format(ref))
 
@@ -354,37 +356,64 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
             tick=clone_tick
         )
 
-    def _fetch_ref(self, clone_url: SecretGitUrl, actual_path: str, ref: str) -> str:
+    def _fetch_ref(
+        self,
+        clone_url: SecretGitUrl,
+        actual_path: str,
+        ref: str,
+        fetch_timeout: int = 120,
+        fetch_tick: int = 20
+    ) -> str:
         """
         Fetches specified `ref` into the repo at `actual_path`.
 
         :param SecretGitUrl clone_url: remote URL to use for cloning the repository
         :param str actual_path: path to git repository which should be used for checkout
         :param str ref: git reference to fetch
+        :param int fetch_timeout: Timeout for `git fetch` retries.
+        :param int fetch_tick: Delay in seconds before retrying `git fetch`.
         :returns: local git reference to which we checked out the requested ref
-        :raises gluetool.GlueCommandError: if failed to fetch the reference
+        :raises FailedToFetchRef: if failed to fetch the reference after all retries
         """
         # we need to create a dedicated checkout ref, to mitigate collisions with existing refs
         checkout_ref = 'gluetool/{}'.format(ref)
 
-        # Fetch the pull/merge request
+        command: List[Union[str, SecretGitUrl]] = [
+            'git',
+            '-C', actual_path,
+            'fetch',
+            clone_url,
+            '{}:{}'.format(ref, checkout_ref)
+        ]
+
+        self.commands.append(' '.join(map(str, command)).replace(actual_path, TESTCODE_DIR))
+
+        def _fetch() -> Result[None, str]:
+            try:
+                # TODO: teach `gluetool.utils.Command` how to work with `secret_type.Secret[str]`
+                gluetool.utils.Command(
+                    [c._dangerous_extract() if isinstance(c, SecretGitUrl) else c for c in command]
+                ).run()
+
+            except gluetool.GlueCommandError as exc:
+                return Result.Error('Failed to fetch ref {}: {}'.format(ref, exc.output.stderr))
+
+            return Result.Ok(None)
+
         try:
-            command: List[Union[str, SecretGitUrl]] = [
-                'git',
-                '-C', actual_path,
-                'fetch',
-                clone_url,
-                '{}:{}'.format(ref, checkout_ref)
-            ]
-
-            self.commands.append(' '.join(map(str, command)).replace(actual_path, TESTCODE_DIR))
-            # TODO: teach `gluetool.utils.Command` how to work with `secret_type.Secret[str]`
-            gluetool.utils.Command(
-                [c._dangerous_extract() if isinstance(c, SecretGitUrl) else c for c in command]
-            ).run()
-
-        except gluetool.GlueCommandError as exc:
-            raise FailedToFetchRef('Failed to fetch ref {}: {}'.format(ref, exc.output.stderr))
+            gluetool.utils.wait(
+                "fetching ref {} from {} with timeout {}s, tick {}s".format(
+                    ref,
+                    clone_url,
+                    fetch_timeout,
+                    fetch_tick
+                ),
+                _fetch,
+                timeout=fetch_timeout,
+                tick=fetch_tick
+            )
+        except gluetool.GlueError:
+            raise FailedToFetchRef('Failed to fetch ref {}: retries exhausted'.format(ref))
 
         return checkout_ref
 
@@ -406,7 +435,14 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
 
         return tempfile.mkdtemp(dir=os.getcwd())
 
-    def _checkout_ref(self, clone_url: SecretGitUrl, actual_path: str, ref: str) -> None:
+    def _checkout_ref(
+        self,
+        clone_url: SecretGitUrl,
+        actual_path: str,
+        ref: str,
+        fetch_timeout: int = 120,
+        fetch_tick: int = 20
+    ) -> None:
         """
         Checkout a git commit, reference, branch or tag.
         This method implements a general checkout which works for all cases.
@@ -450,7 +486,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
             )
 
         # Fetch the commit, in case it is from a merge/pull request ref
-        checkout_ref = self._fetch_ref(clone_url, actual_path, ref)
+        checkout_ref = self._fetch_ref(clone_url, actual_path, ref, fetch_timeout=fetch_timeout, fetch_tick=fetch_tick)
 
         # Checkout the ref of the merge request, do not initialize submodules
         try:
@@ -485,7 +521,15 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         except gluetool.GlueCommandError as exc:
             raise FailedToUpdateSubmodules('Failed to update submodules {}: {}'.format(ref, exc.output.stderr))
 
-    def _merge(self, clone_url: SecretGitUrl, ref: str, actual_path: str, logger: gluetool.log.ContextAdapter) -> None:
+    def _merge(
+        self,
+        clone_url: SecretGitUrl,
+        ref: str,
+        actual_path: str,
+        logger: gluetool.log.ContextAdapter,
+        fetch_timeout: int = 120,
+        fetch_tick: int = 20
+    ) -> None:
         """
         Merge specified ref into currently checked out ref.
 
@@ -496,7 +540,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         """
 
         # Fetch the commit, in case it is from a merge/pull request ref
-        merge_ref = self._fetch_ref(clone_url, actual_path, ref)
+        merge_ref = self._fetch_ref(clone_url, actual_path, ref, fetch_timeout=fetch_timeout, fetch_tick=fetch_tick)
 
         logger.info('merging {}'.format(ref))
         command = gluetool.utils.Command(['git', '-C', actual_path, 'merge', '--no-edit', merge_ref], logger=logger)

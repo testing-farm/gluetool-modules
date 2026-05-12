@@ -63,6 +63,7 @@ API_FEATURE_VERSIONS: Dict[str, str] = {
     'security-group-rules': '0.0.72',
     'guest-reboot': '0.0.74',
     'hw-constraints-cpu-vendor': '0.0.84',
+    'hw-constraints-virtualization-confidential': '0.0.89',
 }
 
 SUPPORTED_API_VERSIONS: Set[str] = set(API_FEATURE_VERSIONS.values())

@@ -10,13 +10,22 @@ import gluetool
 import contextlib
 import time
 from mock import MagicMock
-from gluetool_modules_framework.testing_farm.testing_farm_request import RequestConflictError
+from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact, RequestConflictError
+from gluetool_modules_framework.libs.test_schedule_tmt import TmtArtifactProvider, TmtArtifactProviderType
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 from gluetool_modules_framework.libs.testing_farm import InRepoConfig
 
 from . import create_module, patch_shared
 from requests.exceptions import HTTPError
 from pydantic import ValidationError
+
+TmtArtifactProvider.register(
+    'fedora-koji-build', TmtArtifactProviderType.KOJI_TASK, TmtArtifactProviderType.KOJI_NVR)
+TmtArtifactProvider.register(
+    'redhat-brew-build', TmtArtifactProviderType.BREW_TASK, TmtArtifactProviderType.BREW_NVR)
+TmtArtifactProvider.register('fedora-copr-build', TmtArtifactProviderType.COPR_BUILD)
+TmtArtifactProvider.register('repository', TmtArtifactProviderType.REPOSITORY_URL)
+TmtArtifactProvider.register('repository-file', TmtArtifactProviderType.REPOSITORY_FILE)
 
 ASSETS_DIR = os.path.join('gluetool_modules_framework', 'tests', 'assets', 'testing_farm')
 
@@ -1007,3 +1016,20 @@ def test_redact_request_full_fixture(redact):
     assert data['environments_requested'][0]['arch'] == 'x86_64'
     assert data['environments_requested'][1]['os']['compose'] == 'Fedora-37'
     assert data['test']['fmf']['ref'] == 'testref'
+
+
+@pytest.mark.parametrize('artifact_type, artifact_id, expected', [
+    ('fedora-koji-build', '43054146', 'koji.task:43054146'),
+    ('fedora-koji-build', 'vim-9.1.919-1.fc40', 'koji.nvr:vim-9.1.919-1.fc40'),
+    ('fedora-koji-build', 'python-requests-2.31.0-1.fc40', 'koji.nvr:python-requests-2.31.0-1.fc40'),
+    ('redhat-brew-build', '12345', 'brew.task:12345'),
+    ('redhat-brew-build', 'openssl-3.2.6-2.el9', 'brew.nvr:openssl-3.2.6-2.el9'),
+    ('redhat-brew-build', 'kernel-5.14.0-427.el9', 'brew.nvr:kernel-5.14.0-427.el9'),
+    ('fedora-copr-build', '1784470:fedora-32-x86_64', 'copr.build:1784470:fedora-32-x86_64'),
+    ('repository', 'https://my.repo/repository', 'repository-url:https://my.repo/repository'),
+    ('repository-file', 'https://example.com/repo.repo', 'repository-file:https://example.com/repo.repo'),
+    ('unknown-type', '123', None),
+])
+def test_tmt_provide_id(artifact_type, artifact_id, expected):
+    artifact = Artifact(id=artifact_id, type=artifact_type)
+    assert TmtArtifactProvider.provide_id(artifact) == expected

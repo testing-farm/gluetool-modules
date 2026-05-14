@@ -8,13 +8,15 @@ import datetime
 from attr import validators
 import attrs
 import enum
-from typing import Any, Dict, List, Optional, Union, cast
+from enum import StrEnum
+from typing import Any, ClassVar, Dict, List, Optional, Union, cast
 import re
 
 import cattrs
 
 from gluetool_modules_framework.libs.test_schedule import TestScheduleResult
 from gluetool_modules_framework.libs.results import TestCaseCheck, TestCaseSubresult, FmfId
+from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact
 
 from gluetool.log import ContextAdapter, Logging, log_dict
 
@@ -115,6 +117,50 @@ class TMTExitCodes(enum.IntEnum):
     TESTS_ERROR = 2
     RESULTS_MISSING = 3
     TESTS_SKIPPED = 4
+
+
+class TmtArtifactProviderType(StrEnum):
+    KOJI_TASK = 'koji.task'
+    KOJI_NVR = 'koji.nvr'
+    BREW_TASK = 'brew.task'
+    BREW_NVR = 'brew.nvr'
+    COPR_BUILD = 'copr.build'
+    REPOSITORY_URL = 'repository-url'
+    REPOSITORY_FILE = 'repository-file'
+
+
+@attrs.define
+class TmtArtifactProvider:
+    """Stores tmt ``--provide`` provider prefixes for artifact installation."""
+    id_provider: TmtArtifactProviderType
+    nvr_provider: Optional[TmtArtifactProviderType] = None
+
+    _PROVIDERS: ClassVar[Dict[str, 'TmtArtifactProvider']] = {}
+
+    @classmethod
+    def register(cls, artifact_type: str, id_provider: TmtArtifactProviderType,
+                 nvr_provider: Optional[TmtArtifactProviderType] = None) -> None:
+        cls._PROVIDERS[artifact_type] = cls(id_provider=id_provider, nvr_provider=nvr_provider)
+
+    @classmethod
+    def provide_id(cls, artifact: Artifact) -> Optional[str]:
+        """
+        Map a Testing Farm artifact to a tmt ``--provide`` identifier.
+
+        Returns ``None`` for unsupported artifact types.
+        """
+
+        mapping = cls._PROVIDERS.get(artifact.type)
+
+        if not mapping:
+            return None
+
+        if artifact.id.isdigit() or not mapping.nvr_provider:
+            provider = mapping.id_provider
+        else:
+            provider = mapping.nvr_provider
+
+        return '{}:{}'.format(provider, artifact.id)
 
 
 @attrs.define(kw_only=True)

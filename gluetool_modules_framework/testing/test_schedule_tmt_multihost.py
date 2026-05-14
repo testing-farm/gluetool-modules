@@ -32,7 +32,7 @@ from gluetool_modules_framework.libs.test_schedule_tmt import \
     RESULTS_YAML, RESULT_OUTCOME, RESULT_WEIGHT, \
     TMTDiscoveredTest, TMTExitCodes, TMTPlan, TMTResult, TMTGuest, TestResult, TestArtifact, \
     TMT_ENV_FILE, TMT_LOG, TMT_REPRODUCER, TMT_VERBOSE_LOG, \
-    get_test_contacts, safe_name
+    get_test_contacts, safe_name, TmtArtifactProvider, TmtArtifactProviderType
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
 from gluetool_modules_framework.libs.git import RemoteGitRepository
 from gluetool_modules_framework.provision.artemis import ArtemisGuest
@@ -423,6 +423,14 @@ class TestScheduleTMTMultihost(Module):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(TestScheduleTMTMultihost, self).__init__(*args, **kwargs)
+
+        TmtArtifactProvider.register(
+            'fedora-koji-build', TmtArtifactProviderType.KOJI_TASK, TmtArtifactProviderType.KOJI_NVR)
+        TmtArtifactProvider.register(
+            'redhat-brew-build', TmtArtifactProviderType.BREW_TASK, TmtArtifactProviderType.BREW_NVR)
+        TmtArtifactProvider.register('fedora-copr-build', TmtArtifactProviderType.COPR_BUILD)
+        TmtArtifactProvider.register('repository', TmtArtifactProviderType.REPOSITORY_URL)
+        TmtArtifactProvider.register('repository-file', TmtArtifactProviderType.REPOSITORY_FILE)
 
     @gluetool.utils.cached_property
     def accepted_environment_variables(self) -> List[str]:
@@ -989,7 +997,6 @@ class TestScheduleTMTMultihost(Module):
                 def _write(*args: Any) -> None:
                     f.write('\n'.join(args))
 
-                # TODO: artifacts instalation should be added once new plugin is ready
                 _write(
                     self.option('reproducer-comment'),
                     reproducer
@@ -1045,6 +1052,19 @@ class TestScheduleTMTMultihost(Module):
         if prepare_extra_args:
             for extra_args in prepare_extra_args:
                 command.extend(['prepare'] + gluetool.utils.normalize_shell_option(extra_args))
+
+        # artifact installation via tmt prepare plugin
+        for artifact in sorted(schedule_entry.testing_environment.artifacts or [], key=lambda a: a.order):
+            if not artifact.install:
+                continue
+
+            provide_id = TmtArtifactProvider.provide_id(artifact)
+
+            if not provide_id:
+                self.warn("Unsupported tmt artifact type '{}', skipping".format(artifact.type))
+                continue
+
+            command.extend(['prepare', '--insert', '--how', 'artifact', '--provide', provide_id])
 
         if self.test_filter or self.test_name:
             command.append('tests')

@@ -628,11 +628,35 @@ dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic
             None,
             None
         ),
+        (  # with koji and brew artifacts
+            {},
+            {},
+            TestingEnvironment('x86_64', 'rhel-9', artifacts=[
+                Artifact(id='43054146', type='fedora-koji-build'),
+                Artifact(id='openssl-3.2.6-2.el9', type='redhat-brew-build', order=40),
+            ]),
+            """# tmt reproducer
+dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name '^plan1$' prepare --insert --how artifact --provide brew.nvr:openssl-3.2.6-2.el9 prepare --insert --how artifact --provide koji.task:43054146 provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script 'echo hello'""",  # noqa
+            None,
+            None
+        ),
+        (  # with artifact install=False skipped
+            {},
+            {},
+            TestingEnvironment('x86_64', 'rhel-9', artifacts=[
+                Artifact(id='43054146', type='fedora-koji-build', install=False),
+                Artifact(id='vim-9.1.919-1.fc40', type='fedora-koji-build'),
+            ]),
+            """# tmt reproducer
+dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name '^plan1$' prepare --insert --how artifact --provide koji.nvr:vim-9.1.919-1.fc40 provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script 'echo hello'""",  # noqa
+            None,
+            None
+        ),
     ],
     ids=[
         'virtual', 'local', 'variables', 'tmt_context',
         'tmt_process_environment_options_only', 'tmt_process_environment', 'tmt_process_environment_not_accepted', 'user_data',
-        'tmt_extra_args', 'post-install-script'
+        'tmt_extra_args', 'post-install-script', 'artifacts', 'artifacts_install_false'
     ]
 )
 def test_tmt_output_dir(
@@ -1162,7 +1186,7 @@ git -C testcode fetch {expected_clone_url} myfix:gluetool/myfix
 git -C testcode checkout --no-recurse-submodules gluetool/myfix
 git -C testcode submodule update --init --recursive
 cd testcode
-dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name '^plan1$' provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --skip-prepare-verify-ssh --post-install-script ''' "'echo hello'"
+dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name '^plan1$' prepare --insert --how artifact --provide copr.build:some-artifact provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --skip-prepare-verify-ssh --post-install-script ''' "'echo hello'"
 
 
 @pytest.mark.parametrize('clone_url, expected_clone_url', [
@@ -1261,7 +1285,7 @@ git -C testcode fetch {expected_clone_url} myfix:gluetool/myfix
 git -C testcode checkout --no-recurse-submodules gluetool/myfix
 git -C testcode submodule update --init --recursive
 cd testcode
-dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name '^plan1$' provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --arch x86_64 --pool foo --skip-prepare-verify-ssh --post-install-script ''' "'echo hello'"
+dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name '^plan1$' prepare --insert --how artifact --provide koji.task:123 provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --arch x86_64 --pool foo --skip-prepare-verify-ssh --post-install-script ''' "'echo hello'"
 
 
 TMT_PLANS = ['''

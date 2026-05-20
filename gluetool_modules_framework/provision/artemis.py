@@ -640,6 +640,8 @@ class ArtemisGuest(NetworkedGuest):
                     return Result.Ok(True)
 
             if guest_state == 'error':
+                # Fetch event log before analysis - it hasn't been dumped yet at this point
+                self.api.dump_events(self)
                 raise ArtemisResourceError(error=self.event_log_error)
 
         except ArtemisResourceError:

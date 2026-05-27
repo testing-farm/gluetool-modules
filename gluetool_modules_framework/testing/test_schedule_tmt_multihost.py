@@ -17,7 +17,7 @@ from gluetool import GlueError, GlueCommandError, Module
 from gluetool.action import Action
 from gluetool.log import Logging, format_blob, log_blob, log_dict
 from gluetool.log import ContextAdapter, LoggingFunctionType  # Ignore PyUnusedCodeBear
-from gluetool.utils import Command, from_yaml, load_yaml, create_cattrs_unserializer
+from gluetool.utils import Command, from_yaml, load_yaml, create_cattrs_unserializer, render_template
 
 from gluetool_modules_framework.libs import create_inspect_callback
 from gluetool_modules_framework.libs.artifacts import artifacts_location
@@ -399,6 +399,11 @@ class TestScheduleTMTMultihost(Module):
                 'help': "Additional options passed to ``tmt run``, for example -ddddvvv.",
                 'action': 'append',
                 'default': []
+            },
+            'tmt-environment-variables-map': {
+                'help': """
+                        Path to rules file for adding additional environment variables to tmt.
+                        """
             }
         }),
         ('Result options', {
@@ -475,6 +480,13 @@ class TestScheduleTMTMultihost(Module):
             return tf_request.tmt.test_name
 
         return None
+
+    @gluetool.utils.cached_property
+    def environment_variables_map(self) -> Any:
+        if not self.option('tmt-environment-variables-map'):
+            return []
+
+        return gluetool.utils.load_yaml(self.option('tmt-environment-variables-map'), logger=self.logger)
 
     def user_data(self, schedule_entry: TestScheduleEntry) -> List[str]:
         artemis_options: Dict[str, Any] = self.shared('artemis_api_options')
@@ -946,13 +958,6 @@ class TestScheduleTMTMultihost(Module):
 
         # create environment variables for the tmt process, start with options coming from options
         tmt_process_environment = self.environment_variables.copy()
-        tmt_process_environment.update({
-            'TMT_PLUGIN_REPORT_REPORTPORTAL_LINK_TEMPLATE': '{}/#{}_{}'.format(
-                self.shared('coldstore_url'),
-                schedule_entry.work_dirpath,
-                r'{{ PLAN_NAME }}_{{ RESULT.serial_number }}_{{ RESULT.guest.name }}'
-            )
-        })
 
         def _check_accepted_environment_variables(variables: Dict[str, str]) -> None:
             for key, _ in six.iteritems(variables):
@@ -967,6 +972,32 @@ class TestScheduleTMTMultihost(Module):
         # ruff and coala are confused by the walrus operator
         # Ignore PEP8Bear
         if (tmt := schedule_entry.testing_environment.tmt) and 'environment' in tmt and tmt['environment']:  # noqa: E203, E231, E501
+
+            # Add environment variables to the tmt process based on rules file
+            environment_variables_from_map = {}
+            environment_variables_map_context = {
+                **tmt['environment'],
+                'COLDSTORE_URL': self.shared('coldstore_url'),
+                'schedule_entry': schedule_entry,
+            }
+            for instr in self.environment_variables_map:
+                if not self.shared(
+                    'evaluate_rules',
+                    instr.get('rule', 'True'),
+                    context=environment_variables_map_context
+                ):
+                    continue
+
+                if 'environment' not in instr:
+                    self.warn('Rules matched but did not yield any environment variables', sentry=True)
+                    continue
+
+                environment_variables_from_map = {
+                    k: render_template(v, **environment_variables_map_context) for k, v in instr['environment'].items()
+                }
+                break
+
+            tmt_process_environment.update(environment_variables_from_map)
 
             _check_accepted_environment_variables(tmt['environment'])
 

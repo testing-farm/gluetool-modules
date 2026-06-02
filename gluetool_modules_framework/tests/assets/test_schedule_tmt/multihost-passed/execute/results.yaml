@@ -32,6 +32,7 @@
     url: https://gitlab.com/testing-farm/gluetool-modules
     ref: main
     name: /tests/testing-farm/tests/multihost/A
+  web-link: https://gitlab.com/testing-farm/gluetool-modules/-/blob/main/tests/testing-farm/tests/multihost/A/main.fmf
 - name: /tests/testing-farm/tests/multihost/B
   result: pass
   note:
@@ -65,6 +66,7 @@
     url: https://gitlab.com/testing-farm/gluetool-modules
     ref: main
     name: /tests/testing-farm/tests/multihost/B
+  web-link: https://gitlab.com/testing-farm/gluetool-modules/-/blob/main/tests/testing-farm/tests/multihost/B/main.fmf
 - name: /tests/testing-farm/tests/multihost/B
   result: pass
   note:
@@ -98,6 +100,7 @@
     url: https://gitlab.com/testing-farm/gluetool-modules
     ref: main
     name: /tests/testing-farm/tests/multihost/B
+  web-link: https://gitlab.com/testing-farm/gluetool-modules/-/blob/main/tests/testing-farm/tests/multihost/B/main.fmf
 - name: /tests/testing-farm/tests/multihost/C
   result: pass
   note:
@@ -131,6 +134,7 @@
     url: https://gitlab.com/testing-farm/gluetool-modules
     ref: main
     name: /tests/testing-farm/tests/multihost/C
+  web-link: https://gitlab.com/testing-farm/gluetool-modules/-/blob/main/tests/testing-farm/tests/multihost/C/main.fmf
 - name: /tests/testing-farm/tests/multihost/C
   result: pass
   note:
@@ -164,3 +168,4 @@
     url: https://gitlab.com/testing-farm/gluetool-modules
     ref: main
     name: /tests/testing-farm/tests/multihost/C
+  web-link: https://gitlab.com/testing-farm/gluetool-modules/-/blob/main/tests/testing-farm/tests/multihost/C/main.fmf

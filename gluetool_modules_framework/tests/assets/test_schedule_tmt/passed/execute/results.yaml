@@ -17,6 +17,7 @@
     url: https://gitlab.com/testing-farm/gluetool-modules
     ref: main
     name: /tests/core/docs
+  web-link: https://gitlab.com/testing-farm/gluetool-modules/-/blob/main/tests/core/docs/main.fmf
 - name: /tests/core/dry
   result: pass
   note: 'original result: fail'
@@ -36,3 +37,4 @@
     ref: main
     name: /tests/core/dry
     path: /some/path
+  web-link: null

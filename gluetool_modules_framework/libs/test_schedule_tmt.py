@@ -314,6 +314,10 @@ class TMTResult:
     fmf_id: Optional[TMTResultFmfId] = attrs.field(
         validator=attrs.validators.optional(attrs.validators.instance_of(TMTResultFmfId))
     )
+    web_link: Optional[str] = attrs.field(
+        default=None,
+        validator=attrs.validators.optional(attrs.validators.instance_of(str))
+    )
 
     @classmethod
     def _structure(cls, data: Dict[str, Any], converter: cattrs.Converter) -> 'TMTResult':
@@ -336,6 +340,7 @@ class TMTResult:
             end_time=data['end-time'],
             subresult=converter.structure(data['subresult'], List[TMTResultSubresult]),
             fmf_id=converter.structure(data['fmf-id'], TMTResultFmfId) if data['fmf-id'] else None,
+            web_link=data.get('web-link'),
         )
 
 
@@ -540,3 +545,4 @@ class TestResult:
     subresults: List[TestCaseSubresult]
     contacts: List[str] = attrs.field(factory=list)
     fmf_id: Optional[FmfId] = None
+    web_link: Optional[str] = None

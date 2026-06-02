@@ -16,6 +16,7 @@
     url: https://gitlab.com/testing-farm/gluetool-modules
     ref: main
     name: /install
+  web-link: https://gitlab.com/testing-farm/gluetool-modules/-/blob/main/install/main.fmf
 - name: /update
   result: fail
   log:
@@ -33,6 +34,7 @@
     url: https://gitlab.com/testing-farm/gluetool-modules
     ref: main
     name: /update
+  web-link: null
 - name: /remove
   result: error
   log:
@@ -67,3 +69,4 @@
     url: https://gitlab.com/testing-farm/gluetool-modules
     ref: main
     name: /todo
+  web-link: https://gitlab.com/testing-farm/gluetool-modules/-/blob/main/todo/main.fmf

@@ -257,11 +257,13 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     # Checking serial-number
     assert testcase_a.serial_number == 1
     # Checking properties (sorted by name)
-    assert len(testcase_a.properties) == 2
+    assert len(testcase_a.properties) == 3
     assert testcase_a.properties[0].name == 'id'
     assert testcase_a.properties[0].value == '{}_some-suite_1_server'.format(os.path.join(tmpdir, 'some-workdir'))
-    assert testcase_a.properties[1].name == 'contact'
-    assert testcase_a.properties[1].value == 'John Doe <jdoe@example.com>'
+    assert testcase_a.properties[1].name == 'web-link'
+    assert testcase_a.properties[1].value == 'https://gitlab.com/testing-farm/gluetool-modules/-/blob/main/tests/testing-farm/tests/multihost/A/main.fmf'
+    assert testcase_a.properties[2].name == 'contact'
+    assert testcase_a.properties[2].value == 'John Doe <jdoe@example.com>'
 
     # Checking testcase B server (multihost)
     assert testcase_b_server.name == '/tests/testing-farm/tests/multihost/B'
@@ -294,14 +296,16 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     # Checking serial-number
     assert testcase_b_server.serial_number == 2
     # Checking properties (sorted by name)
-    assert len(testcase_b_server.properties) == 3
+    assert len(testcase_b_server.properties) == 4
     assert testcase_b_server.properties[0].name == 'id'
     assert testcase_b_server.properties[0].value == '{}_some-suite_2_server'.format(
         os.path.join(tmpdir, 'some-workdir'))
-    assert testcase_b_server.properties[1].name == 'contact'
-    assert testcase_b_server.properties[1].value == 'John Doe <jdoe@example.com>'
+    assert testcase_b_server.properties[1].name == 'web-link'
+    assert testcase_b_server.properties[1].value == 'https://gitlab.com/testing-farm/gluetool-modules/-/blob/main/tests/testing-farm/tests/multihost/B/main.fmf'
     assert testcase_b_server.properties[2].name == 'contact'
-    assert testcase_b_server.properties[2].value == 'John Smith <jsmith@example.com>'
+    assert testcase_b_server.properties[2].value == 'John Doe <jdoe@example.com>'
+    assert testcase_b_server.properties[3].name == 'contact'
+    assert testcase_b_server.properties[3].value == 'John Smith <jsmith@example.com>'
 
     # Checking testcase B client (multihost)
     assert testcase_b_client.name == '/tests/testing-farm/tests/multihost/B'
@@ -333,16 +337,18 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     assert testcase_b_client.end_time == '2023-10-16T07:24:18.041634+00:00'
     # Checking serial-number
     # Checking properties
-    assert len(testcase_b_client.properties) == 3
+    assert len(testcase_b_client.properties) == 4
     assert testcase_b_client.serial_number == 2
     # Checking properties (sorted by name)
     assert testcase_b_client.properties[0].name == 'id'
     assert testcase_b_client.properties[0].value == '{}_some-suite_2_client'.format(
         os.path.join(tmpdir, 'some-workdir'))
-    assert testcase_b_client.properties[1].name == 'contact'
-    assert testcase_b_client.properties[1].value == 'John Doe <jdoe@example.com>'
+    assert testcase_b_client.properties[1].name == 'web-link'
+    assert testcase_b_client.properties[1].value == 'https://gitlab.com/testing-farm/gluetool-modules/-/blob/main/tests/testing-farm/tests/multihost/B/main.fmf'
     assert testcase_b_client.properties[2].name == 'contact'
-    assert testcase_b_client.properties[2].value == 'John Smith <jsmith@example.com>'
+    assert testcase_b_client.properties[2].value == 'John Doe <jdoe@example.com>'
+    assert testcase_b_client.properties[3].name == 'contact'
+    assert testcase_b_client.properties[3].value == 'John Smith <jsmith@example.com>'
 
     # Checking testcase C server (multihost)
     assert testcase_c_server.name == '/tests/testing-farm/tests/multihost/C'
@@ -375,11 +381,13 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     # Checking serial-number
     assert testcase_c_server.serial_number == 3
     # Checking properties
-    assert len(testcase_c_server.properties) == 1
+    assert len(testcase_c_server.properties) == 2
     # Checking properties (sorted by name)
     assert testcase_c_server.properties[0].name == 'id'
     assert testcase_c_server.properties[0].value == '{}_some-suite_3_server'.format(
         os.path.join(tmpdir, 'some-workdir'))
+    assert testcase_c_server.properties[1].name == 'web-link'
+    assert testcase_c_server.properties[1].value == 'https://gitlab.com/testing-farm/gluetool-modules/-/blob/main/tests/testing-farm/tests/multihost/C/main.fmf'
 
     # Checking testcase C client (multihost)
     assert testcase_c_client.name == '/tests/testing-farm/tests/multihost/C'
@@ -412,11 +420,13 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
     # Checking serial-number
     assert testcase_c_client.serial_number == 3
     # Checking properties
-    assert len(testcase_c_client.properties) == 1
+    assert len(testcase_c_client.properties) == 2
     # Checking properties (sorted by name)
     assert testcase_c_client.properties[0].name == 'id'
     assert testcase_c_client.properties[0].value == '{}_some-suite_3_client'.format(
         os.path.join(tmpdir, 'some-workdir'))
+    assert testcase_c_client.properties[1].name == 'web-link'
+    assert testcase_c_client.properties[1].value == 'https://gitlab.com/testing-farm/gluetool-modules/-/blob/main/tests/testing-farm/tests/multihost/C/main.fmf'
 
     shutil.rmtree(schedule_entry.work_dirpath)
 

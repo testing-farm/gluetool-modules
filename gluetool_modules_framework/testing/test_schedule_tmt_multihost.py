@@ -311,6 +311,7 @@ def gather_plan_results(
                 name=result.fmf_id.name,
                 path=result.fmf_id.path,
             ) if result.fmf_id is not None else None,
+            web_link=result.web_link,
         ))
 
     # If no results were processed, return UNDEFINED
@@ -1339,6 +1340,10 @@ class TestScheduleTMTMultihost(Module):
 
             if task.result == 'error':
                 test_case.error = True
+
+            test_case.properties.append(
+                Property('web-link', task.web_link or '')
+            )
 
             if len(task.contacts) > 0:
                 test_case.properties.extend([

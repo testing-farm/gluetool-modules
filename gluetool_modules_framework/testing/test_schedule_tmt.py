@@ -557,8 +557,16 @@ class TestScheduleTMT(Module):
             return ['--root', tf_request.tmt.path]
         return []
 
-    def tmt_command(self) -> List[str]:
-        return [self.option('command')] + self._root_option
+    def tmt_command(self, include_root: bool = True) -> List[str]:
+        """
+        Return the base tmt command.
+
+        :param include_root: when set, the metadata ``--root PATH`` option (from ``test.fmf.path`` in the Testing Farm
+            request) is appended. This is only correct for plan execution, which runs in the repository directory.
+            Artifact installation (``prepare --how install``) runs in a different working directory where the relative
+            metadata path does not exist, so it must set ``include_root=False``.
+        """
+        return [self.option('command')] + (self._root_option if include_root else [])
 
     def _prepare_tmt_env_file(self,
                               testing_environment_constraints: TestingEnvironment,

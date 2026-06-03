@@ -68,7 +68,7 @@ def fixture_module(monkeypatch):
         'testing_farm_request': dummy_testing_farm_request,
         'evaluate_instructions': gluetool_modules_framework.helpers.rules_engine.RulesEngine.evaluate_instructions,
         'setup_guest': None,
-        'tmt_command': lambda: ['tmt']
+        'tmt_command': lambda **kwargs: ['tmt']
     })
 
     return module

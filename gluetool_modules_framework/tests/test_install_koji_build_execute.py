@@ -83,7 +83,7 @@ def fixture_module(monkeypatch):
         'testing_farm_request': lambda: MagicMock(),
         'evaluate_instructions': evaluate_instructions_mock,
         'setup_guest': None,
-        'tmt_command': lambda: ['tmt']
+        'tmt_command': lambda **kwargs: ['tmt']
     })
 
     return module

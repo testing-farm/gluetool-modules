@@ -257,7 +257,7 @@ class InstallKojiBuildExecute(gluetool.Module):
                 "{0} -vvv run provision --how connect --guest {1} --key {2} --port {3} prepare --how install "
                 "$(awk '{{print \"--package=\"$0}}' rpms-list-paths-{4}); else echo 'Nothing to install'; fi"
             ).format(
-                " ".join(self.shared('tmt_command')),
+                " ".join(self.shared('tmt_command', include_root=False)),
                 guest.hostname,
                 guest.key,
                 guest.port,

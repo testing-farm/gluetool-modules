@@ -128,7 +128,7 @@ def fixture_module_shared_patched(module, monkeypatch):
         'setup_guest': None
     }, callables={
         'tasks': tasks_mock,
-        'tmt_command': lambda: ['tmt']
+        'tmt_command': lambda **kwargs: ['tmt']
     })
 
     return module, primary_task_mock

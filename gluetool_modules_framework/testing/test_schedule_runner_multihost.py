@@ -4,6 +4,7 @@
 
 import gluetool
 from gluetool.action import Action
+from gluetool import SoftGlueError
 from gluetool.utils import normalize_bool_option, load_yaml, dict_update, GlueError
 from gluetool.log import log_blob
 from gluetool_modules_framework.libs.jobs import JobEngine, Job, handle_job_errors
@@ -300,6 +301,8 @@ class TestScheduleRunnerMultihost(gluetool.Module):
             elif schedule_entry.stage == TestScheduleEntryStage.CLEANUP:
                 schedule_entry.error('cleanup failed: {}'.format(exc), exc_info=exc_info)
 
+            schedule_entry.error_stage = schedule_entry.stage
+
             _shift(schedule_entry, TestScheduleEntryStage.COMPLETE, new_state=TestScheduleEntryState.ERROR)
 
             _finish_action(schedule_entry)
@@ -388,6 +391,27 @@ class TestScheduleRunnerMultihost(gluetool.Module):
         if engine.errors:
             self.shared('trigger_event', 'test-schedule.error',
                         schedule=schedule, errors=engine.errors)
+
+            failed_entries = [se for se in schedule if se.state == TestScheduleEntryState.ERROR]
+
+            if failed_entries:
+                summary_parts = []
+                for se in sorted(failed_entries, key=lambda se: se.testsuite_name or se.id):
+                    stage_name = se.error_stage.value if se.error_stage else 'unknown'
+                    plan_name = se.testsuite_name or se.id
+                    summary_parts.append('{} failed during {}'.format(plan_name, stage_name))
+
+                has_soft_error = any(
+                    isinstance(exc_info[1], SoftGlueError)
+                    for _, exc_info in engine.errors
+                )
+
+                summary = '\n'.join(summary_parts)
+
+                if has_soft_error:
+                    raise SoftGlueError(summary)
+
+                raise GlueError(summary)
 
             handle_job_errors(engine.errors, 'At least one entry crashed')
 

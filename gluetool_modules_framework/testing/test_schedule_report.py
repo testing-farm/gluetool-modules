@@ -249,7 +249,7 @@ class TestScheduleReport(gluetool.Module):
             test_suite = TestSuite(
                 name=test_suite_name,
                 result=schedule_entry.result.name.lower(),
-                stage=schedule_entry.stage.name.lower(),
+                stage=(schedule_entry.error_stage or schedule_entry.stage).value,
                 properties=[Property(name='baseosci.result', value=schedule_entry.result.name.lower())]
             )
 

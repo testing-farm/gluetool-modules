@@ -111,9 +111,10 @@ def test_execute_run_error(module, monkeypatch):
         'provision': MagicMock(return_value=[guest_mock]),
         'run_test_schedule_entry': run_error_mock
     })
-    with pytest.raises(gluetool.GlueError, match='mocked run error'):
+    with pytest.raises(gluetool.GlueError, match='failed during running'):
         module.execute()
     assert test_schedule[0].state == TSEntryState.ERROR
+    assert test_schedule[0].error_stage == TSEntryStage.RUNNING
 
 
 def test_execute_schedule_entry_attribute_map(module, monkeypatch):

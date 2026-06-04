@@ -233,6 +233,9 @@ class TestScheduleEntry(LoggerMixin, object):
         # Used to name the test suite when creating results, if not specified, `id` is used
         self.testsuite_name: Optional[str] = None
 
+        # Stage at which an error occurred, before the entry is shifted to COMPLETE
+        self.error_stage: Optional[TestScheduleEntryStage] = None
+
         # Working directory path
         self.work_dirpath: Optional[str] = None
 

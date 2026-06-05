@@ -9,7 +9,7 @@ from gluetool.log import log_blob
 from gluetool_modules_framework.libs.artifacts import artifacts_location
 import gluetool_modules_framework.libs.guest_setup
 from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleResult, TestScheduleEntryStage, \
-    TestScheduleEntryState, sanitize_name
+    TestScheduleEntryState, sanitize_name, summarize_schedule_results
 
 from gluetool_modules_framework.infrastructure.koji_fedora import KojiTask
 from gluetool_modules_framework.infrastructure.copr import CoprTask
@@ -253,6 +253,18 @@ class TestScheduleReport(gluetool.Module):
                 properties=[Property(name='baseosci.result', value=schedule_entry.result.name.lower())]
             )
 
+            # When the whole plan failed (e.g. during provisioning or guest-setup) before any test cases were
+            # produced, surface the failure reason at the plan level so it is visible alongside the stage and logs.
+            # A crashed entry always carries an error; fall back to a clear message if the exception produced an
+            # empty string, so the plan is never silently mislabeled as a tmt error below.
+            if schedule_entry.state == TestScheduleEntryState.ERROR:
+                test_suite.error = schedule_entry.error_message or 'unknown error (empty exception)'
+
+            # tmt ran to completion but reported an error result for the plan (entry state stays OK). Surface a
+            # concise plan-level error; the tmt-log link is attached by the tmt runner below.
+            elif schedule_entry.result == TestScheduleResult.ERROR:
+                test_suite.error = 'tmt errored out'
+
             if schedule_entry.work_dirpath:
                 test_suite.properties.append(
                     Property(name='id', value='{}_{}'.format(
@@ -263,12 +275,20 @@ class TestScheduleReport(gluetool.Module):
 
             for stage in gluetool_modules_framework.libs.guest_setup.STAGES_ORDERED:
                 for output in schedule_entry.guest_setup_outputs.get(stage, []):
-                    test_suite.logs.append(Log(
+                    log = Log(
                         name=output.label,
                         href=artifacts_location(self, output.log_path, logger=schedule_entry.logger),
                         schedule_stage='guest-setup',
                         guest_setup_stage=stage.name.lower()
-                    ))
+                    )
+                    test_suite.logs.append(log)
+
+                    # Point the plan-level error to the log of the guest setup sub-stage that failed
+                    # (e.g. artifact-installation), so the user lands on the right phase directly. Use the log's
+                    # own name so the error's name matches the log it links to.
+                    if schedule_entry.error_guest_setup_stage == stage and test_suite.error_log_href is None:
+                        test_suite.error_log_name = log.name
+                        test_suite.error_log_href = log.href
 
             if schedule_entry.guest and hasattr(schedule_entry.guest, 'event_log_path'):
                 test_suite.logs.append(Log(
@@ -278,6 +298,11 @@ class TestScheduleReport(gluetool.Module):
 
             self.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
             self._results.test_suites.append(test_suite)
+
+        # Build a short, high-level summary of failed/errored plans, reported as the top-level request summary
+        # when the pipeline completes without raising (e.g. tmt ran to completion but plans failed or errored).
+        # The same helper drives the summary raised by the runner on a crash, so both paths share one format.
+        self._results.summary = summarize_schedule_results(schedule)
 
         if report_results:
             log_blob(

@@ -157,6 +157,9 @@ class XUnitTFTestingEnvironment:
 @attrs.define(kw_only=True)
 class XUnitTFFailure:
     message: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
+    # Optional pointer to the log of the failing phase, used on plan-level (testsuite) errors/failures.
+    name: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
+    href: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute'})
 
 
 @attrs.define(kw_only=True)
@@ -336,6 +339,7 @@ class XUnitTFTestSuite:
     result: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
     tests: str = attrs.field(metadata={'type': 'Attribute'})
     stage: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
+    error: Optional[XUnitTFFailure] = None
     logs: Optional[XUnitTFLogs] = None
     properties: Optional[XUnitTFProperties] = None
     testcase: List[XUnitTFTestCase] = attrs.field(factory=list)
@@ -359,6 +363,11 @@ class XUnitTFTestSuite:
             result=test_suite.result,
             tests=str(test_suite.test_count),
             stage=test_suite.stage,
+            error=XUnitTFFailure(
+                message=test_suite.error if isinstance(test_suite.error, str) else None,
+                name=test_suite.error_log_name,
+                href=test_suite.error_log_href
+            ) if test_suite.error is not False else None,
             logs=XUnitTFLogs.construct(test_suite.logs) if test_suite.logs else None,
             properties=XUnitTFProperties.construct(test_suite.properties) if test_suite.properties else None,
             testcase=[XUnitTFTestCase.construct(test_case) for test_case in test_suite.test_cases],

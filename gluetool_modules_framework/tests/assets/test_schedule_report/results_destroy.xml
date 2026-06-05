@@ -36,6 +36,7 @@
   </properties>
  </testsuite>
  <testsuite name="plan" result="error" tests="0" stage="complete">
+  <error message="tmt errored out"/>
   <logs>
    <log guest-setup-stage="artifact_installation" href="logpath" name="schedule entry #2: ARTIFACT_INSTALLATION" schedule-stage="guest-setup"/>
    <log guest-setup-stage="post_artifact_installation" href="logpath" name="schedule entry #2: POST_ARTIFACT_INSTALLATION" schedule-stage="guest-setup"/>

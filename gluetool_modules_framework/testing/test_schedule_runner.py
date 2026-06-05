@@ -15,7 +15,7 @@ from gluetool_modules_framework.libs.guest_setup import (
 )
 from gluetool_modules_framework.libs.jobs import JobEngine, Job, handle_job_errors
 from gluetool_modules_framework.libs.test_schedule import (
-    TestScheduleEntryStage, TestScheduleEntryState, TestScheduleResult
+    TestScheduleEntryStage, TestScheduleEntryState, TestScheduleResult, summarize_schedule_results
 )
 
 # Type annotations
@@ -213,6 +213,11 @@ class TestScheduleRunner(gluetool.Module):
                 schedule_entry.warn("skip stage '{}' on user request".format(stage.value))
                 return
 
+            # Mark this sub-stage as the one in progress, so that a failure - whether raised or returned as an
+            # error result - links the plan-level error to this phase's log (e.g. artifact-installation). It is
+            # cleared again once the stage finished successfully.
+            schedule_entry.error_guest_setup_stage = stage
+
             r_result = cast(
                 SetupGuestReturnType,
                 schedule_entry.guest.setup(stage=stage)
@@ -232,6 +237,7 @@ class TestScheduleRunner(gluetool.Module):
                 schedule_entry.log_guest_setup_outputs(self, log_fn=schedule_entry.info)
 
             if not exc:
+                schedule_entry.error_guest_setup_stage = None
                 return
 
             raise exc
@@ -533,19 +539,27 @@ class TestScheduleRunner(gluetool.Module):
 
             exc = exc_info[1]
 
+            # Default to the raw exception, refined to a stage-aware message in the branches below. This is
+            # reported as the plan-level failure reason in the results.
+            schedule_entry.error_message = str(exc)
+
             if schedule_entry.stage == TestScheduleEntryStage.GUEST_PROVISIONING:
-                schedule_entry.error('guest provisioning failed: {}'.format(exc), exc_info=exc_info)
+                schedule_entry.error_message = 'guest provisioning failed: {}'.format(exc)
+                schedule_entry.error(schedule_entry.error_message, exc_info=exc_info)
 
             elif schedule_entry.stage == TestScheduleEntryStage.GUEST_SETUP:
-                schedule_entry.error('guest setup failed: {}'.format(exc), exc_info=exc_info)
+                schedule_entry.error_message = 'guest setup failed: {}'.format(exc)
+                schedule_entry.error(schedule_entry.error_message, exc_info=exc_info)
 
                 schedule_entry.log_guest_setup_outputs(self, log_fn=schedule_entry.info)
 
             elif schedule_entry.stage == TestScheduleEntryStage.RUNNING:
-                schedule_entry.error('test execution failed: {}'.format(exc), exc_info=exc_info)
+                schedule_entry.error_message = 'test execution failed: {}'.format(exc)
+                schedule_entry.error(schedule_entry.error_message, exc_info=exc_info)
 
             elif schedule_entry.stage == TestScheduleEntryStage.CLEANUP:
-                schedule_entry.error('cleanup failed: {}'.format(exc), exc_info=exc_info)
+                schedule_entry.error_message = 'cleanup failed: {}'.format(exc)
+                schedule_entry.error(schedule_entry.error_message, exc_info=exc_info)
 
             if schedule_entry.stage in (
                 TestScheduleEntryStage.GUEST_PROVISIONED, TestScheduleEntryStage.GUEST_SETUP,
@@ -647,18 +661,15 @@ class TestScheduleRunner(gluetool.Module):
             failed_entries = [se for se in schedule if se.state == TestScheduleEntryState.ERROR]
 
             if failed_entries:
-                summary_parts = []
-                for se in sorted(failed_entries, key=lambda se: se.testsuite_name or se.id):
-                    stage_name = se.error_stage.value if se.error_stage else 'unknown'
-                    plan_name = se.testsuite_name or se.id
-                    summary_parts.append('{} failed during {}'.format(plan_name, stage_name))
+                # Use the same high-level summary as the clean-completion path; per-plan reasons (and the
+                # failing stage) are surfaced at the plan level in the results, not here. failed_entries is
+                # non-empty here, so the summary is always set; keep a fallback to satisfy the type.
+                summary = summarize_schedule_results(schedule) or 'At least one entry crashed'
 
                 has_soft_error = any(
                     isinstance(exc_info[1], SoftGlueError)
                     for _, exc_info in engine.errors
                 )
-
-                summary = '\n'.join(summary_parts)
 
                 if has_soft_error:
                     raise SoftGlueError(summary)

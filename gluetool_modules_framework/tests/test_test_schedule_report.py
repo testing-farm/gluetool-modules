@@ -223,6 +223,91 @@ def test_destroy(module, monkeypatch):
         assert module.test_schedule_results().xunit_testing_farm.to_xml_string(pretty_print=True) == expected
 
 
+def test_serialize_plan_error_reason(module, monkeypatch):
+    # A plan that failed before producing any test cases (e.g. during guest-setup) must surface its failure
+    # reason at the plan level, next to the stage, and link to the log of the failing phase.
+    schedule = create_test_schedule([
+        (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.PASSED),
+        (TSEntryStage.COMPLETE, TSEntryState.ERROR, TSResult.ERROR),
+    ])
+    schedule[1].error_stage = TSEntryStage.GUEST_SETUP
+    schedule[1].error_message = 'guest setup failed: artifact installation failed'
+    schedule[1].error_guest_setup_stage = GuestSetupStage.ARTIFACT_INSTALLATION
+    schedule[1].guest_setup_outputs = {
+        stage: [GuestSetupOutput(stage, stage.value, 'log/{}'.format(stage.value), 'data')]
+        for stage in STAGES_ORDERED
+    }
+
+    patch_shared(monkeypatch, module, {}, callables={
+        'test_schedule': lambda: schedule,
+    })
+
+    module._serialize_results(schedule, report_results=False)
+
+    suites = module.results().xunit_testing_farm.testsuite
+
+    # The passed plan carries no error element.
+    assert suites[0].error is None
+
+    # The failed plan reports the reason via an `error` element, the failing stage, and a link to the
+    # log of the failing guest setup phase (artifact-installation).
+    assert suites[1].stage == 'guest-setup'
+    assert suites[1].error is not None
+    assert suites[1].error.message == 'guest setup failed: artifact installation failed'
+    assert suites[1].error.name == 'artifact-installation'
+    assert suites[1].error.href.endswith('log/artifact-installation')
+
+
+def test_serialize_plan_tmt_errored(module, monkeypatch):
+    # A plan where tmt ran to completion but reported an error result (entry state stays OK) must surface a
+    # concise `tmt errored out` reason at the plan level.
+    schedule = create_test_schedule([
+        (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.PASSED),
+        (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.ERROR),
+    ])
+
+    patch_shared(monkeypatch, module, {}, callables={
+        'test_schedule': lambda: schedule,
+    })
+
+    module._serialize_results(schedule, report_results=False)
+
+    suites = module.results().xunit_testing_farm.testsuite
+
+    assert suites[0].error is None
+    assert suites[1].error is not None
+    assert suites[1].error.message == 'tmt errored out'
+
+
+@pytest.mark.parametrize('entries, expected_summary', [
+    # all passed -> no summary
+    ([(TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.PASSED)], None),
+    # failed only
+    ([(TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.FAILED)], '1 plan failed'),
+    # errored only
+    ([(TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.ERROR)], '1 plan errored out'),
+    # mixed: 3 failed, 2 errored
+    ([
+        (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.FAILED),
+        (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.FAILED),
+        (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.FAILED),
+        (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.ERROR),
+        (TSEntryStage.COMPLETE, TSEntryState.OK, TSResult.ERROR),
+    ], '3 plans failed, 2 plans errored out'),
+])
+def test_serialize_results_summary(module, monkeypatch, entries, expected_summary):
+    # The top-level results summary counts failed/errored plans; it is left unset for all-passed runs.
+    schedule = create_test_schedule(entries)
+
+    patch_shared(monkeypatch, module, {}, callables={
+        'test_schedule': lambda: schedule,
+    })
+
+    module._serialize_results(schedule, report_results=False)
+
+    assert module.results().summary == expected_summary
+
+
 @pytest.mark.parametrize('enable_polarion, polarion_project_id, polarion_lookup_method, polarion_lookup_method_field_id, expected_output', [  # noqa
     (True, None, None, None, (gluetool.GlueError, 'missing required options for Polarion.')),
     (True, None, 'project id', None, (gluetool.GlueError, 'missing required options for Polarion.')),

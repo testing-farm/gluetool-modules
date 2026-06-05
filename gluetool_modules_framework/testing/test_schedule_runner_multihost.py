@@ -9,7 +9,7 @@ from gluetool.utils import normalize_bool_option, load_yaml, dict_update, GlueEr
 from gluetool.log import log_blob
 from gluetool_modules_framework.libs.jobs import JobEngine, Job, handle_job_errors
 from gluetool_modules_framework.libs.test_schedule import (
-    TestScheduleEntryStage, TestScheduleEntryState, TestScheduleResult
+    TestScheduleEntryStage, TestScheduleEntryState, TestScheduleResult, summarize_schedule_results
 )
 
 # Type annotations
@@ -295,11 +295,17 @@ class TestScheduleRunnerMultihost(gluetool.Module):
 
             exc = exc_info[1]
 
+            # Default to the raw exception, refined to a stage-aware message in the branches below. This is
+            # reported as the plan-level failure reason in the results.
+            schedule_entry.error_message = str(exc)
+
             if schedule_entry.stage == TestScheduleEntryStage.RUNNING:
-                schedule_entry.error('test execution failed: {}'.format(exc), exc_info=exc_info)
+                schedule_entry.error_message = 'test execution failed: {}'.format(exc)
+                schedule_entry.error(schedule_entry.error_message, exc_info=exc_info)
 
             elif schedule_entry.stage == TestScheduleEntryStage.CLEANUP:
-                schedule_entry.error('cleanup failed: {}'.format(exc), exc_info=exc_info)
+                schedule_entry.error_message = 'cleanup failed: {}'.format(exc)
+                schedule_entry.error(schedule_entry.error_message, exc_info=exc_info)
 
             schedule_entry.error_stage = schedule_entry.stage
 
@@ -395,18 +401,15 @@ class TestScheduleRunnerMultihost(gluetool.Module):
             failed_entries = [se for se in schedule if se.state == TestScheduleEntryState.ERROR]
 
             if failed_entries:
-                summary_parts = []
-                for se in sorted(failed_entries, key=lambda se: se.testsuite_name or se.id):
-                    stage_name = se.error_stage.value if se.error_stage else 'unknown'
-                    plan_name = se.testsuite_name or se.id
-                    summary_parts.append('{} failed during {}'.format(plan_name, stage_name))
+                # Use the same high-level summary as the clean-completion path; per-plan reasons (and the
+                # failing stage) are surfaced at the plan level in the results, not here. failed_entries is
+                # non-empty here, so the summary is always set; keep a fallback to satisfy the type.
+                summary = summarize_schedule_results(schedule) or 'At least one entry crashed'
 
                 has_soft_error = any(
                     isinstance(exc_info[1], SoftGlueError)
                     for _, exc_info in engine.errors
                 )
-
-                summary = '\n'.join(summary_parts)
 
                 if has_soft_error:
                     raise SoftGlueError(summary)

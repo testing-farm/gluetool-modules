@@ -134,6 +134,12 @@ class TestSuite:
     provisioned_environment: Optional[TestingEnvironment] = None
     guests: List[Guest] = attrs.field(factory=list)
     stage: Optional[str] = None
+    # Plan-level error reason, used when the whole plan failed (e.g. during guest-setup) before any test cases
+    # were produced. True can be used to display a blank element, string for a message.
+    error: Union[bool, str] = False
+    # Link to the log of the failing phase, surfaced on the plan-level error element.
+    error_log_name: Optional[str] = None
+    error_log_href: Optional[str] = None
 
     @property
     def test_count(self) -> int:
@@ -166,6 +172,10 @@ class Results:
 
     overall_result: Optional[str] = None
     test_suites: List[TestSuite] = attrs.field(factory=list)
+
+    # Short, high-level summary of the run (e.g. "3 plans failed, 2 plans errored out"). Reported as the top-level
+    # request summary when the pipeline completes without raising. Not serialized into xUnit.
+    summary: Optional[str] = None
 
     primary_task: Optional[Union[KojiTask, CoprTask]] = None
 

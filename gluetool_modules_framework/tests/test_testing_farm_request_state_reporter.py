@@ -163,3 +163,25 @@ def test_testing_farm_reporter_destroy_result(module, request_empty, results, ev
         'artifacts_url': None,
         'summary': None
     }
+
+
+def test_testing_farm_reporter_destroy_result_summary(module, monkeypatch, request_empty, evaluate):
+    # When the pipeline completes without raising, the high-level run summary carried by the results is
+    # reported as the top-level request summary.
+    results = gluetool_modules_framework.libs.results.Results(
+        overall_result='some-overall-result',
+        test_schedule_result='some-test-schedule-result',
+        summary='3 plans failed, 2 plans errored out'
+    )
+    patch_shared(monkeypatch, module, {
+        'results': results,
+    })
+
+    module.destroy()
+    result = module.shared('testing_farm_request')
+    assert result == {
+        'state': 'complete',
+        'overall_result': 'unknown',
+        'artifacts_url': None,
+        'summary': '3 plans failed, 2 plans errored out'
+    }

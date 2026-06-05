@@ -1338,6 +1338,13 @@ class TestScheduleTMTMultihost(Module):
                 if log_to_add not in test_suite.logs:
                     test_suite.logs.append(log_to_add)
 
+                # If the plan errored (tmt ran to completion but reported an error), point the plan-level error
+                # to the tmt log so the user lands on it directly. Only set it if a more specific log (e.g. a
+                # failing guest-setup phase) has not been linked already. The verbose log stays in the logs list.
+                if schedule_entry.result == TestScheduleResult.ERROR and test_suite.error_log_href is None:
+                    test_suite.error_log_name = log_to_add.name
+                    test_suite.error_log_href = tmt_log_href
+
             tmt_verbose_log_filepath = os.path.join(schedule_entry.work_dirpath, TMT_VERBOSE_LOG)
             if os.path.exists(tmt_verbose_log_filepath):
                 tmt_verbose_log_href = artifacts_location(self, tmt_verbose_log_filepath, logger=schedule_entry.logger)

@@ -167,6 +167,33 @@ class TestScheduleResult(GlueEnum):
     SKIPPED = 'skipped'
 
 
+def summarize_schedule_results(schedule: 'TestSchedule') -> Optional[str]:
+    """
+    Build a short, high-level summary of failed/errored plans in the schedule, e.g.
+    ``"3 plans failed, 2 plans errored out"``.
+
+    A plan counts as *errored* when it crashed (entry state is ``ERROR``) or tmt reported an error result;
+    otherwise a failed result counts as *failed*. Returns ``None`` when no plan failed or errored.
+    """
+
+    failed = 0
+    errored = 0
+
+    for schedule_entry in schedule:
+        if schedule_entry.state == TestScheduleEntryState.ERROR or schedule_entry.result == TestScheduleResult.ERROR:
+            errored += 1
+        elif schedule_entry.result == TestScheduleResult.FAILED:
+            failed += 1
+
+    summary_parts = []
+    if failed:
+        summary_parts.append('{} {} failed'.format(failed, 'plan' if failed == 1 else 'plans'))
+    if errored:
+        summary_parts.append('{} {} errored out'.format(errored, 'plan' if errored == 1 else 'plans'))
+
+    return ', '.join(summary_parts) if summary_parts else None
+
+
 # TODO: incorporate guest-setup output, it's very similar but guest-setup output carries one extra field,
 # the guest-setup stage.
 TestScheduleEntryOutput = NamedTuple('TestScheduleEntryOutput', (
@@ -235,6 +262,13 @@ class TestScheduleEntry(LoggerMixin, object):
 
         # Stage at which an error occurred, before the entry is shifted to COMPLETE
         self.error_stage: Optional[TestScheduleEntryStage] = None
+
+        # Human-readable reason why the entry failed, reported at the plan level in results
+        self.error_message: Optional[str] = None
+
+        # Guest setup sub-stage at which an error occurred, used to link the plan-level error to the log of the
+        # failing phase (e.g. artifact-installation). Only relevant when `error_stage` is `GUEST_SETUP`.
+        self.error_guest_setup_stage: Optional[gluetool_modules_framework.libs.guest_setup.GuestSetupStage] = None
 
         # Working directory path
         self.work_dirpath: Optional[str] = None

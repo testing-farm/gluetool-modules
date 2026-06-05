@@ -187,10 +187,11 @@ def test_execute_provision_error(module, monkeypatch):
         'provision': MagicMock(side_effect=gluetool.GlueError('mocked provision error')),
         'run_test_schedule_entry': run_test_schedule_entry_mock
     })
-    with pytest.raises(gluetool.GlueError, match='failed during guest-provisioning'):
+    with pytest.raises(gluetool.GlueError, match='1 plan errored out'):
         module.execute()
     assert test_schedule[0].state == TSEntryState.ERROR
     assert test_schedule[0].error_stage == TSEntryStage.GUEST_PROVISIONING
+    assert test_schedule[0].error_message == 'guest provisioning failed: mocked provision error'
 
 
 def test_execute_setup_error(module, monkeypatch):
@@ -212,10 +213,12 @@ def test_execute_setup_error(module, monkeypatch):
         'provision': MagicMock(return_value=[guest_mock]),
         'run_test_schedule_entry': run_test_schedule_entry_mock
     })
-    with pytest.raises(gluetool.GlueError, match='failed during guest-setup'):
+    with pytest.raises(gluetool.GlueError, match='1 plan errored out'):
         module.execute()
     assert test_schedule[0].state == TSEntryState.ERROR
     assert test_schedule[0].error_stage == TSEntryStage.GUEST_SETUP
+    assert test_schedule[0].error_message == 'guest setup failed: mocked guest setup error'
+    assert test_schedule[0].error_guest_setup_stage == GuestSetupStage.PRE_ARTIFACT_INSTALLATION
 
 
 def test_execute_run_error(module, monkeypatch):
@@ -234,10 +237,11 @@ def test_execute_run_error(module, monkeypatch):
         'provision': MagicMock(return_value=[guest_mock]),
         'run_test_schedule_entry': run_error_mock
     })
-    with pytest.raises(gluetool.GlueError, match='failed during running'):
+    with pytest.raises(gluetool.GlueError, match='1 plan errored out'):
         module.execute()
     assert test_schedule[0].state == TSEntryState.ERROR
     assert test_schedule[0].error_stage == TSEntryStage.RUNNING
+    assert test_schedule[0].error_message == 'test execution failed: mocked run error'
 
 
 def test_execute_cleanup_error(module, monkeypatch):
@@ -258,10 +262,11 @@ def test_execute_cleanup_error(module, monkeypatch):
         'provision': MagicMock(return_value=[guest_mock]),
         'run_test_schedule_entry': run_test_schedule_entry_mock
     })
-    with pytest.raises(gluetool.GlueError, match='failed during cleanup'):
+    with pytest.raises(gluetool.GlueError, match='1 plan errored out'):
         module.execute()
     assert test_schedule[0].state == TSEntryState.ERROR
     assert test_schedule[0].error_stage == TSEntryStage.CLEANUP
+    assert test_schedule[0].error_message == 'cleanup failed: mocked cleanup error'
 
 
 def test_execute_schedule_entry_attribute_map(module, monkeypatch):

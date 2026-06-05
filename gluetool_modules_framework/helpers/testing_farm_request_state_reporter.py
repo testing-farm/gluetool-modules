@@ -91,7 +91,7 @@ class TestingFarmRequestStateReporter(gluetool.Module):
                 else 'unknown',
                 failure
             ),
-            summary=self._get_summary(failure),
+            summary=self._get_summary(failure, test_results),
             artifacts_url=self.shared('coldstore_url')
         )
 
@@ -164,12 +164,16 @@ class TestingFarmRequestStateReporter(gluetool.Module):
 
         return result
 
-    def _get_summary(self, failure: Optional[gluetool.Failure] = None) -> Optional[str]:
+    def _get_summary(self, failure: Optional[gluetool.Failure] = None,
+                     test_results: Optional[Any] = None) -> Optional[str]:
         """
         Map failure error message. By default return the error message.
+
+        When the pipeline completed without raising (no ``failure``), fall back to the high-level run summary
+        carried by the results (e.g. "3 plans failed, 2 plans errored out"), if any.
         """
         if failure is None:
-            return None
+            return test_results.summary if test_results else None
 
         assert failure.exc_info[1] is not None
 

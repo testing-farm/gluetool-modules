@@ -1,10 +1,5 @@
 ---
 package:
-  ansible-core:
-    installed: true
-    versions:
-      - 2.18.11
-
   beakerlib:
     installed: true
 
@@ -54,7 +49,7 @@ file:
     exists: true
     filetype: symlink
     contains:
-      - PRETTY_NAME="Fedora Linux 42 (Container Image)"
+      - PRETTY_NAME="Fedora Linux 44 (Container Image)"
 
   /etc/ssh/ssh_config:
     exists: true
@@ -157,31 +152,31 @@ command:
   tmt --version:
     exit-status: 0
     stdout:
-      - "tmt version: 1.73.0"
+      - "tmt version: 1.75.0"
     timeout: 100000
 
   rpm -q tmt:
     exit-status: 0
     stdout:
-      - "tmt-1.73.0"
+      - "tmt-1.75.0"
     timeout: 100000
 
   rpm -q tmt+provision-container:
     exit-status: 0
     stdout:
-      - "tmt+provision-container-1.73.0"
+      - "tmt+provision-container-1.75.0"
     timeout: 100000
 
   rpm -q tmt+provision-virtual:
     exit-status: 0
     stdout:
-      - "tmt+provision-virtual-1.73.0"
+      - "tmt+provision-virtual-1.75.0"
     timeout: 100000
 
   rpm -q tmt+report-polarion:
     exit-status: 0
     stdout:
-      - "tmt+report-polarion-1.73.0"
+      - "tmt+report-polarion-1.75.0"
     timeout: 100000
 
   tmt run report -h polarion:

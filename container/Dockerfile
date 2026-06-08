@@ -5,8 +5,7 @@
 #    /CONFIG            - place for configuration
 #
 
-# NOTE: last version on Fedora 42
-FROM quay.io/containers/podman:v5.6.1
+FROM quay.io/containers/podman:v5.8.2
 LABEL maintainer="tft@redhat.com"
 
 # workdir needs to be a writable path in all supported operating systems, a tmt requirement
@@ -49,7 +48,7 @@ RUN dnf -y update
 
 # install all required dependencies
 RUN    ln -s /CONFIG /etc/citool.d \
-    && dnf -y install ansible-core autoconf automake crun gcc git krb5-devel libcurl-devel libffi-devel \
+    && dnf -y install autoconf automake crun gcc git krb5-devel libcurl-devel libffi-devel \
                       libpq-devel libtool libxml2-devel make openssl-devel popt-devel \
                       postgresql-devel python3.9 python${PYTHON_VERSION}-devel python3-libselinux \
                       redhat-rpm-config koji python3-virtualenv \
@@ -57,10 +56,10 @@ RUN    ln -s /CONFIG /etc/citool.d \
     # Pull in tmt from @teemtee/stable copr repository
     && dnf copr -y enable @teemtee/stable \
     && dnf -y install fmf-1.7.0 \
-                      tmt-1.73.0 \
-                      tmt+provision-container-1.73.0 \
-                      tmt+provision-virtual-1.73.0 \
-                      tmt+report-polarion-1.73.0 \
+                      tmt-1.75.0 \
+                      tmt+provision-container-1.75.0 \
+                      tmt+provision-virtual-1.75.0 \
+                      tmt+report-polarion-1.75.0 \
     # Pull in tmt policies
     && mkdir -p /etc/tmt/policies \
     && git clone --branch main --depth 1 https://gitlab.com/testing-farm/profiles.git /tmp/profiles \

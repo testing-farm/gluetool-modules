@@ -237,7 +237,7 @@ class TMTResultSubresult:
     name: str = attrs.field(validator=attrs.validators.instance_of(str))
     result: str = attrs.field(validator=attrs.validators.instance_of(str))
     original_result: str = attrs.field(validator=attrs.validators.instance_of(str))
-    end_time: str = attrs.field(validator=attrs.validators.instance_of(str))
+    end_time: Optional[str] = attrs.field(validator=attrs.validators.optional(attrs.validators.instance_of(str)))
     log: List[str] = attrs.field(validator=attrs.validators.deep_iterable(
         member_validator=attrs.validators.instance_of(str),
         iterable_validator=attrs.validators.instance_of(list)

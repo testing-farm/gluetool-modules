@@ -53,7 +53,7 @@ class TestCaseSubresult:
     name: str
     result: str
     original_result: str
-    end_time: str
+    end_time: Optional[str]
     logs: List[Log]
 
 

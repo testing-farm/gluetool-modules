@@ -36,6 +36,18 @@
     <property name="compose" value="guest-compose"/>
     <property name="snapshots" value="False"/>
    </testing-environment>
+   <subresults>
+    <subresult name="install" result="pass" original-result="pass">
+     <logs>
+      <log href="{{ WORK_DIRPATH }}/passed/execute/output-install.txt" name="output-install.txt"/>
+     </logs>
+    </subresult>
+    <subresult name="update" result="pass" original-result="pass" end-time="2024-04-09T13:09:02.744369+00:00">
+     <logs>
+      <log href="{{ WORK_DIRPATH }}/passed/execute/output-update.txt" name="output-update.txt"/>
+     </logs>
+    </subresult>
+   </subresults>
    <guest name="default-0"/>
   </testcase>
   <testcase name="/tests/core/dry" result="passed" serial-number="2">

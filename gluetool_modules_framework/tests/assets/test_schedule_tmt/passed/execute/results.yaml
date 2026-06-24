@@ -11,7 +11,33 @@
   guest:
     name: default-0
     role:
-  subresult: []
+  subresult:
+    - __class__:
+        module: tmt.result
+        name: SubResult
+      check: []
+      duration: 00:00:13
+      end-time: null
+      log:
+        - output-install.txt
+      name: install
+      note: []
+      original-result: pass
+      result: pass
+      start-time: null
+    - __class__:
+        module: tmt.result
+        name: SubResult
+      check: []
+      duration: 00:00:13
+      end-time: '2024-04-09T13:09:02.744369+00:00'
+      log:
+        - output-update.txt
+      name: update
+      note: []
+      original-result: pass
+      result: pass
+      start-time: '2024-04-09T13:09:02.727749+00:00'
   check: []
   fmf-id:
     url: https://gitlab.com/testing-farm/gluetool-modules

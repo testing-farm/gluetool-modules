@@ -214,7 +214,7 @@ class XUnitTFTestCaseSubresult:
     name: str = attrs.field(metadata={'type': 'Attribute'})
     result: str = attrs.field(metadata={'type': 'Attribute'})
     original_result: str = attrs.field(metadata={'type': 'Attribute', 'name': 'original-result'})
-    end_time: str = attrs.field(metadata={'type': 'Attribute', 'name': 'end-time'})
+    end_time: Optional[str] = attrs.field(metadata={'type': 'Attribute', 'name': 'end-time'})
     logs: Optional[XUnitTFLogs]
 
     @classmethod

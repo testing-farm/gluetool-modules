@@ -482,6 +482,13 @@ class TestScheduleTMTMultihost(Module):
 
         return None
 
+    def _check_accepted_environment_variables(self, variables: Dict[str, str]) -> None:
+        for key, _ in six.iteritems(variables):
+            if key not in self.accepted_environment_variables + self.accepted_environment_secrets:
+                raise GlueError(
+                    "Environment variable '{}' is not allowed to be exposed to the tmt process".format(key)
+                )
+
     @gluetool.utils.cached_property
     def environment_variables_map(self) -> Any:
         if not self.option('tmt-environment-variables-map'):
@@ -960,13 +967,6 @@ class TestScheduleTMTMultihost(Module):
         # create environment variables for the tmt process, start with options coming from options
         tmt_process_environment = self.environment_variables.copy()
 
-        def _check_accepted_environment_variables(variables: Dict[str, str]) -> None:
-            for key, _ in six.iteritems(variables):
-                if key not in self.accepted_environment_variables + self.accepted_environment_secrets:
-                    raise GlueError(
-                        "Environment variable '{}' is not allowed to be exposed to the tmt process".format(key)
-                    )
-
         def _sanitize_environment_variables(variables: Dict[str, str]) -> str:
             return ' '.join(["{}=hidden".format(key) for key, _ in six.iteritems(variables)])
 
@@ -1000,7 +1000,7 @@ class TestScheduleTMTMultihost(Module):
 
             tmt_process_environment.update(environment_variables_from_map)
 
-            _check_accepted_environment_variables(tmt['environment'])
+            self._check_accepted_environment_variables(tmt['environment'])
 
             schedule_entry.tmt_reproducer.append(
                 'export {}'.format(

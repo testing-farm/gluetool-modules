@@ -654,7 +654,7 @@ class TestScheduleTMT(Module):
             command.extend(['--filter', 'enabled:true'])
 
         if tf_request and tf_request.tmt and tf_request.tmt.plan:
-            command.extend([tf_request.tmt.plan])
+            command.extend(['--', tf_request.tmt.plan])
 
         try:
             tmt_output = Command(command).run(cwd=repodir)

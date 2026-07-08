@@ -1226,20 +1226,16 @@ class TestScheduleTMT(Module):
             command.extend(tests_selector)
             reproducer.extend(tests_selector)
 
-        # create environment variables for the tmt process, start with options coming from options
-        tmt_process_environment = self.environment_variables.copy()
-
         def _sanitize_environment_variables(variables: Dict[str, str]) -> str:
             return ' '.join(["{}=hidden".format(key) for key, _ in six.iteritems(variables)])
 
-        # ruff and coala are confused by the walrus operator
-        # Ignore PEP8Bear
-        if (tmt := schedule_entry.testing_environment.tmt) and 'environment' in tmt and tmt['environment']:  # noqa: E203, E231, E501
+        te_tmt = schedule_entry.testing_environment.tmt
 
-            # Add environment variables to the tmt process based on rules file
-            environment_variables_from_map = {}
+        # compute map-based environment variables first
+        environment_variables_from_map = {}
+        if te_tmt and 'environment' in te_tmt and te_tmt['environment']:
             environment_variables_map_context = {
-                **tmt['environment'],
+                **te_tmt['environment'],
                 'COLDSTORE_URL': self.shared('coldstore_url'),
                 'schedule_entry': schedule_entry,
             }
@@ -1260,24 +1256,26 @@ class TestScheduleTMT(Module):
                 }
                 break
 
+        # layering: deployment < map < request (request always wins)
+        tmt_process_environment = self.environment_variables.copy()
+        if environment_variables_from_map:
             tmt_process_environment.update(environment_variables_from_map)
+        if te_tmt and 'environment' in te_tmt and te_tmt['environment']:
+            self._check_accepted_environment_variables(te_tmt['environment'])
+            tmt_process_environment.update(te_tmt['environment'])
 
-            self._check_accepted_environment_variables(tmt['environment'])
-
+        if te_tmt and 'environment' in te_tmt and te_tmt['environment']:
             schedule_entry.tmt_reproducer.append(
                 'export {}'.format(
-                    _sanitize_environment_variables(tmt['environment'])
+                    _sanitize_environment_variables(te_tmt['environment'])
                 )
             )
 
             if self.has_shared('add_secrets'):
                 self.shared('add_secrets', [
-                    value for key, value in tmt['environment'].items()
+                    value for key, value in te_tmt['environment'].items()
                     if value and key in self.accepted_environment_secrets
                 ])
-
-            # add environment variables from testing environment
-            tmt_process_environment.update(tmt['environment'])
 
             if self.has_shared('check_create_rp_launch'):
                 launch_id = self.shared('check_create_rp_launch', schedule_entry)

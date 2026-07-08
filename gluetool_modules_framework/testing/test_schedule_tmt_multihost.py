@@ -489,6 +489,29 @@ class TestScheduleTMTMultihost(Module):
                     "Environment variable '{}' is not allowed to be exposed to the tmt process".format(key)
                 )
 
+    def _base_tmt_process_environment(
+        self,
+        testing_environment: TestingEnvironment,
+        extra_vars: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Build the base tmt process environment from deployment-level variables
+        and request-level ``tmt.environment``.  Optional *extra_vars* are
+        inserted between the two layers so that request-level variables
+        always take precedence.
+        """
+
+        env = self.environment_variables.copy()
+
+        if extra_vars:
+            env.update(extra_vars)
+
+        if testing_environment.tmt and testing_environment.tmt.get('environment'):
+            self._check_accepted_environment_variables(testing_environment.tmt['environment'])
+            env.update(testing_environment.tmt['environment'])
+
+        return env
+
     @gluetool.utils.cached_property
     def environment_variables_map(self) -> Any:
         if not self.option('tmt-environment-variables-map'):
@@ -615,7 +638,10 @@ class TestScheduleTMTMultihost(Module):
             command.extend(['--', tf_request.tmt.plan])
 
         try:
-            tmt_output = Command(command).run(cwd=repodir)
+            tmt_output = Command(command).run(
+                cwd=repodir,
+                env=self._base_tmt_process_environment(testing_environment) or None
+            )
 
         except GlueCommandError as exc:
             # TODO: remove once tmt-1.21 is out
@@ -705,7 +731,10 @@ class TestScheduleTMTMultihost(Module):
             command.extend(['--name', test_name])
 
         try:
-            tmt_output = Command(command).run(cwd=repodir)
+            tmt_output = Command(command).run(
+                cwd=repodir,
+                env=self._base_tmt_process_environment(testing_environment) or None
+            )
 
         except GlueCommandError as exc:
             # It can happen that test discovery will report `No plans found`
@@ -753,7 +782,10 @@ class TestScheduleTMTMultihost(Module):
         command.extend(['^{}$'.format(re.escape(plan))])
 
         try:
-            tmt_output = Command(command).run(cwd=repodir)
+            tmt_output = Command(command).run(
+                cwd=repodir,
+                env=self._base_tmt_process_environment(testing_environment) or None
+            )
 
         except GlueCommandError as exc:
             # workaround until tmt prints errors properly to stderr
@@ -995,12 +1027,10 @@ class TestScheduleTMTMultihost(Module):
                 break
 
         # layering: deployment < map < request (request always wins)
-        tmt_process_environment = self.environment_variables.copy()
-        if environment_variables_from_map:
-            tmt_process_environment.update(environment_variables_from_map)
-        if te_tmt and 'environment' in te_tmt and te_tmt['environment']:
-            self._check_accepted_environment_variables(te_tmt['environment'])
-            tmt_process_environment.update(te_tmt['environment'])
+        tmt_process_environment = self._base_tmt_process_environment(
+            schedule_entry.testing_environment,
+            extra_vars=environment_variables_from_map or None
+        )
 
         if te_tmt and 'environment' in te_tmt and te_tmt['environment']:
             schedule_entry.tmt_reproducer.append(

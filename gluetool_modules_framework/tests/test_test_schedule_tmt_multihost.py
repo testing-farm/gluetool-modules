@@ -1082,6 +1082,98 @@ def test_is_plan_empty(module, monkeypatch, tmpdir):
     ])
 
 
+@pytest.mark.parametrize('method_caller,mock_stdout,mock_stderr', [
+    (
+        lambda module, repodir, te, tmpdir: module._is_plan_empty(
+            plan='plan1', tmt_env_file='tmt-env-file', repodir=repodir,
+            testing_environment=te, work_dirpath=tmpdir
+        ),
+        '', 'plan1',
+    ),
+    (
+        lambda module, repodir, te, tmpdir: module._plans_from_git(repodir, te),
+        'plan1\n', '',
+    ),
+    (
+        lambda module, repodir, te, tmpdir: module.export_plan(repodir, 'plan1', 'tmt-env-file', te),
+        '[]', '',
+    ),
+], ids=['_is_plan_empty', '_plans_from_git', 'export_plan'])
+def test_discovery_passes_environment_variables(module, monkeypatch, tmpdir, method_caller, mock_stdout, mock_stderr):
+    """Discovery and export methods must forward both deployment-level and
+    request-level environment variables to Command.run(env=...)."""
+
+    repodir = 'foo'
+
+    module._config['environment-variables'] = 'TMT_IMPORT_BEFORE_NAME_FILTER=1'
+    module._config['accepted-environment-variables'] = 'REQUEST_VAR'
+
+    request_vars = {'REQUEST_VAR': 'value'}
+    testing_environment = TestingEnvironment('x86_64', tmt={'environment': request_vars})
+
+    mock_output = MagicMock(exit_code=0, stdout=mock_stdout, stderr=mock_stderr)
+    mock_command_run = MagicMock(return_value=mock_output)
+    mock_command = MagicMock(return_value=MagicMock(run=mock_command_run))
+    monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt_multihost, 'Command', mock_command)
+
+    method_caller(module, repodir, testing_environment, tmpdir)
+
+    expected_env = {'TMT_IMPORT_BEFORE_NAME_FILTER': '1', 'REQUEST_VAR': 'value'}
+    mock_command_run.assert_called_once_with(cwd=repodir, env=expected_env)
+
+
+@pytest.mark.parametrize('deployment_vars,extra_vars,request_vars,expected', [
+    (
+        'SHARED=deploy',
+        None,
+        None,
+        {'SHARED': 'deploy'},
+    ),
+    (
+        'SHARED=deploy',
+        {'SHARED': 'map'},
+        None,
+        {'SHARED': 'map'},
+    ),
+    (
+        'SHARED=deploy',
+        None,
+        {'SHARED': 'request'},
+        {'SHARED': 'request'},
+    ),
+    (
+        'SHARED=deploy',
+        {'SHARED': 'map'},
+        {'SHARED': 'request'},
+        {'SHARED': 'request'},
+    ),
+    (
+        'D_ONLY=deploy',
+        {'M_ONLY': 'map'},
+        {'R_ONLY': 'request'},
+        {'D_ONLY': 'deploy', 'M_ONLY': 'map', 'R_ONLY': 'request'},
+    ),
+], ids=[
+    'deployment_only',
+    'map_overrides_deployment',
+    'request_overrides_deployment',
+    'request_overrides_map_and_deployment',
+    'non_overlapping_keys',
+])
+def test_env_precedence(module, deployment_vars, extra_vars, request_vars, expected):
+    """Precedence: deployment < extra/map < request."""
+
+    module._config['environment-variables'] = deployment_vars
+    all_keys = ','.join(expected.keys())
+    module._config['accepted-environment-variables'] = all_keys
+
+    tmt_block = {'environment': request_vars} if request_vars else None
+    te = TestingEnvironment('x86_64', tmt=tmt_block)
+
+    result = module._base_tmt_process_environment(te, extra_vars=extra_vars)
+    assert result == expected
+
+
 def test_plans_from_git_filter_from_request(module, monkeypatch):
     repodir = 'foo'
     testing_environment = TestingEnvironment('x86_64')

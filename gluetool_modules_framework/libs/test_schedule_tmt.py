@@ -9,7 +9,7 @@ from attr import validators
 import attrs
 import enum
 from enum import StrEnum
-from typing import Any, ClassVar, Dict, List, Optional, Union, cast
+from typing import Any, ClassVar, Dict, FrozenSet, List, Optional, Union, cast
 import re
 
 import cattrs
@@ -108,6 +108,76 @@ def safe_name(name: str) -> str:
     """
 
     return re.sub(r"[^\w/-]+", "-", name).strip("-")
+
+
+# TFT-4839: refuse unsafe SSH options configured via the `unsafe-ssh-options` module option.
+# Directive names are matched case-insensitively and ignoring separators.
+def normalize_ssh_directive(name: str) -> str:
+    return re.sub(r'[^a-z0-9]', '', name.lower())
+
+
+def _dangerous_ssh_option_directive(option: str, directives: FrozenSet[str]) -> Optional[str]:
+    """
+    If the given SSH option (the value passed to ``ssh -o``, e.g. ``ProxyCommand=...`` or ``ProxyCommand ...``)
+    uses one of the dangerous directives, return the directive as written, otherwise ``None``.
+    """
+
+    # An SSH option is `Directive=value` or `Directive value`; we only care about the directive name.
+    directive = re.split(r'[=\s]', option.strip(), maxsplit=1)[0]
+
+    if normalize_ssh_directive(directive) in directives:
+        return directive
+
+    return None
+
+
+def _dangerous_ssh_env_directive(name: str, directives: FrozenSet[str]) -> Optional[str]:
+    """
+    If the given environment variable name would make tmt inject a dangerous SSH option, return the variable name,
+    otherwise ``None``. tmt turns ``TMT_SSH_<NAME>=<value>`` into ``-o<Name>=<value>`` (see
+    ``tmt.guest.configure_ssh_options``).
+    """
+
+    match = re.match(r'TMT_SSH_([a-zA-Z_]+)', name)
+    if not match:
+        return None
+
+    if normalize_ssh_directive(match.group(1)) in directives:
+        return name
+
+    return None
+
+
+def detect_unsafe_ssh_options(
+    ssh_options: Optional[List[str]] = None,
+    environment: Optional[Dict[str, str]] = None,
+    directives: Optional[FrozenSet[str]] = None,
+) -> List[str]:
+    """
+    Return human-readable descriptions of any dangerous SSH options found in the given plan ``ssh-option`` list
+    and/or ``tmt`` process environment. See TFT-4839 for details.
+
+    :param ssh_options: SSH options coming from the plan ``provision.ssh-option`` metadata.
+    :param environment: environment variables passed to the ``tmt`` process.
+    :param directives: set of unsafe directives to match against, already normalized via
+        :py:func:`normalize_ssh_directive`. When omitted, no directives are refused.
+    """
+
+    if directives is None:
+        directives = frozenset()
+
+    offenders: List[str] = []
+
+    for option in ssh_options or []:
+        directive = _dangerous_ssh_option_directive(option, directives)
+        if directive:
+            offenders.append("plan ssh-option '{}'".format(directive))
+
+    for name in sorted(environment or {}):
+        if _dangerous_ssh_env_directive(name, directives):
+            offenders.append("environment variable '{}'".format(name))
+
+    return offenders
 
 
 # https://tmt.readthedocs.io/en/latest/overview.html#exit-codes
@@ -391,6 +461,13 @@ class TMTPlanProvision:
         default=None,
         validator=attrs.validators.optional(attrs.validators.instance_of(str))
     )
+    ssh_option: Optional[List[str]] = attrs.field(
+        default=None,
+        validator=attrs.validators.optional(attrs.validators.deep_iterable(
+            member_validator=attrs.validators.instance_of(str),
+            iterable_validator=attrs.validators.instance_of(list)
+        ))
+    )
 
     watchdog_dispatch_delay: Optional[int] = attrs.field(
         default=None,
@@ -403,11 +480,17 @@ class TMTPlanProvision:
 
     @classmethod
     def _structure(cls, data: Dict[str, Any]) -> 'TMTPlanProvision':
+        # tmt's `ssh-option` is a list, but the fmf metadata also allows a single string - normalize to a list
+        ssh_option = data.get('ssh-option')
+        if isinstance(ssh_option, str):
+            ssh_option = [ssh_option]
+
         return TMTPlanProvision(
             how=data.get('how'),
             hardware=data.get('hardware'),
             kickstart=data.get('kickstart'),
             pool=data.get('pool'),
+            ssh_option=ssh_option,
             watchdog_dispatch_delay=data.get('watchdog-dispatch-delay'),
             watchdog_period_delay=data.get('watchdog-period-delay'),
         )

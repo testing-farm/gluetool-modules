@@ -34,13 +34,13 @@ from gluetool_modules_framework.libs.test_schedule_tmt import \
     RESULTS_YAML, RESULT_OUTCOME, RESULT_WEIGHT, \
     TMTDiscoveredTest, TMTExitCodes, TMTPlan, TMTResult, TestResult, TestArtifact, \
     TMT_ENV_FILE, TMT_LOG, TMT_REPRODUCER, TMT_VERBOSE_LOG, \
-    get_test_contacts, safe_name
+    detect_unsafe_ssh_options, normalize_ssh_directive, get_test_contacts, safe_name
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
 from gluetool_modules_framework.libs.git import RemoteGitRepository
 from gluetool_modules_framework.provision.artemis import ArtemisGuest
 
 # Type annotations
-from typing import cast, Any, Dict, List, Optional, Tuple, Union, Set  # noqa
+from typing import cast, Any, Dict, FrozenSet, List, Optional, Tuple, Union, Set  # noqa
 
 from gluetool_modules_framework.libs.results import TestSuite, Log, TestCase, TestCaseCheck, Guest, \
     TestCaseSubresult, Property, FmfId
@@ -397,6 +397,14 @@ class TestScheduleTMT(Module):
                 'help': """
                         Path to rules file for adding additional environment variables to tmt.
                         """
+            },
+            'unsafe-ssh-options': {
+                'help': """
+                        A comma delimited list of SSH option directives to refuse in plans and ``TMT_SSH_*``
+                        environment variables.
+                        """,
+                'action': 'append',
+                'metavar': 'DIRECTIVE1,DIRECTIVE2'
             }
         }),
         ('Result options', {
@@ -437,6 +445,14 @@ class TestScheduleTMT(Module):
     @gluetool.utils.cached_property
     def accepted_environment_variables(self) -> List[str]:
         return gluetool.utils.normalize_multistring_option(self.option('accepted-environment-variables'))
+
+    @gluetool.utils.cached_property
+    def unsafe_ssh_options(self) -> FrozenSet[str]:
+        # TFT-4839, see `detect_unsafe_ssh_options`.
+        return frozenset(
+            normalize_ssh_directive(directive)
+            for directive in gluetool.utils.normalize_multistring_option(self.option('unsafe-ssh-options'))
+        )
 
     @gluetool.utils.cached_property
     def accepted_environment_secrets(self) -> List[str]:
@@ -964,6 +980,19 @@ class TestScheduleTMT(Module):
                         raise GlueError('Multiple provision phases not supported, refusing to continue.')
 
                     provision = exported_plan.provision[0]
+
+                    # TFT-4839: refuse plans setting unsafe SSH options.
+                    unsafe_ssh_options = detect_unsafe_ssh_options(
+                        ssh_options=provision.ssh_option,
+                        directives=self.unsafe_ssh_options
+                    )
+                    if unsafe_ssh_options:
+                        raise GlueError(
+                            'Refusing to run plan, unsafe SSH options are not allowed: {}'.format(
+                                ', '.join(unsafe_ssh_options)
+                            )
+                        )
+
                     hardware = provision.hardware
                     kickstart = provision.kickstart
                     pool = provision.pool
@@ -1311,6 +1340,18 @@ class TestScheduleTMT(Module):
                 launch_id = self.shared('check_create_rp_launch', schedule_entry)
                 if launch_id:
                     tmt_process_environment['TMT_PLUGIN_REPORT_REPORTPORTAL_UPLOAD_TO_LAUNCH'] = launch_id
+
+        # TFT-4839: refuse `TMT_SSH_*` variables mapping to unsafe SSH options (defense in depth).
+        unsafe_ssh_options = detect_unsafe_ssh_options(
+            environment=tmt_process_environment,
+            directives=self.unsafe_ssh_options
+        )
+        if unsafe_ssh_options:
+            raise GlueError(
+                'Refusing to run plan, unsafe SSH options are not allowed: {}'.format(
+                    ', '.join(unsafe_ssh_options)
+                )
+            )
 
         # add tmt reproducer suitable for local execution: run until provisioning
         schedule_entry.tmt_reproducer.append(' '.join(reproducer))

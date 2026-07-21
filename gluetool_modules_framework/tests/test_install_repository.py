@@ -58,6 +58,7 @@ def fixture_module(monkeypatch):
                 Artifact(id='https://example.com/repo3', packages=['package-install-1', 'package2'], type='repository'),
                 Artifact(id='https://example.com/repo4.repo', type='repository-file'),
                 Artifact(id='https://example.com/repo5', type='repository-file'),
+                Artifact(id='https://example.com/repo6', type='repository', install=False),
                 Artifact(id='wrongid', packages=None, type='wongtype'),
             ]),
             TestingEnvironment(artifacts=[Artifact(id='wrongid', packages=None, type='wongtype')]),
@@ -129,6 +130,11 @@ def test_guest_setup(module, environment_index, tmpdir, monkeypatch):
             'https://example.com/package-noinstall-1.0.1-1.x86_64.rpm',
             'https://example.com/package-noinstall-1.0.1-1.src.rpm'
         ])),
+        # Artifact(id='https://example.com/repo6', type='repository', install=False)
+        # * dummy3 should be downloaded (fetched into the repo) but not installed
+        mock_run_output('\n'.join([
+            'https://example.com/dummy3-1.0.1-1.x86_64.rpm'
+        ]))
     ])
 
     monkeypatch.setattr(Command, '__init__', mock_command_init)
@@ -153,7 +159,9 @@ def test_guest_setup(module, environment_index, tmpdir, monkeypatch):
     mock_command_init.assert_has_calls(command_calls)
 
     write_calls = [
-        call('https://example.com/dummy1-1.0.1-1.x86_64.rpm https://example.com/dummy2-1.0.1-1.src.rpm https://example.com/dummy2-1.0.1-1.x86_64.rpm https://example.com/package-install-1.0.1-1.src.rpm https://example.com/package-install-1.0.2-1.src.rpm https://example.com/package-install-1.0.3-1.src.rpm https://example.com/package-install-1.0.3-1.x86_64.rpm'),
+        # download list: includes dummy3 from the install=False repo6 (fetched but not installed)
+        call('https://example.com/dummy1-1.0.1-1.x86_64.rpm https://example.com/dummy2-1.0.1-1.src.rpm https://example.com/dummy2-1.0.1-1.x86_64.rpm https://example.com/package-install-1.0.1-1.src.rpm https://example.com/package-install-1.0.2-1.src.rpm https://example.com/package-install-1.0.3-1.src.rpm https://example.com/package-install-1.0.3-1.x86_64.rpm https://example.com/dummy3-1.0.1-1.x86_64.rpm'),
+        # install list: dummy3 excluded (install=False)
         call('https://example.com/dummy1-1.0.1-1.x86_64.rpm https://example.com/package-install-1.0.3-1.x86_64.rpm')
     ]
 
@@ -346,6 +354,11 @@ def test_guest_setup_bootc(module, environment_index, tmpdir, monkeypatch):
             'https://example.com/package-noinstall-1.0.1-1.x86_64.rpm',
             'https://example.com/package-noinstall-1.0.1-1.src.rpm'
         ])),
+        # Artifact(id='https://example.com/repo6', type='repository', install=False)
+        # * in image mode there is no separate fetch step, so dummy3 is simply not installed
+        mock_run_output('\n'.join([
+            'https://example.com/dummy3-1.0.1-1.x86_64.rpm'
+        ])),
         mock_run_output('tmt output')
     ])
 
@@ -367,6 +380,7 @@ def test_guest_setup_bootc(module, environment_index, tmpdir, monkeypatch):
         call(['dnf', 'repoquery', '-q', '--repofrompath=artifacts-repo,https://example.com/repo1', '--repo', 'artifacts-repo', '--location', '--disable-modular-filtering']),  # noqa
         call(['dnf', 'repoquery', '-q', '--repofrompath=artifacts-repo,https://example.com/repo2', '--repo', 'artifacts-repo', '--location', '--disable-modular-filtering']),  # noqa
         call(['dnf', 'repoquery', '-q', '--repofrompath=artifacts-repo,https://example.com/repo3', '--repo', 'artifacts-repo', '--location', '--disable-modular-filtering']),  # noqa
+        call(['dnf', 'repoquery', '-q', '--repofrompath=artifacts-repo,https://example.com/repo6', '--repo', 'artifacts-repo', '--location', '--disable-modular-filtering']),  # noqa
         call(['bash', '-c', 'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install --package=https://example.com/dummy1-1.0.1-1.x86_64.rpm --package=https://example.com/package-install-1.0.3-1.x86_64.rpm'])  # noqa
     ]
     mock_command_init.assert_has_calls(command_calls)

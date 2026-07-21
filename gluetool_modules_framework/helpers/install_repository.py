@@ -132,7 +132,11 @@ class InstallRepository(gluetool.Module):
         if not has_bootc:
             sut_installation.add_step('Create artifacts directory', 'mkdir -pv {}'.format(download_path),
                                       ignore_exception=True)
-        packages = []
+        # Packages fetched into the local repository. Includes packages from ``install=False``
+        # artifacts, which are fetched (and thus available, e.g. as dependency candidates) but not installed.
+        download_packages = []
+        # Packages actually installed on the guest. Excludes packages from ``install=False`` artifacts.
+        install_packages = []
 
         for artifact in artifacts:
 
@@ -164,7 +168,12 @@ class InstallRepository(gluetool.Module):
 
             packages_to_install = []
 
-            if artifact.packages:
+            if artifact.install is False:
+                self.info(
+                    "Fetching but not installing '{}' repository packages as requested".format(artifact.id)
+                )
+
+            elif artifact.packages:
                 log_dict(
                     self.info,
                     "installing only following packages from repository '{}'".format(artifact.id),
@@ -183,14 +192,17 @@ class InstallRepository(gluetool.Module):
                     " Please use 'repository-file' artifact instead."
                 ).format(len(packages_to_install), self.option('packages-amount-threshold')))
 
-            packages += packages_to_install
+            # Fetch every package found so it lands in the repository. For ``install=False`` artifacts
+            # that is all packages; otherwise it is only the ones selected for installation.
+            download_packages += output_packages if artifact.install is False else packages_to_install
+            install_packages += packages_to_install
 
         if not has_bootc:
             # Create a temporary file with list of packages to install with NamedTemporaryFile and save its name
             download_packages_filename = ""
             with NamedTemporaryFile(mode='w+', delete=False) as tmp_file:
                 download_packages_filename = tmp_file.name
-                tmp_file.write(' '.join(packages))
+                tmp_file.write(' '.join(download_packages))
                 tmp_file.flush()
 
             # Copy the package list to the guest
@@ -206,7 +218,7 @@ class InstallRepository(gluetool.Module):
             create_repo(sut_installation, 'test-artifacts', download_path)
 
         # Remove .src.rpm packages
-        packages = [package for package in packages if ".src.rpm" not in package]
+        install_packages = [package for package in install_packages if ".src.rpm" not in package]
 
         # filter excluded packages
         if guest.environment and guest.environment.excluded_packages:
@@ -215,9 +227,9 @@ class InstallRepository(gluetool.Module):
 
             excluded_packages_regexp = '|'.join(['/{}'.format(package) for package in excluded_packages])
 
-            packages = [
+            install_packages = [
                 rpm_file
-                for rpm_file in packages
+                for rpm_file in install_packages
                 if not re.search(excluded_packages_regexp, rpm_file)
             ]
 
@@ -225,7 +237,7 @@ class InstallRepository(gluetool.Module):
             install_packages_filename = ""
             with NamedTemporaryFile(mode='w+', delete=False) as tmp_file:
                 install_packages_filename = tmp_file.name
-                tmp_file.write(' '.join(packages))
+                tmp_file.write(' '.join(install_packages))
                 tmp_file.flush()
 
             # Copy the package list to the guest
@@ -259,7 +271,9 @@ class InstallRepository(gluetool.Module):
             )
 
         else:
-            if not packages:
+            # In image mode there is no separate fetch step (tmt installs directly), so ``install=False``
+            # packages cannot be fetched-only here and are simply left out of the install command.
+            if not install_packages:
                 self.warn('Nothing to install, package list is empty')
                 return
 
@@ -270,7 +284,7 @@ class InstallRepository(gluetool.Module):
                     guest.hostname,
                     guest.key,
                     guest.port,
-                    ' '.join(['--package=' + package for package in packages if package]))
+                    ' '.join(['--package=' + package for package in install_packages if package]))
             )
 
             sut_installation.add_step(

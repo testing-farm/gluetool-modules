@@ -3,6 +3,7 @@
 
 import os
 import re
+import shlex
 from tempfile import NamedTemporaryFile
 from dataclasses import dataclass
 
@@ -62,7 +63,8 @@ class InstallRepository(gluetool.Module):
             'help': '''
                 Threshold for amount of packages to install. If the amount of packages in repository is higher than
                 the given threshold, the installation will fail. This is to prevent installing a
-                lot of packages by accident.
+                lot of packages by accident. For repositories with ``install=False``, the threshold applies
+                to the amount of packages to fetch.
                 ''',
             'type': int,
             'default': 50
@@ -132,9 +134,25 @@ class InstallRepository(gluetool.Module):
         if not has_bootc:
             sut_installation.add_step('Create artifacts directory', 'mkdir -pv {}'.format(download_path),
                                       ignore_exception=True)
-        packages = []
+        # Packages fetched into the local repository. Includes packages from ``install=False``
+        # artifacts, which are fetched (and thus available, e.g. as dependency candidates) but not installed.
+        download_packages = []
+        # Packages actually installed on the guest. Excludes packages from ``install=False`` artifacts.
+        install_packages = []
+        # Packages from ``install=False`` artifacts, verified after the download as nothing else checks them.
+        fetch_only_packages: List[str] = []
 
         for artifact in artifacts:
+
+            # In image mode there is no separate fetch step (tmt installs directly), so ``install=False``
+            # packages cannot be fetched-only. Skip the artifact before its packages count against the threshold.
+            if artifact.install is False and has_bootc:
+                self.info(
+                    "Skipping '{}' repository, fetching without installation is not supported in image mode".format(
+                        artifact.id
+                    )
+                )
+                continue
 
             # First, get locations of RPMs on worker
             repoquery_cmd = [
@@ -164,7 +182,12 @@ class InstallRepository(gluetool.Module):
 
             packages_to_install = []
 
-            if artifact.packages:
+            if artifact.install is False:
+                self.info(
+                    "Fetching but not installing '{}' repository packages as requested".format(artifact.id)
+                )
+
+            elif artifact.packages:
                 log_dict(
                     self.info,
                     "installing only following packages from repository '{}'".format(artifact.id),
@@ -177,20 +200,34 @@ class InstallRepository(gluetool.Module):
             else:
                 packages_to_install = output_packages
 
-            if len(packages_to_install) > self.option('packages-amount-threshold'):
-                raise GlueError((
-                    "Too many packages to install: {} (threshold {})."
-                    " Please use 'repository-file' artifact instead."
-                ).format(len(packages_to_install), self.option('packages-amount-threshold')))
+            # Fetch every package found so it lands in the repository. For ``install=False`` artifacts
+            # that is all packages; otherwise it is only the ones selected for installation.
+            if artifact.install is False:
+                packages_to_fetch = output_packages
+                fetch_only_packages += output_packages
 
-            packages += packages_to_install
+            else:
+                packages_to_fetch = packages_to_install
+
+            if len(packages_to_fetch) > self.option('packages-amount-threshold'):
+                raise GlueError((
+                    "Too many packages to {}: {} (threshold {})."
+                    " Please use 'repository-file' artifact instead."
+                ).format(
+                    'fetch' if artifact.install is False else 'install',
+                    len(packages_to_fetch),
+                    self.option('packages-amount-threshold')
+                ))
+
+            download_packages += packages_to_fetch
+            install_packages += packages_to_install
 
         if not has_bootc:
             # Create a temporary file with list of packages to install with NamedTemporaryFile and save its name
             download_packages_filename = ""
             with NamedTemporaryFile(mode='w+', delete=False) as tmp_file:
                 download_packages_filename = tmp_file.name
-                tmp_file.write(' '.join(packages))
+                tmp_file.write(' '.join(download_packages))
                 tmp_file.flush()
 
             # Copy the package list to the guest
@@ -202,11 +239,23 @@ class InstallRepository(gluetool.Module):
                 ignore_exception=True
             )
 
+            # The download step ignores errors, and a failed download of an ``install=True`` package is caught
+            # by the installation verification. Fetch-only packages are never installed, so make sure each
+            # of them was downloaded as a valid RPM. A failed download leaves no file or an HTTP error page.
+            if fetch_only_packages:
+                sut_installation.add_step(
+                    'Verify fetched packages',
+                    'cd {} && rpm -K --nosignature {}'.format(
+                        download_path,
+                        ' '.join(shlex.quote(os.path.basename(package)) for package in fetch_only_packages)
+                    )
+                )
+
             # Create a repository with all the artifacts
             create_repo(sut_installation, 'test-artifacts', download_path)
 
         # Remove .src.rpm packages
-        packages = [package for package in packages if ".src.rpm" not in package]
+        install_packages = [package for package in install_packages if ".src.rpm" not in package]
 
         # filter excluded packages
         if guest.environment and guest.environment.excluded_packages:
@@ -215,16 +264,21 @@ class InstallRepository(gluetool.Module):
 
             excluded_packages_regexp = '|'.join(['/{}'.format(package) for package in excluded_packages])
 
-            packages = [
+            install_packages = [
                 rpm_file
-                for rpm_file in packages
+                for rpm_file in install_packages
                 if not re.search(excluded_packages_regexp, rpm_file)
             ]
+
+        # Nothing left to install, e.g. all artifacts are ``install=False``. The packages are already fetched.
+        if not install_packages:
+            self.warn('Nothing to install, package list is empty')
+            return
 
         # Use locally downloaded RPMs instead of remote URLs to avoid download corruption (libdnf5)
         local_packages = [
             os.path.join(download_path, os.path.basename(package))
-            for package in packages
+            for package in install_packages
         ]
 
         if not has_bootc:
@@ -265,10 +319,6 @@ class InstallRepository(gluetool.Module):
             )
 
         else:
-            if not packages:
-                self.warn('Nothing to install, package list is empty')
-                return
-
             command = (
                 '{} -vvv run provision --how connect --guest {} --key {} --port {} '
                 'prepare --how install {}'.format(
@@ -276,7 +326,7 @@ class InstallRepository(gluetool.Module):
                     guest.hostname,
                     guest.key,
                     guest.port,
-                    ' '.join(['--package=' + package for package in packages if package]))
+                    ' '.join(['--package=' + package for package in install_packages if package]))
             )
 
             sut_installation.add_step(

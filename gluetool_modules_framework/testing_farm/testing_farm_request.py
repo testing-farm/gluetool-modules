@@ -613,7 +613,8 @@ class TestingFarmRequest(LoggerMixin, object):
                state: Optional[str] = None,
                overall_result: Optional[str] = None,
                summary: Optional[str] = None,
-               artifacts_url: Optional[str] = None) -> None:
+               artifacts_url: Optional[str] = None,
+               stages: Optional[Dict[str, Any]] = None) -> None:
         """
         Update the test request. Only a subset of changes is supported according to the use cases
         we have in the pipeline.
@@ -622,10 +623,11 @@ class TestingFarmRequest(LoggerMixin, object):
         :param str overall_result: New overall result of the test request.
         :param str summary: New result summary to set.
         :param str artifacts_url: The URL to the artifacts to set.
+        :param stages: Stage tracking data to include in the run payload.
         """
         payload: Dict[str, Any] = {}
-        result = {}
-        run = {}
+        result: Dict[str, Any] = {}
+        run: Dict[str, Any] = {}
 
         if self._api_key:
             payload.update({
@@ -662,6 +664,11 @@ class TestingFarmRequest(LoggerMixin, object):
         if artifacts_url:
             run.update({
                 'artifacts': artifacts_url
+            })
+
+        if stages:
+            run.update({
+                'stages': stages
             })
 
         if result:

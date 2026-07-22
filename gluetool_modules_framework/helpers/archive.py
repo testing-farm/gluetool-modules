@@ -12,6 +12,7 @@ from gluetool.glue import GlueError
 from gluetool.utils import Command, normalize_bool_option, render_template
 from gluetool.result import Result
 from gluetool_modules_framework.libs.threading import RepeatTimer
+from gluetool_modules_framework.libs.pipeline_stages import PIPELINE_ARCHIVING_STARTED, PIPELINE_ARCHIVING_FINISHED
 
 from typing import List, Optional, Any, Tuple
 
@@ -806,9 +807,11 @@ class Archive(gluetool.Module):
 
         # Gracefully catch errors, so other destroy functions can get a chance.
         # Send the error to Sentry so we know this is happening.
+        self.shared('trigger_event', PIPELINE_ARCHIVING_STARTED)
         try:
             self.archive_stage('destroy')
         except GlueError as error:
             self.error(str(error), sentry=True)
         except Exception as error:
             self.error('Unexpected error during destroy stage archiving: {}'.format(error), sentry=True)
+        self.shared('trigger_event', PIPELINE_ARCHIVING_FINISHED)

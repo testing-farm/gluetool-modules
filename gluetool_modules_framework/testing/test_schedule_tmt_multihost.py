@@ -36,6 +36,9 @@ from gluetool_modules_framework.libs.test_schedule_tmt import \
     TmtArtifactProvider, TmtArtifactProviderType
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
 from gluetool_modules_framework.libs.git import RemoteGitRepository
+from gluetool_modules_framework.libs.pipeline_stages import (
+    PIPELINE_INITIALIZATION_FINISHED, PIPELINE_TEST_DISCOVERY_STARTED
+)
 from gluetool_modules_framework.provision.artemis import ArtemisGuest
 
 # Type annotations
@@ -846,6 +849,9 @@ class TestScheduleTMTMultihost(Module):
         if not testing_environment_constraints:
             self.warn('TMT scheduler does not support open constraints', sentry=True)
             return TestSchedule()
+
+        self.shared('trigger_event', PIPELINE_INITIALIZATION_FINISHED)
+        self.shared('trigger_event', PIPELINE_TEST_DISCOVERY_STARTED)
 
         self.require_shared('dist_git_repository')
         repository = cast(RemoteGitRepository, self.shared('dist_git_repository'))

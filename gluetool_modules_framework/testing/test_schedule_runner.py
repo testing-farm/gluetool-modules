@@ -17,6 +17,7 @@ from gluetool_modules_framework.libs.jobs import JobEngine, Job, handle_job_erro
 from gluetool_modules_framework.libs.test_schedule import (
     TestScheduleEntryStage, TestScheduleEntryState, TestScheduleResult, summarize_schedule_results
 )
+from gluetool_modules_framework.libs.pipeline_stages import SINGLEHOST_STAGE_EVENTS
 
 # Type annotations
 from typing import TYPE_CHECKING, cast, Any, Callable, Dict, List, Optional  # noqa
@@ -386,6 +387,11 @@ class TestScheduleRunner(gluetool.Module):
                 old_stage, new_stage, old_state, new_state
             ))
 
+            if new_state != TestScheduleEntryState.ERROR:
+                for event_name in SINGLEHOST_STAGE_EVENTS.get(new_stage, []):
+                    self.shared('trigger_event', event_name,
+                                schedule_entry=schedule_entry)
+
         def _set_action(schedule_entry: TestScheduleEntry) -> None:
 
             assert schedule_entry.testing_environment is not None
@@ -591,7 +597,7 @@ class TestScheduleRunner(gluetool.Module):
             schedule.log(self.info, label='{} entries pending'.format(remaining_count))
 
         self.shared('trigger_event', 'test-schedule.start',
-                    schedule=schedule)
+                    schedule=schedule, runner=self.name)
 
         schedule.log(self.info, label='running test schedule of {} entries'.format(len(schedule)))
 

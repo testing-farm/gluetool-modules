@@ -12,22 +12,22 @@ import sys
 
 import gluetool.utils
 
-CONFIG_PATHS = ', '.join([
+CITOOL_CONFIG_PATHS = os.environ.get('CITOOL_CONFIG_PATHS', ', '.join([
     "/etc/gluetool.d/gluetool", "~/.gluetool.d/gluetool", "./.gluetool.d/gluetool",
     "/etc/citool.d/citool", "~/.citool.d/citool", "./.citool.d/citool"
-])
+]))
 
-MODULE_CONFIG_PATHS = ', '.join([
+CITOOL_MODULE_CONFIG_PATHS = os.environ.get('CITOOL_MODULE_CONFIG_PATHS', ', '.join([
     "/etc/gluetool.d/config", "~/.gluetool.d/config", "./.gluetool.d/config",
     "/etc/citool.d/config", "~/.citool.d/config", "./.citool.d/config"
-])
+]))
 
 
 def run() -> None:
 
     env = gluetool.utils.dict_update(os.environ.copy(), {
-        'GLUETOOL_CONFIG_PATHS': CONFIG_PATHS,
-        'GLUETOOL_MODULE_CONFIG_PATHS': MODULE_CONFIG_PATHS,
+        'GLUETOOL_CONFIG_PATHS': CITOOL_CONFIG_PATHS,
+        'GLUETOOL_MODULE_CONFIG_PATHS': CITOOL_MODULE_CONFIG_PATHS,
     })
 
     os.execvpe('gluetool', sys.argv, env)

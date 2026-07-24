@@ -1,0 +1,3 @@
+# ansible-core: argument injection in ansible-galaxy role install
+# Upgrade to 2.21 deferred until after profiles migration
+CVE-2026-11332

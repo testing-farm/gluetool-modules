@@ -97,10 +97,12 @@ RUN    ln -s /CONFIG /etc/citool.d \
 COPY dist/gluetool_modules_framework*.whl .
 
 # install gluetool-modules-framework with citool and required ansible collections
+# NOTE: dnspython is required for community.general.dig to work (used in profiles)
 RUN    virtualenv -p python${PYTHON_VERSION} /opt/gluetool \
     && source /opt/gluetool/bin/activate \
     && pip${PYTHON_VERSION} install gluetool_modules_framework*.whl \
     && ansible-galaxy install --timeout 120 -r /etc/ansible/requirements.yml \
+    && pip${PYTHON_VERSION} install dnspython \
     && rm -f gluetool_modules_framework*.whl \
     && rm -rf ~/.cache
 

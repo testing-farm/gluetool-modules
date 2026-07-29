@@ -196,3 +196,9 @@ command:
   /opt/artemis-cli/bin/artemis-cli --help:
     exit-status: 0
     timeout: 100000
+
+  /opt/gluetool/bin/pip3 show dnspython:
+    exit-status: 0
+    timeout: 100000
+    stdout:
+      - "Name: dnspython"

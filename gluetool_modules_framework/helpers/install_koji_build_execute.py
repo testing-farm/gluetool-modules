@@ -131,6 +131,8 @@ class InstallKojiBuildExecute(gluetool.Module):
 
             if arch == 'x86_64' and self.option('download-i686-builds'):
                 download_arches = 'x86_64 --arch i686'
+            elif arch in ('i386', 'i686'):
+                download_arches = 'i686 --arch i386'
             else:
                 download_arches = cast(str, arch)
 

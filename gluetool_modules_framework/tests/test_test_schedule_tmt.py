@@ -191,6 +191,12 @@ def test_run_plan_rejects_unsafe_ssh_environment(module, guest, monkeypatch, tmp
                 module.run_test_schedule_entry(schedule_entry)
 
 
+def test_tmt_run_options(module):
+    module._config['tmt-run-options'] = '--feeling-safe=all -vvv -d'
+
+    assert module.tmt_run_options == ['--feeling-safe=all', '-vvv', '-d']
+
+
 def _assert_results(results, expected_results):
     for result, expected in zip(results, expected_results):
         assert result.name == expected['name']
@@ -463,11 +469,22 @@ dummytmt --root some-tmt-root run --all --verbose discover --args1 discover --ar
             None,
             None
         ),
+        (  # with tmt run extra args (not available in reproducer)
+            {
+                'tmt-run-options': '--feeling-safe=all',
+            },
+            {},
+            TestingEnvironment('x86_64', 'rhel-9'),
+            """# tmt reproducer
+dummytmt --root some-tmt-root run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+            None,
+            None
+        ),
     ],
     ids=[
         'virtual', 'local', 'variables', 'tmt_context',
         'tmt_process_environment_options_only', 'tmt_process_environment', 'tmt_process_environment_not_accepted',
-        'tmt_extra_args'
+        'tmt_extra_args', 'tmt_run_options'
     ]
 )
 def test_tmt_output_dir(

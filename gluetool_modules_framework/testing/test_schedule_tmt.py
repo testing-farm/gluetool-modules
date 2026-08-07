@@ -393,6 +393,14 @@ class TestScheduleTMT(Module):
                 'default': [],
                 'metavar': 'KEY1=VAL1,KEY2=VAL2'
             },
+            'tmt-run-options': {
+                'help': """
+                        Additional options passed to ``tmt run``. Not added to the reproducer command
+                        and to the ``tmt run discover`` command.
+                        """,
+                'action': 'append',
+                'default': []
+            },
             'tmt-environment-variables-map': {
                 'help': """
                         Path to rules file for adding additional environment variables to tmt.
@@ -493,6 +501,10 @@ class TestScheduleTMT(Module):
             return tf_request.tmt.test_name
 
         return None
+
+    @gluetool.utils.cached_property
+    def tmt_run_options(self) -> List[str]:
+        return gluetool.utils.normalize_shell_option(self.option('tmt-run-options'))
 
     def _check_accepted_environment_variables(self, variables: Dict[str, str]) -> None:
         for key, _ in six.iteritems(variables):
@@ -1172,6 +1184,8 @@ class TestScheduleTMT(Module):
             '--verbose',
             '--id', os.path.abspath(work_dirpath)
         ])
+
+        command.extend(self.tmt_run_options)
 
         # update eval context with guest name
         dict_update(

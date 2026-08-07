@@ -398,7 +398,10 @@ class TestScheduleTMTMultihost(Module):
                 'metavar': 'KEY1=VAL1,KEY2=VAL2'
             },
             'tmt-run-options': {
-                'help': "Additional options passed to ``tmt run``, for example -ddddvvv.",
+                'help': """
+                        Additional options passed to ``tmt run``, for example -ddddvvv.
+                        Not passed to the ``tmt run discover`` command. Options also added to the reproducer.
+                        """,
                 'action': 'append',
                 'default': []
             },
@@ -498,6 +501,10 @@ class TestScheduleTMTMultihost(Module):
             return tf_request.tmt.test_name
 
         return None
+
+    @gluetool.utils.cached_property
+    def tmt_run_options(self) -> List[str]:
+        return gluetool.utils.normalize_shell_option(self.option('tmt-run-options'))
 
     def _check_accepted_environment_variables(self, variables: Dict[str, str]) -> None:
         for key, _ in six.iteritems(variables):
@@ -1119,7 +1126,7 @@ class TestScheduleTMTMultihost(Module):
         artemis_api_timeout = artemis_options['api-call-timeout']
 
         command.extend(['run', '--all', '--id', os.path.abspath(work_dirpath)])
-        command.extend(gluetool.utils.normalize_multistring_option(self.option('tmt-run-options')))
+        command.extend(self.tmt_run_options)
 
         if schedule_entry.tmt_env_file:
             env_options = [

@@ -58,7 +58,7 @@ def fixture_module(monkeypatch):
     module = create_module(gluetool_modules_framework.testing.test_schedule_tmt_multihost.TestScheduleTMTMultihost)[1]
     module._config['command'] = 'dummytmt'
     module._config['reproducer-comment'] = '# tmt reproducer'
-    module._config['tmt-run-options'] = '-ddddvvv,--log-topic=cli-invocations'
+    module._config['tmt-run-options'] = '-ddddvvv --log-topic=cli-invocations'
     module._config['result-log-max-size'] = 10
     patch_shared(
         monkeypatch,
@@ -202,6 +202,12 @@ def test_run_plan_rejects_unsafe_ssh_environment(module, monkeypatch, tmpdir):
             m.chdir(tmpdir)
             with pytest.raises(gluetool.GlueError, match='unsafe SSH options are not allowed'):
                 module.run_test_schedule_entry(schedule_entry)
+
+
+def test_tmt_run_options(module):
+    module._config['tmt-run-options'] = '--feeling-safe=all -vvv'
+
+    assert module.tmt_run_options == ['--feeling-safe=all', '-vvv']
 
 
 def _assert_results(results, expected_results):
@@ -729,11 +735,22 @@ dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic
             None,
             None
         ),
+        (  # with tmt run extra args
+            {
+                'tmt-run-options': '--feeling-safe=all -vvv'
+            },
+            {},
+            TestingEnvironment('x86_64', 'rhel-9'),
+            """# tmt reproducer
+dummytmt --root some-tmt-root run --all --id {work_dirpath} --feeling-safe=all -vvv plan --name '^plan1$' provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script 'echo hello'""",  # noqa
+            None,
+            None
+        ),
     ],
     ids=[
         'virtual', 'local', 'variables', 'tmt_context',
         'tmt_process_environment_options_only', 'tmt_process_environment', 'tmt_process_environment_not_accepted', 'user_data',
-        'tmt_extra_args', 'post-install-script', 'artifacts', 'artifacts_install_false'
+        'tmt_extra_args', 'post-install-script', 'artifacts', 'artifacts_install_false', 'tmt_run_options'
     ]
 )
 def test_tmt_output_dir(

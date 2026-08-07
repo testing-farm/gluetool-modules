@@ -58,7 +58,7 @@ def fixture_module(monkeypatch):
     module = create_module(gluetool_modules_framework.testing.test_schedule_tmt_multihost.TestScheduleTMTMultihost)[1]
     module._config['command'] = 'dummytmt'
     module._config['reproducer-comment'] = '# tmt reproducer'
-    module._config['tmt-run-options'] = '-ddddvvv,--log-topic=cli-invocations'
+    module._config['tmt-run-options'] = '-ddddvvv --log-topic=cli-invocations'
     module._config['result-log-max-size'] = 10
     module._config['artifact-order'] = 40
     patch_shared(
@@ -226,6 +226,12 @@ def test_prepare_environment(module, monkeypatch, tmpdir, plan, expected_prefix)
     assert work_dirpath.startswith(expected_prefix)
     assert ':' not in work_dirpath
     assert os.path.isdir(os.path.join(tmpdir, work_dirpath))
+
+
+def test_tmt_run_options(module):
+    module._config['tmt-run-options'] = '-vvv --log-topic=cli-invocations'
+
+    assert module.tmt_run_options == ['-vvv', '--log-topic=cli-invocations']
 
 
 def _assert_results(results, expected_results):
@@ -753,11 +759,22 @@ dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic
             None,
             None
         ),
+        (  # with tmt run extra args
+            {
+                'tmt-run-options': '-vvv --log-topic=cli-invocations'
+            },
+            {},
+            TestingEnvironment('x86_64', 'rhel-9'),
+            """# tmt reproducer
+dummytmt --root some-tmt-root run --all --id {work_dirpath} -vvv --log-topic=cli-invocations plan --name '^plan1$' provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script 'echo hello'""",  # noqa
+            None,
+            None
+        ),
     ],
     ids=[
         'virtual', 'local', 'variables', 'tmt_context',
         'tmt_process_environment_options_only', 'tmt_process_environment', 'tmt_process_environment_not_accepted', 'user_data',
-        'tmt_extra_args', 'post-install-script', 'artifacts', 'artifacts_install_false'
+        'tmt_extra_args', 'post-install-script', 'artifacts', 'artifacts_install_false', 'tmt_run_options'
     ]
 )
 def test_tmt_output_dir(

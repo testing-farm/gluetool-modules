@@ -1245,7 +1245,6 @@ class TestScheduleTMT(Module):
 
             command.extend([
                 'provision',
-                '--feeling-safe',
                 '--how', 'connect',
                 '--guest', schedule_entry.guest.hostname,
                 '--key', schedule_entry.guest.key,

@@ -1,6 +1,7 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+import fnmatch
 import os
 import re
 import shutil
@@ -9,11 +10,12 @@ import tempfile
 
 import gluetool
 from gluetool.glue import GlueError
+from gluetool.log import log_dict
 from gluetool.utils import Command, normalize_bool_option, render_template
 from gluetool.result import Result
 from gluetool_modules_framework.libs.threading import RepeatTimer
 
-from typing import List, Optional, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 DEFAULT_RETRY_TIMEOUT = 30
 DEFAULT_RETRY_TICK = 10
@@ -23,11 +25,25 @@ DEFAULT_VERIFY_TICK = 5
 DEFAULT_VERIFY_TIMEOUT = 1800
 DEFAULT_PARALLEL_ARCHIVING_FINISH_TICK = 5
 DEFAULT_PARALLEL_ARCHIVING_FINISH_TIMEOUT = 1800
+DEFAULT_BATCH_MAX_FILES = 0
 
 ARCHIVE_STAGES = ['execute', 'progress', 'destroy']
 # Stages which use a copy for syncing
 ARCHIVE_STAGES_USING_COPY = ['execute', 'progress']
 SOURCE_DESTINATION_ENTRY_KEYS = ['source', 'exclude', 'destination', 'permissions', 'verify']
+
+# Layout of a batch staging directory, see `prepare_batch_tree`. The file list deliberately lives
+# next to the transfer root, never inside it - `hide_secrets` runs `sed -i` over everything under
+# its search path, so a secret value appearing in a path would otherwise rewrite the list itself.
+BATCH_TREE_DIR_NAME = 'tree'
+BATCH_LIST_FILE_NAME = 'files-from.txt'
+
+# rsync exit codes tolerated for a batched transfer:
+# * 24 - source files vanished, expected against logs which are still being written to
+# * 23 - partial transfer due to an error, a single unreadable file must not cost the whole batch
+RSYNC_VANISHED_EXIT_CODE = 24
+RSYNC_PARTIAL_EXIT_CODE = 23
+RSYNC_PARTIAL_EXIT_CODES = [RSYNC_PARTIAL_EXIT_CODE, RSYNC_VANISHED_EXIT_CODE]
 
 
 class Archive(gluetool.Module):
@@ -54,6 +70,21 @@ class Archive(gluetool.Module):
     * The ``s3`` mode uses the AWS cli to sync files to S3 bucket.
 
     Use the ``verify`` flag to verify given path on the artifact location provided by the ``coldstore`` module.
+
+    The ``enable-batched-archiving`` option makes the copy based stages transfer all their files with a
+    single ``rsync --files-from`` invocation instead of one invocation per file. A stage globbing
+    hundreds of files therefore opens one connection to the artifacts host instead of hundreds, and
+    runs ``hide_secrets`` once over the staged tree instead of once per file.
+
+    Files are batched only when nothing about them needs a whole invocation rsync option or a per file
+    step of its own, see :py:meth:`is_batchable`. Anything else, and the whole ``destroy`` stage, keeps
+    using the per file code path, which is also the fallback when a batched transfer fails.
+
+    Note that ``--exclude`` options passed via ``rsync-options`` do not apply to batched transfers,
+    because ``--files-from`` entries are always requested explicitly. They do not apply to per file
+    transfers of the copy based stages either, where rsync only ever sees a single path component, so
+    this is not a change in behaviour. Use the per entry ``exclude`` regexes or the ``batch-exclude``
+    option to keep files out of a batch.
     """
 
     name = 'archive'
@@ -144,6 +175,31 @@ class Archive(gluetool.Module):
             'metavar': 'PARALLEL_ARCHIVING_FINISH_TICK',
             'type': int,
             'default': DEFAULT_PARALLEL_ARCHIVING_FINISH_TICK,
+        },
+        'enable-batched-archiving': {
+            'help': """
+                    Transfer the copy based stages ({}) with a single batched rsync invocation per stage
+                    instead of one invocation per file. (default: %(default)s)
+                    """.format(', '.join(ARCHIVE_STAGES_USING_COPY)),
+            'metavar': 'yes|no',
+            'default': 'no',
+        },
+        'batch-max-files': {
+            'help': 'Maximum number of files in a single batched rsync invocation, 0 means unlimited. '
+                    '(default: %(default)s)',
+            'metavar': 'BATCH_MAX_FILES',
+            'type': int,
+            'default': DEFAULT_BATCH_MAX_FILES,
+        },
+        'batch-exclude': {
+            'help': """
+                    Glob patterns, matched against the transfer relative path, excluded from batched
+                    transfers. Note that rsync ``--exclude`` options given via ``rsync-options`` do not
+                    apply to batched transfers, because ``--files-from`` entries are always requested
+                    explicitly. (default: none)
+                    """,
+            'action': 'append',
+            'default': [],
         },
         'aws-region': {
             'help': 'AWS region to use for S3 archiving.',
@@ -301,6 +357,23 @@ class Archive(gluetool.Module):
         return rendered_options
 
     @gluetool.utils.cached_property
+    def batched_archiving(self) -> bool:
+        """
+        Whether the copy based stages transfer their files with a single batched rsync invocation.
+
+        Read through ``normalize_bool_option`` on purpose, rather than declaring the option as
+        ``store_true``. This is a revert switch for a hot code path, and ``enable-... = no`` in a
+        configuration file must disable it - with ``store_true`` the option value would be the
+        non-empty, and therefore truthy, string ``'no'``.
+        """
+
+        return normalize_bool_option(self.option('enable-batched-archiving'))
+
+    @gluetool.utils.cached_property
+    def batch_excludes(self) -> List[str]:
+        return gluetool.utils.normalize_multistring_option(self.option('batch-exclude'))
+
+    @gluetool.utils.cached_property
     def aws_options(self) -> List[str]:
 
         options = gluetool.utils.normalize_multistring_option(self.option('aws-options'))
@@ -349,7 +422,6 @@ class Archive(gluetool.Module):
             tick=self.option('retry-tick')
         )
 
-        Command(cmd, logger=self.logger).run()
         self._created_directories.append(path)
 
     def create_archive_directory_rsync(self, directory: Optional[str] = None) -> None:
@@ -446,6 +518,246 @@ class Archive(gluetool.Module):
         # Delete the temporary created directory
         shutil.rmtree(os.path.dirname(source))
 
+    def _archiving_cancelled(self, stage: str) -> bool:
+        """
+        Whether parallel archiving has been cancelled and the ``progress`` stage should stop.
+        """
+
+        return bool(stage == 'progress' and self._archive_timer and self._archive_timer.finished.is_set())
+
+    def batch_relpath(self, source: str) -> str:
+        """
+        Transfer relative path of ``source``.
+
+        This is deliberately identical to the destination :py:meth:`run_rsync` derives for a source
+        copy, where ``destination`` is overwritten with the original source. Together with the
+        ``--relative`` implied by ``--files-from`` it makes a batched transfer land the file at
+        exactly the same remote path as a per file one.
+        """
+
+        return os.path.normpath(source).lstrip('/')
+
+    def is_batchable(self, stage: str, entry: Dict[str, Any], source: str) -> bool:
+        """
+        Whether a single glob match can travel inside a batched rsync invocation.
+
+        The predicate is deliberately conservative. Anything which needs a whole invocation rsync
+        option of its own, or a per file step after the transfer, stays on the per file code path.
+        """
+
+        if not self.batched_archiving:
+            return False
+
+        # S3 archiving does not use rsync at all.
+        if self.option('archive-mode') == 's3':
+            return False
+
+        # Only the copy based stages ignore the configured destination and derive it from the source,
+        # which is what makes a batched transfer destination identical to a per file one. The
+        # `destroy` stage also carries the upload ordering contract and recursive directory syncs.
+        if stage not in ARCHIVE_STAGES_USING_COPY:
+            return False
+
+        # Verification polls the artifacts location for one particular file after its transfer.
+        if normalize_bool_option(entry.get('verify') or False):
+            return False
+
+        # `--chmod` applies to the whole invocation, including the directories implied by
+        # `--relative`, so batching an entry with permissions would also chmod its parents.
+        if entry.get('permissions'):
+            return False
+
+        # `--recursive` applies to the whole invocation as well.
+        if os.path.isdir(source):
+            return False
+
+        return True
+
+    def prepare_batch_tree(self, batch_root: str, sources: List[str]) -> Tuple[str, List[str]]:
+        """
+        Stage copies of ``sources`` into a single temporary tree, preserving their relative paths.
+
+        Replaces N :py:meth:`prepare_source_copy` calls, and therefore N temporary directories, with
+        a single one. Sources which cannot be copied are dropped, a file disappearing between the
+        glob and the copy is expected for logs which are still being written to.
+
+        ``batch_root`` is created by the caller, so that a failure in here cannot leak it.
+
+        :returns: tuple of the transfer root and the sorted, deduplicated transfer relative paths
+            which were actually staged.
+        """
+
+        tree_root = os.path.join(batch_root, BATCH_TREE_DIR_NAME)
+
+        relpaths: List[str] = []
+
+        for source in sources:
+            relpath = self.batch_relpath(source)
+
+            # Two map entries can glob the same file, and there is no point in staging or listing it
+            # twice.
+            if not relpath or relpath in relpaths:
+                continue
+
+            if any(fnmatch.fnmatch(relpath, pattern) for pattern in self.batch_excludes):
+                self.debug('skipping {} because it matches a batch-exclude pattern'.format(relpath))
+                continue
+
+            target = os.path.join(tree_root, relpath)
+
+            try:
+                # `exist_ok` alone is not enough, it suppresses the error only when `os.path.isdir`
+                # agrees the path is a directory, which also makes it racy against a concurrent
+                # `makedirs` of a shared parent.
+                try:
+                    os.makedirs(os.path.dirname(target), exist_ok=True)
+                except FileExistsError:
+                    pass
+
+                shutil.copy2(source, target, follow_symlinks=False)
+
+            except OSError as error:
+                self.debug('skipping {}, it could not be staged for a batched transfer: {}'.format(source, error))
+                continue
+
+            relpaths.append(relpath)
+
+        return tree_root, sorted(relpaths)
+
+    def write_batch_list(self, batch_root: str, relpaths: List[str]) -> str:
+        """
+        Write the ``--files-from`` list into ``batch_root``, next to and never inside the transfer
+        root, so that neither the transfer itself nor ``hide_secrets`` can touch it.
+
+        The entries are NUL separated, to be read back with ``--from0``, which keeps the list correct
+        even for a path containing a newline. Written as bytes on purpose: text mode would translate
+        such a newline and corrupt the entry, and ``os.fsencode`` round trips whatever encoding the
+        paths came from.
+        """
+
+        list_file = os.path.join(batch_root, BATCH_LIST_FILE_NAME)
+
+        with open(list_file, 'wb') as f:
+            for relpath in relpaths:
+                f.write(os.fsencode(relpath) + b'\0')
+
+        return list_file
+
+    def batch_destination(self) -> str:
+        """
+        Destination root of a batched transfer, the request directory. The per file paths under it
+        come from the ``--files-from`` list.
+        """
+
+        assert self._request_id is not None
+
+        if self.option('archive-mode') == 'daemon':
+            return 'rsync://{}/{}/'.format(self.artifacts_rsync_host, self._request_id)
+
+        if self.option('archive-mode') == 'ssh':
+            return '{}:{}/'.format(self.artifacts_host, os.path.join(self.artifacts_root, self._request_id))
+
+        return os.path.join(self.artifacts_local_root, self._request_id) + os.sep
+
+    def run_rsync_batch(self, sources: List[str]) -> List[str]:
+        """
+        Transfer all ``sources`` with a single rsync invocation.
+
+        :returns: sources the caller has to transfer one by one instead. Empty on success.
+        """
+
+        # A batch of one is never a win, it only adds a list file to an otherwise identical transfer.
+        if len(sources) < 2:
+            return sources
+
+        batch_root = tempfile.mkdtemp()
+
+        try:
+            tree_root, relpaths = self.prepare_batch_tree(batch_root, sources)
+
+            if not relpaths:
+                self.debug('no files staged for a batched transfer')
+                return []
+
+            list_file = self.write_batch_list(batch_root, relpaths)
+
+            log_dict(self.debug, 'batched rsync file list', relpaths)
+
+            # A single pass over the staged tree, instead of one `find | xargs sed` and one `sync`
+            # per file.
+            self.shared('hide_secrets', search_path=tree_root)
+
+            destination = self.batch_destination()
+
+            cmd = ['rsync']
+            cmd += self.rsync_options
+            cmd += [
+                '--files-from={}'.format(list_file),
+                '--from0',
+                # The staged files cannot vanish under rsync, but a future non-copy batch could.
+                '--ignore-missing-args',
+                # Let rsync create the missing parent directories with default attributes instead of
+                # copying them from the freshly created staging tree. Without this `--times` would
+                # rewrite the mtime of every remote directory on every progress tick, and we would
+                # still need the `ssh mkdir -p` round trips.
+                '--no-implied-dirs',
+            ]
+            cmd.append(tree_root + os.sep)
+            cmd.append(destination)
+
+            def _run_rsync() -> Result[bool, bool]:
+                try:
+                    Command(cmd, logger=self.logger).run()
+
+                except gluetool.GlueCommandError as exc:
+                    if exc.output.exit_code in RSYNC_PARTIAL_EXIT_CODES:
+                        self.warn(
+                            'batched rsync of {} files finished with exit code {}, some files were not '
+                            'transferred: {}'.format(len(relpaths), exc.output.exit_code, exc),
+                            # Vanishing sources are expected for logs which are still being written to,
+                            # a partial transfer due to an error is not.
+                            sentry=exc.output.exit_code != RSYNC_VANISHED_EXIT_CODE
+                        )
+                        return Result.Ok(True)
+
+                    self.warn('rsync command "{}" failed, retrying: {}'.format(" ".join(cmd), exc))
+                    return Result.Error(False)
+
+                return Result.Ok(True)
+
+            try:
+                gluetool.utils.wait(
+                    "batched rsync of {} files to '{}'".format(len(relpaths), destination),
+                    _run_rsync,
+                    timeout=self.option('retry-timeout'),
+                    tick=self.option('retry-tick')
+                )
+
+            except GlueError as error:
+                self.warn(
+                    'Batched rsync failed, falling back to per-file archiving: {}'.format(error),
+                    sentry=True
+                )
+                return sources
+
+        finally:
+            shutil.rmtree(batch_root, ignore_errors=True)
+
+        return []
+
+    def batch_chunks(self, batch: List[str]) -> List[List[str]]:
+        """
+        Split ``batch`` into chunks of at most ``batch-max-files`` files, to bound how much a single
+        failed batch can cost. Zero, the default, means no limit.
+        """
+
+        max_files = self.option('batch-max-files')
+
+        if not max_files or max_files < 1:
+            return [batch]
+
+        return [batch[index:index + max_files] for index in range(0, len(batch), max_files)]
+
     def run_rsync(
         self,
         source: str,
@@ -523,6 +835,13 @@ class Archive(gluetool.Module):
             try:
                 Command(cmd, logger=self.logger).run()
             except gluetool.GlueCommandError as exc:
+                # The source disappeared while rsync was reading it, which is expected for logs still
+                # being written to. Retrying cannot bring it back, and each retry costs another
+                # connection to the artifacts host.
+                if exc.output.exit_code == RSYNC_VANISHED_EXIT_CODE:
+                    self.warn('source {} vanished during rsync, skipping'.format(source))
+                    return Result.Ok(True)
+
                 self.warn('rsync command "{}" failed, retrying: {}'.format(" ".join(cmd), exc))
                 return Result.Error(False)
             return Result.Ok(True)
@@ -642,6 +961,10 @@ class Archive(gluetool.Module):
 
         map_stage = self.source_destination_map().get(stage, [])
 
+        # Glob matches deferred to a single batched rsync invocation, flushed once the whole map has
+        # been walked.
+        batch: List[str] = []
+
         for entry in map_stage:
             if entry.get('source') is None:
                 raise GlueError('Source path must be specified in source-destination-map')
@@ -658,7 +981,7 @@ class Archive(gluetool.Module):
             # If the entry['source'] is a wildcard, we need to use glob to find all the files
             for source in glob(sources, recursive=True):
 
-                if stage == 'progress' and self._archive_timer and self._archive_timer.finished.is_set():
+                if self._archiving_cancelled(stage):
                     self.debug('Archiving cancelled, stopping progress sync')
                     return
 
@@ -666,6 +989,11 @@ class Archive(gluetool.Module):
                     if excludes is not None and any(re.search(exclude_entry, source) for exclude_entry in excludes):
                         self.debug('Skipping {} because it matches exclude pattern {}'.format(source, excludes))
                         continue
+
+                    if self.is_batchable(stage, entry, source):
+                        batch.append(source)
+                        continue
+
                     options = []
 
                     if self.option('archive-mode') != 's3':
@@ -723,6 +1051,28 @@ class Archive(gluetool.Module):
                 except Exception as error:
                     # Log error and continue with another item
                     self.error(f'Failed to sync {sources}: {error}', sentry=True)
+
+        if not batch:
+            return
+
+        for chunk in self.batch_chunks(batch):
+            if self._archiving_cancelled(stage):
+                self.debug('Archiving cancelled, dropping the remaining batched files')
+                return
+
+            # Whatever the batch could not transfer is retried one by one, on the very same code path
+            # a non-batched pipeline uses.
+            for source in self.run_rsync_batch(chunk):
+                if self._archiving_cancelled(stage):
+                    self.debug('Archiving cancelled, stopping progress sync')
+                    return
+
+                try:
+                    self.run_rsync(source, '', source_copy=True)
+
+                except Exception as error:
+                    # Log error and continue with another item
+                    self.error(f'Failed to sync {source}: {error}', sentry=True)
 
     def _safe_archive_stage(self, stage: str = 'progress') -> None:
         """

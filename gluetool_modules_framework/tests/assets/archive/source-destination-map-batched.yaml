@@ -1,0 +1,31 @@
+---
+#
+# Map used by the batched archiving tests. The `execute` stage exercises every branch of
+# `is_batchable`, the entries are deliberately not in alphabetical order so that the sorting of the
+# `--files-from` list is actually asserted.
+#
+execute:
+  # batchable
+  - source: /batch-source-2
+  - source: /batch-source-1
+  - source: batch-relative/nested-3
+
+  # not batchable, `--chmod` applies to the whole invocation
+  - source: /batch-source-permissions
+    permissions: "666"
+
+  # not batchable, `--recursive` applies to the whole invocation
+  - source: /dir-archive-source
+
+  # not batchable, verification polls the artifacts location for this one file
+  - source: /batch-source-verify
+    verify: "true"
+
+  # the per entry exclude regexes are applied before batching
+  - source: /archive-excludes/*
+    exclude:
+      - /archive-excludes/exclude-1
+
+destroy:
+  # the destroy stage is never batched
+  - source: /batch-source-destroy

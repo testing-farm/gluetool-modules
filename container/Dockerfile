@@ -87,7 +87,7 @@ RUN    ln -s /CONFIG /etc/citool.d \
     && bash -c "sed -i 's/^rh-allow-sha1-signatures = no$/rh-allow-sha1-signatures = yes/g' /etc/crypto-policies/back-ends/opensslcnf.config" \
     # Install standard-test-roles from git
     # NOTE(mvadkert): there is no better way, mimics https://src.fedoraproject.org/rpms/standard-test-roles/blob/f42/f/standard-test-roles.spec
-    && git clone --depth 1 https://pagure.io/standard-test-roles.git /tmp/standard-test-roles \
+    && git clone https://pagure.io/standard-test-roles.git /tmp/standard-test-roles \
     && cp -rv /tmp/standard-test-roles/roles/standard-test-* /tmp/standard-test-roles/roles/str-common-* /etc/ansible/roles/ \
     && cp -f /tmp/standard-test-roles/scripts/str-filter-tests /usr/bin \
     && chmod +x /usr/bin/str-filter-tests \

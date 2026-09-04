@@ -154,7 +154,7 @@ def test_guest_setup(module, environment_index, tmpdir, monkeypatch):
 
     write_calls = [
         call('https://example.com/dummy1-1.0.1-1.x86_64.rpm https://example.com/dummy2-1.0.1-1.src.rpm https://example.com/dummy2-1.0.1-1.x86_64.rpm https://example.com/package-install-1.0.1-1.src.rpm https://example.com/package-install-1.0.2-1.src.rpm https://example.com/package-install-1.0.3-1.src.rpm https://example.com/package-install-1.0.3-1.x86_64.rpm'),
-        call('https://example.com/dummy1-1.0.1-1.x86_64.rpm https://example.com/package-install-1.0.3-1.x86_64.rpm')
+        call('dummy-path/dummy1-1.0.1-1.x86_64.rpm dummy-path/package-install-1.0.3-1.x86_64.rpm')
     ]
 
     mock_file.write.assert_has_calls(write_calls)
@@ -233,7 +233,7 @@ def test_guest_setup_forced_artifacts(module, tmpdir, monkeypatch):
 
     write_calls = [
         call('https://example.com/forced-1.x86_64.rpm'),
-        call('https://example.com/forced-1.x86_64.rpm')
+        call('dummy-path/forced-1.x86_64.rpm')
     ]
 
     mock_file.write.assert_has_calls(write_calls)

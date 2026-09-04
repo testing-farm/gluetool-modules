@@ -1199,7 +1199,7 @@ def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir, cl
 
     # COPR installation actually happened
     guest.execute.assert_any_call(
-        'dnf -y --setopt=gpgcheck=0 install --allowerasing http://copr/project/one.rpm http://copr/project/two.rpm')
+        'dnf -y --setopt=gpgcheck=0 install --allowerasing some-download-path/one.rpm some-download-path/two.rpm')
 
     # ... and is shown in sut_install_commands.sh
     with open(os.path.join(tmpdir, 'artifact-installation-guest0', INSTALL_COMMANDS_FILE)) as f:
@@ -1210,9 +1210,9 @@ curl -v http://copr/project.repo --retry 5 --output /etc/yum.repos.d/copr_build-
 cd some-download-path && curl -sL --retry 5 --remote-name-all -w "%{http_code} %{url_effective} %{filename_effective}\\n" http://copr/project/one.rpm http://copr/project/two.rpm http://copr/project/one.src.rpm http://copr/project/two.src.rpm | awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\'''',
             *generate_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
             '''\
-dnf -y --setopt=gpgcheck=0 reinstall http://copr/project/one.rpm || true
-dnf -y --setopt=gpgcheck=0 reinstall http://copr/project/two.rpm || true
-dnf -y --setopt=gpgcheck=0 install --allowerasing http://copr/project/one.rpm http://copr/project/two.rpm
+dnf -y --setopt=gpgcheck=0 reinstall some-download-path/one.rpm || true
+dnf -y --setopt=gpgcheck=0 reinstall some-download-path/two.rpm || true
+dnf -y --setopt=gpgcheck=0 install --allowerasing some-download-path/one.rpm some-download-path/two.rpm
 rpm -q one
 rpm -q two
 '''

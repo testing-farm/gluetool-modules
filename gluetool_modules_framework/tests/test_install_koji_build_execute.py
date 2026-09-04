@@ -255,9 +255,9 @@ def test_guest_setup_with_copr(module, local_guest, monkeypatch, tmpdir):
             '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
         ),
         *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='dummy-path'),
-        'dnf -y --setopt=gpgcheck=0 reinstall dummy_rpm_url1 || true',
-        'dnf -y --setopt=gpgcheck=0 reinstall dummy_rpm_url2 || true',
-        'dnf -y --setopt=gpgcheck=0 install --allowerasing dummy_rpm_url1 dummy_rpm_url2',
+        'dnf -y --setopt=gpgcheck=0 reinstall dummy-path/dummy_rpm_url1 || true',
+        'dnf -y --setopt=gpgcheck=0 reinstall dummy-path/dummy_rpm_url2 || true',
+        'dnf -y --setopt=gpgcheck=0 install --allowerasing dummy-path/dummy_rpm_url1 dummy-path/dummy_rpm_url2',
         'rpm -q dummy_rpm_names1',
         'rpm -q dummy_rpm_names2',
     ]

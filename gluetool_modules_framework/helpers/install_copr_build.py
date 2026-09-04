@@ -118,6 +118,7 @@ class InstallCoprBuild(gluetool.Module):
         )
 
         rpm_urls: List[str] = []
+        rpm_paths: List[str] = []
 
         try:
             guest.execute('command -v dnf')
@@ -163,40 +164,48 @@ class InstallCoprBuild(gluetool.Module):
                     if not re.search(excluded_packages_regexp_compiled, rpm_url)
                 ]
 
+            # Use locally downloaded RPMs instead of remote URLs to avoid download corruption (libdnf5)
+            copr_build_rpm_paths = [
+                os.path.join(download_path, os.path.basename(rpm_url))
+                for rpm_url in copr_build_rpm_urls
+            ]
+
             if not has_bootc:
 
                 # reinstall command has to be called for each rpm separately, hence list of rpms is used
-                if copr_build_rpm_urls:
+                if copr_build_rpm_paths:
                     if has_dnf:
                         # HACK: this is really awkward wrt. error handling:
                         #       https://bugzilla.redhat.com/show_bug.cgi?id=1831022
                         sut_installation.add_step(
                             'Reinstall packages',
                             'dnf -y --setopt=gpgcheck=0 reinstall {} || true',
-                            items=copr_build_rpm_urls
+                            items=copr_build_rpm_paths
                         )
                     else:
                         sut_installation.add_step('Reinstall packages', 'yum -y --setopt=gpgcheck=0 reinstall {}',
-                                                  items=copr_build_rpm_urls, ignore_exception=True)
+                                                  items=copr_build_rpm_paths, ignore_exception=True)
 
             # install command is called just once with all rpms followed, hence list of
             # rpms is joined to one item
             rpm_urls.extend(copr_build_rpm_urls)
+            rpm_paths.extend(copr_build_rpm_paths)
 
-        joined_rpm_urls = ' '.join(rpm_urls)
+        joined_rpm_paths = ' '.join(rpm_paths)
 
         if not has_bootc:
-            if joined_rpm_urls:
+            if joined_rpm_paths:
                 if has_dnf:
                     sut_installation.add_step(
-                        'Install packages', 'dnf -y --setopt=gpgcheck=0 install {}', items=joined_rpm_urls
+                        'Install packages', 'dnf -y --setopt=gpgcheck=0 install {}',
+                        items=joined_rpm_paths
                     )
                 else:
                     # yum install refuses downgrades, do it explicitly
                     sut_installation.add_step('Downgrade packages', 'yum -y --setopt=gpgcheck=0 downgrade {}',
-                                              items=joined_rpm_urls, ignore_exception=True)
+                                              items=joined_rpm_paths, ignore_exception=True)
                     sut_installation.add_step('Install packages', 'yum -y --setopt=gpgcheck=0 install {}',
-                                              items=joined_rpm_urls, ignore_exception=True)
+                                              items=joined_rpm_paths, ignore_exception=True)
         else:
             if rpm_urls:
 

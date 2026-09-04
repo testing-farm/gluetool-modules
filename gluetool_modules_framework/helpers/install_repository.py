@@ -221,11 +221,17 @@ class InstallRepository(gluetool.Module):
                 if not re.search(excluded_packages_regexp, rpm_file)
             ]
 
+        # Use locally downloaded RPMs instead of remote URLs to avoid download corruption (libdnf5)
+        local_packages = [
+            os.path.join(download_path, os.path.basename(package))
+            for package in packages
+        ]
+
         if not has_bootc:
             install_packages_filename = ""
             with NamedTemporaryFile(mode='w+', delete=False) as tmp_file:
                 install_packages_filename = tmp_file.name
-                tmp_file.write(' '.join(packages))
+                tmp_file.write(' '.join(local_packages))
                 tmp_file.flush()
 
             # Copy the package list to the guest

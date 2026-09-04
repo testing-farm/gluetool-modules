@@ -160,9 +160,9 @@ def test_loadable(module):
                 '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
             ),
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
-            'dnf -y --setopt=gpgcheck=0 reinstall https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm || true',
-            'dnf -y --setopt=gpgcheck=0 reinstall https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm || true',
-            'dnf -y --setopt=gpgcheck=0 install --allowerasing https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm',
+            'dnf -y --setopt=gpgcheck=0 reinstall some-download-path/dummy1_rpm_name1-1.0.1-el7.rpm || true',
+            'dnf -y --setopt=gpgcheck=0 reinstall some-download-path/dummy1_rpm_name2-1.0.1-el7.rpm || true',
+            'dnf -y --setopt=gpgcheck=0 install --allowerasing some-download-path/dummy1_rpm_name1-1.0.1-el7.rpm some-download-path/dummy1_rpm_name2-1.0.1-el7.rpm',
             'rpm -q dummy1_rpm_name1',
             'rpm -q dummy1_rpm_name2',
         ],
@@ -194,8 +194,8 @@ def test_loadable(module):
                 '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
             ),
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
-            'dnf -y --setopt=gpgcheck=0 reinstall https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm || true',
-            'dnf -y --setopt=gpgcheck=0 reinstall https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm || true',
+            'dnf -y --setopt=gpgcheck=0 reinstall some-download-path/dummy1_rpm_name1-1.0.1-el7.rpm || true',
+            'dnf -y --setopt=gpgcheck=0 reinstall some-download-path/dummy1_rpm_name2-1.0.1-el7.rpm || true',
             'curl -v dummy2_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project2-2.repo',
             (
                 'cd some-download-path && curl -sL --retry 5 --remote-name-all '
@@ -207,8 +207,8 @@ def test_loadable(module):
                 '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
             ),
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
-            'dnf -y --setopt=gpgcheck=0 reinstall https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm || true',
-            'dnf -y --setopt=gpgcheck=0 reinstall https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm || true',
+            'dnf -y --setopt=gpgcheck=0 reinstall some-download-path/dummy2_rpm_name1-1.0.1-el7.rpm || true',
+            'dnf -y --setopt=gpgcheck=0 reinstall some-download-path/dummy2_rpm_name2-1.0.1-el7.rpm || true',
             'curl -v dummy3_repo_url --retry 5 --output /etc/yum.repos.d/copr_build-copr_project3-3.repo',
             (
                 'cd some-download-path && curl -sL --retry 5 --remote-name-all '
@@ -220,16 +220,16 @@ def test_loadable(module):
                 '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
             ),
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
-            'dnf -y --setopt=gpgcheck=0 reinstall https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm || true',
-            'dnf -y --setopt=gpgcheck=0 reinstall https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm || true',
+            'dnf -y --setopt=gpgcheck=0 reinstall some-download-path/dummy3_rpm_name1-1.0.1-el7.rpm || true',
+            'dnf -y --setopt=gpgcheck=0 reinstall some-download-path/dummy3_rpm_name2-1.0.1-el7.rpm || true',
             (
                 'dnf -y --setopt=gpgcheck=0 install --allowerasing '
-                'https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm '
-                'https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm '
-                'https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm '
-                'https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm '
-                'https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm'
+                'some-download-path/dummy1_rpm_name1-1.0.1-el7.rpm '
+                'some-download-path/dummy1_rpm_name2-1.0.1-el7.rpm '
+                'some-download-path/dummy2_rpm_name1-1.0.1-el7.rpm '
+                'some-download-path/dummy2_rpm_name2-1.0.1-el7.rpm '
+                'some-download-path/dummy3_rpm_name1-1.0.1-el7.rpm '
+                'some-download-path/dummy3_rpm_name2-1.0.1-el7.rpm'
             ),
             'rpm -q dummy1_rpm_name1',
             'rpm -q dummy1_rpm_name2',
@@ -305,11 +305,11 @@ def test_loadable(module):
                 '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
             ),
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
-            'dnf -y --setopt=gpgcheck=0 reinstall https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm || true',
-            'dnf -y --setopt=gpgcheck=0 reinstall https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm || true',
+            'dnf -y --setopt=gpgcheck=0 reinstall some-download-path/dummy3_rpm_name1-1.0.1-el7.rpm || true',
+            'dnf -y --setopt=gpgcheck=0 reinstall some-download-path/dummy3_rpm_name2-1.0.1-el7.rpm || true',
             (
                 'dnf -y --setopt=gpgcheck=0 install --allowerasing '
-                'https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm'
+                'some-download-path/dummy3_rpm_name1-1.0.1-el7.rpm some-download-path/dummy3_rpm_name2-1.0.1-el7.rpm'
             ),
             'rpm -q dummy3_rpm_name1',
             'rpm -q dummy3_rpm_name2',
@@ -408,9 +408,9 @@ def test_loadable(module):
                 '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
             ),
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
-            'dnf -y --setopt=gpgcheck=0 reinstall https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm || true',
-            'dnf -y --setopt=gpgcheck=0 reinstall https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm || true',
-            'dnf -y --setopt=gpgcheck=0 install --allowerasing https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm',
+            'dnf -y --setopt=gpgcheck=0 reinstall some-download-path/dummy2_rpm_name1-1.0.1-el7.rpm || true',
+            'dnf -y --setopt=gpgcheck=0 reinstall some-download-path/dummy2_rpm_name2-1.0.1-el7.rpm || true',
+            'dnf -y --setopt=gpgcheck=0 install --allowerasing some-download-path/dummy2_rpm_name1-1.0.1-el7.rpm some-download-path/dummy2_rpm_name2-1.0.1-el7.rpm',
             'rpm -q dummy2_rpm_name1',
             'rpm -q dummy2_rpm_name2',
         ],
@@ -453,9 +453,9 @@ def test_loadable(module):
                 '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
             ),
             *generate_translated_createrepo_cmds(repo_name='test-artifacts', repo_path='some-download-path'),
-            'dnf -y --setopt=gpgcheck=0 reinstall https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm || true',
-            'dnf -y --setopt=gpgcheck=0 reinstall https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm || true',
-            'dnf -y --setopt=gpgcheck=0 install --allowerasing https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm',
+            'dnf -y --setopt=gpgcheck=0 reinstall some-download-path/dummy1_rpm_name1-1.0.1-el7.rpm || true',
+            'dnf -y --setopt=gpgcheck=0 reinstall some-download-path/dummy1_rpm_name2-1.0.1-el7.rpm || true',
+            'dnf -y --setopt=gpgcheck=0 install --allowerasing some-download-path/dummy1_rpm_name1-1.0.1-el7.rpm some-download-path/dummy1_rpm_name2-1.0.1-el7.rpm',
             'rpm -q dummy1_rpm_name1',
             'rpm -q dummy1_rpm_name2',
         ],
@@ -520,10 +520,10 @@ def test_no_dnf(module_shared_patched, tmpdir):
             '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\''
         ),
         *generate_createrepo_calls(repo_name='test-artifacts', repo_path='some-download-path'),
-        call('yum -y --setopt=gpgcheck=0 reinstall https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm'),
-        call('yum -y --setopt=gpgcheck=0 reinstall https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm'),
-        call('yum -y --setopt=gpgcheck=0 downgrade https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm'),
-        call('yum -y --setopt=gpgcheck=0 install https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm'),
+        call('yum -y --setopt=gpgcheck=0 reinstall some-download-path/dummy1_rpm_name1-1.0.1-el7.rpm'),
+        call('yum -y --setopt=gpgcheck=0 reinstall some-download-path/dummy1_rpm_name2-1.0.1-el7.rpm'),
+        call('yum -y --setopt=gpgcheck=0 downgrade some-download-path/dummy1_rpm_name1-1.0.1-el7.rpm some-download-path/dummy1_rpm_name2-1.0.1-el7.rpm'),
+        call('yum -y --setopt=gpgcheck=0 install some-download-path/dummy1_rpm_name1-1.0.1-el7.rpm some-download-path/dummy1_rpm_name2-1.0.1-el7.rpm'),
         call('rpm -q dummy1_rpm_name1'),
         call('rpm -q dummy1_rpm_name2')
     ]

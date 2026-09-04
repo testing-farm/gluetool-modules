@@ -348,7 +348,7 @@ def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest
             },
             TestingEnvironment('x86_64', 'rhel-9'),
             '''# tmt reproducer
-dummytmt --root some-tmt-root run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$ tests --name some-name''',
+dummytmt --root some-tmt-root --allow-unsafe-behavior=provision/connect.reboot-commands run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$ tests --name some-name''',
             None,
             None
         ),
@@ -357,7 +357,7 @@ dummytmt --root some-tmt-root run --all --verbose provision --how virtual --imag
             {},
             TestingEnvironment('x86_64', 'rhel-9'),
             '''# tmt reproducer
-dummytmt --root some-tmt-root run --all --verbose provision --how container plan --name ^plan1$''',
+dummytmt --root some-tmt-root --allow-unsafe-behavior=provision/connect.reboot-commands run --all --verbose provision --how container plan --name ^plan1$''',
             None,
             None
         ),
@@ -375,7 +375,7 @@ dummytmt --root some-tmt-root run --all --verbose provision --how container plan
             ),
             """# tmt reproducer
 curl -LO tmt-environment-lan1.yaml
-dummytmt --root some-tmt-root run --all --verbose -e @tmt-environment-lan1.yaml provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+dummytmt --root some-tmt-root --allow-unsafe-behavior=provision/connect.reboot-commands run --all --verbose -e @tmt-environment-lan1.yaml provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
             """user_variable1: user_value1
 user_variable2: user_value2
 user_variable3: user_value3
@@ -389,7 +389,7 @@ secret_variable2: secret_value2
             {},
             TestingEnvironment('x86_64', 'rhel-9', tmt={'context': {'distro': 'rhel', 'trigger': 'push'}}),
             """# tmt reproducer
-dummytmt --root some-tmt-root -c distro=rhel -c trigger=push run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+dummytmt --root some-tmt-root -c distro=rhel -c trigger=push --allow-unsafe-behavior=provision/connect.reboot-commands run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
             None,
             None
         ),
@@ -403,7 +403,7 @@ dummytmt --root some-tmt-root -c distro=rhel -c trigger=push run --all --verbose
             {},
             TestingEnvironment('x86_64', 'rhel-9'),
             """# tmt reproducer
-dummytmt --root some-tmt-root run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+dummytmt --root some-tmt-root --allow-unsafe-behavior=provision/connect.reboot-commands run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
             None,
             None
         ),
@@ -419,7 +419,7 @@ dummytmt --root some-tmt-root run --all --verbose provision --how virtual --imag
             TestingEnvironment('x86_64', 'rhel-9', tmt={'environment': {'VARIABLE1': 'VALUE1', 'VARIABLE2': 'VALUE2'}}),
             """# tmt reproducer
 export VARIABLE1=hidden VARIABLE2=hidden
-dummytmt --root some-tmt-root run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+dummytmt --root some-tmt-root --allow-unsafe-behavior=provision/connect.reboot-commands run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
             None,
             None
         ),
@@ -431,7 +431,7 @@ dummytmt --root some-tmt-root run --all --verbose provision --how virtual --imag
             TestingEnvironment('x86_64', 'rhel-9', tmt={'environment': {'VARIABLE1': 'VALUE1', 'VARIABLE2': 'VALUE2'}}),
             """# tmt reproducer
 export VARIABLE1=hidden VARIABLE2=hidden
-dummytmt --root some-tmt-root run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+dummytmt --root some-tmt-root --allow-unsafe-behavior=provision/connect.reboot-commands run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
             None,
             (gluetool.glue.GlueError, "Environment variable 'VARIABLE2' is not allowed to be exposed to the tmt process")
         ),
@@ -459,7 +459,7 @@ dummytmt --root some-tmt-root run --all --verbose provision --how virtual --imag
                 }
             }),
             """# tmt reproducer
-dummytmt --root some-tmt-root run --all --verbose discover --args1 discover --args2 prepare --args1 prepare --args2 provision --how virtual --image guest-compose report --args1 report --args2 finish --args1 --args2 finish --args3 plan --name ^plan1$""",  # noqa
+dummytmt --root some-tmt-root --allow-unsafe-behavior=provision/connect.reboot-commands run --all --verbose discover --args1 discover --args2 prepare --args1 prepare --args2 provision --how virtual --image guest-compose report --args1 report --args2 finish --args1 --args2 finish --args3 plan --name ^plan1$""",  # noqa
             None,
             None
         ),
@@ -568,7 +568,7 @@ def test_tmt_output_dir(
             r'''\# tmt reproducer
 git clone --depth 1 -b myfix http://example.com/git/myproject testcode
 cd testcode
-dummytmt --root some-tmt-root run --all --verbose provision --how virtual --image guest-compose plan --name \^myfix\$ tests --name some-name'''  # noqa
+dummytmt --root some-tmt-root --allow-unsafe-behavior=provision/connect\.reboot-commands run --all --verbose provision --how virtual --image guest-compose plan --name \^myfix\$ tests --name some-name'''  # noqa
         ),
         (  # Test case no. 2
             {'context-template-file': [os.path.abspath(os.path.join(ASSETS_DIR, 'context-template.yaml'))]},
@@ -577,7 +577,7 @@ dummytmt --root some-tmt-root run --all --verbose provision --how virtual --imag
             r'''\# tmt reproducer
 git clone --depth 1 -b myfix http://example.com/git/myproject testcode
 cd testcode
-dummytmt --root some-tmt-root --context=@[a-zA-Z0-9\/\._-]+ run --all --verbose provision --how virtual --image guest-compose plan --name \^myfix\$'''  # noqa
+dummytmt --root some-tmt-root --context=@[a-zA-Z0-9\/\._-]+ --allow-unsafe-behavior=provision/connect\.reboot-commands run --all --verbose provision --how virtual --image guest-compose plan --name \^myfix\$'''  # noqa
         ),
         (  # Test case no. 3
             {},
@@ -586,7 +586,7 @@ dummytmt --root some-tmt-root --context=@[a-zA-Z0-9\/\._-]+ run --all --verbose 
             r'''\# tmt reproducer
 git clone --depth 1 -b myfix http://hidden@example.com/git/myproject testcode
 cd testcode
-dummytmt --root some-tmt-root run --all --verbose provision --how virtual --image guest-compose plan --name \^myfix\$'''  # noqa
+dummytmt --root some-tmt-root --allow-unsafe-behavior=provision/connect\.reboot-commands run --all --verbose provision --how virtual --image guest-compose plan --name \^myfix\$'''  # noqa
         ),
     ]
 )
@@ -1229,7 +1229,7 @@ git -C testcode checkout --no-recurse-submodules gluetool/myfix
 git -C testcode submodule update --init --recursive
 cd testcode
 curl -o guest-setup-0.sh -L {tmpdir}/artifact-installation-guest0/{INSTALL_COMMANDS_FILE}
-dummytmt --root some-tmt-root run --until provision --verbose provision --how virtual --image guest-compose plan --name ^plan1$
+dummytmt --root some-tmt-root --allow-unsafe-behavior=provision/connect.reboot-commands run --until provision --verbose provision --how virtual --image guest-compose plan --name ^plan1$
 dummytmt --root some-tmt-root run --last login < guest-setup-0.sh
 dummytmt --root some-tmt-root run --last --since prepare'''
 
@@ -1330,7 +1330,7 @@ git -C testcode checkout --no-recurse-submodules gluetool/myfix
 git -C testcode submodule update --init --recursive
 cd testcode
 curl -o guest-setup-0.sh -L {tmpdir}/artifact-installation-guest0/{INSTALL_COMMANDS_FILE}
-dummytmt --root some-tmt-root run --until provision --verbose provision --how virtual --image guest-compose plan --name ^plan1$
+dummytmt --root some-tmt-root --allow-unsafe-behavior=provision/connect.reboot-commands run --until provision --verbose provision --how virtual --image guest-compose plan --name ^plan1$
 dummytmt --root some-tmt-root run --last login < guest-setup-0.sh
 dummytmt --root some-tmt-root run --last --since prepare'''
 

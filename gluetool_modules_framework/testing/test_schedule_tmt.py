@@ -1161,7 +1161,6 @@ class TestScheduleTMT(Module):
         reproducer = command.copy()
 
         reproducer.extend([
-            '--allow-unsafe-behavior=provision/connect.reboot-commands',
             'run',
             '--until provision' if guest_setups else '--all',
             '--verbose'

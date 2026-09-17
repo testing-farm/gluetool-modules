@@ -70,8 +70,24 @@ class ResponseDecryptError():
     status_code = 400
     text = "Decryption failed"
 
+    # Mimic `requests.Response`, which is falsy for any error status code
+    def __bool__(self):
+        return False
+
     def json(self):
         return {"error": "Decryption failed"}
+
+
+class ResponseDecryptNoKeyPair():
+    status_code = 404
+    text = "No such entity"
+
+    # Mimic `requests.Response`, which is falsy for any error status code
+    def __bool__(self):
+        return False
+
+    def json(self):
+        return {"code": 404, "message": "No such entity"}
 
 
 class Response404(ResponseMock):
@@ -125,6 +141,9 @@ class RequestsMock():
     def request_decrypt_error(self, url, json, headers=None):
         return ResponseDecryptError()
 
+    def request_decrypt_no_key_pair(self, url, json, headers=None):
+        return ResponseDecryptNoKeyPair()
+
 
 @contextlib.contextmanager
 def requests_mock_contextmanager():
@@ -154,6 +173,7 @@ def fixture_module(monkeypatch):
         'internal-api-url': 'fake-internal-url',
         'public-api-url': 'fake-public-url',
         'api-key': 'fakekey',
+        'retry-timeout': 1,
         'retry-tick': 10,
     })
     return module
@@ -567,6 +587,23 @@ def test_in_repository_config(monkeypatch, module, requests_mock, request1, log,
         ],
         ['No valid secret value found for key `SECRET_TOKEN_KEY`.']
     ),
+    (  # Config with no key pair for the repository, e.g. secrets copied over from another repository
+        {'environments': {'secrets': {'SECRET_TOKEN_KEY': ['token,no_key_pair_string']}}},
+        [
+            {'some': 'secrets'},
+            {'secret_key': 'secret-value'}
+        ],
+        ['No valid secret value found for key `SECRET_TOKEN_KEY`.']
+    ),
+    (  # Config with no key pair for the first secret, success for second
+        {'environments': {'secrets': {'SECRET_TOKEN_KEY': [
+            'token,no_key_pair_string', 'token,base64encodedencryptedstring']}}},
+        [
+            {'some': 'secrets', 'SECRET_TOKEN_KEY': 'hello world'},
+            {'secret_key': 'secret-value', 'SECRET_TOKEN_KEY': 'hello world'}
+        ],
+        []
+    ),
 ])
 def test_in_repository_config_secret_search(monkeypatch, module, requests_mock, request1, log, config, expected_secrets, expected_logs):
     def mock_post_with_decrypt_logic(self, url, json, headers=None):
@@ -574,6 +611,8 @@ def test_in_repository_config_secret_search(monkeypatch, module, requests_mock, 
             encrypted_message = json.get('message', '')
             if encrypted_message in ['token,invalid_encrypted_string', 'token,invalid_encrypted_string1', 'token,invalid_encrypted_string2']:
                 return ResponseDecryptError()
+            elif encrypted_message == 'token,no_key_pair_string':
+                return ResponseDecryptNoKeyPair()
             elif encrypted_message == 'token,base64encodedencryptedstring':
                 return ResponseDecrypt()
         return original_post(url, json, headers)
@@ -616,6 +655,15 @@ def test_in_repository_config_secret_search(monkeypatch, module, requests_mock, 
         ],
         []
     ),
+    (  # Config with no key pair for the first secret, success for second
+        {'environments': {'tmt': {'environment': {'SECRET_TOKEN_KEY': [
+            'token,no_key_pair_string', 'token,base64encodedencryptedstring']}}}},
+        [
+            {'SECRET_TOKEN_KEY': 'hello world'},
+            {'foo': 'foo-value', 'bar': 'bar-value', 'SECRET_TOKEN_KEY': 'hello world'}
+        ],
+        []
+    ),
 ])
 def test_in_repository_config_tmt_environment_search(monkeypatch, module, requests_mock, request1, log, config,
                                                      expected_tmt_environment, expected_logs):
@@ -623,6 +671,8 @@ def test_in_repository_config_tmt_environment_search(monkeypatch, module, reques
         encrypted_message = json.get('message', '')
         if encrypted_message in ['token,invalid_encrypted_string', 'token,invalid_encrypted_string1', 'token,invalid_encrypted_string2']:
             return ResponseDecryptError()
+        elif encrypted_message == 'token,no_key_pair_string':
+            return ResponseDecryptNoKeyPair()
         elif encrypted_message == 'token,base64encodedencryptedstring':
             return ResponseDecrypt()
 

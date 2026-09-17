@@ -57,6 +57,7 @@ RUN    ln -s /CONFIG /etc/citool.d \
     && dnf copr -y enable @teemtee/stable \
     && dnf -y install fmf-1.7.0 \
                       tmt-1.78.0 \
+                      tmt+prepare-artifact-1.78.0 \
                       tmt+provision-container-1.78.0 \
                       tmt+provision-virtual-1.78.0 \
                       tmt+report-polarion-1.78.0 \

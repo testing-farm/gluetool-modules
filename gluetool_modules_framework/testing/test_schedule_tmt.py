@@ -4,6 +4,7 @@
 import re
 import os
 import os.path
+import shutil
 import stat
 import sys
 import tempfile
@@ -630,7 +631,8 @@ class TestScheduleTMT(Module):
     def _prepare_tmt_env_file(self,
                               testing_environment_constraints: TestingEnvironment,
                               plan: str,
-                              repodir: str) -> Optional[str]:
+                              repodir: str,
+                              work_dirpath: str) -> Optional[str]:
         # variables from testing-farm environment
         variables: Dict[str, Union[str, Secret[str]]] = {}
 
@@ -648,11 +650,18 @@ class TestScheduleTMT(Module):
             # we MUST use a dedicated env file for each plan, to mitigate race conditions
             # plans are handled in threads ...
             tmt_env_file = TMT_ENV_FILE.format(plan[1:].replace('/', '-'))
+
+            # The file the reproducer points at lives in the plan's work directory, because that is what ends up
+            # in the pipeline artifacts. The repository clone is not archived, see TFT-5141.
             # TODO: teach `gluetool.utils.dump_yaml` how to work with `secret_type.Secret`
             gluetool.utils.dump_yaml(
                 {k: (v._dangerous_extract() if isinstance(v, Secret) else v) for k, v in variables.items()},
-                os.path.join(repodir, tmt_env_file)
+                os.path.join(work_dirpath, tmt_env_file)
             )
+
+            # tmt refuses environment files which lie outside of its metadata tree root, i.e. the repository clone,
+            # so it has to consume a copy stored there.
+            shutil.copy(os.path.join(work_dirpath, tmt_env_file), os.path.join(repodir, tmt_env_file))
 
             return tmt_env_file
 
@@ -948,12 +957,12 @@ class TestScheduleTMT(Module):
             plans = self._plans_from_git(repodir, context_files, tec, self.option('plan-filter'))
 
             for plan in plans:
-                tmt_env_file = self._prepare_tmt_env_file(tec, plan, repodir)
-
                 # Prepare environment for test schedule entry execution
                 schedule_entry = TestScheduleEntry(root_logger, tec, plan, repodir)
                 work_dirpath = self._prepare_environment(schedule_entry)
                 schedule_entry.work_dirpath = work_dirpath
+
+                tmt_env_file = self._prepare_tmt_env_file(tec, plan, repodir, work_dirpath)
 
                 with tempfile.TemporaryDirectory() as tmpdir:
                     if self._is_plan_empty(
@@ -1194,8 +1203,8 @@ class TestScheduleTMT(Module):
                 'curl -LO {}'.format(
                     artifacts_location(
                         self,
-                        os.path.relpath(os.path.join(
-                            schedule_entry.repodir, schedule_entry.tmt_env_file)), logger=self.logger)
+                        os.path.relpath(os.path.join(work_dirpath, schedule_entry.tmt_env_file)),
+                        logger=self.logger)
                 )
             )
 

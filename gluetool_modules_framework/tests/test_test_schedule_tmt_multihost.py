@@ -191,9 +191,11 @@ def test_run_plan_rejects_unsafe_ssh_environment(module, monkeypatch, tmpdir):
         'plan1',
         tmpdir
     )
-    schedule_entry.tmt_env_file = module._prepare_tmt_env_file(testing_environment, 'plan1', tmpdir)
     schedule_entry.work_dirpath = os.path.join(tmpdir, 'some-workdir')
     os.mkdir(schedule_entry.work_dirpath)
+    schedule_entry.tmt_env_file = module._prepare_tmt_env_file(
+        testing_environment, 'plan1', tmpdir, schedule_entry.work_dirpath
+    )
 
     with monkeypatch.context() as m:
         _set_run_outputs(m, 'dummy test done')
@@ -590,7 +592,7 @@ dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic
                 secrets={'secret_variable1': 'secret_value1', 'secret_variable2': 'secret_value2'}
             ),
             """# tmt reproducer
-curl -LO tmt-environment-lan1.yaml
+curl -LO some-workdir/tmt-environment-lan1.yaml
 dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations -e @tmt-environment-lan1.yaml plan --name '^plan1$' provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script 'echo hello'""",  # noqa
             """user_variable1: user_value1
 user_variable2: user_value2
@@ -753,9 +755,11 @@ def test_tmt_output_dir(
         tmpdir
     )
 
-    schedule_entry.tmt_env_file = module._prepare_tmt_env_file(testing_environment, 'plan1', tmpdir)
     schedule_entry.work_dirpath = os.path.join(tmpdir, 'some-workdir')
     os.mkdir(schedule_entry.work_dirpath)
+    schedule_entry.tmt_env_file = module._prepare_tmt_env_file(
+        testing_environment, 'plan1', tmpdir, schedule_entry.work_dirpath
+    )
 
     # make a copy of variables
     variables = testing_environment.variables.copy() if testing_environment.variables else None
@@ -794,15 +798,20 @@ def test_tmt_output_dir(
         print(expected_reproducer)
         assert c == expected_reproducer.format(tmpdir=tmpdir, work_dirpath=schedule_entry.work_dirpath)
 
-    tmt_environment_file = os.path.join(tmpdir, schedule_entry.repodir, 'tmt-environment-lan1.yaml')
-    if expected_environment:
-        with open(tmt_environment_file) as f:
-            c = f.read()
-            print(c)
-            print(expected_environment)
-            assert c == expected_environment
-    else:
-        assert not os.path.exists(tmt_environment_file)
+    # the archived copy the reproducer points at, plus the copy tmt consumes from the repository clone
+    tmt_environment_files = [
+        os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-environment-lan1.yaml'),
+        os.path.join(tmpdir, schedule_entry.repodir, 'tmt-environment-lan1.yaml'),
+    ]
+    for tmt_environment_file in tmt_environment_files:
+        if expected_environment:
+            with open(tmt_environment_file) as f:
+                c = f.read()
+                print(c)
+                print(expected_environment)
+                assert c == expected_environment
+        else:
+            assert not os.path.exists(tmt_environment_file)
 
     expected_tmt_environment = {}
 
@@ -1075,14 +1084,17 @@ def test_apply_test_filter(module, monkeypatch, tmpdir, test_filter, test_name, 
     mock_command = MagicMock(return_value=MagicMock(run=mock_command_run))
     monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt_multihost, 'Command', mock_command)
 
-    tmt_env_file = module._prepare_tmt_env_file(testing_environment, 'plan1', tmpdir)
+    work_dirpath = os.path.join(tmpdir, 'some-workdir')
+    os.mkdir(work_dirpath)
+
+    tmt_env_file = module._prepare_tmt_env_file(testing_environment, 'plan1', tmpdir, work_dirpath)
 
     assert not module._is_plan_empty(
         plan='plan1',
         tmt_env_file=tmt_env_file,
         repodir=repodir,
         testing_environment=testing_environment,
-        work_dirpath=tmpdir,
+        work_dirpath=work_dirpath,
         test_filter=test_filter,
         test_name=test_name
     )

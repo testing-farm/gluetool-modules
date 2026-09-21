@@ -178,9 +178,11 @@ def test_run_plan_rejects_unsafe_ssh_environment(module, guest, monkeypatch, tmp
         tmpdir
     )
     schedule_entry.guest = guest
-    schedule_entry.tmt_env_file = module._prepare_tmt_env_file(testing_environment, 'plan1', tmpdir)
     schedule_entry.work_dirpath = os.path.join(tmpdir, 'some-workdir')
     os.mkdir(schedule_entry.work_dirpath)
+    schedule_entry.tmt_env_file = module._prepare_tmt_env_file(
+        testing_environment, 'plan1', tmpdir, schedule_entry.work_dirpath
+    )
 
     with monkeypatch.context() as m:
         _set_run_outputs(m, 'dummy test done')
@@ -374,7 +376,7 @@ dummytmt --root some-tmt-root run --all --verbose provision --how container plan
                 secrets={'secret_variable1': 'secret_value1', 'secret_variable2': 'secret_value2'}
             ),
             """# tmt reproducer
-curl -LO tmt-environment-lan1.yaml
+curl -LO some-workdir/tmt-environment-lan1.yaml
 dummytmt --root some-tmt-root run --all --verbose -e @tmt-environment-lan1.yaml provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
             """user_variable1: user_value1
 user_variable2: user_value2
@@ -489,9 +491,11 @@ def test_tmt_output_dir(
 
     schedule_entry.guest = guest
 
-    schedule_entry.tmt_env_file = module._prepare_tmt_env_file(testing_environment, 'plan1', tmpdir)
     schedule_entry.work_dirpath = os.path.join(tmpdir, 'some-workdir')
     os.mkdir(schedule_entry.work_dirpath)
+    schedule_entry.tmt_env_file = module._prepare_tmt_env_file(
+        testing_environment, 'plan1', tmpdir, schedule_entry.work_dirpath
+    )
 
     if module._config.get('how') == 'local':
         schedule_entry.guest = StaticLocalhostGuest(module, 'localhost')
@@ -533,15 +537,20 @@ def test_tmt_output_dir(
         print(expected_reproducer)
         assert c == expected_reproducer
 
-    tmt_environment_file = os.path.join(tmpdir, schedule_entry.repodir, 'tmt-environment-lan1.yaml')
-    if expected_environment:
-        with open(tmt_environment_file) as f:
-            c = f.read()
-            print(c)
-            print(expected_environment)
-            assert c == expected_environment
-    else:
-        assert not os.path.exists(tmt_environment_file)
+    # the archived copy the reproducer points at, plus the copy tmt consumes from the repository clone
+    tmt_environment_files = [
+        os.path.join(tmpdir, schedule_entry.work_dirpath, 'tmt-environment-lan1.yaml'),
+        os.path.join(tmpdir, schedule_entry.repodir, 'tmt-environment-lan1.yaml'),
+    ]
+    for tmt_environment_file in tmt_environment_files:
+        if expected_environment:
+            with open(tmt_environment_file) as f:
+                c = f.read()
+                print(c)
+                print(expected_environment)
+                assert c == expected_environment
+        else:
+            assert not os.path.exists(tmt_environment_file)
 
     expected_tmt_environment = {}
 
@@ -844,7 +853,10 @@ def test_apply_test_filter(module, monkeypatch, tmpdir, test_filter, test_name, 
     mock_command = MagicMock(return_value=MagicMock(run=mock_command_run))
     monkeypatch.setattr(gluetool_modules_framework.testing.test_schedule_tmt, 'Command', mock_command)
 
-    tmt_env_file = module._prepare_tmt_env_file(testing_environment, 'plan1', tmpdir)
+    work_dirpath = os.path.join(tmpdir, 'some-workdir')
+    os.mkdir(work_dirpath)
+
+    tmt_env_file = module._prepare_tmt_env_file(testing_environment, 'plan1', tmpdir, work_dirpath)
 
     assert not module._is_plan_empty(
         plan='plan1',
@@ -852,7 +864,7 @@ def test_apply_test_filter(module, monkeypatch, tmpdir, test_filter, test_name, 
         repodir=repodir,
         context_files=context_files,
         testing_environment=testing_environment,
-        work_dirpath=tmpdir,
+        work_dirpath=work_dirpath,
         test_filter=test_filter,
         test_name=test_name
     )

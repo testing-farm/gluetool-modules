@@ -3,6 +3,7 @@
 
 import pytest
 import os
+import shutil
 import tempfile
 
 from gluetool.utils import dump_yaml
@@ -474,3 +475,109 @@ def test_hide_secrets_stream_chunk_boundary(stream_module, secret, needle, separ
 
         assert needle not in result
         assert result.count('hidden') == len(offsets)
+
+
+def _archive_tick(module, monkeypatch, original):
+    """
+    Replay what `archive` does with a source for one tick: copy it, redact the copy on behalf
+    of the original, throw the copy away. Returns the names of the files which were actually
+    read to look for secrets, as opposed to skipped as unchanged since the last tick.
+    """
+    scanned = []
+    file_contains_secret = HideSecrets._file_contains_secret
+
+    def _recording_file_contains_secret(path, matchers):
+        scanned.append(os.path.basename(path))
+        return file_contains_secret(module, path, matchers)
+
+    monkeypatch.setattr(module, '_file_contains_secret', _recording_file_contains_secret)
+
+    copy_parent = tempfile.mkdtemp()
+    try:
+        copy = os.path.join(copy_parent, os.path.basename(original))
+        shutil.copytree(original, copy, symlinks=True)
+        module.hide_secrets(search_path=copy, cache_path=original)
+    finally:
+        shutil.rmtree(copy_parent)
+
+    return sorted(scanned)
+
+
+@pytest.mark.parametrize('contents, change, expected_scans', [
+    # A quiet, clean source is read once, then skipped on every later tick.
+    ('clean log line\n', None, [['live.log', 'static.log'], [], []]),
+    # A file which changes is read again on the tick after it changed, and only that file.
+    ('clean log line\n', 'append', [['live.log', 'static.log'], [], ['live.log']]),
+    # A secret nobody knew about when the files were declared clean makes all of them suspect.
+    ('mentions later-learned-secret\n', 'new-secret', [['live.log', 'static.log'], [], ['live.log', 'static.log']]),
+    # A file with a secret is only ever redacted on the copy, so the original - which still
+    # holds the secret - must never be remembered as clean.
+    ('value: a-known-secret\n', None, [['live.log', 'static.log'], ['live.log'], ['live.log']]),
+])
+def test_hide_secrets_stream_skips_unchanged_files_across_copies(
+    monkeypatch, stream_module, contents, change, expected_scans
+):
+    # The redaction happens on a throwaway copy, so what is learned there has to be filed
+    # under the original the copy was taken from - otherwise every tick starts from scratch.
+    module = stream_module
+    module.add_secrets(['a-known-secret'])
+
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        original = os.path.join(tmpdir, 'work-dir')
+        os.mkdir(original)
+
+        live = os.path.join(original, 'live.log')
+        with open(live, 'w') as f:
+            f.write(contents)
+
+        with open(os.path.join(original, 'static.log'), 'w') as f:
+            f.write('clean static content\n')
+
+        scans = [_archive_tick(module, monkeypatch, original), _archive_tick(module, monkeypatch, original)]
+
+        if change == 'append':
+            with open(live, 'a') as f:
+                f.write('one more clean line\n')
+
+        elif change == 'new-secret':
+            module.add_secrets(['later-learned-secret'])
+
+        scans.append(_archive_tick(module, monkeypatch, original))
+
+        assert scans == expected_scans
+
+        # The cache describes the original, and does not grow with each throwaway copy.
+        assert all(key.startswith(original) for key in module._clean_files)
+        assert len(module._clean_files) <= 2
+
+        # The original itself is never touched - it is the copy that gets redacted.
+        with open(live, 'r') as f:
+            assert f.read().startswith(contents)
+
+
+def test_hide_secrets_stream_cached_stat_describes_what_was_scanned(stream_module):
+    # The cache entry written after a rewrite must describe the bytes we scrubbed, so that
+    # anything appended afterwards invalidates it instead of being taken for ours.
+    module = stream_module
+    module.add_secrets(['scrub-me'])
+
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        path = os.path.join(tmpdir, 'log.txt')
+        with open(path, 'w') as f:
+            f.write('value: scrub-me\n')
+
+        module.hide_secrets(search_path=tmpdir)
+
+        stat_result = os.stat(path)
+        assert module._clean_files[path] == (stat_result.st_size, stat_result.st_mtime_ns)
+
+        with open(path, 'a') as f:
+            f.write('appended after the scrub: scrub-me\n')
+
+        stat_result = os.stat(path)
+        assert module._clean_files[path] != (stat_result.st_size, stat_result.st_mtime_ns)
+
+        module.hide_secrets(search_path=tmpdir)
+
+        with open(path, 'r') as f:
+            assert 'scrub-me' not in f.read()

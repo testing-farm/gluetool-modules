@@ -11,7 +11,7 @@ import gluetool
 from dataclasses import dataclass, field
 from gluetool.result import Result
 
-from typing import Any, Iterator, List, Optional, Set, Union  # noqa
+from typing import Any, Dict, Iterator, List, Optional, Set, Tuple, Union  # noqa
 
 DEFAULT_RETRY_TIMEOUT = 30
 DEFAULT_RETRY_TICK = 10
@@ -138,15 +138,27 @@ class HideSecrets(gluetool.Module):
     }
     shared_functions = ['add_secrets', 'hide_secrets']
 
-    def add_secrets(self, secret: Union[str, List[str]]) -> None:
-        if isinstance(secret, list):
-            self._secrets.update(secret)
-        else:
-            self._secrets.add(secret)
-
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(HideSecrets, self).__init__(*args, **kwargs)
         self._secrets: Set[str] = set()
+
+        # Used by the 'stream' implementation only: maps a file path to the (size, mtime_ns)
+        # it had the last time it was scanned and found to contain none of the known secrets.
+        # Lets repeated `hide_secrets()` calls - e.g. archive's parallel-archiving tick - skip
+        # files that have not changed since they were last verified clean. Entries are keyed on
+        # where the file lives for good, which is not necessarily where we scanned it, see
+        # `_cache_key`.
+        self._clean_files: Dict[str, Tuple[int, int]] = {}
+
+    def add_secrets(self, secret: Union[str, List[str]]) -> None:
+        new_values = set(secret) if isinstance(secret, list) else {secret}
+
+        # A secret we have not seen before invalidates the whole "known clean" cache: any
+        # previously-scanned file could contain it and was never checked against it.
+        if not new_values.issubset(self._secrets):
+            self._clean_files = {}
+
+        self._secrets.update(new_values)
 
     def _iter_regular_files(self, search_path: str) -> Iterator[str]:
         """
@@ -230,6 +242,27 @@ class HideSecrets(gluetool.Module):
 
                 carry = data[-matchers.overlap:] if matchers.overlap else b''
 
+    def _cache_key(self, path: str, search_path: str, cache_path: Optional[str]) -> str:
+        """
+        Where `path` is going to live once the caller is done with it, which is what the
+        clean-file cache has to be keyed on.
+
+        That is `path` itself, unless the caller handed us a throwaway copy of a tree to work
+        on (`cache_path` is then the original it was copied from). In that case the entry
+        belongs to the original: the copy is deleted moments later, so keying on it would both
+        leak entries and never answer a later question. `shutil.copy2`/`copytree` preserve size
+        and nanosecond mtime, so a stat taken from the copy describes the original just as
+        well - and if the original has changed since the copy was taken, the stats no longer
+        match and the entry is simply ignored, which is the safe direction.
+        """
+        if cache_path is None:
+            return path
+
+        if path == search_path:
+            return cache_path
+
+        return os.path.join(cache_path, os.path.relpath(path, search_path))
+
     @staticmethod
     def _fsync_directory(directory: str) -> None:
         dir_fd = os.open(directory, os.O_RDONLY)
@@ -238,9 +271,13 @@ class HideSecrets(gluetool.Module):
         finally:
             os.close(dir_fd)
 
-    def _rewrite_file(self, path: str, matchers: _StreamMatchers) -> None:
+    def _rewrite_file(self, path: str, matchers: _StreamMatchers) -> Tuple[int, int]:
         """
         Rewrite `path` with every secret redacted, atomically.
+
+        Returns the `(size, mtime_ns)` of the file we wrote, sampled *before* it is moved into
+        place. Sampling it afterwards would risk attributing somebody else's concurrent append
+        to our own write and caching those never-scanned bytes as clean.
         """
         directory = os.path.dirname(path) or '.'
         original_mode = stat.S_IMODE(os.stat(path).st_mode)
@@ -273,6 +310,10 @@ class HideSecrets(gluetool.Module):
                 tmp_file.flush()
                 os.fsync(tmp_file.fileno())
 
+                # Taken while the file is still ours alone - see the docstring. Neither fsync,
+                # close, chmod nor the rename below change the mtime we sample here.
+                tmp_stat = os.fstat(tmp_file.fileno())
+
             os.chmod(tmp_path, original_mode)
             os.replace(tmp_path, path)
 
@@ -290,12 +331,35 @@ class HideSecrets(gluetool.Module):
         except OSError as exc:
             self.debug("could not fsync directory '{}': {}".format(directory, exc))
 
-    def _scrub_file(self, path: str, matchers: _StreamMatchers) -> None:
-        # Files without any secret are never rewritten, so their inode and mtime are preserved.
-        if self._file_contains_secret(path, matchers):
-            self._rewrite_file(path, matchers)
+        return tmp_stat.st_size, tmp_stat.st_mtime_ns
 
-    def _hide_secrets_stream(self, search_path: str) -> None:
+    def _scrub_file(self, path: str, matchers: _StreamMatchers, cache_key: Optional[str] = None) -> None:
+        key = cache_key if cache_key is not None else path
+
+        stat_result = os.stat(path)
+        current = (stat_result.st_size, stat_result.st_mtime_ns)
+
+        if self._clean_files.get(key) == current:
+            return
+
+        if not self._file_contains_secret(path, matchers):
+            self._clean_files[key] = current
+            return
+
+        redacted = self._rewrite_file(path, matchers)
+
+        if key == path:
+            # All matches were just replaced with 'hidden', which is not itself one of the
+            # secrets, so the file is clean again - cache it, sparing the next call a
+            # redundant re-scan.
+            self._clean_files[key] = redacted
+
+        else:
+            # We redacted a copy of `key`, not `key` itself. The original still has the secret
+            # in it, so it must not be remembered as clean.
+            self._clean_files.pop(key, None)
+
+    def _hide_secrets_stream(self, search_path: str, cache_path: Optional[str] = None) -> None:
         built_matchers = self._build_stream_matchers()
 
         # NOTE: We will deprecate this crazy module once TFT-1813
@@ -316,7 +380,7 @@ class HideSecrets(gluetool.Module):
         def _run() -> Result[bool, bool]:
             try:
                 for path in self._iter_regular_files(search_path):
-                    self._scrub_file(path, matchers)
+                    self._scrub_file(path, matchers, cache_key=self._cache_key(path, search_path, cache_path))
             except OSError as exc:
                 self.warn("Hiding secrets under '{}' failed, retrying: {}".format(search_path, exc), sentry=True)
                 return Result.Error(False)
@@ -416,12 +480,21 @@ class HideSecrets(gluetool.Module):
         except gluetool.GlueError:
             self.warn('Failed to sync modified files to disk.', sentry=True)
 
-    def hide_secrets(self, search_path: Optional[str] = None) -> None:
+    def hide_secrets(self, search_path: Optional[str] = None, cache_path: Optional[str] = None) -> None:
+        """
+        Redact every known secret from all files under `search_path`, defaulting to the
+        `--search-path` option.
+
+        :param cache_path: the path `search_path` was copied from, when it is a throwaway copy
+            of a tree. Only affects which paths the clean-file cache is keyed on, so that the
+            next copy of the same tree can skip whatever has not changed since. Ignored by the
+            'sed' implementation, which keeps no cache.
+        """
         search_path = search_path or self.option('search-path')
         assert search_path
 
         if self.option('implementation') == 'stream':
-            self._hide_secrets_stream(search_path)
+            self._hide_secrets_stream(search_path, cache_path=cache_path)
         else:
             self._hide_secrets_sed(search_path)
 

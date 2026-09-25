@@ -507,8 +507,13 @@ class Archive(gluetool.Module):
         else:
             full_destination = os.path.join(self.artifacts_local_root, self._request_id, destination)
 
-        # Before we start archiving, we need to hide secrets in files
-        self.shared('hide_secrets', search_path=source)
+        # Before we start archiving, we need to hide secrets in files. A copy is thrown away right
+        # after, so let hide-secrets file what it learns about it under the original instead: the
+        # next tick copies the same original again, and can then skip whatever has not changed.
+        if source_copy:
+            self.shared('hide_secrets', search_path=source, cache_path=original_source)
+        else:
+            self.shared('hide_secrets', search_path=source)
 
         cmd.append(full_destination)
 
@@ -590,8 +595,13 @@ class Archive(gluetool.Module):
             os.path.join(self.artifacts_root, self._request_id, destination)
         )
 
-        # Before we start archiving, we need to hide secrets in files
-        self.shared('hide_secrets', search_path=source)
+        # Before we start archiving, we need to hide secrets in files. A copy is thrown away right
+        # after, so let hide-secrets file what it learns about it under the original instead: the
+        # next tick copies the same original again, and can then skip whatever has not changed.
+        if source_copy:
+            self.shared('hide_secrets', search_path=source, cache_path=original_source)
+        else:
+            self.shared('hide_secrets', search_path=source)
 
         cmd.append(full_destination)
 

@@ -459,3 +459,37 @@ def test_parallel_archiving(monkeypatch, module, log):
     mock_shutil_copy2.assert_called_with(
         '/archive-source-progress', '/tmp/dir/archive-source-progress', follow_symlinks=False
     )
+
+
+@pytest.mark.parametrize('archive_mode', ['ssh', 's3'])
+@pytest.mark.parametrize('source_copy, expected_kwargs', [
+    # A copy is redacted on behalf of the original it was taken from, so that hide-secrets can
+    # recognise the original's unchanged files the next time the same source is copied.
+    (True, {'search_path': '/tmp/dir/archive-source', 'cache_path': '/archive-source'}),
+    (False, {'search_path': '/archive-source'}),
+])
+def test_hide_secrets_cache_path(monkeypatch, module, archive_mode, source_copy, expected_kwargs):
+    module._config['archive-mode'] = archive_mode
+
+    mock_hide_secrets = MagicMock()
+
+    monkeypatch.setattr(gluetool.utils.Command, '__init__', MagicMock(return_value=None))
+    monkeypatch.setattr(gluetool.utils.Command, 'run', MagicMock(return_value='Ok'))
+    monkeypatch.setattr(shutil, 'copy2', MagicMock())
+    monkeypatch.setattr(shutil, 'rmtree', MagicMock())
+    monkeypatch.setattr(tempfile, 'mkdtemp', lambda: '/tmp/dir')
+    monkeypatch.setattr(os.path, 'exists', lambda _: True)
+    monkeypatch.setattr(os.path, 'isdir', lambda _: False)
+
+    patch_shared(monkeypatch, module, {}, callables={
+        'hide_secrets': mock_hide_secrets,
+    })
+
+    module._request_id = 'request-id'
+
+    if archive_mode == 's3':
+        module.run_aws('/archive-source', 'dest', source_copy=source_copy)
+    else:
+        module.run_rsync('/archive-source', 'dest', source_copy=source_copy)
+
+    mock_hide_secrets.assert_called_once_with(**expected_kwargs)

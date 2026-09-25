@@ -1370,7 +1370,13 @@ class Archive(gluetool.Module):
                 source_copy_path, original_source = self.prepare_source_copy(source)
                 archive_source = source_copy_path
 
-            self.shared('hide_secrets', search_path=archive_source)
+            # A copy is thrown away right after, so let hide-secrets file what it learns about it
+            # under the original instead: the next tick copies the same original again, and can then
+            # skip whatever has not changed.
+            if original_source is not None:
+                self.shared('hide_secrets', search_path=archive_source, cache_path=original_source)
+            else:
+                self.shared('hide_secrets', search_path=archive_source)
             verify_archive = any(mode != 'local' for mode in self.archive_modes)
 
             for archive_mode in self.archive_modes:

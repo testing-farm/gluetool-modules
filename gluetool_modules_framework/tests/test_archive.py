@@ -311,7 +311,7 @@ def test_archive_stage_prepares_source_once(monkeypatch, module, tmp_path, stage
     copy_source = MagicMock(wraps=module.prepare_source_copy)
     delete_source = MagicMock(wraps=module.delete_source_copy)
 
-    def hide_secrets(search_path):
+    def hide_secrets(search_path, cache_path=None):
         path = Path(search_path)
         path.write_text(path.read_text().replace('secret', 'hidden'))
 
@@ -345,11 +345,12 @@ def test_archive_stage_prepares_source_once(monkeypatch, module, tmp_path, stage
     assert len(snapshots) == 2
     assert snapshots[0] == snapshots[1]
     assert snapshots[0][1] == 'hidden'
-    mock_hide.assert_called_once_with(search_path=str(snapshots[0][0]))
     if stage == 'destroy':
+        mock_hide.assert_called_once_with(search_path=str(snapshots[0][0]))
         copy_source.assert_not_called()
         delete_source.assert_not_called()
     else:
+        mock_hide.assert_called_once_with(search_path=str(snapshots[0][0]), cache_path=str(source))
         copy_source.assert_called_once_with(str(source))
         delete_source.assert_called_once_with(str(snapshots[0][0]))
         assert not snapshots[0][0].parent.exists()
@@ -498,7 +499,7 @@ def test_pre_report_copy_preserves_open_log_and_explicit_destination(module, mon
         'destroy': [{'source': str(source), 'destination': 'logs/live.log'}]
     })
 
-    def hide_secrets(search_path):
+    def hide_secrets(search_path, cache_path=None):
         with open(search_path, 'r', encoding='utf-8') as stream:
             content = stream.read()
         fd, replacement = tempfile.mkstemp(dir=os.path.dirname(search_path))
@@ -552,7 +553,7 @@ def test_local_rsync_directory_copy_preserves_source_layout(
     monkeypatch.setattr(module, 'source_destination_map', lambda: {
         'destroy': [{'source': source_path, 'destination': 'logs/'}]
     })
-    patch_shared(monkeypatch, module, {}, callables={'hide_secrets': lambda search_path: None})
+    patch_shared(monkeypatch, module, {}, callables={'hide_secrets': lambda search_path, cache_path=None: None})
     staged = []
     make_temp = tempfile.mkdtemp
 
@@ -596,7 +597,7 @@ def test_pre_report_implicit_directory_destination_matches_final_sync(
     monkeypatch.setattr(module, 'source_destination_map', lambda: {
         'destroy': [{'source': source_pattern}]
     })
-    patch_shared(monkeypatch, module, {}, callables={'hide_secrets': lambda search_path: None})
+    patch_shared(monkeypatch, module, {}, callables={'hide_secrets': lambda search_path, cache_path=None: None})
     archived_names = ('work-example', 'guest-setup-localhost') if source_pattern == './*' else ('work-example',)
 
     module.publish_before_final_report()
@@ -1379,7 +1380,7 @@ def test_prepare_batch_tree_stays_inside(monkeypatch, batched_module, tmp_path):
 def test_batched_archiving_redaction_failure(monkeypatch, batched_module, tmp_path, log):
     module = batched_module
 
-    def _hide_secrets(search_path):
+    def _hide_secrets(search_path, cache_path=None):
         # Fail the redaction of the whole batch tree, and of one file on the per-file path.
         if search_path == '{}/tree'.format(tmp_path) or 'batch-source-1' in search_path:
             raise gluetool.GlueError('redaction failed')
@@ -1596,3 +1597,39 @@ def test_batch_chunks_max_size(module, tmp_path):
     module._config['batch-max-files'] = 0
 
     assert module.batch_chunks(sources) == [sources]
+
+
+@pytest.mark.parametrize('archive_mode', ['ssh', 's3'])
+@pytest.mark.parametrize('stage, source_copy, cached', [
+    # A copy is redacted on behalf of the original it was taken from, so that hide-secrets can
+    # recognise the original's unchanged files the next time the same source is copied.
+    ('progress', False, True),
+    ('execute', False, True),
+    ('destroy', True, True),
+    ('destroy', False, False),
+])
+def test_hide_secrets_cache_path(monkeypatch, module, tmp_path, archive_mode, stage, source_copy, cached):
+    module._config['archive-mode'] = archive_mode
+    module._request_id = 'request-id'
+    source = tmp_path / 'archive-source'
+    source.write_text('secret')
+
+    mock_hide_secrets = MagicMock()
+
+    patch_shared(monkeypatch, module, {}, callables={
+        'hide_secrets': mock_hide_secrets,
+    })
+    monkeypatch.setattr(module, 'run_rsync', MagicMock())
+    monkeypatch.setattr(module, 'run_aws', MagicMock())
+    monkeypatch.setattr(module, 'source_destination_map', lambda: {
+        stage: [{'source': str(source), 'destination': 'dest', 'verify': False}]
+    })
+
+    module.archive_stage(stage, source_copy=source_copy)
+
+    mock_hide_secrets.assert_called_once()
+    if cached:
+        assert mock_hide_secrets.call_args.kwargs['cache_path'] == str(source)
+        assert mock_hide_secrets.call_args.kwargs['search_path'] != str(source)
+    else:
+        assert mock_hide_secrets.call_args.kwargs == {'search_path': str(source)}

@@ -141,9 +141,6 @@ class RequestsMock():
     def request_decrypt_error(self, url, json, headers=None):
         return ResponseDecryptError()
 
-    def request_decrypt_no_key_pair(self, url, json, headers=None):
-        return ResponseDecryptNoKeyPair()
-
 
 @contextlib.contextmanager
 def requests_mock_contextmanager():
@@ -174,7 +171,7 @@ def fixture_module(monkeypatch):
         'public-api-url': 'fake-public-url',
         'api-key': 'fakekey',
         'retry-timeout': 1,
-        'retry-tick': 10,
+        'retry-tick': 1,
     })
     return module
 

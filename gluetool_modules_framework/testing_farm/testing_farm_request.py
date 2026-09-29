@@ -283,7 +283,7 @@ class TestingFarmAPI(LoggerMixin, object):
             payload={'url': git_url, 'message': message},
             headers=self._get_headers(api_key),
             # Both are valid responses, retrying them makes no sense:
-            #   400 - the message cannot be decrypted with the repository key pair
+            #   400 - the message is malformed or cannot be decrypted with the repository key pair
             #   404 - no key pair exists for this repository and token, e.g. secrets copied over from another
             #         repository, usually a fork
             accepted_error_codes=[400, 404],

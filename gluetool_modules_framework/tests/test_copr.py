@@ -217,6 +217,26 @@ def test_execute(module, monkeypatch):
     assert primary_task.url == 'dummy-web-url-802020:fedora-28-x86_64'
 
 
+def test_builder_live_log_invalid_utf8(module, monkeypatch):
+    # Parallel `make` interleaved another line into the middle of a multibyte character,
+    # taken from a real sssd build log.
+    builder_live_log = (
+        b"warning: \xe2\x80\x98cmocka_macro\xe2\x80\x99 is deprecated\n"
+        b"src/tests/cmocka/test_responder_cache_req.c:3714:5: warning: \xe2make[3]: Leaving directory\n"
+        b"Wrote: /builddir/build/RPMS/pycho-0.84-1.fc28.x86_64.rpm\n"
+    )
+
+    def mocked_get(url):
+        if 'api_3/build-chroot' in url:
+            return MagicMock(status_code=200, json=lambda: BUILD_TASK_INFO)
+
+        return MagicMock(status_code=200, content=builder_live_log)
+
+    monkeypatch.setattr(gluetool_modules_framework.infrastructure.copr.requests, 'get', mocked_get)
+
+    assert module.copr_api().get_rpm_names(802020, 'fedora-28-x86_64') == ['pycho-0.84-1.fc28.x86_64']
+
+
 @pytest.mark.parametrize(
     'build_info, error, raise_match',
     [

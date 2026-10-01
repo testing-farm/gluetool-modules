@@ -34,6 +34,14 @@ ENV PODMAN_IGNORE_CGROUPSV1_WARNING=1
 # tmt policies
 ENV TMT_POLICY_ROOT=/etc/tmt/policies
 
+# Optional copr repository with a tmt hotfix build, enabled on top of @teemtee/stable,
+# e.g. `packit/teemtee-tmt-5214` built by Packit for https://github.com/teemtee/tmt/pull/5214
+ARG TMT_COPR=packit/teemtee-tmt-5214
+
+# tmt version to install, if empty the latest version from `TMT_COPR` or @teemtee/stable is installed
+# NOTE: 1.79.0 with hotfixes from the `hotfix-1.79` branch, copr build 11061878
+ARG TMT_VERSION=1.80.0.dev2+g5e7930ce2
+
 # python version
 ENV PYTHON_VERSION=3.12
 
@@ -53,14 +61,21 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       postgresql-devel python3.9 python${PYTHON_VERSION}-devel python3-libselinux \
                       redhat-rpm-config koji python3-virtualenv \
                       rsync beakerlib-libraries rpm-build rpm-devel awscli \
-    # Pull in tmt from @teemtee/stable copr repository
+    # Pull in tmt from @teemtee/stable copr repository, or from the `TMT_COPR` repository if set,
+    # the installed version is stored in /etc/tmt-version for goss tests
     && dnf copr -y enable @teemtee/stable \
+    && if [ -n "${TMT_COPR}" ]; then dnf copr -y enable ${TMT_COPR}; fi \
+    && if [ -z "${TMT_VERSION}" ]; then \
+           TMT_VERSION=$(dnf repoquery -q --latest-limit 1 --qf '%{version}' \
+               --repo "copr:copr.fedorainfracloud.org:$(echo ${TMT_COPR:-@teemtee/stable} | sed 's|^@|group_|; s|/|:|')" tmt); \
+       fi \
+    && echo "${TMT_VERSION}" > /etc/tmt-version \
     && dnf -y install fmf-1.7.0 \
-                      tmt-1.79.0 \
-                      tmt+prepare-artifact-1.79.0 \
-                      tmt+provision-container-1.79.0 \
-                      tmt+provision-virtual-1.79.0 \
-                      tmt+report-polarion-1.79.0 \
+                      tmt-${TMT_VERSION} \
+                      tmt+prepare-artifact-${TMT_VERSION} \
+                      tmt+provision-container-${TMT_VERSION} \
+                      tmt+provision-virtual-${TMT_VERSION} \
+                      tmt+report-polarion-${TMT_VERSION} \
     # Pull in tmt policies
     && mkdir -p /etc/tmt/policies \
     && git clone --branch main --depth 1 https://gitlab.com/testing-farm/profiles.git /tmp/profiles \

@@ -327,6 +327,22 @@ def test_update(module, request2, monkeypatch):
     }
 
 
+def test_update_without_overall_result(module, request2, monkeypatch):
+    patch_shared(monkeypatch, module, {'xunit_testing_farm_file': 'xunitfile', 'results': 'someresults'})
+    request = module._tf_request
+    request.update(
+        artifacts_url='someurl',
+        stages={'pipeline': []}
+    )
+    assert PUT_REQUESTS['2'] == {
+        'api_key': 'fakekey',
+        'run': {
+            'artifacts': 'someurl',
+            'stages': {'pipeline': []}
+        }
+    }
+
+
 def test_update_conflict(module, request2, monkeypatch, log):
     patch_shared(monkeypatch, module, {'xunit_testing_farm_file': 'xunitfile'})
     request = module._tf_request

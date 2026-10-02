@@ -655,7 +655,10 @@ class TestingFarmRequest(LoggerMixin, object):
                 'overall': overall_result
             })
 
-        if artifacts_url and self._module.shared('xunit_testing_farm_file') and self._module.shared('results'):
+        # The API requires `result.overall` whenever `result` is present, so report the xunit URL only together
+        # with the overall result. Intermediate updates, e.g. stage progress, carry `artifacts_url` too.
+        if overall_result and artifacts_url and self._module.shared('xunit_testing_farm_file') \
+                and self._module.shared('results'):
             result.update({
                 'xunit_url': '{}/{}'.format(artifacts_url, self._module.shared('xunit_testing_farm_file'))
             })

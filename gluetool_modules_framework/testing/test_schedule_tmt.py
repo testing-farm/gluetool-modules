@@ -1265,7 +1265,9 @@ class TestScheduleTMT(Module):
                 '--guest', schedule_entry.guest.hostname,
                 '--key', schedule_entry.guest.key,
                 '--port', str(schedule_entry.guest.port),
-                '--hard-reboot', reboot_command
+                '--soft-reboot', '',
+                '--systemd-soft-reboot', '',
+                '--hard-reboot', reboot_command,
             ])
 
         # `report` step in case of extra arguments

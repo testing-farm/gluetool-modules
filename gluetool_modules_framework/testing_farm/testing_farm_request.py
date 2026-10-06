@@ -1006,7 +1006,14 @@ class TestingFarmRequestModule(gluetool.Module):
         assert self._tf_api_internal
         assert self._tf_request
 
-        pipeline_state = self.get_pipeline_state()
+        # An exception would stop the repeat timer, and the pipeline would ignore cancellation
+        # for the rest of its run. Log it and try again on the next tick instead.
+        try:
+            pipeline_state = self.get_pipeline_state()
+
+        except Exception as exc:
+            self.error('Failed to check pipeline cancellation, will retry: {}'.format(exc))
+            return
 
         if pipeline_state == PipelineState.cancel_requested:
             with self._pipeline_cancellation_lock:

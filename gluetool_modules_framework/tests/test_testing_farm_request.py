@@ -921,8 +921,8 @@ def test_pipeline_cancellation(module, request2, monkeypatch, log):
     assert log.records[-6].message == 'trying to acquire pipeline cancellation lock'
     assert log.records[-5].message == 'acquired pipeline cancellation lock'
     assert log.records[-4].message == 'Cancelling pipeline as requested'
-    assert log.records[-3].message == 'Stopping pipeline cancellation check'
-    assert log.records[-2].message == 'No webhook, skipping'
+    assert log.records[-3].message == 'No webhook, skipping'
+    assert log.records[-2].message == 'Stopping pipeline cancellation check'
     assert log.records[-1].message == 'released pipeline cancellation lock'
 
 
@@ -941,6 +941,34 @@ def test_pipeline_cancellation_destroy(module, request1, monkeypatch, log):
     # cancellation never had time to run
     process_mock.assert_not_called()
     assert log.records[-1].message == 'Stopping pipeline cancellation check'
+
+
+def test_pipeline_cancellation_api_error(module, request2, monkeypatch, log):
+    module._config['enable-pipeline-cancellation'] = True
+    module._config['pipeline-cancellation-tick'] = 0.1
+
+    process_mock = MagicMock()
+    monkeypatch.setattr(psutil, 'Process', process_mock)
+
+    # first check fails, e.g. API returning 504 until the retries run out, the second one succeeds
+    get_pipeline_state = MagicMock(side_effect=[
+        gluetool.GlueError('API unavailable'),
+        gluetool_modules_framework.testing_farm.testing_farm_request.PipelineState.cancel_requested
+    ])
+    monkeypatch.setattr(module, 'get_pipeline_state', get_pipeline_state)
+
+    module.execute()
+
+    # make sure the timer runs
+    time.sleep(0.5)
+
+    # the failed check did not stop the timer, the pipeline was cancelled on the next tick
+    assert get_pipeline_state.call_count == 2
+    assert any(
+        r.message == 'Failed to check pipeline cancellation state, will retry: API unavailable' for r in log.records
+    )
+    process_mock.assert_called_once()
+    assert PUT_REQUESTS['2']['state'] == 'canceled'
 
 
 @pytest.fixture(name='redact')

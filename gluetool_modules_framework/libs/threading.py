@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import threading
+import sys
+
+from gluetool.log import Logging
 
 
 class RepeatTimer(threading.Timer):
@@ -13,8 +16,10 @@ class RepeatTimer(threading.Timer):
         while not self.finished.wait(self.interval):
             try:
                 self.function(*self.args, **self.kwargs)
-            except Exception:
-                # Don't let exception crash the thread
-                # This allows the thread to be properly cancelled when needed
-                self.finished.set()
-                break
+            except Exception as exc:
+                # Transient errors (e.g. API outages returning 504) should not terminate timer loop.
+                Logging.get_logger().warning(
+                    'Exception in RepeatTimer callback ({}). Retry on next tick'.format(exc),
+                    exc_info=sys.exc_info(),
+                    sentry=True
+                )

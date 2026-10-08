@@ -975,16 +975,18 @@ class TestingFarmRequestModule(gluetool.Module):
         """
         self.warn('Cancelling pipeline as requested')
 
+        assert self._tf_request
+
+        # Update the state first. If this fails (e.g. API outage), the exception propagates
+        # back to the caller, leaving the cancellation timer running so it can retry on the
+        # next tick.
+        self._tf_request.update(state=PipelineState.canceled)
+
         # stop the repeat timer, it will not be needed anymore
         self.debug('Stopping pipeline cancellation check')
         if self._pipeline_cancellation_timer:
             self._pipeline_cancellation_timer.cancel()
             self._pipeline_cancellation_timer = None
-
-        assert self._tf_request
-
-        # update the state
-        self._tf_request.update(state=PipelineState.canceled)
 
         # indicate request was canceled, gluetool's pipeline_cancelled has wider meaning and
         # we cannot use it to detect if the pipeline was cancelled on user request or because
@@ -1006,7 +1008,11 @@ class TestingFarmRequestModule(gluetool.Module):
         assert self._tf_api_internal
         assert self._tf_request
 
-        pipeline_state = self.get_pipeline_state()
+        try:
+            pipeline_state = self.get_pipeline_state()
+        except gluetool.GlueError as exc:
+            self.warn('Failed to check pipeline cancellation state, will retry: {}'.format(exc))
+            return
 
         if pipeline_state == PipelineState.cancel_requested:
             with self._pipeline_cancellation_lock:

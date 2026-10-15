@@ -5,8 +5,10 @@ import pytest
 import os
 import tempfile
 
+import gluetool
 from gluetool.utils import dump_yaml
 
+import gluetool_modules_framework.helpers.hide_secrets as hide_secrets_module
 from gluetool_modules_framework.helpers.hide_secrets import HideSecrets
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 
@@ -267,12 +269,8 @@ def test_hide_secrets_argument(monkeypatch, module):
     ('alpha-secret\nbeta-secret', 'X: alpha-secret\n    beta-secret :Y'),
     ('alpha-secret\nbeta-secret', 'X: alpha-secret\n\nbeta-secret :Y'),
     ('alpha-secret\nbeta-secret', 'X: alpha-secret\n  \n   beta-secret :Y'),
-    # Secrets whose own lines are empty or blank. Worth their own cases: these are the ones
-    # whose compiled pattern has no literal to start scanning from.
-    ('\nbeta-secret', 'X:\nbeta-secret :Y'),
-    (' \nbeta-secret', 'X:  \nbeta-secret :Y'),
+    # A secret with a blank line of its own.
     ('alpha-secret\n\nbeta-secret', 'X: alpha-secret\n\nbeta-secret :Y'),
-    ('alpha-secret\n', 'X: alpha-secret\n :Y'),
 ])
 def test_hide_secrets_multiline_shapes(secret, contents):
     # Redaction coverage has to be identical under both implementations - this is a security
@@ -305,6 +303,146 @@ def test_hide_secrets_multiline_shapes(secret, contents):
     for line in secret.split('\n'):
         if line.strip():
             assert line.strip() not in outputs['stream']
+
+
+@pytest.mark.parametrize('secret, contents, expected', [
+    # Whitespace around a multiline secret is not part of it. The sed implementation requires
+    # it and redacts it too, 'stream' leaves it in place, and finds the secret without it.
+    ('\nbeta-secret', 'X:\nbeta-secret :Y', 'X:\nhidden :Y'),
+    (' \nbeta-secret', 'X:  \nbeta-secret :Y', 'X:  \nhidden :Y'),
+    (' \nbeta-secret', 'X:beta-secret :Y', 'X:hidden :Y'),
+    ('alpha-secret\n', 'X: alpha-secret\n :Y', 'X: hidden\n :Y'),
+    ('\n  alpha-secret\nbeta-secret\n', 'X: alpha-secret\nbeta-secret :Y', 'X: hidden :Y'),
+    # A secret of whitespace only is ignored, rather than redacting every line break.
+    ('\n \n', 'X:\n \n:Y', 'X:\n \n:Y'),
+])
+def test_hide_secrets_stream_multiline_edges(stream_module, secret, contents, expected):
+    module = stream_module
+    module.add_secrets([secret])
+
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        path = os.path.join(tmpdir, 'testfile.txt')
+        with open(path, 'w', newline='') as f:
+            f.write(contents)
+
+        module.hide_secrets(search_path=tmpdir)
+
+        with open(path, 'r', newline='') as f:
+            assert f.read() == expected
+
+
+@pytest.mark.parametrize('gap', [
+    ' ' * 300,
+    '\n' + ' ' * 4096,
+    '\n' * 1000,
+    # More than one read of the 'stream' implementation.
+    '\n' + ' ' * (2 * 1024 * 1024),
+], ids=['300-spaces', '4096-spaces', '1000-newlines', '2MiB-spaces'])
+def test_hide_secrets_multiline_any_indentation(module, gap):
+    # However much whitespace separates the lines of a multiline secret, it is hidden.
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        module.add_secrets(['alpha-secret\nbeta-secret'])
+
+        path = os.path.join(tmpdir, 'testfile.txt')
+        with open(path, 'w') as f:
+            f.write('X: alpha-secret\n' + gap + 'beta-secret :Y')
+
+        module.hide_secrets(search_path=tmpdir)
+
+        with open(path, 'r') as f:
+            assert f.read() == 'X: hidden :Y'
+
+
+def test_hide_secrets_multiline_blank_lines_no_backtracking(module):
+    # A multiline secret with blank lines in it, next to plenty of whitespace which in the end
+    # does not match. A pattern with more than one way to match the same whitespace takes
+    # exponential time here.
+    secret = 'alpha-secret\n\n\nbeta-secret'
+    near_miss = 'alpha-secret' + ' \n' * 5000 + 'x beta-secret\n'
+
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        module.add_secrets([secret])
+
+        path = os.path.join(tmpdir, 'testfile.txt')
+        with open(path, 'w') as f:
+            f.write(near_miss + 'alpha-secret\n\n\n   beta-secret :Y')
+
+        module.hide_secrets(search_path=tmpdir)
+
+        with open(path, 'r') as f:
+            assert f.read() == near_miss + 'hidden :Y'
+
+
+@pytest.mark.parametrize('secrets, occurrence', [
+    # A shorter secret inside a longer one must not leave the rest of the longer one visible.
+    (['ABCDEFGHIJ', 'CD'], 'ABCDEFGHIJ'),
+    (['alpha-secret\nbeta-secret', 'secret'], 'alpha-secret\n    beta-secret'),
+    # Overlapping secrets are hidden together.
+    (['XAB', 'ABCDEF'], 'XABCDEF'),
+    # A secret which is a part of the word 'hidden' must not match the redacted text.
+    (['topsecret', 'dde'], 'topsecret'),
+], ids=['nested', 'nested-multiline', 'overlapping', 'hidden-substring'])
+@pytest.mark.parametrize('chunk_size', [None, 8], ids=['default-chunk', 'tiny-chunk'])
+def test_hide_secrets_stream_overlapping_secrets(stream_module, secrets, occurrence, chunk_size):
+    # Wherever a read boundary falls, the result is the same as for the whole file at once.
+    module = stream_module
+    module.add_secrets(secrets)
+
+    offsets = list(range(24))
+
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        path = os.path.join(tmpdir, 'boundary.txt')
+
+        with open(path, 'w') as f:
+            f.write('\n'.join('x' * n + occurrence + 'y' * 3 for n in offsets))
+
+        matchers = module._build_stream_matchers()
+        assert matchers is not None
+
+        if chunk_size is not None:
+            matchers.chunk_size = chunk_size
+
+        module._scrub_file(path, matchers)
+
+        with open(path, 'r') as f:
+            assert f.read() == '\n'.join('x' * n + 'hidden' + 'y' * 3 for n in offsets)
+
+
+def test_hide_secrets_stream_carry_limit(monkeypatch, stream_module):
+    # Holding back a long stretch of whitespace from one read to the next is bounded, and
+    # past the bound, a file which may contain a secret split by it fails, rather than leaks.
+    module = stream_module
+    module.add_secrets(['alpha-secret\nbeta-secret'])
+
+    monkeypatch.setattr(hide_secrets_module, 'STREAM_MAX_CARRY', 1024)
+
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        blank = os.path.join(tmpdir, 'blank.txt')
+        with open(blank, 'w') as f:
+            f.write('start\n' + ' ' * 4096 + '\nend')
+
+        complete = os.path.join(tmpdir, 'complete.txt')
+        with open(complete, 'w') as f:
+            f.write('alpha-secret\nbeta-secret' + ' ' * 4096)
+
+        # No secret starts in the whitespace, the file stays as it is.
+        module.hide_secrets(search_path=blank)
+
+        with open(blank, 'r') as f:
+            assert f.read() == 'start\n' + ' ' * 4096 + '\nend'
+
+        # The secret is complete before the whitespace starts.
+        module.hide_secrets(search_path=complete)
+
+        with open(complete, 'r') as f:
+            assert f.read() == 'hidden' + ' ' * 4096
+
+        split = os.path.join(tmpdir, 'split.txt')
+        with open(split, 'w') as f:
+            f.write('alpha-secret\n' + ' ' * 4096 + 'beta')
+
+        with pytest.raises(gluetool.GlueError, match='secrets could be leaked'):
+            module.hide_secrets(search_path=split)
 
 
 def test_hide_secrets_does_not_follow_symlinks(module):

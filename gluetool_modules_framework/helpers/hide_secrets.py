@@ -11,59 +11,86 @@ import gluetool
 from dataclasses import dataclass, field
 from gluetool.result import Result
 
-from typing import Any, Iterator, List, Optional, Set, Union  # noqa
+from typing import Any, BinaryIO, Iterator, List, Optional, Set, Tuple, Union  # noqa
 
 DEFAULT_RETRY_TIMEOUT = 30
 DEFAULT_RETRY_TICK = 10
 DEFAULT_IMPLEMENTATION = 'sed'
 
-# Size of the read/write buffer used by the 'stream' implementation. Actual buffer size used
-# at runtime is at least this large, and larger still if needed to keep it bigger than the
-# overlap required by the longest configured secret, see `_build_stream_matchers`.
+# Size of the read buffer used by the 'stream' implementation. Actual buffer size used at
+# runtime is at least this large, and larger still for very long secrets, see
+# `_build_stream_matchers`.
 DEFAULT_STREAM_CHUNK_SIZE = 1 * 1024 * 1024
 
-# Maximum amount of whitespace (including newlines) the 'stream' implementation tolerates
-# between the lines of a multiline secret. Mirrors the intent of the legacy sed
-# '[[:space:]]*' padding, but bounded, so the worst-case match length - and therefore the
-# required chunk overlap - stays a fixed, computable number instead of "as much as the file
-# happens to contain".
-STREAM_MAX_INDENT = 256
+# Upper bound on the number of bytes the 'stream' implementation holds back from one read to
+# the next. It holds back about as many bytes as the longest secret has, see
+# `_StreamMatchers.boundary`, and only the first line of a secret followed by this much
+# whitespace can push it further. Such a file fails, rather than risks a leak.
+STREAM_MAX_CARRY = 16 * 1024 * 1024
+
+# What `\s` matches in a bytes pattern, and what `bytes.strip()` strips.
+WHITESPACE = b' \t\n\r\x0b\x0c'
+
+# Whitespace inside a multiline secret which contains at least one line break, as a capturing
+# group so `split()` keeps it. It matches the whole run of whitespace around the line break,
+# leaving the text on either side of it starting and ending with non-whitespace.
+_SECRET_LINE_BREAK = re.compile(br'(\s*\n\s*)')
 
 
 @dataclass
 class _MultilinePattern:
     """
-    A secret spanning multiple lines, compiled to tolerate re-indentation at each line break,
-    plus the longest of its lines.
+    A secret spanning multiple lines.
 
-    Every line of a multiline secret has to appear literally for the pattern to match, so
-    looking for the longest one with `bytes.find` first is a cheap way to skip the regex on
-    the overwhelming majority of chunks. `re` does this by itself when the pattern starts with
-    a literal - but the moment it does not, which is what a secret whose first line is empty
-    or a single space gives us, scanning collapses to a tenth of the throughput.
+    The secret is split into its pieces of text and the runs of whitespace between them which
+    contain a line break. The pattern matches the pieces literally, and each run as any run of
+    whitespace with at least as many line breaks, no matter how long, mirroring the
+    '[[:space:]]*' padding of the sed implementation.
+
+    Every piece starts and ends with non-whitespace, and each run compiles to
+    '(?:[^\\S\\n]*\\n){N}\\s*', which can match a given run of whitespace in one way only. The
+    pattern therefore never backtracks over a run more than once, even when the secret contains
+    blank lines.
     """
 
+    # The longest piece. Every match contains it, so when it is missing, the regex does not run.
     prefilter: bytes
+
+    # The first piece. Every match starts with it.
+    first: bytes
+
     pattern: re.Pattern[bytes]
 
-    def matches(self, data: bytes) -> bool:
-        if self.prefilter and self.prefilter not in data:
-            return False
+    # Number of non-whitespace bytes in the secret, and therefore in every match of it.
+    nonspace: int
 
-        return self.pattern.search(data) is not None
+    def spans(self, data: bytes, limit: int) -> Iterator[Tuple[int, int]]:
+        """
+        Yield ``(start, end)`` of every match starting before ``limit``, overlapping ones
+        included.
+        """
 
-    def redact(self, data: bytes) -> bytes:
-        if self.prefilter and self.prefilter not in data:
-            return data
+        if self.prefilter not in data:
+            return
 
-        return self.pattern.sub(b'hidden', data)
+        pos = 0
+
+        while True:
+            match = self.pattern.search(data, pos)
+
+            if match is None or match.start() >= limit:
+                return
+
+            yield match.span()
+
+            pos = match.start() + 1
 
 
 @dataclass
 class _StreamMatchers:
     """
-    Compiled matchers used by the 'stream' implementation, plus the chunk size and overlap
-    they require to correctly detect and redact secrets split across read buffers.
+    Compiled matchers used by the 'stream' implementation, plus what they need to find secrets
+    split across read buffers.
     """
 
     # Secrets with no newline, matched as plain bytes (no regex involved).
@@ -72,31 +99,103 @@ class _StreamMatchers:
     # Secrets spanning multiple lines.
     patterns: List[_MultilinePattern] = field(default_factory=list)
 
-    # Number of trailing bytes of a processed chunk which must be carried over into the next
-    # one, so that a match starting near the end of a chunk is never split across the boundary.
-    overlap: int = 0
-
-    # Number of bytes read from the file per iteration. `_build_stream_matchers` keeps this
-    # larger than `overlap` so that each iteration reads more than it carries over; matching
-    # stays correct below that, it just does more work per byte of progress.
+    # Number of bytes read from the file per iteration.
     chunk_size: int = DEFAULT_STREAM_CHUNK_SIZE
 
-    def contains_match(self, data: bytes) -> bool:
-        for literal in self.literals:
-            if literal in data:
-                return True
+    # Length of the longest literal, and of the longest first piece of a multiline secret,
+    # minus one byte: a match of either which starts closer than this to the end of a buffer
+    # may continue in the next one.
+    literal_overlap: int = field(init=False)
+    first_overlap: int = field(init=False)
 
-        return any(multiline.matches(data) for multiline in self.patterns)
+    # The most non-whitespace bytes in any multiline secret.
+    nonspace: int = field(init=False)
 
-    def redact(self, data: bytes) -> bytes:
+    _nonspace_tail: Optional[re.Pattern[bytes]] = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.literal_overlap = max((len(literal) for literal in self.literals), default=1) - 1
+        self.first_overlap = max((len(multiline.first) for multiline in self.patterns), default=1) - 1
+        self.nonspace = max((multiline.nonspace for multiline in self.patterns), default=0)
+
+        # Matched against a buffer reversed, see `boundary`.
+        self._nonspace_tail = re.compile(br'(?:\s*\S){%d}' % self.nonspace) if self.nonspace else None
+
+    def spans(self, data: bytes, limit: int) -> List[Tuple[int, int]]:
+        """
+        Return ``(start, end)`` of every match of every secret starting before ``limit``,
+        overlapping ones included, sorted.
+        """
+
+        found: List[Tuple[int, int]] = []
+
         for literal in self.literals:
-            if literal in data:
-                data = data.replace(literal, b'hidden')
+            pos = data.find(literal)
+
+            while 0 <= pos < limit:
+                found.append((pos, pos + len(literal)))
+                pos = data.find(literal, pos + 1)
 
         for multiline in self.patterns:
-            data = multiline.redact(data)
+            found.extend(multiline.spans(data, limit))
 
-        return data
+        found.sort()
+
+        return found
+
+    def boundary(self, data: bytes) -> int:
+        """
+        Return how many leading bytes of ``data`` are settled: every match starting among them
+        ends within ``data``, so nothing read later can change how they are redacted.
+
+        A literal match is settled when ``data`` holds all of its bytes. A multiline match
+        starts with the first piece of its secret, so it can be pending only where that piece
+        occurs. It also ends with non-whitespace and holds exactly as many non-whitespace bytes
+        as its secret, however much whitespace separates its lines - so it is settled when the
+        rest of ``data`` holds at least that many non-whitespace bytes.
+        """
+
+        # A match of a literal, or of the first piece of a multiline secret, may be cut off by
+        # the end of `data`.
+        boundary = len(data) - max(self.literal_overlap, self.first_overlap)
+
+        if any(multiline.first in data for multiline in self.patterns):
+            nonspace_boundary = self._nonspace_boundary(data)
+
+            for multiline in self.patterns:
+                pending = data.find(multiline.first, nonspace_boundary)
+
+                if pending != -1:
+                    boundary = min(boundary, pending)
+
+        return max(boundary, 0)
+
+    def _nonspace_boundary(self, data: bytes) -> int:
+        """
+        Return the index just past the start of the last `nonspace` non-whitespace bytes of
+        ``data``, or 0 when there are fewer.
+        """
+
+        assert self._nonspace_tail is not None
+
+        # Grow a tail of `data` until it holds enough non-whitespace bytes, counting them with
+        # `translate()` rather than a regex, which on long whitespace backtracks at a fraction
+        # of the speed. Then, since `re` cannot search backwards, match the reversed tail.
+        size = 4 * self.nonspace
+
+        while True:
+            tail = data[-size:]
+
+            if len(tail.translate(None, WHITESPACE)) >= self.nonspace:
+                match = self._nonspace_tail.match(tail[::-1])
+                assert match is not None
+
+                return len(data) - match.end() + 1
+
+            if size >= len(data):
+                return 0
+
+            size *= 4
 
 
 class HideSecrets(gluetool.Module):
@@ -117,7 +216,7 @@ class HideSecrets(gluetool.Module):
                 `sed` for every call; it is battle-tested but reads whole files into memory,
                 which can exhaust worker memory - and hard-fails above 2 GiB - on large files
                 such as long-running guest console logs. 'stream' is a pure Python
-                implementation which redacts files in constant memory with no size limit.
+                implementation which redacts files in bounded memory with no size limit.
                 (default: %(default)s)
             """,
             'choices': ('sed', 'stream'),
@@ -171,15 +270,6 @@ class HideSecrets(gluetool.Module):
     def _build_stream_matchers(self) -> Optional[_StreamMatchers]:
         literals: List[bytes] = []
         patterns: List[_MultilinePattern] = []
-        max_match_len = 0
-
-        # Mirrors the legacy sed implementation's '[[:space:]]*' padding around a newline,
-        # bounded to a fixed maximum so the worst-case match length is a known quantity.
-        # Python's `\s` on bytes is '[ \t\n\r\f\v]' - it has to keep matching '\n', exactly
-        # like POSIX '[[:space:]]' does, otherwise a secret whose lines end up separated by a
-        # blank line would be redacted by the sed implementation but not by this one.
-        joiner = br'\s{0,%d}' % STREAM_MAX_INDENT
-        line_break = joiner + b'\n' + joiner
 
         for secret in self._secrets:
             # Matches the existing sed-based behaviour: an empty secret is not something we
@@ -188,47 +278,94 @@ class HideSecrets(gluetool.Module):
                 continue
 
             encoded = secret.encode('utf-8', 'surrogateescape')
-            lines = encoded.split(b'\n')
 
-            if len(lines) == 1:
+            if b'\n' not in encoded:
                 literals.append(encoded)
-                max_match_len = max(max_match_len, len(encoded))
                 continue
 
-            patterns.append(_MultilinePattern(
-                prefilter=max(lines, key=len),
-                pattern=re.compile(line_break.join(re.escape(line) for line in lines))
-            ))
+            # Whitespace around a multiline secret is not secret, and requiring it, as the sed
+            # implementation does, only makes the secret harder to find. Without it, every piece
+            # starts and ends with non-whitespace, see `_MultilinePattern`.
+            stripped = encoded.strip()
 
-            match_len = sum(len(line) for line in lines) + (len(lines) - 1) * (2 * STREAM_MAX_INDENT + 1)
-            max_match_len = max(max_match_len, match_len)
+            if not stripped:
+                self.warn('Ignoring a secret which consists of whitespace only')
+                continue
+
+            parts = _SECRET_LINE_BREAK.split(stripped)
+
+            if len(parts) == 1:
+                literals.append(stripped)
+                continue
+
+            pieces, runs = parts[0::2], parts[1::2]
+
+            pattern = re.escape(pieces[0]) + b''.join(
+                br'(?:[^\S\n]*\n){%d}\s*' % run.count(b'\n') + re.escape(piece)
+                for run, piece in zip(runs, pieces[1:])
+            )
+
+            patterns.append(_MultilinePattern(
+                prefilter=max(pieces, key=len),
+                first=pieces[0],
+                pattern=re.compile(pattern),
+                nonspace=len(stripped.translate(None, WHITESPACE))
+            ))
 
         if not literals and not patterns:
             return None
 
-        # The overlap must cover the longest possible match minus one byte, so that any match
-        # starting within the carried-over tail of a chunk is guaranteed to be complete once
-        # combined with the next one. The chunk size must stay comfortably larger than the
-        # overlap so every iteration still reads genuinely new data.
-        overlap = max(max_match_len - 1, 0)
-        chunk_size = max(DEFAULT_STREAM_CHUNK_SIZE, overlap * 4, overlap + 1)
+        matchers = _StreamMatchers(literals=literals, patterns=patterns)
 
-        return _StreamMatchers(literals=literals, patterns=patterns, overlap=overlap, chunk_size=chunk_size)
+        # Each read should bring in plenty of new data compared to what is held back from the
+        # previous one, which for ordinary text is about as long as the longest secret.
+        matchers.chunk_size = max(DEFAULT_STREAM_CHUNK_SIZE, 4 * matchers.literal_overlap, 4 * matchers.nonspace)
+
+        return matchers
+
+    def _scan(
+        self,
+        path: str,
+        f: BinaryIO,
+        matchers: _StreamMatchers
+    ) -> Iterator[Tuple[bytes, int, List[Tuple[int, int]]]]:
+        """
+        Read ``f`` and yield ``(window, boundary, spans)``: the next part of the file, how many
+        of its leading bytes are settled, and the matches starting among those bytes.
+
+        Each window starts with the unsettled bytes of the previous one, exactly as read. That
+        makes matches independent of where reads happen to split the file: every match starting
+        among the settled bytes is complete, and is never found again in a later window.
+        """
+
+        carry = b''
+
+        while True:
+            buf = f.read(matchers.chunk_size)
+            window = carry + buf
+
+            if not buf:
+                yield window, len(window), matchers.spans(window, len(window))
+                return
+
+            boundary = matchers.boundary(window)
+
+            # The first line of a secret, followed by more whitespace than we are willing to
+            # hold in memory before its other lines show up, if they ever do.
+            if len(window) - boundary > STREAM_MAX_CARRY:
+                raise gluetool.GlueError(
+                    "Cannot hide secrets in '{}', {} bytes of whitespace may split a secret".format(
+                        path, len(window) - boundary
+                    )
+                )
+
+            yield window, boundary, matchers.spans(window, boundary)
+
+            carry = window[boundary:]
 
     def _file_contains_secret(self, path: str, matchers: _StreamMatchers) -> bool:
         with open(path, 'rb') as f:
-            carry = b''
-
-            while True:
-                buf = f.read(matchers.chunk_size)
-                if not buf:
-                    return False
-
-                data = carry + buf
-                if matchers.contains_match(data):
-                    return True
-
-                carry = data[-matchers.overlap:] if matchers.overlap else b''
+            return any(spans for _, _, spans in self._scan(path, f, matchers))
 
     @staticmethod
     def _fsync_directory(directory: str) -> None:
@@ -249,26 +386,30 @@ class HideSecrets(gluetool.Module):
 
         try:
             with os.fdopen(fd, 'wb') as tmp_file, open(path, 'rb') as src_file:
-                carry = b''
+                # How many leading bytes of the current window are already written out. It runs
+                # past the settled bytes only when the last match written out does.
+                written = 0
 
-                while True:
-                    buf = src_file.read(matchers.chunk_size)
-                    data = matchers.redact(carry + buf)
+                for window, boundary, spans in self._scan(path, src_file, matchers):
+                    for start, end in spans:
+                        if end <= written:
+                            continue
 
-                    if not buf:
-                        # EOF: nothing more will ever arrive to complete a match, flush it all.
-                        tmp_file.write(data)
-                        break
+                        # Overlapping matches, of the same secret or of different ones, are
+                        # redacted together, so no part of either is left visible.
+                        if start < written:
+                            written = end
+                            continue
 
-                    if not matchers.overlap:
-                        # No secret can span a chunk boundary, so nothing needs to be held back.
-                        tmp_file.write(data)
-                        carry = b''
-                    elif len(data) > matchers.overlap:
-                        tmp_file.write(data[:-matchers.overlap])
-                        carry = data[-matchers.overlap:]
-                    else:
-                        carry = data
+                        tmp_file.write(window[written:start])
+                        tmp_file.write(b'hidden')
+                        written = end
+
+                    if written < boundary:
+                        tmp_file.write(window[written:boundary])
+                        written = boundary
+
+                    written -= boundary
 
                 tmp_file.flush()
                 os.fsync(tmp_file.fileno())

@@ -820,15 +820,13 @@ test = ["basedpyright (==1.39.9)", "coverage[toml]", "ddt (>=1.1.1,!=1.4.3)", "m
 
 [[package]]
 name = "gluetool"
-version = "3.4"
+version = "0.0.0"
 description = "Python framework for constructing command-line pipelines."
 category = "main"
 optional = false
-python-versions = "<3.13,>=3.12"
-files = [
-    {file = "gluetool-3.4-py3-none-any.whl", hash = "sha256:d3a0ad3a3858019abc974517ec6f5b1fdbacf1374c94e1d4b4890f22ec7f55fc"},
-    {file = "gluetool-3.4.tar.gz", hash = "sha256:b6a51c5d59c26ec4edf776dfcff7172ef7ddf5dceaa01bf9f2aec858c7c574f6"},
-]
+python-versions = "~3.12"
+files = []
+develop = true
 
 [package.dependencies]
 attrs = "*"
@@ -847,10 +845,16 @@ requests-toolbelt = "*"
 "ruamel.yaml" = "*"
 sentry-sdk = "*"
 six = "*"
-Sphinx = ">=5.0.0,<6.0.0"
+Sphinx = "^5.0.0"
 tabulate = "*"
 urlnormalizer = "*"
 zipp = "*"
+
+[package.source]
+type = "git"
+url = "https://gitlab.com/testing-farm/gluetool.git"
+reference = "thread-safe-requests"
+resolved_reference = "62c44408b38d1c156dd69a8facb044d7c5e91b4e"
 
 [[package]]
 name = "googleapis-common-protos"
@@ -3806,4 +3810,4 @@ development = ["ipdb"]
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.12"
-content-hash = "4c38176bf05512c701ee68fbda8c85657a023ff7754e4a84824578dd05d3342c"
+content-hash = "ca45c4bc0d15428937e37a9adb566f8faf2ef71247660012e7f4e5bc37c1cbd8"

@@ -142,7 +142,9 @@ fmf = "0.6.1"
 future = "*"
 gitdb2 = "2.0.6"
 GitPython = "*"
-gluetool = "*"
+# Useful for testing gluetool changes
+gluetool = { git = "https://gitlab.com/testing-farm/gluetool.git", rev = "thread-safe-requests", develop = true }
+# gluetool = "*"
 inotify = "0.2.10"
 ipdb = { version = "^0.13.9", optional = true }
 opentelemetry-sdk = "*"

@@ -109,17 +109,21 @@ RUN    ln -s /CONFIG /etc/citool.d \
     && chmod +x /usr/bin/str-filter-tests \
     && rm -rf /tmp/standard-test-roles
 
-# copy the built package
-COPY dist/gluetool_modules_framework*.whl .
+# DNM: copy the sources, installed with poetry so `gluetool` from git is installed with `develop = true`
+COPY pyproject.toml poetry.lock README.rst /opt/gluetool-modules/
+COPY gluetool_modules_framework /opt/gluetool-modules/gluetool_modules_framework
 
 # install gluetool-modules-framework with citool and required ansible collections
 # NOTE: dnspython is required for community.general.dig to work (used in profiles)
-RUN    virtualenv -p python${PYTHON_VERSION} /opt/gluetool \
+RUN    virtualenv -p python${PYTHON_VERSION} /opt/poetry \
+    && /opt/poetry/bin/pip install poetry==1.4.2 \
+    && virtualenv -p python${PYTHON_VERSION} /opt/gluetool \
     && source /opt/gluetool/bin/activate \
-    && pip${PYTHON_VERSION} install gluetool_modules_framework*.whl \
+    && cd /opt/gluetool-modules \
+    && /opt/poetry/bin/poetry install --only main \
+    && cd - \
     && ansible-galaxy install --timeout 120 -r /etc/ansible/requirements.yml \
     && pip${PYTHON_VERSION} install dnspython \
-    && rm -f gluetool_modules_framework*.whl \
     && rm -rf ~/.cache
 
 # install artemis

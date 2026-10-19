@@ -343,6 +343,21 @@ def test_update_without_overall_result(module, request2, monkeypatch):
     }
 
 
+@pytest.mark.parametrize('state, webhook_calls', [
+    (None, 0),
+    ('running', 1),
+])
+def test_update_webhook(module, request2, monkeypatch, state, webhook_calls):
+    request = module._tf_request
+    webhook = MagicMock()
+    monkeypatch.setattr(request, 'webhook', webhook)
+
+    request.update(state=state, artifacts_url='someurl', stages={'pipeline': []})
+
+    assert PUT_REQUESTS['2']['run'] == {'artifacts': 'someurl', 'stages': {'pipeline': []}}
+    assert webhook.call_count == webhook_calls
+
+
 def test_update_conflict(module, request2, monkeypatch, log):
     patch_shared(monkeypatch, module, {'xunit_testing_farm_file': 'xunitfile'})
     request = module._tf_request

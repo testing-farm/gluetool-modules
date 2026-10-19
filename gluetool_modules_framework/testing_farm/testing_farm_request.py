@@ -712,8 +712,9 @@ class TestingFarmRequest(LoggerMixin, object):
             self.error("Request is '{}', but failed to update it, this is unexpected.".format(current_state))
             six.reraise(*sys.exc_info())
 
-        # inform webhooks about the state change
-        self.webhook()
+        # inform webhooks only about the state change
+        if 'state' in payload:
+            self.webhook()
 
     def modify_with_config(self, config: InRepoConfig, git_url: str) -> None:
         """

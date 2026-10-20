@@ -31,9 +31,6 @@ ENV PATH="/opt/gluetool/bin:$PATH"
 # Note that podman v6.x will drop cgroup v1 support
 ENV PODMAN_IGNORE_CGROUPSV1_WARNING=1
 
-# tmt policies
-ENV TMT_POLICY_ROOT=/etc/tmt/policies
-
 # Optional copr repository with a tmt hotfix build, enabled on top of @teemtee/stable,
 # e.g. `packit/teemtee-tmt-5214` built by Packit for https://github.com/teemtee/tmt/pull/5214
 ARG TMT_COPR=packit/teemtee-tmt-5214
@@ -76,19 +73,6 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       tmt+provision-container-${TMT_VERSION} \
                       tmt+provision-virtual-${TMT_VERSION} \
                       tmt+report-polarion-${TMT_VERSION} \
-    # Pull in tmt policies
-    && mkdir -p /etc/tmt/policies \
-    && git clone --branch main --depth 1 https://gitlab.com/testing-farm/profiles.git /tmp/profiles \
-    && cp -rv /tmp/profiles/policies/* ${TMT_POLICY_ROOT}/ \
-    && find ${TMT_POLICY_ROOT} -type f -print0 | xargs -0 chmod "ugo=r" \
-    # Install profiles collections individually because baseos_ci and testing_farm
-    # are nested under profiles/, not discovered by a single top-level install
-    && ansible-galaxy collection install /tmp/profiles/library \
-    && ansible-galaxy collection install /tmp/profiles/repository \
-    && ansible-galaxy collection install /tmp/profiles/workarounds \
-    && ansible-galaxy collection install /tmp/profiles/profiles/baseos_ci \
-    && ansible-galaxy collection install /tmp/profiles/profiles/testing_farm \
-    && rm -rf /tmp/profiles \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \
     && bash -c "echo '  StrictHostKeyChecking no' >> /etc/ssh/ssh_config" \
@@ -113,7 +97,7 @@ RUN    ln -s /CONFIG /etc/citool.d \
 COPY dist/gluetool_modules_framework*.whl .
 
 # install gluetool-modules-framework with citool and required ansible collections
-# NOTE: dnspython is required for community.general.dig to work (used in profiles)
+# NOTE: dnspython is required for community.general.dig (used by profiles injected at runtime)
 RUN    virtualenv -p python${PYTHON_VERSION} /opt/gluetool \
     && source /opt/gluetool/bin/activate \
     && pip${PYTHON_VERSION} install gluetool_modules_framework*.whl \

@@ -54,6 +54,9 @@ class Archive(gluetool.Module):
     * The ``local`` mode copies files locally with rsync. It should be used only for testing and development.
     * The ``s3`` mode uses the AWS cli to sync files to S3 bucket.
 
+    Multiple modes can be selected with a comma-separated list or by repeating ``archive-mode``.
+    For example, ``--archive-mode daemon,s3`` archives artifacts with both rsync and S3.
+
     Use the ``verify`` flag to verify given path on the artifact location provided by the ``coldstore`` module.
     """
 
@@ -86,8 +89,10 @@ class Archive(gluetool.Module):
             'metavar': 'FILE'
         },
         'archive-mode': {
-            'help': 'Archive mode to use.',
-            'choices': ['daemon', 'ssh', 'local', 's3'],
+            'help': 'Archive modes to use (daemon, ssh, local, s3). Can be specified multiple times or as a '
+                    'comma-separated list. Artifacts are archived using every selected mode.',
+            'action': 'append',
+            'default': [],
         },
         'rsync-options': {
             'help': 'Rsync options to use.',
@@ -178,25 +183,29 @@ class Archive(gluetool.Module):
         self._request_id: Optional[str] = None
         # List of created directories on the host.
         # We need to keep track of them to avoid creating them multiple times.
-        self._created_directories: List[str] = []
+        self._created_directories: List[Tuple[str, str]] = []
+
+    @property
+    def archive_modes(self) -> List[str]:
+        return gluetool.utils.normalize_multistring_option(self.option('archive-mode'))
 
     def sanity(self) -> None:
-        if self.option('archive-mode') not in ('daemon', 'ssh', 'local', 's3'):
-            raise GlueError('rsync mode must be either daemon, ssh, local or s3')
+        if not self.archive_modes or any(mode not in ('daemon', 'ssh', 'local', 's3') for mode in self.archive_modes):
+            raise GlueError('archive modes must be daemon, ssh, local or s3')
 
-        if self.option('archive-mode') == 'daemon' and not self.option('artifacts-rsync-host'):
+        if 'daemon' in self.archive_modes and not self.option('artifacts-rsync-host'):
             raise GlueError('rsync daemon host must be specified when using rsync daemon mode')
 
-        if self.option('archive-mode') == 'ssh' and not self.option('artifacts-host'):
+        if 'ssh' in self.archive_modes and not self.option('artifacts-host'):
             raise GlueError('artifacts host must be specified when using ssh mode')
 
-        if self.option('archive-mode') == 'local' and not self.option('artifacts-local-root'):
+        if 'local' in self.archive_modes and not self.option('artifacts-local-root'):
             raise GlueError('artifacts local root must be specified when using local mode')
 
-        if self.option('archive-mode') == 's3':
+        if 's3' in self.archive_modes:
             for option in ['aws-region', 'aws-s3-bucket', 'aws-access-key-id', 'aws-secret-access-key']:
                 if not self.option(option):
-                    raise GlueError('{} option must be specified when using s3 mode')
+                    raise GlueError('{} option must be specified when using s3 mode'.format(option))
 
     def source_destination_map(self) -> Any:
         source_destination_map = gluetool.utils.load_yaml(
@@ -324,7 +333,7 @@ class Archive(gluetool.Module):
         if directory:
             path = os.path.join(path, directory)
 
-        if path in self._created_directories:
+        if ('ssh', path) in self._created_directories:
             return
 
         cmd: List[str] = [
@@ -351,7 +360,7 @@ class Archive(gluetool.Module):
         )
 
         Command(cmd, logger=self.logger).run()
-        self._created_directories.append(path)
+        self._created_directories.append(('ssh', path))
 
     def create_archive_directory_rsync(self, directory: Optional[str] = None) -> None:
         """
@@ -365,7 +374,7 @@ class Archive(gluetool.Module):
         if directory:
             path = os.path.join(path, directory)
 
-        if path in self._created_directories:
+        if ('daemon', path) in self._created_directories:
             return
 
         cmd = ['rsync']
@@ -396,7 +405,7 @@ class Archive(gluetool.Module):
             tick=self.option('retry-tick')
         )
 
-        self._created_directories.append(path)
+        self._created_directories.append(('daemon', path))
 
     def create_archive_directory_local(self, directory: Optional[str] = None) -> None:
         """
@@ -409,7 +418,7 @@ class Archive(gluetool.Module):
         if directory:
             path = os.path.join(path, directory)
 
-        if path in self._created_directories:
+        if ('local', path) in self._created_directories:
             return
 
         cmd = [
@@ -420,7 +429,7 @@ class Archive(gluetool.Module):
 
         Command(cmd, logger=self.logger).run()
 
-        self._created_directories.append(path)
+        self._created_directories.append(('local', path))
 
     def prepare_source_copy(self, original_source: str) -> Tuple[str, str]:
         original_source = original_source.rstrip('/')
@@ -451,6 +460,7 @@ class Archive(gluetool.Module):
         self,
         source: str,
         destination: str,
+        archive_mode: str,
         options: Optional[List[str]] = None,
         source_copy: bool = False
     ) -> None:
@@ -478,9 +488,9 @@ class Archive(gluetool.Module):
             destination = destination.lstrip('/')
 
         if os.path.isdir(destination) and destination not in ['/', '.']:
-            if self.option('archive-mode') == 'daemon':
+            if archive_mode == 'daemon':
                 self.create_archive_directory_rsync(destination)
-            elif self.option('archive-mode') == 'ssh':
+            elif archive_mode == 'ssh':
                 self.create_archive_directory_ssh(destination)
             else:
                 self.create_archive_directory_local(destination)
@@ -493,13 +503,13 @@ class Archive(gluetool.Module):
 
         assert self._request_id is not None
 
-        if self.option('archive-mode') == 'daemon':
+        if archive_mode == 'daemon':
             full_destination = 'rsync://{}/{}'.format(
                 self.artifacts_rsync_host,
                 os.path.join(self._request_id, destination)
             )
 
-        elif self.option('archive-mode') == 'ssh':
+        elif archive_mode == 'ssh':
             full_destination = '{}:{}'.format(
                 self.artifacts_host,
                 os.path.join(self.artifacts_root, self._request_id, destination)
@@ -667,35 +677,44 @@ class Archive(gluetool.Module):
                     if excludes is not None and any(re.search(exclude_entry, source) for exclude_entry in excludes):
                         self.debug('Skipping {} because it matches exclude pattern {}'.format(source, excludes))
                         continue
-                    options = []
+                    verify_archive = False
 
-                    if self.option('archive-mode') != 's3':
-                        # Not needed for S3
-                        if os.path.isdir(source):
-                            options.append('--recursive')
+                    for archive_mode in self.archive_modes:
+                        try:
+                            options = []
 
-                        # S3 does not support permissions
-                        if permissions:
-                            options.append('--chmod={}'.format(permissions))
+                            if archive_mode != 's3':
+                                # Not needed for S3
+                                if os.path.isdir(source):
+                                    options.append('--recursive')
 
-                    # In case of syncing 'progress' and 'execute' stages, make sure we work with a copy.
-                    # This is a workaround for the problem of the source file being overwritten with hide-secrets
-                    # module. In that module 'sed -i' is used and the inode of the source file would change,
-                    # effectively breaking the saving of the "live" logs like 'progress.log'.
-                    if self.option('archive-mode') == 's3':
-                        self.run_aws(
-                            source, destination,
-                            options=options or None,
-                            source_copy=True if stage in ARCHIVE_STAGES_USING_COPY else False
-                        )
-                    else:
-                        self.run_rsync(
-                            source, destination,
-                            options=options or None,
-                            source_copy=True if stage in ARCHIVE_STAGES_USING_COPY else False
-                        )
+                                # S3 does not support permissions
+                                if permissions:
+                                    options.append('--chmod={}'.format(permissions))
 
-                    if not verify or self.option('archive-mode') == 'local':
+                            # Use a copy for 'progress' and 'execute' stages: hide-secrets uses 'sed -i',
+                            # which changes the inode and breaks writing to live logs like 'progress.log'.
+                            if archive_mode == 's3':
+                                self.run_aws(
+                                    source, destination,
+                                    options=options or None,
+                                    source_copy=stage in ARCHIVE_STAGES_USING_COPY
+                                )
+                            else:
+                                self.run_rsync(
+                                    source, destination, archive_mode,
+                                    options=options or None,
+                                    source_copy=stage in ARCHIVE_STAGES_USING_COPY
+                                )
+
+                            if archive_mode != 'local':
+                                verify_archive = True
+
+                        except Exception as error:
+                            # A failed destination must not prevent archiving to the remaining ones.
+                            self.error(f'Failed to sync {source} using {archive_mode}: {error}', sentry=True)
+
+                    if not verify or not verify_archive:
                         continue
 
                     # Verify archivation target
@@ -752,13 +771,14 @@ class Archive(gluetool.Module):
         # Only needed for mypy, it can't be None at this point
         assert self._request_id is not None
 
-        if self.option('archive-mode') == 'ssh':
-            self.create_archive_directory_ssh()
-        elif self.option('archive-mode') == 'daemon':
-            self.create_archive_directory_rsync()
-        elif self.option('archive-mode') == 'local':
-            self.create_archive_directory_local()
-        # S3 does not need to create directories
+        for archive_mode in self.archive_modes:
+            if archive_mode == 'ssh':
+                self.create_archive_directory_ssh()
+            elif archive_mode == 'daemon':
+                self.create_archive_directory_rsync()
+            elif archive_mode == 'local':
+                self.create_archive_directory_local()
+            # S3 does not need to create directories
 
         self.archive_stage('execute')
 

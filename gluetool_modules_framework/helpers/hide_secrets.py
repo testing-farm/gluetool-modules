@@ -1,6 +1,7 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
+import heapq
 import os
 import re
 import stat
@@ -28,13 +29,45 @@ DEFAULT_STREAM_CHUNK_SIZE = 1 * 1024 * 1024
 # whitespace can push it further. Such a file fails, rather than risks a leak.
 STREAM_MAX_CARRY = 16 * 1024 * 1024
 
-# What `\s` matches in a bytes pattern, and what `bytes.strip()` strips.
+# What `\s` matches in a bytes pattern, and what `bytes.strip()` strips. Workers run sed with
+# no locale set, and in the C locale, its '[[:space:]]' is this same set.
 WHITESPACE = b' \t\n\r\x0b\x0c'
 
 # Whitespace inside a multiline secret which contains at least one line break, as a capturing
 # group so `split()` keeps it. It matches the whole run of whitespace around the line break,
 # leaving the text on either side of it starting and ending with non-whitespace.
 _SECRET_LINE_BREAK = re.compile(br'(\s*\n\s*)')
+
+
+def _literal_spans(literal: bytes, data: bytes, limit: int) -> Iterator[Tuple[int, int]]:
+    """
+    Yield ``(start, end)`` of every run of overlapping occurrences of ``literal`` starting before
+    ``limit``, each run merged into one span.
+
+    Of the occurrences starting inside a run, only the last one can extend it, the others end
+    inside it already. Jumping straight to that one keeps the work low even for a secret like
+    'aaaa' in a file of nothing but 'a'.
+    """
+
+    size = len(literal)
+
+    # An occurrence starting before `limit` fits in `data[:limit - 1 + size]`.
+    start = data.find(literal, 0, limit - 1 + size)
+
+    while start != -1:
+        last, end = start, start + size
+
+        while True:
+            last = data.rfind(literal, last + 1, min(end, limit) - 1 + size)
+
+            if last == -1:
+                break
+
+            end = last + size
+
+        yield start, end
+
+        start = data.find(literal, end, limit - 1 + size)
 
 
 @dataclass
@@ -121,27 +154,43 @@ class _StreamMatchers:
         # Matched against a buffer reversed, see `boundary`.
         self._nonspace_tail = re.compile(br'(?:\s*\S){%d}' % self.nonspace) if self.nonspace else None
 
-    def spans(self, data: bytes, limit: int) -> List[Tuple[int, int]]:
+    def spans(self, data: bytes, limit: int) -> Iterator[Tuple[int, int]]:
         """
-        Return ``(start, end)`` of every match of every secret starting before ``limit``,
-        overlapping ones included, sorted.
+        Yield ``(start, end)`` of every run of overlapping matches, of one secret or several,
+        starting before ``limit``, each run merged into one span, in order.
+
+        Matches are merged as they are found, so memory use does not grow with their number,
+        however densely they overlap.
         """
 
-        found: List[Tuple[int, int]] = []
+        found = heapq.merge(
+            *[_literal_spans(literal, data, limit) for literal in self.literals],
+            *[multiline.spans(data, limit) for multiline in self.patterns]
+        )
 
-        for literal in self.literals:
-            pos = data.find(literal)
+        run_start = run_end = 0
 
-            while 0 <= pos < limit:
-                found.append((pos, pos + len(literal)))
-                pos = data.find(literal, pos + 1)
+        for start, end in found:
+            if start < run_end:
+                run_end = max(run_end, end)
+                continue
 
-        for multiline in self.patterns:
-            found.extend(multiline.spans(data, limit))
+            if run_end > run_start:
+                yield run_start, run_end
 
-        found.sort()
+            run_start, run_end = start, end
 
-        return found
+        if run_end > run_start:
+            yield run_start, run_end
+
+    def contains(self, data: bytes) -> bool:
+        """
+        Return whether ``data`` contains a match of any secret, stopping at the first one.
+        """
+
+        return any(literal in data for literal in self.literals) or any(
+            next(multiline.spans(data, len(data)), None) is not None for multiline in self.patterns
+        )
 
     def boundary(self, data: bytes) -> int:
         """
@@ -328,10 +377,10 @@ class HideSecrets(gluetool.Module):
         path: str,
         f: BinaryIO,
         matchers: _StreamMatchers
-    ) -> Iterator[Tuple[bytes, int, List[Tuple[int, int]]]]:
+    ) -> Iterator[Tuple[bytes, int]]:
         """
-        Read ``f`` and yield ``(window, boundary, spans)``: the next part of the file, how many
-        of its leading bytes are settled, and the matches starting among those bytes.
+        Read ``f`` and yield ``(window, boundary)``: the next part of the file, and how many of
+        its leading bytes are settled.
 
         Each window starts with the unsettled bytes of the previous one, exactly as read. That
         makes matches independent of where reads happen to split the file: every match starting
@@ -345,7 +394,7 @@ class HideSecrets(gluetool.Module):
             window = carry + buf
 
             if not buf:
-                yield window, len(window), matchers.spans(window, len(window))
+                yield window, len(window)
                 return
 
             boundary = matchers.boundary(window)
@@ -359,13 +408,13 @@ class HideSecrets(gluetool.Module):
                     )
                 )
 
-            yield window, boundary, matchers.spans(window, boundary)
+            yield window, boundary
 
             carry = window[boundary:]
 
     def _file_contains_secret(self, path: str, matchers: _StreamMatchers) -> bool:
         with open(path, 'rb') as f:
-            return any(spans for _, _, spans in self._scan(path, f, matchers))
+            return any(matchers.contains(window) for window, _ in self._scan(path, f, matchers))
 
     @staticmethod
     def _fsync_directory(directory: str) -> None:
@@ -390,13 +439,14 @@ class HideSecrets(gluetool.Module):
                 # past the settled bytes only when the last match written out does.
                 written = 0
 
-                for window, boundary, spans in self._scan(path, src_file, matchers):
-                    for start, end in spans:
+                for window, boundary in self._scan(path, src_file, matchers):
+                    for start, end in matchers.spans(window, boundary):
                         if end <= written:
                             continue
 
                         # Overlapping matches, of the same secret or of different ones, are
-                        # redacted together, so no part of either is left visible.
+                        # redacted together, so no part of either is left visible. `spans()`
+                        # merges them within a window, this merges them across windows.
                         if start < written:
                             written = end
                             continue

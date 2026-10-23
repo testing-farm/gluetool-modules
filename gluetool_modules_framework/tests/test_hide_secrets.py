@@ -4,6 +4,7 @@
 import pytest
 import os
 import tempfile
+import tracemalloc
 
 import gluetool
 from gluetool.utils import dump_yaml
@@ -406,6 +407,31 @@ def test_hide_secrets_stream_overlapping_secrets(stream_module, secrets, occurre
 
         with open(path, 'r') as f:
             assert f.read() == '\n'.join('x' * n + 'hidden' + 'y' * 3 for n in offsets)
+
+
+def test_hide_secrets_stream_dense_overlaps(stream_module):
+    # Secrets overlapping each other at every byte of the file, over two million matches in
+    # 32 KiB. Memory use must not grow with the number of matches.
+    module = stream_module
+    module.add_secrets(['a' * n for n in range(1, 65)])
+
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        path = os.path.join(tmpdir, 'dense.txt')
+        with open(path, 'w') as f:
+            f.write('a' * 32 * 1024)
+
+        tracemalloc.start()
+
+        try:
+            module.hide_secrets(search_path=tmpdir)
+            _, peak = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
+
+        assert peak < 8 * 1024 * 1024
+
+        with open(path, 'r') as f:
+            assert f.read() == 'hidden'
 
 
 def test_hide_secrets_stream_carry_limit(monkeypatch, stream_module):

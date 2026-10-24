@@ -29,14 +29,39 @@ DEFAULT_STREAM_CHUNK_SIZE = 1 * 1024 * 1024
 # whitespace can push it further. Such a file fails, rather than risks a leak.
 STREAM_MAX_CARRY = 16 * 1024 * 1024
 
-# What `\s` matches in a bytes pattern, and what `bytes.strip()` strips. Workers run sed with
-# no locale set, and in the C locale, its '[[:space:]]' is this same set.
-WHITESPACE = b' \t\n\r\x0b\x0c'
+# Whitespace, as `str.isspace()` defines it, which `\s` does not match in a bytes pattern.
+# Workers start citool with no locale set, Python coerces that to C.UTF-8 (PEP 538), and sed
+# inherits it. There, its '[[:space:]]' matches some of these characters too. Using all of
+# them, 'stream' hides at least what 'sed' does, whichever glibc decides what '[[:space:]]' is.
+_UNICODE_SPACES = (
+    '\x1c\x1d\x1e\x1f\x85\xa0\u1680'
+    + ''.join(map(chr, range(0x2000, 0x200b)))
+    + '\u2028\u2029\u202f\u205f\u3000'
+)
+
+# Whitespace in UTF-8, and whitespace other than '\n': the characters of `\s` and
+# `_UNICODE_SPACES`, matched a run of the same kind at a time, which `re` does fast. Every
+# multibyte encoding starts with a byte which never continues one, so occurrences of these
+# never overlap, and a run of whitespace splits into them in one way only.
+_MULTIBYTE_SPACE = br'(?:\xc2[\x85\xa0]|\xe1\x9a\x80|\xe2\x80[\x80-\x8a\xa8\xa9\xaf]|\xe2\x81\x9f|\xe3\x80\x80)++'
+_SPACE = br'(?:[\t\n\x0b\x0c\r\x1c-\x1f ]++|' + _MULTIBYTE_SPACE + br')'
+_SPACE_NOT_NEWLINE = br'(?:[\t\x0b\x0c\r\x1c-\x1f ]++|' + _MULTIBYTE_SPACE + br')'
+
+_ANY_SPACE = re.compile(_SPACE)
+
+# Every byte which is whitespace, or a part of it: what `\s` matches in a bytes pattern, and
+# each byte of the encodings of `_UNICODE_SPACES`. Some characters other than whitespace
+# consist of these bytes only, U+3001 IDEOGRAPHIC COMMA for one.
+_MAYBE_SPACE = bytes(sorted(set(b' \t\n\r\x0b\x0c' + _UNICODE_SPACES.encode('utf-8'))))
+_MAYBE_SPACE_CLASS = b''.join(br'\x%02x' % byte for byte in _MAYBE_SPACE)
+
+# Whitespace at either end of a secret.
+_SECRET_EDGE_SPACE = re.compile(br'\A%s+|%s+\Z' % (_SPACE, _SPACE))
 
 # Whitespace inside a multiline secret which contains at least one line break, as a capturing
 # group so `split()` keeps it. It matches the whole run of whitespace around the line break,
 # leaving the text on either side of it starting and ending with non-whitespace.
-_SECRET_LINE_BREAK = re.compile(br'(\s*\n\s*)')
+_SECRET_LINE_BREAK = re.compile(br'((?:%s*\n)+%s*)' % (_SPACE_NOT_NEWLINE, _SPACE))
 
 
 def _literal_spans(literal: bytes, data: bytes, limit: int) -> Iterator[Tuple[int, int]]:
@@ -80,10 +105,13 @@ class _MultilinePattern:
     whitespace with at least as many line breaks, no matter how long, mirroring the
     '[[:space:]]*' padding of the sed implementation.
 
-    Every piece starts and ends with non-whitespace, and each run compiles to
-    '(?:[^\\S\\n]*\\n){N}\\s*', which can match a given run of whitespace in one way only. The
-    pattern therefore never backtracks over a run more than once, even when the secret contains
-    blank lines.
+    Every piece starts and ends with non-whitespace, and each run compiles to N times any
+    whitespace but '\\n' followed by '\\n', then any whitespace, which can match a given run of
+    whitespace in one way only. Its quantifiers are possessive, so the pattern never backtracks
+    into a run, even when the secret contains blank lines.
+
+    Its number of non-whitespace bytes is exact. `_StreamMatchers.boundary` counts at most as
+    many in the data, so it never settles a match too early.
     """
 
     # The longest piece. Every match contains it, so when it is missing, the regex does not run.
@@ -152,7 +180,9 @@ class _StreamMatchers:
         self.nonspace = max((multiline.nonspace for multiline in self.patterns), default=0)
 
         # Matched against a buffer reversed, see `boundary`.
-        self._nonspace_tail = re.compile(br'(?:\s*\S){%d}' % self.nonspace) if self.nonspace else None
+        self._nonspace_tail = re.compile(
+            br'(?:[%s]*+[^%s]){%d}' % (_MAYBE_SPACE_CLASS, _MAYBE_SPACE_CLASS, self.nonspace)
+        ) if self.nonspace else None
 
     def spans(self, data: bytes, limit: int) -> Iterator[Tuple[int, int]]:
         """
@@ -221,8 +251,8 @@ class _StreamMatchers:
 
     def _nonspace_boundary(self, data: bytes) -> int:
         """
-        Return the index just past the start of the last `nonspace` non-whitespace bytes of
-        ``data``, or 0 when there are fewer.
+        Return the index just past the start of the last `nonspace` bytes of ``data`` which
+        cannot be a part of whitespace, or 0 when there are fewer.
         """
 
         assert self._nonspace_tail is not None
@@ -230,12 +260,16 @@ class _StreamMatchers:
         # Grow a tail of `data` until it holds enough non-whitespace bytes, counting them with
         # `translate()` rather than a regex, which on long whitespace backtracks at a fraction
         # of the speed. Then, since `re` cannot search backwards, match the reversed tail.
+        #
+        # Every byte which may be a part of whitespace counts as whitespace, including those of
+        # a character cut off by either end of the tail. Counting too few non-whitespace bytes
+        # only holds back more of `data`, counting too many would settle a pending match.
         size = 4 * self.nonspace
 
         while True:
             tail = data[-size:]
 
-            if len(tail.translate(None, WHITESPACE)) >= self.nonspace:
+            if len(tail.translate(None, _MAYBE_SPACE)) >= self.nonspace:
                 match = self._nonspace_tail.match(tail[::-1])
                 assert match is not None
 
@@ -335,7 +369,7 @@ class HideSecrets(gluetool.Module):
             # Whitespace around a multiline secret is not secret, and requiring it, as the sed
             # implementation does, only makes the secret harder to find. Without it, every piece
             # starts and ends with non-whitespace, see `_MultilinePattern`.
-            stripped = encoded.strip()
+            stripped = _SECRET_EDGE_SPACE.sub(b'', encoded)
 
             if not stripped:
                 self.warn('Ignoring a secret which consists of whitespace only')
@@ -350,7 +384,7 @@ class HideSecrets(gluetool.Module):
             pieces, runs = parts[0::2], parts[1::2]
 
             pattern = re.escape(pieces[0]) + b''.join(
-                br'(?:[^\S\n]*\n){%d}\s*' % run.count(b'\n') + re.escape(piece)
+                br'(?:%s*+\n){%d}%s*+' % (_SPACE_NOT_NEWLINE, run.count(b'\n'), _SPACE) + re.escape(piece)
                 for run, piece in zip(runs, pieces[1:])
             )
 
@@ -358,7 +392,7 @@ class HideSecrets(gluetool.Module):
                 prefilter=max(pieces, key=len),
                 first=pieces[0],
                 pattern=re.compile(pattern),
-                nonspace=len(stripped.translate(None, WHITESPACE))
+                nonspace=len(_ANY_SPACE.sub(b'', stripped))
             ))
 
         if not literals and not patterns:

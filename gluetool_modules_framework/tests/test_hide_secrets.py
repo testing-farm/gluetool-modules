@@ -5,6 +5,7 @@ import functools
 import pytest
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import tracemalloc
@@ -558,6 +559,62 @@ def test_hide_secrets_sanity_unknown_implementation(value):
 
     with pytest.raises(gluetool.GlueError, match="Unknown implementation '{}'".format(value)):
         module.sanity()
+
+
+def test_hide_secrets_keeps_owner_and_group(module):
+    # `sed -i` keeps the owner and group of a file it rewrites, as far as the user may set them.
+    if os.geteuid() == 0:
+        uid, gid = 12345, 12345
+    else:
+        groups = [group for group in os.getgroups() if group != os.getegid()]
+
+        if not groups:
+            pytest.skip('needs root, or a supplementary group')
+
+        uid, gid = os.geteuid(), groups[0]
+
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        module.add_secrets(['owned-secret'])
+
+        path = os.path.join(tmpdir, 'owned.txt')
+        with open(path, 'w') as f:
+            f.write('secret is owned-secret\n')
+
+        os.chown(path, uid, gid)
+        os.chmod(path, 0o640)
+
+        module.hide_secrets(search_path=tmpdir)
+
+        with open(path, 'r') as f:
+            assert f.read() == 'secret is hidden\n'
+
+        st = os.stat(path)
+        assert (st.st_uid, st.st_gid, st.st_mode & 0o7777) == (uid, gid, 0o640)
+
+
+def test_hide_secrets_keeps_acl(module):
+    # `sed -i` keeps the ACL of a file it rewrites.
+    if shutil.which('setfacl') is None:
+        pytest.skip('needs setfacl')
+
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        module.add_secrets(['acl-secret'])
+
+        path = os.path.join(tmpdir, 'acl.txt')
+        with open(path, 'w') as f:
+            f.write('secret is acl-secret\n')
+
+        if subprocess.run(['setfacl', '-m', 'u:12345:r', path], capture_output=True).returncode != 0:
+            pytest.skip('filesystem does not support ACLs')
+
+        acl = os.getxattr(path, 'system.posix_acl_access')
+
+        module.hide_secrets(search_path=tmpdir)
+
+        with open(path, 'r') as f:
+            assert f.read() == 'secret is hidden\n'
+
+        assert os.getxattr(path, 'system.posix_acl_access') == acl
 
 
 def test_hide_secrets_binary_with_nul_bytes(module):

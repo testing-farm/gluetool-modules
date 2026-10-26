@@ -63,6 +63,9 @@ _SECRET_EDGE_SPACE = re.compile(br'\A%s+|%s+\Z' % (_SPACE, _SPACE))
 # leaving the text on either side of it starting and ending with non-whitespace.
 _SECRET_LINE_BREAK = re.compile(br'((?:%s*\n)+%s*)' % (_SPACE_NOT_NEWLINE, _SPACE))
 
+# Extended attribute holding the POSIX access ACL of a file.
+_ACL_XATTR = 'system.posix_acl_access'
+
 
 def _literal_spans(literal: bytes, data: bytes, limit: int) -> Iterator[Tuple[int, int]]:
     """
@@ -466,12 +469,41 @@ class HideSecrets(gluetool.Module):
         finally:
             os.close(dir_fd)
 
+    def _copy_metadata(self, path: str, original: os.stat_result, tmp_path: str) -> None:
+        """
+        Give ``tmp_path`` the owner, group, mode and ACL of ``path``, as `sed -i` does.
+
+        Owner and group are best effort: only root may give a file away, other users may set
+        only a group they belong to. The mode is set after them, since `chown` clears the
+        set-user-ID and set-group-ID bits.
+        """
+
+        for uid in (original.st_uid, -1):
+            try:
+                os.chown(tmp_path, uid, original.st_gid)
+                break
+            except PermissionError:
+                continue
+
+        os.chmod(tmp_path, stat.S_IMODE(original.st_mode))
+
+        try:
+            acl = os.getxattr(path, _ACL_XATTR)
+        except OSError:
+            # No ACL, or a filesystem without them.
+            return
+
+        try:
+            os.setxattr(tmp_path, _ACL_XATTR, acl)
+        except OSError as exc:
+            self.warn("could not copy ACL of '{}': {}".format(path, exc))
+
     def _rewrite_file(self, path: str, matchers: _StreamMatchers) -> None:
         """
         Rewrite `path` with every secret redacted, atomically.
         """
         directory = os.path.dirname(path) or '.'
-        original_mode = stat.S_IMODE(os.stat(path).st_mode)
+        original = os.stat(path)
 
         fd, tmp_path = tempfile.mkstemp(dir=directory, prefix='.hide-secrets-')
 
@@ -506,7 +538,7 @@ class HideSecrets(gluetool.Module):
                 tmp_file.flush()
                 os.fsync(tmp_file.fileno())
 
-            os.chmod(tmp_path, original_mode)
+            self._copy_metadata(path, original, tmp_path)
             os.replace(tmp_path, path)
 
         except BaseException:

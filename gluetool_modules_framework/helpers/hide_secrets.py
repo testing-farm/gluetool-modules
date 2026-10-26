@@ -302,9 +302,11 @@ class HideSecrets(gluetool.Module):
                 `sed` for every call; it is battle-tested but reads whole files into memory,
                 which can exhaust worker memory - and hard-fails above 2 GiB - on large files
                 such as long-running guest console logs. 'stream' is a pure Python
-                implementation which redacts files in bounded memory with no size limit.
+                implementation which redacts files in bounded memory with no size limit. It
+                fails on a file in which the first line of a multiline secret is followed by
+                more than {} MiB of whitespace, after hiding secrets in all other files.
                 (default: %(default)s)
-            """,
+            """.format(STREAM_MAX_CARRY // (1024 * 1024)),
             'choices': ('sed', 'stream'),
             'default': DEFAULT_IMPLEMENTATION,
         },
@@ -578,15 +580,30 @@ class HideSecrets(gluetool.Module):
 
         self.debug("Hiding secrets from all files under '{}' path (stream implementation)".format(search_path))
 
-        def _run() -> Result[bool, bool]:
-            try:
-                for path in self._iter_regular_files(search_path):
-                    self._scrub_file(path, matchers)
-            except OSError as exc:
-                self.warn("Hiding secrets under '{}' failed, retrying: {}".format(search_path, exc), sentry=True)
-                return Result.Error(False)
+        # A file which cannot be scrubbed must not stop the others from being scrubbed, the same
+        # way `xargs` runs sed on every file before reporting a failure. Files failing with
+        # `OSError` are retried, files hitting `STREAM_MAX_CARRY` would fail the same way again.
+        pending = list(self._iter_regular_files(search_path))
+        failed: List[str] = []
 
-            return Result.Ok(True)
+        def _run() -> Result[bool, bool]:
+            retry: List[str] = []
+
+            for path in pending:
+                try:
+                    self._scrub_file(path, matchers)
+
+                except OSError as exc:
+                    self.warn("Hiding secrets in '{}' failed, retrying: {}".format(path, exc), sentry=True)
+                    retry.append(path)
+
+                except gluetool.GlueError as exc:
+                    self.warn(str(exc), sentry=True)
+                    failed.append(path)
+
+            pending[:] = retry
+
+            return Result.Error(False) if pending else Result.Ok(True)
 
         try:
             gluetool.utils.wait(
@@ -596,7 +613,12 @@ class HideSecrets(gluetool.Module):
                 tick=self.option('retry-tick')
             )
         except gluetool.GlueError:
-            raise gluetool.GlueError('Failed to hide secrets, secrets could be leaked!')
+            failed.extend(pending)
+
+        if failed:
+            raise gluetool.GlueError('Failed to hide secrets in {}, secrets could be leaked!'.format(
+                ', '.join("'{}'".format(path) for path in failed)
+            ))
 
     def _hide_secrets_sed(self, search_path: str) -> None:
         # POSIX.2 Basic Regular Expressions (BREs) have a specific set of characters

@@ -504,6 +504,98 @@ def test_hide_secrets_stream_carry_limit(monkeypatch, stream_module):
             module.hide_secrets(search_path=split)
 
 
+def _tree_with_secrets(tmpdir, secret, count):
+    paths = []
+
+    for index in range(count):
+        path = os.path.join(tmpdir, 'file-{}.txt'.format(index))
+        with open(path, 'w') as f:
+            f.write('token={}\n'.format(secret))
+        paths.append(path)
+
+    return paths
+
+
+def test_hide_secrets_stream_carry_limit_scrubs_other_files(monkeypatch, stream_module):
+    # A file hitting the carry limit fails, but only after every other file is scrubbed, as
+    # 'xargs' does for sed. The first line of a PEM key is public, anyone can produce such a file.
+    module = stream_module
+    module.add_secrets(['alpha-secret\nbeta-secret', 'token-secret'])
+
+    monkeypatch.setattr(hide_secrets_module, 'STREAM_MAX_CARRY', 1024)
+
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        split = os.path.join(tmpdir, 'split.txt')
+        with open(split, 'w') as f:
+            f.write('alpha-secret\n' + ' ' * 4096 + 'beta')
+
+        paths = _tree_with_secrets(tmpdir, 'token-secret', 6)
+
+        with pytest.raises(gluetool.GlueError, match=r"in '{}', secrets could be leaked".format(re.escape(split))):
+            module.hide_secrets(search_path=tmpdir)
+
+        for path in paths:
+            with open(path, 'r') as f:
+                assert f.read() == 'token=hidden\n'
+
+
+def test_hide_secrets_stream_retries_failed_files_only(stream_module):
+    # A file failing with OSError is retried alone, the files already scrubbed are not read again.
+    module = stream_module
+    module.add_secrets(['token-secret'])
+
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        paths = _tree_with_secrets(tmpdir, 'token-secret', 4)
+        flaky = paths[0]
+
+        scrub_file = module._scrub_file
+        calls = []
+
+        def _scrub_file(path, matchers):
+            calls.append(path)
+
+            if path == flaky and calls.count(flaky) == 1:
+                raise OSError('flaky')
+
+            scrub_file(path, matchers)
+
+        with patch.object(module, '_scrub_file', side_effect=_scrub_file):
+            module.hide_secrets(search_path=tmpdir)
+
+        assert sorted(calls) == sorted(paths + [flaky])
+
+        for path in paths:
+            with open(path, 'r') as f:
+                assert f.read() == 'token=hidden\n'
+
+
+def test_hide_secrets_stream_failing_file_scrubs_other_files(stream_module):
+    # A file failing with OSError until the timeout fails the call, the other files are scrubbed.
+    module = stream_module
+    module._config['retry-timeout'] = 1
+    module.add_secrets(['token-secret'])
+
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        paths = _tree_with_secrets(tmpdir, 'token-secret', 4)
+        broken = paths[0]
+
+        scrub_file = module._scrub_file
+
+        def _scrub_file(path, matchers):
+            if path == broken:
+                raise OSError('broken')
+
+            scrub_file(path, matchers)
+
+        with patch.object(module, '_scrub_file', side_effect=_scrub_file):
+            with pytest.raises(gluetool.GlueError, match=r"in '{}', secrets could be leaked".format(re.escape(broken))):
+                module.hide_secrets(search_path=tmpdir)
+
+        for path in paths[1:]:
+            with open(path, 'r') as f:
+                assert f.read() == 'token=hidden\n'
+
+
 def test_hide_secrets_does_not_follow_symlinks(module):
     # 'find' defaults to '-P', so 'find <path> -type f' never yields a symlink - not even when
     # the symlink is the starting point. Both implementations must leave them alone, and in

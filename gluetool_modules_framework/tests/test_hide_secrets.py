@@ -546,6 +546,20 @@ def test_hide_secrets_does_not_follow_symlinks(module):
             assert f.read() == 'secret is {}\n'.format(secret)
 
 
+def test_hide_secrets_sanity(module):
+    module.sanity()
+
+
+@pytest.mark.parametrize('value', ['streaming', 'Stream', ''])
+def test_hide_secrets_sanity_unknown_implementation(value):
+    # A config file value skips the 'choices' check, a typo must not quietly run 'sed'.
+    _, module = create_module(HideSecrets)
+    module._config['implementation'] = value
+
+    with pytest.raises(gluetool.GlueError, match="Unknown implementation '{}'".format(value)):
+        module.sanity()
+
+
 def test_hide_secrets_binary_with_nul_bytes(module):
     # The legacy sed implementation uses '-z' (NUL-separated records); make sure NUL bytes
     # elsewhere in the file do not prevent a secret from being found and hidden, regardless

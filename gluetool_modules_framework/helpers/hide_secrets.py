@@ -330,6 +330,14 @@ class HideSecrets(gluetool.Module):
         super(HideSecrets, self).__init__(*args, **kwargs)
         self._secrets: Set[str] = set()
 
+    def sanity(self) -> None:
+        # gluetool checks 'choices' only on the command line, a value from a config file is used
+        # as it is. Without this check, a typo there would quietly run the sed implementation.
+        if self.option('implementation') not in ('sed', 'stream'):
+            raise gluetool.GlueError(
+                "Unknown implementation '{}', expected 'sed' or 'stream'".format(self.option('implementation'))
+            )
+
     def _iter_regular_files(self, search_path: str) -> Iterator[str]:
         """
         Mirror `find <path> -type f` semantics: symlinks are never followed - not the ones

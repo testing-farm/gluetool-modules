@@ -1067,8 +1067,10 @@ class TestScheduleTMT(Module):
 
         # Create a working directory, we try hard to keep all the related work inside this directory.
         # This directory is passed to `tmt run --id` and tmt will keep all test artifacts.
+        # Sanitize the plan name, tmt passes the directory to `podman -v`, which cannot handle `:` in paths.
+        # Workaround for https://github.com/teemtee/tmt/issues/4891
 
-        work_dir_prefix = 'work-{}'.format(os.path.basename(schedule_entry.plan))
+        work_dir_prefix = 'work-{}'.format(safe_name(os.path.basename(schedule_entry.plan)))
 
         # tempfile.mkdtemp returns an absolute path to the directory, but the unspoken convention says
         # we must use paths that are relative to the current working directory. Therefore we must make

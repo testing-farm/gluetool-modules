@@ -193,6 +193,27 @@ def test_run_plan_rejects_unsafe_ssh_environment(module, guest, monkeypatch, tmp
                 module.run_test_schedule_entry(schedule_entry)
 
 
+@pytest.mark.parametrize('plan, expected_prefix', [
+    ('/plans/sanity', 'work-sanity'),
+    ('/plans/php:8.2', 'work-php-8-2'),
+])
+def test_prepare_environment(module, monkeypatch, tmpdir, plan, expected_prefix):
+    schedule_entry = TestScheduleEntry(
+        gluetool.log.Logging().get_logger(),
+        TestingEnvironment('x86_64', 'rhel-9'),
+        plan,
+        tmpdir
+    )
+
+    monkeypatch.chdir(tmpdir)
+
+    work_dirpath = module._prepare_environment(schedule_entry)
+
+    assert work_dirpath.startswith(expected_prefix)
+    assert ':' not in work_dirpath
+    assert os.path.isdir(os.path.join(tmpdir, work_dirpath))
+
+
 def _assert_results(results, expected_results):
     for result, expected in zip(results, expected_results):
         assert result.name == expected['name']

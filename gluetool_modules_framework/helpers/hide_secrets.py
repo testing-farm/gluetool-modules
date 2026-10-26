@@ -101,20 +101,30 @@ def _literal_spans(literal: bytes, data: bytes, limit: int) -> Iterator[Tuple[in
 @dataclass
 class _MultilinePattern:
     """
-    A secret spanning multiple lines.
+    A secret spanning multiple lines, compiled into a regular expression.
 
-    The secret is split into its pieces of text and the runs of whitespace between them which
-    contain a line break. The pattern matches the pieces literally, and each run as any run of
-    whitespace with at least as many line breaks, no matter how long, mirroring the
-    '[[:space:]]*' padding of the sed implementation.
+    `_build_stream_matchers` strips the whitespace at both ends of the secret and splits it at
+    each line break, together with the whitespace around it. That leaves pieces of text, each
+    starting and ending with non-whitespace, and runs of whitespace between them. The pattern
+    matches the pieces literally. In place of a run with N line breaks, it matches any run of
+    whitespace with at least N line breaks, as the '[[:space:]]*' around each '\\n' does in the
+    sed implementation.
 
-    Every piece starts and ends with non-whitespace, and each run compiles to N times any
-    whitespace but '\\n' followed by '\\n', then any whitespace, which can match a given run of
-    whitespace in one way only. Its quantifiers are possessive, so the pattern never backtracks
-    into a run, even when the secret contains blank lines.
+    A run with 2 line breaks compiles to about '(?:[ \\t]*+\\n){2}\\s*+'. Each '[ \\t]*+\\n'
+    takes the whitespace up to and including the next '\\n', and the last '\\s*+' takes the
+    rest, so a run of whitespace splits between them in one way only. Giving back any of the
+    whitespace cannot produce a match either, since the next piece starts with non-whitespace.
+    So the quantifiers are possessive, and the regex never gives back what they matched.
 
-    Its number of non-whitespace bytes is exact. `_StreamMatchers.boundary` counts at most as
-    many in the data, so it never settles a match too early.
+    With plain quantifiers, a run followed by the wrong text makes the regex retry every way of
+    splitting the run between them, as the pattern nests a quantifier for each kind of
+    whitespace inside the one for the run. 24 spaces take almost a second, and every 2 more
+    take four times as long. With possessive ones, 4 MiB of spaces take 10 milliseconds.
+
+    A match holds no non-whitespace bytes besides those of the pieces, so every match of the
+    secret holds exactly ``nonspace`` of them, however long its runs. `_StreamMatchers.boundary`
+    relies on that: once the data after the start of a possible match holds ``nonspace``
+    non-whitespace bytes, the match must end inside the data.
     """
 
     # The longest piece. Every match contains it, so when it is missing, the regex does not run.
@@ -288,6 +298,102 @@ class HideSecrets(gluetool.Module):
     """
     Hide secrets from all files in the search path, by default
     current working directory.
+
+    Every occurrence of a secret becomes ``hidden``. The lines of a multiline secret match with
+    any whitespace around the line breaks between them, since logs and YAML dumps indent the
+    lines of a key.
+
+    ``--implementation`` picks one of two implementations. ``sed`` runs ``sed -z -i`` on every
+    file, which holds the whole file in memory. ``stream`` reads each file in chunks and needs
+    about the same memory for a file of any size. The rest of this text describes ``stream``.
+
+    Matching
+    ========
+
+    A secret without a line break is a *literal*. ``stream`` looks for its bytes with
+    ``bytes.find()``, without a regular expression.
+
+    For a secret with a line break, ``stream`` strips the whitespace at both ends and splits it
+    at each line break, together with the whitespace around it. That leaves *pieces* of text,
+    each starting and ending with non-whitespace. A regular expression matches the pieces
+    literally. Between two pieces it matches any run of whitespace with at least as many line
+    breaks as the secret has there. The secret ``"abc\\n  def\\n"`` gives the pieces ``abc``
+    and ``def``. It matches ``abc\\ndef`` and ``abc  \\n\\n\\tdef``, but not ``abc def``.
+
+    Matches can overlap, of one secret or of two. ``stream`` merges overlapping matches and
+    replaces them with a single ``hidden``, so no part of either secret stays in the file.
+
+    Windows
+    =======
+
+    ``stream`` reads a file at least 1 MiB at a time. A secret can straddle two reads, so
+    ``stream`` holds back the end of one read, the *carry*, and searches it together with the
+    next read. The carry and the read form a *window*.
+
+    The *boundary* splits a window in two. Every match starting before the boundary ends inside
+    the window, so nothing read later can change how those bytes look once redacted.
+    ``stream`` writes them out and carries the rest into the next window. At the end of the
+    file, the boundary is the end of the window.
+
+    A literal match ends inside the window when it starts before the last ``len(secret) - 1``
+    bytes. The same goes for the first piece of a multiline secret, so the boundary always sits
+    at least that many bytes from the end.
+
+    A multiline match has no fixed length, since nothing limits the whitespace between its
+    pieces. Its count of non-whitespace bytes is fixed instead: it holds the bytes of its pieces
+    and nothing else, and it ends with one of them. If the window holds that many
+    non-whitespace bytes after the start of a possible match, the match has to end inside the
+    window.
+
+    ``stream`` counts non-whitespace bytes back from the end of the window, up to the count of
+    the multiline secret with the most of them. An occurrence of a first piece after that point
+    may start a match which continues in the next read, and the boundary moves back to the
+    first such occurrence.
+
+    Take the secret ``abc\\ndef``, with 6 non-whitespace bytes, and a window ending with
+    ``xyz abc\\n   de``. From ``abc`` on, the window holds only 5 of them, ``abcde``, so
+    ``stream`` carries ``abc\\n   de`` into the next window. With the window ending in
+    ``abc\\n   dex`` instead, a match starting at ``abc`` would have to end by the ``x``. None
+    does, and ``stream`` settles those bytes.
+
+    A window can end inside a multibyte character, and some bytes belong both to whitespace and
+    to other characters: ``\\xe3\\x80\\x80`` is U+3000 IDEOGRAPHIC SPACE, ``\\xe3\\x80\\x81`` is
+    U+3001 IDEOGRAPHIC COMMA. ``stream`` counts each such byte as whitespace. Counting too few
+    non-whitespace bytes holds back more data than needed. Counting too many could settle a
+    match too early and leak the secret.
+
+    The carry grows past the length of the longest secret only when a first piece is followed
+    by megabytes of whitespace, or of bytes counted as whitespace. ``stream`` gives up on a file
+    once its carry exceeds 16 MiB.
+
+    Rewriting files
+    ===============
+
+    ``stream`` first reads a file to check for a secret, and stops at the first match. A file
+    without a secret stays untouched, keeping its inode and modification time.
+
+    ``stream`` reads a file with a secret again, writes the redacted copy to a temporary file in
+    the same directory and calls ``fsync()`` on it. It gives the copy the owner, group, mode and
+    ACL of the original, renames it over the original, and calls ``fsync()`` on the directory,
+    so the rename survives a crash. A process reading the file meanwhile sees either the old
+    content or the new one.
+
+    ``stream`` scrubs each file on its own. It retries a file failing with ``OSError`` until
+    ``--retry-timeout`` runs out, and fails a file whose carry exceeds 16 MiB without a retry.
+    After scrubbing all the other files, it raises an error naming each file it could not scrub.
+    ``xargs`` does the same for ``sed``: it runs ``sed`` on every file before reporting a failure.
+
+    Compared to ``sed``
+    ===================
+
+    ``stream`` hides at least what ``sed`` hides:
+
+    * It treats as whitespace every character ``str.isspace()`` accepts, more than glibc's
+      ``[[:space:]]`` matches under ``C.UTF-8``, the locale workers run ``sed`` in.
+    * It finds a multiline secret whatever whitespace surrounds its ends and line breaks.
+      ``sed`` requires the whitespace the secret itself has there.
+
+    ``sed`` fails on files over 2 GiB. ``stream`` handles a file of any size.
     """
 
     name = 'hide-secrets'

@@ -685,6 +685,9 @@ class HideSecrets(gluetool.Module):
         # A file which cannot be scrubbed must not stop the others from being scrubbed, the same
         # way `xargs` runs sed on every file before reporting a failure. Files failing with
         # `OSError` are retried, files hitting `STREAM_MAX_CARRY` would fail the same way again.
+        #
+        # Each file is only logged. Sentry gets one warning per round, listing the files to retry,
+        # and the error raised at the end, so a tree of unreadable files does not flood it.
         pending = list(self._iter_regular_files(search_path))
         failed: List[str] = []
 
@@ -696,12 +699,17 @@ class HideSecrets(gluetool.Module):
                     self._scrub_file(path, matchers)
 
                 except OSError as exc:
-                    self.warn("Hiding secrets in '{}' failed, retrying: {}".format(path, exc), sentry=True)
+                    self.warn("Hiding secrets in '{}' failed, retrying: {}".format(path, exc))
                     retry.append(path)
 
                 except gluetool.GlueError as exc:
-                    self.warn(str(exc), sentry=True)
+                    self.warn(str(exc))
                     failed.append(path)
+
+            if retry:
+                self.warn('Hiding secrets failed in {} file(s), retrying: {}'.format(
+                    len(retry), ', '.join("'{}'".format(path) for path in retry)
+                ), sentry=True)
 
             pending[:] = retry
 

@@ -60,6 +60,7 @@ def fixture_module(monkeypatch):
     module._config['reproducer-comment'] = '# tmt reproducer'
     module._config['tmt-run-options'] = '-ddddvvv,--log-topic=cli-invocations'
     module._config['result-log-max-size'] = 10
+    module._config['artifact-order'] = 40
     patch_shared(
         monkeypatch,
         module,
@@ -729,26 +730,26 @@ dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic
             None
         ),
         (  # with koji and brew artifacts
-            {},
+            {"artifact-order": 40},
             {},
             TestingEnvironment('x86_64', 'rhel-9', artifacts=[
                 Artifact(id='43054146', type='fedora-koji-build'),
                 Artifact(id='openssl-3.2.6-2.el9', type='redhat-brew-build', order=40),
             ]),
             """# tmt reproducer
-dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name '^plan1$' prepare --insert --how artifact --provide brew.nvr:openssl-3.2.6-2.el9 prepare --insert --how artifact --provide koji.task:43054146 provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script 'echo hello'""",  # noqa
+dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name '^plan1$' prepare --insert --how artifact --order 40 --provide brew.nvr:openssl-3.2.6-2.el9 prepare --insert --how artifact --order 40 --provide koji.task:43054146 provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script 'echo hello'""",  # noqa
             None,
             None
         ),
         (  # with artifact install=False skipped
-            {},
+            {"artifact-order": 40},
             {},
             TestingEnvironment('x86_64', 'rhel-9', artifacts=[
                 Artifact(id='43054146', type='fedora-koji-build', install=False),
                 Artifact(id='vim-9.1.919-1.fc40', type='fedora-koji-build'),
             ]),
             """# tmt reproducer
-dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name '^plan1$' prepare --insert --how artifact --provide koji.nvr:vim-9.1.919-1.fc40 provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script 'echo hello'""",  # noqa
+dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name '^plan1$' prepare --insert --how artifact --order 40 --provide koji.nvr:vim-9.1.919-1.fc40 provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image rhel-9 --arch x86_64 --skip-prepare-verify-ssh --post-install-script 'echo hello'""",  # noqa
             None,
             None
         ),
@@ -1310,6 +1311,7 @@ def test_tmt_output_copr(module, module_dist_git, guest, monkeypatch, tmpdir, cl
     module_copr = create_module(InstallCoprBuild)[1]
     module_copr._config['log-dir-name'] = 'artifact-installation'
     module_copr._config['download-path'] = 'some-download-path'
+    module_copr._config['artifact-order'] = '40'
     primary_task_mock = MagicMock()
     primary_task_mock.repo_url = 'http://copr/project.repo'
     primary_task_mock.rpm_urls = ['http://copr/project/one.rpm', 'http://copr/project/two.rpm']
@@ -1388,7 +1390,7 @@ git -C testcode fetch {expected_clone_url} myfix:gluetool/myfix
 git -C testcode checkout --no-recurse-submodules gluetool/myfix
 git -C testcode submodule update --init --recursive
 cd testcode
-dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name '^plan1$' prepare --insert --how artifact --provide copr.build:some-artifact provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --skip-prepare-verify-ssh --post-install-script ''' "'echo hello'"
+dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name '^plan1$' prepare --insert --how artifact --order 40 --provide copr.build:some-artifact provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --skip-prepare-verify-ssh --post-install-script ''' "'echo hello'"
 
 
 @pytest.mark.parametrize('clone_url, expected_clone_url', [
@@ -1400,6 +1402,7 @@ def test_tmt_output_koji(module, module_dist_git, guest, monkeypatch, tmpdir, cl
     module_koji = create_module(InstallKojiBuildExecute)[1]
     module_koji._config['log-dir-name'] = 'artifact-installation'
     module_koji._config['download-path'] = 'some-download-path'
+    module_koji._config['artifact-order'] = '40'
 
     # Patch `uuid4` in the module to return a fixed value
     monkeypatch.setattr(gluetool_modules_framework.helpers.install_koji_build_execute, 'uuid4', lambda: '123')
@@ -1487,7 +1490,7 @@ git -C testcode fetch {expected_clone_url} myfix:gluetool/myfix
 git -C testcode checkout --no-recurse-submodules gluetool/myfix
 git -C testcode submodule update --init --recursive
 cd testcode
-dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name '^plan1$' prepare --insert --how artifact --provide koji.task:123 provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --arch x86_64 --pool foo --skip-prepare-verify-ssh --post-install-script ''' "'echo hello'"
+dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name '^plan1$' prepare --insert --how artifact --order 40 --provide koji.task:123 provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --arch x86_64 --pool foo --skip-prepare-verify-ssh --post-install-script ''' "'echo hello'"
 
 
 TMT_PLANS = ['''

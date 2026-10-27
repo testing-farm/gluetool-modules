@@ -411,6 +411,10 @@ class TestScheduleTMTMultihost(Module):
                         Path to rules file for adding additional environment variables to tmt.
                         """
             },
+            'artifact-order': {
+                'help': "Order used for the the preprare/artifact phase.",
+                'default': 40
+            },
             'unsafe-ssh-options': {
                 'help': """
                         A comma delimited list of SSH option directives to refuse in plans and ``TMT_SSH_*``
@@ -502,6 +506,10 @@ class TestScheduleTMTMultihost(Module):
             return tf_request.tmt.test_name
 
         return None
+
+    @gluetool.utils.cached_property
+    def artifact_order(self) -> str:
+        return str(self.option('artifact-order'))
 
     def _check_accepted_environment_variables(self, variables: Dict[str, str]) -> None:
         for key, _ in six.iteritems(variables):
@@ -1182,7 +1190,16 @@ class TestScheduleTMTMultihost(Module):
                 self.warn("Unsupported tmt artifact type '{}', skipping".format(artifact.type))
                 continue
 
-            command.extend(['prepare', '--insert', '--how', 'artifact', '--provide', provide_id])
+            command.extend([
+                'prepare',
+                '--insert',
+                '--how',
+                'artifact',
+                '--order',
+                self.artifact_order,
+                '--provide',
+                provide_id,
+            ])
 
         if self.test_filter or self.test_name:
             command.append('tests')

@@ -36,11 +36,11 @@ ENV TMT_POLICY_ROOT=/etc/tmt/policies
 
 # Optional copr repository with a tmt hotfix build, enabled on top of @teemtee/stable,
 # e.g. `packit/teemtee-tmt-5214` built by Packit for https://github.com/teemtee/tmt/pull/5214
-ARG TMT_COPR=packit/teemtee-tmt-5214
+ARG TMT_COPR=packit/teemtee-tmt-5286
 
 # tmt version to install, if empty the latest version from `TMT_COPR` or @teemtee/stable is installed
 # NOTE: 1.79.0 with hotfixes from the `hotfix-1.79` branch, copr build 11061878
-ARG TMT_VERSION=1.80.0.dev2+g5e7930ce2
+ARG TMT_VERSION=1.81.0.dev5+g44c1372f0
 
 # python version
 ENV PYTHON_VERSION=3.12

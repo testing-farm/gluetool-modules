@@ -308,6 +308,39 @@ def test_archive_stage_redaction_failure(monkeypatch, module, tmp_path, stage):
     mock_aws.assert_not_called()
 
 
+@pytest.mark.parametrize('stage', ['execute', 'progress'])
+def test_archive_stage_cleanup_failure(monkeypatch, module, tmp_path, stage):
+    module._config['archive-mode'] = ['daemon', 's3']
+    module._request_id = 'request-id'
+    sources = [tmp_path / 'first.log', tmp_path / 'second.log']
+    for source in sources:
+        source.write_text('log')
+    mock_rsync = MagicMock()
+    mock_aws = MagicMock()
+    mock_warn = MagicMock()
+    real_delete = module.delete_source_copy
+
+    def delete_source(source_copy):
+        real_delete(source_copy)
+        raise PermissionError('permission denied')
+
+    patch_shared(monkeypatch, module, {}, callables={'hide_secrets': MagicMock()})
+    monkeypatch.setattr(module, 'delete_source_copy', delete_source)
+    monkeypatch.setattr(module, 'run_rsync', mock_rsync)
+    monkeypatch.setattr(module, 'run_aws', mock_aws)
+    monkeypatch.setattr(module, 'warn', mock_warn)
+    monkeypatch.setattr(module, 'source_destination_map', lambda: {
+        stage: [{'source': str(source)} for source in sources]
+    })
+
+    module.archive_stage(stage)
+
+    assert mock_rsync.call_count == 2
+    assert mock_aws.call_count == 2
+    assert mock_warn.call_count == 2
+    assert 'Failed to remove source copy' in mock_warn.call_args[0][0]
+
+
 @pytest.mark.parametrize('archive_modes', [['ssh', 'local', 'daemon'], ['local', 'daemon', 'ssh']])
 def test_create_directories_multiple_modes(monkeypatch, module, archive_modes):
     module._config['archive-mode'] = archive_modes

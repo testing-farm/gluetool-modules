@@ -843,7 +843,9 @@ UNICODE_WHITESPACE = [chr(code) for code in range(0x110000) if chr(code).isspace
 NEAR_WHITESPACE = ['\xa1', '\xc2', '\u1681', '\u2010', '\u202a', '\u2060', '\u3001', '\u20ac']
 
 # The leading bytes of the multibyte whitespace characters, and bytes which cannot start one.
-PARTIAL_BYTES = [b'\xc2', b'\xe1', b'\xe1\x9a', b'\xe2', b'\xe2\x80', b'\xe2\x81', b'\xe3', b'\xe3\x80', b'\x80', b'\xff']
+PARTIAL_BYTES = [
+    b'\xc2', b'\xe1', b'\xe1\x9a', b'\xe2', b'\xe2\x80', b'\xe2\x81', b'\xe3', b'\xe3\x80', b'\x80', b'\xff'
+]
 
 # Mostly a few plain characters, so that secrets often show up in the contents, or a part of
 # them does. Then whitespace and characters which look like it, which is where the 'stream'

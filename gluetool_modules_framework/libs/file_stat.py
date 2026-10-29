@@ -4,7 +4,7 @@
 import os
 import time
 
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 # How long a file has to stay untouched before `settled_file_stat` describes it. Well over the
 # kernel's clock tick, which timestamps of files have the resolution of.
@@ -17,11 +17,12 @@ CACHE_SETTLE_TIME = 2
 FileStat = Tuple[int, int, int, int, int]
 
 
-def settled_file_stat(path: str, follow_symlinks: bool = True) -> Optional[FileStat]:
+def settled_file_stat(path: Union[str, int], follow_symlinks: bool = True) -> Optional[FileStat]:
     """
-    Describe `path`, or return ``None`` when it changed less than `CACHE_SETTLE_TIME` seconds
-    ago. A write landing in the same clock tick as the previous one keeps the change time, so
-    such a file could still change without changing what we return.
+    Describe `path`, a path or an open file descriptor, or return ``None`` when it changed less
+    than `CACHE_SETTLE_TIME` seconds ago. A write landing in the same clock tick as the previous
+    one keeps the change time, so such a file could still change without changing what we
+    return.
     """
     now = time.time_ns()
     stat_result = os.stat(path, follow_symlinks=follow_symlinks)

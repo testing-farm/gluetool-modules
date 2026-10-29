@@ -1257,8 +1257,8 @@ rpm -q two
 git clone {expected_clone_url} testcode
 git -C testcode config --add remote.origin.fetch +refs/merge-requests/*:refs/remotes/origin/merge-requests/*
 git -C testcode config --add remote.origin.fetch +refs/pull/*:refs/remotes/origin/pull/*
-git -C testcode fetch {expected_clone_url} myfix:gluetool/myfix
-git -C testcode checkout --no-recurse-submodules gluetool/myfix
+git -C testcode fetch {expected_clone_url} myfix:refs/gluetool-fetch/myfix
+git -C testcode checkout --no-recurse-submodules -B gluetool/myfix refs/gluetool-fetch/myfix
 git -C testcode submodule update --init --recursive
 cd testcode
 curl -o guest-setup-0.sh -L {tmpdir}/artifact-installation-guest0/{INSTALL_COMMANDS_FILE}
@@ -1358,8 +1358,8 @@ if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then sed 's/.rpm$//' rpms-list-123 
 git clone {expected_clone_url} testcode
 git -C testcode config --add remote.origin.fetch +refs/merge-requests/*:refs/remotes/origin/merge-requests/*
 git -C testcode config --add remote.origin.fetch +refs/pull/*:refs/remotes/origin/pull/*
-git -C testcode fetch {expected_clone_url} myfix:gluetool/myfix
-git -C testcode checkout --no-recurse-submodules gluetool/myfix
+git -C testcode fetch {expected_clone_url} myfix:refs/gluetool-fetch/myfix
+git -C testcode checkout --no-recurse-submodules -B gluetool/myfix refs/gluetool-fetch/myfix
 git -C testcode submodule update --init --recursive
 cd testcode
 curl -o guest-setup-0.sh -L {tmpdir}/artifact-installation-guest0/{INSTALL_COMMANDS_FILE}

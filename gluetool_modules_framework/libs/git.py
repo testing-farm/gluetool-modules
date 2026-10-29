@@ -372,18 +372,24 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         :param str ref: git reference to fetch
         :param int fetch_timeout: Timeout for `git fetch` retries.
         :param int fetch_tick: Delay in seconds before retrying `git fetch`.
-        :returns: local git reference to which we checked out the requested ref
+        :returns: local git reference the requested ref was fetched into
         :raises FailedToFetchRef: if failed to fetch the reference after all retries
         """
-        # we need to create a dedicated checkout ref, to mitigate collisions with existing refs
-        checkout_ref = 'gluetool/{}'.format(ref)
+        # We need to create a dedicated ref, to mitigate collisions with existing refs.
+        # TFT-5303: Must start with 'refs/' - git implicitly places refs without this prefix
+        # under refs/heads/ (branches), which rejects annotated tag objects. The namespace is
+        # 'refs/gluetool-fetch/' rather than 'refs/gluetool/' so that the branch created by
+        # _checkout_ref ('gluetool/<ref>') is unambiguous - with 'refs/gluetool/<ref>' existing,
+        # refname:short returns 'heads/gluetool/<ref>' and the removeprefix('gluetool/') in
+        # test_schedule_tmt no longer matches.
+        fetch_ref = 'refs/gluetool-fetch/{}'.format(ref)
 
         command: List[Union[str, SecretGitUrl]] = [
             'git',
             '-C', actual_path,
             'fetch',
             clone_url,
-            '{}:{}'.format(ref, checkout_ref)
+            '{}:{}'.format(ref, fetch_ref)
         ]
 
         self.commands.append(' '.join(map(str, command)).replace(actual_path, TESTCODE_DIR))
@@ -415,7 +421,7 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
         except gluetool.GlueError:
             raise FailedToFetchRef('Failed to fetch ref {}: retries exhausted'.format(ref))
 
-        return checkout_ref
+        return fetch_ref
 
     def _set_clone_directory_permissions(
         self,
@@ -486,16 +492,19 @@ class RemoteGitRepository(gluetool.log.LoggerMixin):
             )
 
         # Fetch the commit, in case it is from a merge/pull request ref
-        checkout_ref = self._fetch_ref(clone_url, actual_path, ref, fetch_timeout=fetch_timeout, fetch_tick=fetch_tick)
+        fetch_ref = self._fetch_ref(clone_url, actual_path, ref, fetch_timeout=fetch_timeout, fetch_tick=fetch_tick)
 
-        # Checkout the ref of the merge request, do not initialize submodules
+        # Checkout the fetched ref into a local branch. Using -B peels annotated tags to their
+        # commit, and keeps HEAD on a branch so tmt reports the ref name, not a detached SHA.
+        branch_ref = 'gluetool/{}'.format(ref)
+
         try:
             command = [
                 'git',
                 '-C', actual_path,
                 'checkout',
                 '--no-recurse-submodules',
-                checkout_ref
+                '-B', branch_ref, fetch_ref
             ]
 
             self.commands.append(' '.join(command).replace(actual_path, TESTCODE_DIR))

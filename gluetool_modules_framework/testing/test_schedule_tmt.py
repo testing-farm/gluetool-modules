@@ -303,8 +303,7 @@ def gather_plan_results(
             serial_number=result.serial_number,
             subresults=subresults,
             contacts=get_test_contacts(result.name, result.serial_number, discovered_tests),
-            # NOTE: We're creating a new branch with 'gluetool/' prefixing the ref when checking out requested ref.
-            # Removing the prefix here from the results.
+            # NOTE: We check out into a branch named 'gluetool/<ref>', strip that prefix from results.
             fmf_id=FmfId(
                 url=result.fmf_id.url,
                 ref=result.fmf_id.ref.removeprefix('gluetool/') if result.fmf_id.ref else None,

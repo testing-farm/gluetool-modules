@@ -256,10 +256,11 @@ def test_clone_invalid_ref(remote_git_repository, monkeypatch):
             ],
             [
                 'git', '-C', 'some-path', 'fetch', 'some-url',
-                'some-ref:gluetool/some-ref'
+                'some-ref:refs/gluetool-fetch/some-ref'
             ],
             [
-                'git', '-C', 'some-path', 'checkout', '--no-recurse-submodules', 'gluetool/some-ref'
+                'git', '-C', 'some-path', 'checkout', '--no-recurse-submodules',
+                '-B', 'gluetool/some-ref', 'refs/gluetool-fetch/some-ref'
             ],
             [
                 'git', '-C', 'some-path', 'submodule', 'update', '--init', '--recursive'
@@ -279,10 +280,12 @@ def test_clone_invalid_ref(remote_git_repository, monkeypatch):
             ],
             [
                 'git', '-C', 'some-path', 'fetch', 'some-url',
-                'refs/remotes/origin/merge-requests/1/head:gluetool/refs/remotes/origin/merge-requests/1/head'
+                'refs/remotes/origin/merge-requests/1/head:refs/gluetool-fetch/refs/remotes/origin/merge-requests/1/head'
             ],
             [
-                'git', '-C', 'some-path', 'checkout', '--no-recurse-submodules', 'gluetool/refs/remotes/origin/merge-requests/1/head'
+                'git', '-C', 'some-path', 'checkout', '--no-recurse-submodules',
+                '-B', 'gluetool/refs/remotes/origin/merge-requests/1/head',
+                'refs/gluetool-fetch/refs/remotes/origin/merge-requests/1/head'
             ],
             [
                 'git', '-C', 'some-path', 'submodule', 'update', '--init', '--recursive'
@@ -369,8 +372,8 @@ def test_merge(remote_git_repository, monkeypatch):
     remote_git_repository._merge('some-url', 'some-ref', 'some/path', logger)
 
     mock_command_class.assert_any_call(
-        ['git', '-C', 'some/path', 'fetch', 'some-url', 'some-ref:gluetool/some-ref']
+        ['git', '-C', 'some/path', 'fetch', 'some-url', 'some-ref:refs/gluetool-fetch/some-ref']
     )
     mock_command_class.assert_any_call(
-        ['git', '-C', 'some/path', 'merge', '--no-edit', 'gluetool/some-ref'], logger=logger
+        ['git', '-C', 'some/path', 'merge', '--no-edit', 'refs/gluetool-fetch/some-ref'], logger=logger
     )

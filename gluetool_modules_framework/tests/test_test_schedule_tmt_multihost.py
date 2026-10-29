@@ -1386,8 +1386,8 @@ rpm -q two
 git clone {expected_clone_url} testcode
 git -C testcode config --add remote.origin.fetch +refs/merge-requests/*:refs/remotes/origin/merge-requests/*
 git -C testcode config --add remote.origin.fetch +refs/pull/*:refs/remotes/origin/pull/*
-git -C testcode fetch {expected_clone_url} myfix:gluetool/myfix
-git -C testcode checkout --no-recurse-submodules gluetool/myfix
+git -C testcode fetch {expected_clone_url} myfix:refs/gluetool-fetch/myfix
+git -C testcode checkout --no-recurse-submodules -B gluetool/myfix refs/gluetool-fetch/myfix
 git -C testcode submodule update --init --recursive
 cd testcode
 dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name '^plan1$' prepare --insert --how artifact --order 40 --provide copr.build:some-artifact provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --skip-prepare-verify-ssh --post-install-script ''' "'echo hello'"
@@ -1486,8 +1486,8 @@ if [ ! -z "$(sed 's/\s//g' rpms-list-123)" ];then sed 's/.rpm$//' rpms-list-123 
 git clone {expected_clone_url} testcode
 git -C testcode config --add remote.origin.fetch +refs/merge-requests/*:refs/remotes/origin/merge-requests/*
 git -C testcode config --add remote.origin.fetch +refs/pull/*:refs/remotes/origin/pull/*
-git -C testcode fetch {expected_clone_url} myfix:gluetool/myfix
-git -C testcode checkout --no-recurse-submodules gluetool/myfix
+git -C testcode fetch {expected_clone_url} myfix:refs/gluetool-fetch/myfix
+git -C testcode checkout --no-recurse-submodules -B gluetool/myfix refs/gluetool-fetch/myfix
 git -C testcode submodule update --init --recursive
 cd testcode
 dummytmt --root some-tmt-root run --all --id {tmpdir}/{schedule_entry.work_dirpath} -ddddvvv --log-topic=cli-invocations plan --name '^plan1$' prepare --insert --how artifact --order 40 --provide koji.task:123 provision -h artemis --update-missing --allowed-how 'container|artemis' -k master-key --api-url http://artemis.example.com/v0.0.56 --api-version 0.0.56 --keyname path/to/key --provision-timeout 300 --provision-tick 3 --api-timeout 60 --image guest-compose --arch x86_64 --pool foo --skip-prepare-verify-ssh --post-install-script ''' "'echo hello'"

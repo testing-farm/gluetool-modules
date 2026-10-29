@@ -1359,9 +1359,9 @@ def _record_scans(module, monkeypatch):
     scanned = []
     file_contains_secret = HideSecrets._file_contains_secret
 
-    def _recording_file_contains_secret(path, matchers):
+    def _recording_file_contains_secret(path, matchers, f=None):
         scanned.append(os.path.basename(path))
-        return file_contains_secret(module, path, matchers)
+        return file_contains_secret(module, path, matchers, f)
 
     monkeypatch.setattr(module, '_file_contains_secret', _recording_file_contains_secret)
 
@@ -1544,8 +1544,8 @@ def test_hide_secrets_stream_scan_racing_add_secrets(monkeypatch, settled, strea
 
     file_contains_secret = HideSecrets._file_contains_secret
 
-    def _file_contains_secret(path, matchers):
-        result = file_contains_secret(module, path, matchers)
+    def _file_contains_secret(path, matchers, f=None):
+        result = file_contains_secret(module, path, matchers, f)
 
         # What another thread registering a secret at this very moment looks like.
         module.add_secrets(['later-secret'])
@@ -1593,3 +1593,50 @@ def test_hide_secrets_stream_rewritten_file_is_scanned_again(monkeypatch, settle
 
         with open(path, 'r') as f:
             assert 'scrub-me' not in f.read()
+
+
+def test_hide_secrets_stream_directory_swap_while_scanned(monkeypatch, settled, stream_module):
+    # Renaming the parent directories leaves the stat of the file inside them as it was. A swap
+    # between the stat and the open lets the scan read another file, which must not vouch for
+    # the one the stat described.
+    module = stream_module
+    module.add_secrets(['known-secret'])
+
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        current = os.path.join(tmpdir, 'current')
+        aside = os.path.join(tmpdir, 'aside')
+        replacement = os.path.join(tmpdir, 'replacement')
+        path = os.path.join(current, 'log')
+
+        for directory, contents in ((current, 'value: known-secret\n'), (replacement, 'clean content\n')):
+            os.mkdir(directory)
+
+            with open(os.path.join(directory, 'log'), 'w') as f:
+                f.write(contents)
+
+        open_file = open
+
+        def _swapping_open(name, *args, **kwargs):
+            if name != path:
+                return open_file(name, *args, **kwargs)
+
+            os.rename(current, aside)
+            os.rename(replacement, current)
+
+            try:
+                return open_file(name, *args, **kwargs)
+
+            finally:
+                os.rename(current, replacement)
+                os.rename(aside, current)
+
+        with patch('builtins.open', side_effect=_swapping_open):
+            module.hide_secrets(search_path=path)
+
+        with open(path, 'r') as f:
+            assert f.read() == 'value: known-secret\n'
+
+        module.hide_secrets(search_path=path)
+
+        with open(path, 'r') as f:
+            assert f.read() == 'value: hidden\n'

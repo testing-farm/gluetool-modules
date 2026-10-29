@@ -96,7 +96,9 @@ Skipping files already verified clean
 ``stream`` remembers a file it found clean, and skips it the next time when nothing has
 changed it since. A file is described by its device, inode, size, modification time and
 change time. Nobody can set the change time of a file, ``utime()`` included, so a file
-whose description still matches holds the bytes ``stream`` read.
+whose description still matches holds the bytes ``stream`` read. ``stream`` takes the
+description it remembers from the descriptor it read the file through, before and after
+reading, since the path may lead to another file by then.
 
 A timestamp has the resolution of the kernel's clock tick, and a write landing in the same
 tick as the previous change of a file keeps its change time. ``stream`` therefore remembers
@@ -610,9 +612,12 @@ class HideSecrets(gluetool.Module):
 
             carry = window[boundary:]
 
-    def _file_contains_secret(self, path: str, matchers: _StreamMatchers) -> bool:
-        with open(path, 'rb') as f:
-            return any(matchers.contains(window) for window, _ in self._scan(path, f, matchers))
+    def _file_contains_secret(self, path: str, matchers: _StreamMatchers, f: Optional[BinaryIO] = None) -> bool:
+        if f is None:
+            with open(path, 'rb') as f:
+                return self._file_contains_secret(path, matchers, f)
+
+        return any(matchers.contains(window) for window, _ in self._scan(path, f, matchers))
 
     def _cache_key(self, path: str, search_path: str, cache_path: Optional[str]) -> str:
         """
@@ -755,7 +760,19 @@ class HideSecrets(gluetool.Module):
         if clean_files is not None and current is not None and clean_files.get(key) == current:
             return
 
-        if not self._file_contains_secret(path, matchers):
+        with open(path, 'rb') as f:
+            # By now, `path` may name another file than the one `current` describes, e.g. when
+            # someone swapped its parent directories. Only the descriptor we read from tells
+            # what we scanned, and only when nothing changed it while we read it.
+            if source_stats is None:
+                current = settled_file_stat(f.fileno())
+
+            contains_secret = self._file_contains_secret(path, matchers, f)
+
+            if source_stats is None and current is not None and settled_file_stat(f.fileno()) != current:
+                current = None
+
+        if not contains_secret:
             if clean_files is not None and current is not None:
                 clean_files[key] = current
             return

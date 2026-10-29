@@ -15,6 +15,7 @@ from gluetool.utils import dump_yaml
 from hypothesis import assume, event, given, settings, strategies as st
 
 import gluetool_modules_framework.helpers.hide_secrets as hide_secrets_module
+import gluetool_modules_framework.libs.file_stat as file_stat_module
 from gluetool_modules_framework.helpers.hide_secrets import HideSecrets
 from gluetool_modules_framework.libs.testing_environment import TestingEnvironment
 
@@ -551,13 +552,13 @@ def test_hide_secrets_stream_retries_failed_files_only(stream_module):
         scrub_file = module._scrub_file
         calls = []
 
-        def _scrub_file(path, matchers):
+        def _scrub_file(path, matchers, **kwargs):
             calls.append(path)
 
             if path == flaky and calls.count(flaky) == 1:
                 raise OSError('flaky')
 
-            scrub_file(path, matchers)
+            scrub_file(path, matchers, **kwargs)
 
         with patch.object(module, '_scrub_file', side_effect=_scrub_file):
             module.hide_secrets(search_path=tmpdir)
@@ -581,11 +582,11 @@ def test_hide_secrets_stream_failing_file_scrubs_other_files(stream_module):
 
         scrub_file = module._scrub_file
 
-        def _scrub_file(path, matchers):
+        def _scrub_file(path, matchers, **kwargs):
             if path == broken:
                 raise OSError('broken')
 
-            scrub_file(path, matchers)
+            scrub_file(path, matchers, **kwargs)
 
         with patch.object(module, '_scrub_file', side_effect=_scrub_file):
             with pytest.raises(gluetool.GlueError, match=r"in '{}', secrets could be leaked".format(re.escape(broken))):
@@ -1320,3 +1321,275 @@ def test_hide_secrets_stream_hides_what_sed_hides(data):
     else:
         event('only stream hides it')
         assert outputs['sed'] == contents
+
+
+@pytest.fixture(name='settled')
+def fixture_settled(monkeypatch):
+    # Files a test has just written count as settled, so that the cache takes them at all.
+    monkeypatch.setattr(file_stat_module, 'CACHE_SETTLE_TIME', 0)
+
+
+def _copy_tree(original, copy, copy_file=shutil.copy2):
+    """
+    Copy `original` to `copy` as `archive` does, and describe each original file which did not
+    change while it was copied, as `hide_secrets()` expects from its `source_stats` argument.
+    """
+    source_stats = {}
+
+    def _copy(src, dst, follow_symlinks=True):
+        before = file_stat_module.settled_file_stat(src, follow_symlinks=follow_symlinks)
+        copy_file(src, dst, follow_symlinks=follow_symlinks)
+        after = file_stat_module.settled_file_stat(src, follow_symlinks=follow_symlinks)
+
+        if before is not None and before == after:
+            source_stats[src] = after
+
+        return dst
+
+    shutil.copytree(original, copy, symlinks=True, copy_function=_copy)
+
+    return source_stats
+
+
+def _record_scans(module, monkeypatch):
+    """
+    Returns a list which collects the names of the files actually read to look for secrets, as
+    opposed to skipped as unchanged since the last call.
+    """
+    scanned = []
+    file_contains_secret = HideSecrets._file_contains_secret
+
+    def _recording_file_contains_secret(path, matchers):
+        scanned.append(os.path.basename(path))
+        return file_contains_secret(module, path, matchers)
+
+    monkeypatch.setattr(module, '_file_contains_secret', _recording_file_contains_secret)
+
+    return scanned
+
+
+def _archive_tick(module, monkeypatch, original, copy_file=shutil.copy2, with_source_stats=True):
+    """
+    Replay what `archive` does with a source for one tick: copy it, redact the copy on behalf
+    of the original, throw the copy away. Returns the names of the files which were scanned,
+    and the contents of the redacted copy.
+    """
+    scanned = _record_scans(module, monkeypatch)
+
+    copy_parent = tempfile.mkdtemp()
+    try:
+        copy = os.path.join(copy_parent, os.path.basename(original))
+        source_stats = _copy_tree(original, copy, copy_file=copy_file)
+
+        if with_source_stats:
+            module.hide_secrets(search_path=copy, cache_path=original, source_stats=source_stats)
+        else:
+            module.hide_secrets(search_path=copy, cache_path=original)
+
+        contents = {}
+        for name in os.listdir(copy):
+            with open(os.path.join(copy, name), 'r') as f:
+                contents[name] = f.read()
+
+    finally:
+        shutil.rmtree(copy_parent)
+
+    return sorted(scanned), contents
+
+
+@pytest.mark.parametrize('contents, change, expected_scans', [
+    # A quiet, clean source is read once, then skipped on every later tick.
+    ('clean log line\n', None, [['live.log', 'static.log'], [], []]),
+    # A file which changes is read again on the tick after it changed, and only that file.
+    ('clean log line\n', 'append', [['live.log', 'static.log'], [], ['live.log']]),
+    # A secret nobody knew about when the files were declared clean makes all of them suspect.
+    ('mentions later-learned-secret\n', 'new-secret', [['live.log', 'static.log'], [], ['live.log', 'static.log']]),
+    # A file with a secret is only ever redacted on the copy, so the original - which still
+    # holds the secret - must never be remembered as clean.
+    ('value: a-known-secret\n', None, [['live.log', 'static.log'], ['live.log'], ['live.log']]),
+])
+def test_hide_secrets_stream_skips_unchanged_files_across_copies(
+    monkeypatch, settled, stream_module, contents, change, expected_scans
+):
+    # The redaction happens on a throwaway copy, so what is learned there has to be filed
+    # under the original the copy was taken from - otherwise every tick starts from scratch.
+    module = stream_module
+    module.add_secrets(['a-known-secret'])
+
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        original = os.path.join(tmpdir, 'work-dir')
+        os.mkdir(original)
+
+        live = os.path.join(original, 'live.log')
+        with open(live, 'w') as f:
+            f.write(contents)
+
+        with open(os.path.join(original, 'static.log'), 'w') as f:
+            f.write('clean static content\n')
+
+        scans = [_archive_tick(module, monkeypatch, original)[0], _archive_tick(module, monkeypatch, original)[0]]
+
+        if change == 'append':
+            with open(live, 'a') as f:
+                f.write('one more clean line\n')
+
+        elif change == 'new-secret':
+            module.add_secrets(['later-learned-secret'])
+
+        scans.append(_archive_tick(module, monkeypatch, original)[0])
+
+        assert scans == expected_scans
+
+        # The cache describes the original, and does not grow with each throwaway copy.
+        assert all(key.startswith(original) for key in module._clean_files)
+        assert len(module._clean_files) <= 2
+
+        # The original itself is never touched - it is the copy that gets redacted.
+        with open(live, 'r') as f:
+            assert f.read().startswith(contents)
+
+
+def test_hide_secrets_stream_copy_without_source_stats_is_not_cached(monkeypatch, settled, stream_module):
+    # Without the caller vouching for the copy, its stat proves nothing about the original.
+    module = stream_module
+    module.add_secrets(['a-known-secret'])
+
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        original = os.path.join(tmpdir, 'work-dir')
+        os.mkdir(original)
+
+        with open(os.path.join(original, 'static.log'), 'w') as f:
+            f.write('clean static content\n')
+
+        for _ in range(2):
+            scanned, _ = _archive_tick(module, monkeypatch, original, with_source_stats=False)
+            assert scanned == ['static.log']
+
+        assert module._clean_files == {}
+
+
+def test_hide_secrets_stream_source_changing_while_copied(monkeypatch, settled, stream_module):
+    # `shutil.copy2()` copies the data first and the metadata after. A same-size change of the
+    # original in between gives the copy the old bytes with the new mtime. Caching that copy as
+    # clean would skip the next copy, which holds the new bytes and the same stat.
+    module = stream_module
+    module.add_secrets(['secret'])
+
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        original = os.path.join(tmpdir, 'work-dir')
+        os.mkdir(original)
+
+        live = os.path.join(original, 'live.log')
+        with open(live, 'w') as f:
+            f.write('public\n')
+
+        def _copy_racing_a_writer(src, dst, follow_symlinks=True):
+            real_copyfile = shutil.copyfile
+
+            def _copyfile(*args, **kwargs):
+                result = real_copyfile(*args, **kwargs)
+
+                if src == live:
+                    stat_result = os.stat(live)
+
+                    with open(live, 'w') as f:
+                        f.write('secret\n')
+
+                    os.utime(live, ns=(stat_result.st_atime_ns, stat_result.st_mtime_ns + 1000000000))
+
+                return result
+
+            with patch.object(shutil, 'copyfile', side_effect=_copyfile):
+                return shutil.copy2(src, dst, follow_symlinks=follow_symlinks)
+
+        scanned, contents = _archive_tick(module, monkeypatch, original, copy_file=_copy_racing_a_writer)
+        assert scanned == ['live.log']
+        assert contents == {'live.log': 'public\n'}
+        assert module._clean_files == {}
+
+        scanned, contents = _archive_tick(module, monkeypatch, original)
+        assert scanned == ['live.log']
+        assert contents == {'live.log': 'hidden\n'}
+
+
+def test_hide_secrets_stream_does_not_cache_unsettled_files(monkeypatch, stream_module):
+    # A write landing in the same clock tick as the previous one would not change the stat, so
+    # a file changed just now could change again without us noticing.
+    module = stream_module
+    module.add_secrets(['a-known-secret'])
+    scanned = _record_scans(module, monkeypatch)
+
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        with open(os.path.join(tmpdir, 'fresh.log'), 'w') as f:
+            f.write('clean content\n')
+
+        module.hide_secrets(search_path=tmpdir)
+        module.hide_secrets(search_path=tmpdir)
+
+        assert scanned == ['fresh.log', 'fresh.log']
+        assert module._clean_files == {}
+
+
+@pytest.mark.parametrize('contents', [
+    # The scan finds the file clean, and would cache it.
+    'mentions later-secret\n',
+    # The scan rewrites the file, and would cache the result.
+    'a-known-secret and later-secret\n',
+])
+def test_hide_secrets_stream_scan_racing_add_secrets(monkeypatch, settled, stream_module, contents):
+    # A scan running with the old secrets must not leave anything in the cache which a scan with
+    # the new ones would trust.
+    module = stream_module
+    module.add_secrets(['a-known-secret'])
+
+    file_contains_secret = HideSecrets._file_contains_secret
+
+    def _file_contains_secret(path, matchers):
+        result = file_contains_secret(module, path, matchers)
+
+        # What another thread registering a secret at this very moment looks like.
+        module.add_secrets(['later-secret'])
+
+        return result
+
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        path = os.path.join(tmpdir, 'log.txt')
+        with open(path, 'w') as f:
+            f.write(contents)
+
+        with patch.object(module, '_file_contains_secret', side_effect=_file_contains_secret):
+            module.hide_secrets(search_path=tmpdir)
+
+        with open(path, 'r') as f:
+            assert 'later-secret' in f.read()
+
+        module.hide_secrets(search_path=tmpdir)
+
+        with open(path, 'r') as f:
+            assert 'later-secret' not in f.read()
+
+
+def test_hide_secrets_stream_rewritten_file_is_scanned_again(monkeypatch, settled, stream_module):
+    # A rewrite gives the file a new inode and change time, so the next call checks it again,
+    # including whatever was appended after the rewrite.
+    module = stream_module
+    module.add_secrets(['scrub-me'])
+    scanned = _record_scans(module, monkeypatch)
+
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        path = os.path.join(tmpdir, 'log.txt')
+        with open(path, 'w') as f:
+            f.write('value: scrub-me\n')
+
+        module.hide_secrets(search_path=tmpdir)
+        assert path not in module._clean_files
+
+        with open(path, 'a') as f:
+            f.write('appended after the scrub: scrub-me\n')
+
+        module.hide_secrets(search_path=tmpdir)
+
+        assert scanned == ['log.txt', 'log.txt']
+
+        with open(path, 'r') as f:
+            assert 'scrub-me' not in f.read()

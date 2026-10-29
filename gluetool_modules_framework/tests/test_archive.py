@@ -505,14 +505,12 @@ def fixture_settled(monkeypatch):
 
 def _rewrite_during_copy(path, contents):
     """
-    Make `shutil.copy2` rewrite `path` with `contents`, of the same size, and advance its mtime,
-    right after copying its data and before copying its metadata.
+    Rewrite `path` with `contents`, of the same size, and advance its mtime, right after its data
+    is copied and before its metadata is.
     """
-    real_copyfile = shutil.copyfile
+    real_copystat = shutil.copystat
 
-    def _copyfile(src, dst, *args, **kwargs):
-        result = real_copyfile(src, dst, *args, **kwargs)
-
+    def _copystat(src, dst, *args, **kwargs):
         if src == path:
             stat_result = os.stat(path)
 
@@ -521,9 +519,9 @@ def _rewrite_during_copy(path, contents):
 
             os.utime(path, ns=(stat_result.st_atime_ns, stat_result.st_mtime_ns + 1000000000))
 
-        return result
+        return real_copystat(src, dst, *args, **kwargs)
 
-    return patch.object(shutil, 'copyfile', side_effect=_copyfile)
+    return patch.object(shutil, 'copystat', side_effect=_copystat)
 
 
 def test_prepare_source_copy_source_stats(module, settled):
@@ -618,3 +616,75 @@ def test_source_changing_while_copied_is_redacted_next_tick(monkeypatch, module,
         run(original, '', source_copy=True)
 
     assert uploads == ['CLEAN!', 'hidden', 'hidden']
+
+
+@pytest.mark.parametrize('archive_mode', ['ssh', 's3'])
+def test_directory_swap_while_copied_is_redacted_next_tick(monkeypatch, module, settled, archive_mode):
+    # Renaming the parent directories leaves the stat of the file inside them as it was. A swap
+    # around the open lets the copy read another file, whose clean bytes must not vouch for the
+    # original the next time it is copied.
+    module._config['archive-mode'] = archive_mode
+
+    _, hide_secrets = create_module(HideSecrets)
+    hide_secrets._config['implementation'] = 'stream'
+    hide_secrets._config['retry-tick'] = 1
+    hide_secrets._config['retry-timeout'] = 5
+    hide_secrets.add_secrets('SECRET')
+
+    patch_shared(monkeypatch, module, {}, callables={
+        'hide_secrets': hide_secrets.hide_secrets,
+    })
+
+    uploads = []
+
+    def _upload(cmd, logger=None):
+        uploads.append(cmd)
+
+    def _run(*args, **kwargs):
+        with open(uploads[-1][-2]) as f:
+            uploads[-1] = f.read()
+
+    monkeypatch.setattr(gluetool.utils.Command, '__init__', lambda self, cmd, logger=None: _upload(cmd))
+    monkeypatch.setattr(gluetool.utils.Command, 'run', _run)
+
+    module._request_id = 'request-id'
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        current = os.path.join(tmpdir, 'current')
+        aside = os.path.join(tmpdir, 'aside')
+        replacement = os.path.join(tmpdir, 'replacement')
+        original = os.path.join(current, 'console.log')
+
+        for directory, contents in ((current, 'SECRET'), (replacement, 'CLEAN!')):
+            os.mkdir(directory)
+
+            with open(os.path.join(directory, 'console.log'), 'w') as f:
+                f.write(contents)
+
+        def _swapping(real_open):
+            def _open(path, *args, **kwargs):
+                if path != original:
+                    return real_open(path, *args, **kwargs)
+
+                os.rename(current, aside)
+                os.rename(replacement, current)
+
+                try:
+                    return real_open(path, *args, **kwargs)
+
+                finally:
+                    os.rename(current, replacement)
+                    os.rename(aside, current)
+
+            return _open
+
+        run = module.run_aws if archive_mode == 's3' else module.run_rsync
+
+        # Whichever way the copy opens the original, it gets the replacement.
+        with patch.object(os, 'open', side_effect=_swapping(os.open)), \
+                patch('builtins.open', side_effect=_swapping(open)):
+            run(original, '', source_copy=True)
+
+        run(original, '', source_copy=True)
+
+    assert uploads == ['CLEAN!', 'hidden']

@@ -4,6 +4,7 @@
 import os
 import re
 import shutil
+import stat
 from glob import glob
 import tempfile
 
@@ -431,24 +432,60 @@ class Archive(gluetool.Module):
         while we copied it, for the `source_stats` argument of `hide_secrets`. `shutil.copy2`
         copies the data first and the metadata after, so the stat of a copy says nothing about
         which bytes it holds.
+
+        Both stats come from the descriptor we copy the data from. Statting the path before and
+        after says nothing about what we read, when someone swaps its parent directories in
+        between and back.
         """
         original_source = original_source.rstrip('/')
         source_stats: Dict[str, FileStat] = {}
 
-        def _stat(path: str, follow_symlinks: bool) -> Optional[FileStat]:
+        def _stat(fd: int) -> Optional[FileStat]:
             try:
-                return settled_file_stat(path, follow_symlinks=follow_symlinks)
+                return settled_file_stat(fd)
 
-            # No stat, no proof. A file which cannot be copied makes `shutil.copy2` fail anyway.
+            # No stat, no proof.
             except OSError:
                 return None
 
-        def _copy_file(src: str, dst: str, follow_symlinks: bool = True) -> str:
-            before = _stat(src, follow_symlinks)
-            shutil.copy2(src, dst, follow_symlinks=follow_symlinks)
+        def _open_regular_file(path: str, follow_symlinks: bool) -> Optional[int]:
+            # `O_NONBLOCK` keeps a FIFO from blocking the open, `O_NOFOLLOW` makes it fail for
+            # a symlink we are to copy as one.
+            flags = os.O_RDONLY | os.O_NONBLOCK | (0 if follow_symlinks else os.O_NOFOLLOW)
 
-            if before is not None and before == _stat(src, follow_symlinks):
-                source_stats[src] = before
+            try:
+                fd = os.open(path, flags)
+
+            except OSError:
+                return None
+
+            if stat.S_ISREG(os.fstat(fd).st_mode):
+                return fd
+
+            os.close(fd)
+            return None
+
+        def _copy_file(src: str, dst: str, follow_symlinks: bool = True) -> str:
+            fd = _open_regular_file(src, follow_symlinks)
+
+            # A symlink, a special file, or one we cannot open. `shutil.copy2` copies it, or
+            # fails, as it always did, and we have no proof of what it read.
+            if fd is None:
+                return shutil.copy2(src, dst, follow_symlinks=follow_symlinks)
+
+            try:
+                before = _stat(fd)
+
+                with open(fd, 'rb', closefd=False) as src_file, open(dst, 'wb') as dst_file:
+                    shutil.copyfileobj(src_file, dst_file)
+
+                shutil.copystat(src, dst, follow_symlinks=follow_symlinks)
+
+                if before is not None and before == _stat(fd):
+                    source_stats[src] = before
+
+            finally:
+                os.close(fd)
 
             return dst
 

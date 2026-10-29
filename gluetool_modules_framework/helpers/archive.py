@@ -13,6 +13,7 @@ from gluetool.glue import GlueError
 from gluetool.log import log_dict
 from gluetool.utils import Command, normalize_bool_option, render_template
 from gluetool.result import Result
+from gluetool_modules_framework.libs.file_stat import FileStat, settled_file_stat
 from gluetool_modules_framework.libs.threading import RepeatTimer
 from gluetool_modules_framework.libs.pipeline_stages import PIPELINE_ARCHIVING_STARTED, PIPELINE_ARCHIVING_FINISHED
 
@@ -620,7 +621,34 @@ class Archive(gluetool.Module):
 
         self._created_directories.append(('local', path))
 
-    def prepare_source_copy(self, original_source: str) -> Tuple[str, str]:
+    def prepare_source_copy(self, original_source: str) -> Tuple[str, str, Dict[str, FileStat]]:
+        """
+        Copy `original_source` to a temporary directory.
+
+        Returns the copy, the original, and the stat of each original file which did not change
+        while we copied it, for the `source_stats` argument of `hide_secrets`. `shutil.copy2`
+        copies the data first and the metadata after, so the stat of a copy says nothing about
+        which bytes it holds.
+        """
+        source_stats: Dict[str, FileStat] = {}
+
+        def _stat(path: str, follow_symlinks: bool) -> Optional[FileStat]:
+            try:
+                return settled_file_stat(path, follow_symlinks=follow_symlinks)
+
+            # No stat, no proof. A file which cannot be copied makes `shutil.copy2` fail anyway.
+            except OSError:
+                return None
+
+        def _copy_file(src: str, dst: str, follow_symlinks: bool = True) -> str:
+            before = _stat(src, follow_symlinks)
+            shutil.copy2(src, dst, follow_symlinks=follow_symlinks)
+
+            if before is not None and before == _stat(src, follow_symlinks):
+                source_stats[src] = before
+
+            return dst
+
         # Preserve the original path for destination selection. A trailing slash on a directory
         # tells rsync to copy its contents, so carry it onto the staged source as well.
         source = os.path.join(tempfile.mkdtemp(), os.path.basename(original_source.rstrip('/')))
@@ -632,14 +660,15 @@ class Archive(gluetool.Module):
                 # ignore dangling symlinks, if they would exist
                 ignore_dangling_symlinks=True,
                 # this should not be needed, but rather setting it to mitigate certain corner cases
-                dirs_exist_ok=True
+                dirs_exist_ok=True,
+                copy_function=_copy_file
             )
             if original_source.endswith('/'):
                 source += '/'
         else:
-            shutil.copy2(original_source, source, follow_symlinks=False)
+            _copy_file(original_source, source, follow_symlinks=False)
 
-        return source, original_source
+        return source, original_source, source_stats
 
     def delete_source_copy(self, source: str) -> None:
         self.debug('removing source copy {}'.format(source))
@@ -1363,18 +1392,24 @@ class Archive(gluetool.Module):
         try:
             archive_source = source
             original_source: Optional[str] = None
+            source_stats: Dict[str, FileStat] = {}
             # hide-secrets uses 'sed -i', which changes the inode and breaks writing to live logs.
             # Prepare one redacted snapshot for all modes in the 'progress' and 'execute' stages,
             # and for pre-report publication.
             if source_copy or stage in ARCHIVE_STAGES_USING_COPY:
-                source_copy_path, original_source = self.prepare_source_copy(source)
+                source_copy_path, original_source, source_stats = self.prepare_source_copy(source)
                 archive_source = source_copy_path
 
             # A copy is thrown away right after, so let hide-secrets file what it learns about it
             # under the original instead: the next tick copies the same original again, and can then
             # skip whatever has not changed.
             if original_source is not None:
-                self.shared('hide_secrets', search_path=archive_source, cache_path=original_source)
+                self.shared(
+                    'hide_secrets',
+                    search_path=archive_source,
+                    cache_path=original_source,
+                    source_stats=source_stats
+                )
             else:
                 self.shared('hide_secrets', search_path=archive_source)
             verify_archive = any(mode != 'local' for mode in self.archive_modes)

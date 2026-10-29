@@ -84,8 +84,9 @@ ACL of the original, renames it over the original, and calls ``fsync()`` on the 
 so the rename survives a crash. A process reading the file meanwhile sees either the old
 content or the new one.
 
-``stream`` scrubs each file on its own. It retries a file failing with ``OSError`` until
-``--retry-timeout`` runs out, and fails a file whose carry exceeds 16 MiB without a retry.
+``stream`` scrubs each file on its own. It skips a file removed since it listed the files,
+retries a file failing with any other ``OSError`` until ``--retry-timeout`` runs out, and
+fails a file whose carry exceeds 16 MiB without a retry.
 After scrubbing all the other files, it raises an error naming each file it could not scrub.
 ``xargs`` does the same for ``sed``: it runs ``sed`` on every file before reporting a failure.
 """
@@ -697,6 +698,11 @@ class HideSecrets(gluetool.Module):
             for path in pending:
                 try:
                     self._scrub_file(path, matchers)
+
+                # A file removed since the walk holds no secret any more. `find` would not list it
+                # when sed is retried either.
+                except FileNotFoundError:
+                    self.debug("'{}' disappeared, nothing to hide".format(path))
 
                 except OSError as exc:
                     self.warn("Hiding secrets in '{}' failed, retrying: {}".format(path, exc))

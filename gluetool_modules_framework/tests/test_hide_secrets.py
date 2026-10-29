@@ -596,6 +596,31 @@ def test_hide_secrets_stream_failing_file_scrubs_other_files(stream_module):
                 assert f.read() == 'token=hidden\n'
 
 
+def test_hide_secrets_stream_skips_removed_files(stream_module):
+    # A file removed after the walk is skipped, as sed skips it when 'find' runs again on retry.
+    module = stream_module
+    module._config['retry-timeout'] = 1
+    module.add_secrets(['token-secret'])
+
+    with tempfile.TemporaryDirectory(prefix='hide_secrets', dir=ASSETS_DIR) as tmpdir:
+        paths = _tree_with_secrets(tmpdir, 'token-secret', 4)
+        removed = paths[0]
+
+        iter_regular_files = module._iter_regular_files
+
+        def _iter_regular_files(search_path):
+            listed = list(iter_regular_files(search_path))
+            os.unlink(removed)
+            return iter(listed)
+
+        with patch.object(module, '_iter_regular_files', side_effect=_iter_regular_files):
+            module.hide_secrets(search_path=tmpdir)
+
+        for path in paths[1:]:
+            with open(path, 'r') as f:
+                assert f.read() == 'token=hidden\n'
+
+
 def test_hide_secrets_does_not_follow_symlinks(module):
     # 'find' defaults to '-P', so 'find <path> -type f' never yields a symlink - not even when
     # the symlink is the starting point. Both implementations must leave them alone, and in

@@ -8,11 +8,13 @@ import pytest
 import logging
 import shutil
 import tempfile
-from mock import MagicMock, call
+from mock import ANY, MagicMock, call, patch
 
 import gluetool
 import gluetool_modules_framework.helpers.archive
+import gluetool_modules_framework.libs.file_stat
 from gluetool_modules_framework.helpers.archive import Archive
+from gluetool_modules_framework.helpers.hide_secrets import HideSecrets
 
 from . import create_module, check_loadable, patch_shared
 
@@ -452,7 +454,7 @@ def test_parallel_archiving(monkeypatch, module, log):
 
     mock_shutil_copytree.assert_called_with(
         '/archive-source-another-progress', '/tmp/dir/archive-source-another-progress',
-        symlinks=True, ignore_dangling_symlinks=True, dirs_exist_ok=True
+        symlinks=True, ignore_dangling_symlinks=True, dirs_exist_ok=True, copy_function=ANY
     )
     mock_shutil_rmtree.assert_called_with('/tmp/dir')
 
@@ -465,7 +467,7 @@ def test_parallel_archiving(monkeypatch, module, log):
 @pytest.mark.parametrize('source_copy, expected_kwargs', [
     # A copy is redacted on behalf of the original it was taken from, so that hide-secrets can
     # recognise the original's unchanged files the next time the same source is copied.
-    (True, {'search_path': '/tmp/dir/archive-source', 'cache_path': '/archive-source'}),
+    (True, {'search_path': '/tmp/dir/archive-source', 'cache_path': '/archive-source', 'source_stats': {}}),
     (False, {'search_path': '/archive-source'}),
 ])
 def test_hide_secrets_cache_path(monkeypatch, module, archive_mode, source_copy, expected_kwargs):
@@ -493,3 +495,126 @@ def test_hide_secrets_cache_path(monkeypatch, module, archive_mode, source_copy,
         module.run_rsync('/archive-source', 'dest', source_copy=source_copy)
 
     mock_hide_secrets.assert_called_once_with(**expected_kwargs)
+
+
+@pytest.fixture(name='settled')
+def fixture_settled(monkeypatch):
+    # Files a test has just written count as settled, so that hide-secrets caches them at all.
+    monkeypatch.setattr(gluetool_modules_framework.libs.file_stat, 'CACHE_SETTLE_TIME', 0)
+
+
+def _rewrite_during_copy(path, contents):
+    """
+    Make `shutil.copy2` rewrite `path` with `contents`, of the same size, and advance its mtime,
+    right after copying its data and before copying its metadata.
+    """
+    real_copyfile = shutil.copyfile
+
+    def _copyfile(src, dst, *args, **kwargs):
+        result = real_copyfile(src, dst, *args, **kwargs)
+
+        if src == path:
+            stat_result = os.stat(path)
+
+            with open(path, 'w') as f:
+                f.write(contents)
+
+            os.utime(path, ns=(stat_result.st_atime_ns, stat_result.st_mtime_ns + 1000000000))
+
+        return result
+
+    return patch.object(shutil, 'copyfile', side_effect=_copyfile)
+
+
+def test_prepare_source_copy_source_stats(module, settled):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        original = os.path.join(tmpdir, 'work-dir')
+        os.makedirs(os.path.join(original, 'sub'))
+
+        quiet = os.path.join(original, 'sub', 'quiet.log')
+        with open(quiet, 'w') as f:
+            f.write('quiet\n')
+
+        live = os.path.join(original, 'live.log')
+        with open(live, 'w') as f:
+            f.write('public\n')
+
+        os.symlink('live.log', os.path.join(original, 'link.log'))
+
+        with _rewrite_during_copy(live, 'secret\n'):
+            source, original_source, source_stats = module.prepare_source_copy(original + '/')
+
+        try:
+            assert original_source == original
+
+            # The copy of `live.log` holds bytes the original no longer has, so it gets no stat.
+            assert source_stats == {quiet: gluetool_modules_framework.libs.file_stat.settled_file_stat(quiet)}
+
+            with open(os.path.join(source, 'live.log')) as f:
+                assert f.read() == 'public\n'
+
+        finally:
+            module.delete_source_copy(source)
+
+
+def test_prepare_source_copy_skips_unsettled_files(module):
+    # A write in the same clock tick as the previous one would not change the stat.
+    with tempfile.TemporaryDirectory() as tmpdir:
+        original = os.path.join(tmpdir, 'fresh.log')
+        with open(original, 'w') as f:
+            f.write('just written\n')
+
+        source, _, source_stats = module.prepare_source_copy(original)
+
+        try:
+            assert source_stats == {}
+
+        finally:
+            module.delete_source_copy(source)
+
+
+@pytest.mark.parametrize('archive_mode', ['ssh', 's3'])
+def test_source_changing_while_copied_is_redacted_next_tick(monkeypatch, module, settled, archive_mode):
+    # The original changes between `shutil.copy2` copying its data and its metadata. The first
+    # copy then holds the old clean bytes with the new mtime. If hide-secrets remembered that
+    # as clean, it would skip the next copy, which holds the secret with the same stat.
+    module._config['archive-mode'] = archive_mode
+
+    _, hide_secrets = create_module(HideSecrets)
+    hide_secrets._config['implementation'] = 'stream'
+    hide_secrets._config['retry-tick'] = 1
+    hide_secrets._config['retry-timeout'] = 5
+    hide_secrets.add_secrets('SECRET')
+
+    patch_shared(monkeypatch, module, {}, callables={
+        'hide_secrets': hide_secrets.hide_secrets,
+    })
+
+    uploads = []
+
+    def _upload(cmd, logger=None):
+        uploads.append(cmd)
+
+    def _run(*args, **kwargs):
+        with open(uploads[-1][-2]) as f:
+            uploads[-1] = f.read()
+
+    monkeypatch.setattr(gluetool.utils.Command, '__init__', lambda self, cmd, logger=None: _upload(cmd))
+    monkeypatch.setattr(gluetool.utils.Command, 'run', _run)
+
+    module._request_id = 'request-id'
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        original = os.path.join(tmpdir, 'console.log')
+        with open(original, 'w') as f:
+            f.write('CLEAN!')
+
+        run = module.run_aws if archive_mode == 's3' else module.run_rsync
+
+        with _rewrite_during_copy(original, 'SECRET'):
+            run(original, '', source_copy=True)
+
+        run(original, '', source_copy=True)
+        run(original, '', source_copy=True)
+
+    assert uploads == ['CLEAN!', 'hidden', 'hidden']

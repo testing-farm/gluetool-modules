@@ -25,6 +25,16 @@ def fixture_module():
     return module
 
 
+def test_redact_text_preserves_input_and_handles_multiline(module):
+    """The shared redactor handles literals and indented multiline secrets in memory."""
+    module.add_secrets(['foo+bar', 'foo', 'line1\nline2', ''])
+    original = 'foo+bar and foo; line1\n    line2'
+
+    assert module.redact_text(original) == 'hidden and hidden; hidden'
+    assert original == 'foo+bar and foo; line1\n    line2'
+    assert module.redact_text('ordinary text') == 'ordinary text'
+
+
 FILE_CONTENTS = """Lorem ipsum dolor sit amet, {} consectetur adipiscing elit, sed do eiusmod tempor
 incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco
 laboris nisi ut aliquip exea commodo consequat. Duis aute{}irure dolor in reprehenderit in voluptate velit

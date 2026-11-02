@@ -6,6 +6,7 @@ import pytest
 import tempfile
 import bs4
 import logging
+from unittest.mock import MagicMock
 
 import gluetool
 import gluetool_modules_framework.testing.test_schedule_report
@@ -45,6 +46,48 @@ def read_asset_file(asset_filename: str):
 @pytest.fixture(name='module')
 def fixture_module():
     return create_module(gluetool_modules_framework.testing.test_schedule_report.TestScheduleReport)[1]
+
+
+def test_final_generation_context_is_scoped_to_each_pass(module, monkeypatch):
+    """Consumers can distinguish progress and final result generation without a stale flag."""
+    observed = []
+    patch_shared(monkeypatch, module, {}, callables={'test_schedule': lambda: MagicMock()})
+    monkeypatch.setattr(module, '_generate_results',
+                        lambda **kwargs: observed.append(module.is_final_results_generation()))
+
+    module.generate_results('progress')
+    assert not module.is_final_results_generation()
+    module.generate_results('final', final_results=True)
+    assert not module.is_final_results_generation()
+    assert observed == [False, True]
+
+
+def test_destroy_prepares_final_results_before_serialization(module, monkeypatch):
+    """A progress sync cannot rewrite results.xml after final analysis has written it."""
+    events = []
+    patch_shared(monkeypatch, module, {}, callables={
+        'prepare_final_results': lambda: events.append('stop-progress')
+    })
+    monkeypatch.setattr(module, 'generate_results', lambda *args, **kwargs: events.append('generate'))
+
+    module.destroy()
+
+    assert events == ['stop-progress', 'generate']
+
+
+def test_execute_generates_without_analysis_then_destroy_enables_it(module, monkeypatch):
+    events = []
+    patch_shared(monkeypatch, module, {}, callables={
+        'test_schedule': lambda: MagicMock(),
+        'prepare_final_results': lambda: events.append('publish'),
+    })
+    monkeypatch.setattr(module, '_generate_results',
+                        lambda **kwargs: events.append(('generate', module.is_final_results_generation())))
+
+    module.execute()
+    module.destroy()
+
+    assert events == [('generate', False), 'publish', ('generate', True)]
 
 
 def create_test_schedule(entry_properties):

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import tempfile
+import re
 
 import gluetool
 
@@ -38,7 +39,7 @@ class HideSecrets(gluetool.Module):
             'default': DEFAULT_RETRY_TIMEOUT,
         },
     }
-    shared_functions = ['add_secrets', 'hide_secrets']
+    shared_functions = ['add_secrets', 'hide_secrets', 'redact_text']
 
     def add_secrets(self, secret: Union[str, List[str]]) -> None:
         if isinstance(secret, list):
@@ -49,6 +50,20 @@ class HideSecrets(gluetool.Module):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super(HideSecrets, self).__init__(*args, **kwargs)
         self._secrets: Set[str] = set()
+
+    def redact_text(self, value: str) -> str:
+        """Hide registered secrets in memory without changing an artifact on disk.
+
+        Multiline secrets may have indentation in logs, as in :meth:`hide_secrets`.
+        Longest secrets go first so a shorter secret cannot break a longer match.
+        """
+        for secret in sorted((item for item in self._secrets if item), key=len, reverse=True):
+            if '\n' in secret:
+                pattern = r'\s*\n\s*'.join(re.escape(part) for part in secret.split('\n'))
+                value = re.sub(pattern, 'hidden', value)
+            else:
+                value = value.replace(secret, 'hidden')
+        return value
 
     def hide_secrets(self, search_path: Optional[str] = None) -> None:
         search_path = search_path or self.option('search-path')

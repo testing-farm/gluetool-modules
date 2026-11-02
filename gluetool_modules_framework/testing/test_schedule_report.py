@@ -93,7 +93,8 @@ class TestScheduleReport(gluetool.Module):
         })
     ]
 
-    shared_functions = ['test_schedule_results', 'results', 'xunit_testing_farm_file', 'generate_results']
+    shared_functions = ['test_schedule_results', 'results', 'xunit_testing_farm_file', 'generate_results',
+                        'is_final_results_generation']
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
 
@@ -101,6 +102,11 @@ class TestScheduleReport(gluetool.Module):
 
         self._results: Optional[Results] = None
         self._generate_results_lock = threading.Lock()
+        self._is_final_results_generation = False
+
+    def is_final_results_generation(self) -> bool:
+        """Whether the current serialization pass is a final report rather than a progress update."""
+        return self._is_final_results_generation
 
     def sanity(self) -> None:
         required_polarion_options = [
@@ -363,6 +369,7 @@ class TestScheduleReport(gluetool.Module):
                 generate_xunit: bool = True,
                 generate_xunit_testing_farm: bool = True,
                 report_results: bool = True,
+                final_results: bool = False,
             ) -> None:
 
         if not self._schedule:
@@ -383,15 +390,25 @@ class TestScheduleReport(gluetool.Module):
                 else:
                     self._schedule.log(self.info, label=label)
 
-            self._generate_results(
-                generate_xunit=generate_xunit,
-                generate_xunit_testing_farm=generate_xunit_testing_farm,
-                report_results=report_results
-            )
+            # Runner and execute reports rebuild results without analysis. Only the
+            # destroy pass follows archive publication and may request analysis.
+            self._is_final_results_generation = final_results
+            try:
+                self._generate_results(
+                    generate_xunit=generate_xunit,
+                    generate_xunit_testing_farm=generate_xunit_testing_farm,
+                    report_results=report_results
+                )
+            finally:
+                self._is_final_results_generation = False
 
     def execute(self) -> None:
         self.require_shared('test_schedule')
         self.generate_results('finished schedule')
 
     def destroy(self, failure: Optional[Any] = None) -> None:
-        self.generate_results('finished schedule', failure=failure)
+        # Optional analyzers may need to finish background progress uploads before the
+        # final report is written. Archive.destroy() still uploads the completed report.
+        if self.has_shared('prepare_final_results'):
+            self.shared('prepare_final_results')
+        self.generate_results('finished schedule', failure=failure, final_results=True)

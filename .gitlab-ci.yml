@@ -38,7 +38,8 @@ variables:
 .tests:
   extends: [.colors, .merge-request]
   before_script:
-    - dnf -y install krb5-devel libcurl-devel popt-devel postgresql-devel libxml2-devel
+    # Archive layout tests run rsync against a local destination.
+    - dnf -y install krb5-devel libcurl-devel popt-devel postgresql-devel libxml2-devel rsync
 
 # Build, test and expose the container image
 container:

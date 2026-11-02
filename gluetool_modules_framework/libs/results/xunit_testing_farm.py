@@ -15,7 +15,8 @@ from gluetool_modules_framework.libs.testing_environment import TestingEnvironme
 if TYPE_CHECKING:
     from gluetool_modules_framework.libs.results import (Results, TestSuite, TestCase, Log,  # noqa
                                                          Phase, Guest, TestCaseCheck,
-                                                         TestCaseSubresult, Property)
+                                                         TestCaseSubresult, Property,
+                                                         AIAnalysis, AIAnalysisSnippet)
 
 
 # Used in BaseOS CI results
@@ -243,6 +244,74 @@ class XUnitTFTestCaseSubresults:
 
 
 @attrs.define(kw_only=True)
+class XUnitTFAISnippet:
+    """
+    XML representation of a single :py:class:`~gluetool_modules_framework.libs.results.AIAnalysisSnippet`.
+
+    Serialized as a ``<snippet>`` element whose text content is the snippet, e.g.
+    ``<snippet line-number="42" source-file="test.py">ImportError</snippet>``.
+    """
+
+    # The snippet text is the element's text content rather than an attribute; it can be long.
+    text: str = attrs.field(metadata={'type': 'Text'})
+    line_number: Optional[int] = attrs.field(
+        default=None,
+        metadata={'type': 'Attribute', 'name': 'line-number'}
+    )
+    source_file: Optional[str] = attrs.field(
+        default=None,
+        metadata={'type': 'Attribute', 'name': 'source-file'}
+    )
+
+
+@attrs.define(kw_only=True)
+class XUnitTFAISnippets:
+
+    snippet: List[XUnitTFAISnippet]
+
+    @classmethod
+    def construct(cls, snippets: List['AIAnalysisSnippet']) -> 'XUnitTFAISnippets':
+        return XUnitTFAISnippets(
+            snippet=[
+                XUnitTFAISnippet(
+                    text=snippet.text,
+                    line_number=snippet.line_number,
+                    source_file=snippet.source_file,
+                ) for snippet in snippets]
+        )
+
+
+@attrs.define(kw_only=True)
+class XUnitTFAISummary:
+    """
+    XML representation of an :py:class:`~gluetool_modules_framework.libs.results.AIAnalysis`.
+
+    The source data originates from the Log Detective ``/analyze`` API response; it reaches this
+    class already parsed into an ``AIAnalysis`` by the ``log-detective`` module
+    (:py:mod:`gluetool_modules_framework.helpers.logdetective`). Serialized as the ``<ai-summary>``
+    element, with ``explanation``/``solution`` as text child elements, ``no-issue-found`` as an
+    attribute, and a ``<snippets>`` list, with one ``<snippet>`` child per relevant log snippet.
+    """
+
+    explanation: Optional[str] = None
+    solution: Optional[str] = None
+    no_issue_found: Optional[str] = attrs.field(
+        default=None,
+        metadata={'type': 'Attribute', 'name': 'no-issue-found'}
+    )
+    snippets: Optional[XUnitTFAISnippets] = attrs.field(default=None)
+
+    @classmethod
+    def construct(cls, ai_analysis: 'AIAnalysis') -> 'XUnitTFAISummary':
+        return XUnitTFAISummary(
+            explanation=ai_analysis.explanation or None,
+            solution=ai_analysis.solution,
+            no_issue_found='true' if ai_analysis.no_issue_found else 'false',
+            snippets=XUnitTFAISnippets.construct(snippets=ai_analysis.snippets) if ai_analysis.snippets else None,
+        )
+
+
+@attrs.define(kw_only=True)
 class XUnitTFFmfId:
     url: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
     ref: Optional[str] = attrs.field(metadata={'type': 'Attribute'})
@@ -258,6 +327,7 @@ class XUnitTFTestCase:
     start_time: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute', 'name': 'start-time'})
     end_time: Optional[str] = attrs.field(default=None, metadata={'type': 'Attribute', 'name': 'end-time'})
     note: List[str] = attrs.field(factory=list)
+    ai_summary: Optional[XUnitTFAISummary] = attrs.field(default=None, metadata={'name': 'ai-summary'})
 
     properties: Optional[XUnitTFProperties]
     fmf_id: Optional[XUnitTFFmfId] = attrs.field(default=None, metadata={'name': 'fmf-id'})
@@ -298,6 +368,7 @@ class XUnitTFTestCase:
             name=test_case.name,
             result=test_case.result,
             note=test_case.note,
+            ai_summary=XUnitTFAISummary.construct(test_case.ai_summary) if test_case.ai_summary is not None else None,
             properties=XUnitTFProperties.construct(test_case.properties) if test_case.properties else None,
             fmf_id=XUnitTFFmfId(
                 url=test_case.fmf_id.url,
@@ -343,6 +414,7 @@ class XUnitTFTestSuite:
     logs: Optional[XUnitTFLogs] = None
     properties: Optional[XUnitTFProperties] = None
     testcase: List[XUnitTFTestCase] = attrs.field(factory=list)
+    ai_summary: Optional[XUnitTFAISummary] = attrs.field(default=None, metadata={'name': 'ai-summary'})
     testing_environment: List[XUnitTFTestingEnvironment] = attrs.field(
         factory=list,
         metadata={'name': 'testing-environment'}
@@ -363,6 +435,7 @@ class XUnitTFTestSuite:
             result=test_suite.result,
             tests=str(test_suite.test_count),
             stage=test_suite.stage,
+            ai_summary=XUnitTFAISummary.construct(test_suite.ai_summary) if test_suite.ai_summary is not None else None,
             error=XUnitTFFailure(
                 message=test_suite.error if isinstance(test_suite.error, str) else None,
                 name=test_suite.error_log_name,

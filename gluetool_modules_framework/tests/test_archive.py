@@ -161,7 +161,7 @@ def test_archive_stage_multiple_modes(monkeypatch, module, stage, archive_modes)
     monkeypatch.setattr(module, 'delete_source_copy', MagicMock())
     transfers.verify.return_value.status_code = 200
     mock_requests = MagicMock()
-    mock_requests.return_value.__enter__.return_value.head = transfers.verify
+    mock_requests.return_value.__enter__.return_value.request = transfers.verify
 
     monkeypatch.setattr(module, 'run_rsync', transfers.rsync)
     monkeypatch.setattr(module, 'run_aws', transfers.aws)
@@ -185,7 +185,10 @@ def test_archive_stage_multiple_modes(monkeypatch, module, stage, archive_modes)
             ))
 
     if archive_modes != ['local']:
-        expected.append(call.verify('https://artifacts.example.com/archive-source', allow_redirects=True))
+        expected.append(call.verify(
+            'HEAD', 'https://artifacts.example.com/archive-source', stream=True, allow_redirects=True
+        ))
+        expected.append(call.verify().close())
 
     assert transfers.mock_calls == expected
 
@@ -333,6 +336,173 @@ def test_create_directories_multiple_modes(monkeypatch, module, archive_modes):
     mock_command_init.assert_not_called()
 
 
+def test_publish_before_final_report_stops_progress_then_syncs(module, monkeypatch):
+    """The existing destroy map publishes logs before Log Detective checks their URLs."""
+    module._request_id = 'request-id'
+    events = []
+
+    def stop_progress():
+        events.append('stop-progress')
+        return True
+
+    monkeypatch.setattr(module, 'stop_parallel_archiving', stop_progress)
+    monkeypatch.setattr(module, 'archive_stage',
+                        lambda stage, source_copy=False: events.append((stage, source_copy)))
+
+    module.publish_before_final_report()
+
+    assert events == ['stop-progress', ('destroy', True)]
+
+
+def test_stop_parallel_archiving_cancels_active_timer(module):
+    timer = MagicMock()
+    timer.is_alive.return_value = False
+    module._archive_timer = timer
+
+    module.stop_parallel_archiving()
+
+    timer.cancel.assert_called_once_with()
+    assert module._archive_timer is None
+
+
+def test_publish_before_final_report_skips_sync_while_progress_is_active(module, monkeypatch):
+    module._request_id = 'request-id'
+    timer = MagicMock()
+    module._archive_timer = timer
+    monkeypatch.setattr(gluetool.utils, 'wait', MagicMock(side_effect=gluetool.GlueError('timeout')))
+    sync = MagicMock()
+    monkeypatch.setattr(module, 'archive_stage', sync)
+
+    with pytest.raises(gluetool.GlueError, match='still active'):
+        module.publish_before_final_report()
+
+    sync.assert_not_called()
+    assert module._archive_timer is timer
+
+
+def test_pre_report_copy_preserves_open_log_and_explicit_destination(module, monkeypatch, tmp_path):
+    """Redacting the early upload must not replace the inode used by an open log writer."""
+    source = tmp_path / 'live.log'
+    source.write_text('TOKEN', encoding='utf-8')
+    module._request_id = 'request-id'
+    module._config['archive-mode'] = 'local'
+    module._config['artifacts-local-root'] = str(tmp_path / 'published')
+    monkeypatch.setattr(module, 'source_destination_map', lambda: {
+        'destroy': [{'source': str(source), 'destination': 'logs/live.log'}]
+    })
+
+    def hide_secrets(search_path):
+        with open(search_path, 'r', encoding='utf-8') as stream:
+            content = stream.read()
+        fd, replacement = tempfile.mkstemp(dir=os.path.dirname(search_path))
+        with os.fdopen(fd, 'w', encoding='utf-8') as stream:
+            stream.write(content.replace('TOKEN', 'REDACTED'))
+        os.replace(replacement, search_path)
+
+    class CopyCommand:
+        def __init__(self, cmd, logger):
+            self.cmd = cmd
+
+        def run(self):
+            destination = self.cmd[-1]
+            os.makedirs(os.path.dirname(destination), exist_ok=True)
+            shutil.copy2(self.cmd[-2], destination)
+
+    patch_shared(monkeypatch, module, {}, callables={'hide_secrets': hide_secrets})
+    monkeypatch.setattr(gluetool_modules_framework.helpers.archive, 'Command', CopyCommand)
+    published = tmp_path / 'published' / 'request-id' / 'logs' / 'live.log'
+
+    with source.open('a', encoding='utf-8') as writer:
+        original_inode = os.stat(source).st_ino
+        module.publish_before_final_report()
+        assert os.stat(source).st_ino == original_inode
+        assert published.read_text(encoding='utf-8') == 'REDACTED'
+        writer.write('\ncontinued')
+        writer.flush()
+        assert source.read_text(encoding='utf-8') == 'TOKEN\ncontinued'
+
+    module.destroy()
+    assert published.read_text(encoding='utf-8') == 'REDACTED\ncontinued'
+
+
+@pytest.mark.parametrize('trailing_slash,expected_path', [
+    (True, 'logs/testout.log'),
+    (False, 'logs/logs/testout.log'),
+])
+def test_local_rsync_directory_copy_preserves_source_layout(
+        module, monkeypatch, tmp_path, trailing_slash, expected_path):
+    """Early copied and final direct syncs must apply the same rsync slash semantics."""
+    source = tmp_path / 'logs'
+    source.mkdir()
+    (source / 'testout.log').write_text('test log', encoding='utf-8')
+    published = tmp_path / 'published' / 'request-id' / 'logs'
+    published.mkdir(parents=True)
+    module._request_id = 'request-id'
+    module._config['archive-mode'] = 'local'
+    module._config['artifacts-local-root'] = str(tmp_path / 'published')
+    module._config['rsync-options'] = '--archive'
+    source_path = str(source) + ('/' if trailing_slash else '')
+    monkeypatch.setattr(module, 'source_destination_map', lambda: {
+        'destroy': [{'source': source_path, 'destination': 'logs/'}]
+    })
+    patch_shared(monkeypatch, module, {}, callables={'hide_secrets': lambda search_path: None})
+    staged = []
+    make_temp = tempfile.mkdtemp
+
+    def tracked_tempdir():
+        path = make_temp(dir=tmp_path)
+        staged.append(path)
+        return path
+
+    monkeypatch.setattr(gluetool_modules_framework.helpers.archive.tempfile, 'mkdtemp', tracked_tempdir)
+    expected = tmp_path / 'published' / 'request-id' / expected_path
+
+    module.publish_before_final_report()
+    assert expected.read_text(encoding='utf-8') == 'test log'
+    if trailing_slash:
+        assert not (published / 'logs' / 'testout.log').exists()
+    assert staged and all(not os.path.exists(path) for path in staged)
+
+    module.destroy()
+    assert expected.read_text(encoding='utf-8') == 'test log'
+    assert all(not os.path.exists(path) for path in staged)
+
+
+@pytest.mark.parametrize('source_pattern', ['./*', './work-*/'])
+def test_pre_report_implicit_directory_destination_matches_final_sync(
+        module, monkeypatch, tmp_path, source_pattern):
+    """Ranch's wildcard directories must publish at the normal destroy URLs."""
+    workspace = tmp_path / 'workspace'
+    workspace.mkdir()
+    monkeypatch.chdir(workspace)
+    for name in ('work-example', 'guest-setup-localhost'):
+        source = workspace / name
+        source.mkdir()
+        (source / 'tmt-run.log').write_text('test log', encoding='utf-8')
+    published = tmp_path / 'published' / 'request-id'
+    published.mkdir(parents=True)
+
+    module._request_id = 'request-id'
+    module._config['archive-mode'] = 'local'
+    module._config['artifacts-local-root'] = str(tmp_path / 'published')
+    module._config['rsync-options'] = '--archive'
+    monkeypatch.setattr(module, 'source_destination_map', lambda: {
+        'destroy': [{'source': source_pattern}]
+    })
+    patch_shared(monkeypatch, module, {}, callables={'hide_secrets': lambda search_path: None})
+    archived_names = ('work-example', 'guest-setup-localhost') if source_pattern == './*' else ('work-example',)
+
+    module.publish_before_final_report()
+    for name in archived_names:
+        assert (published / name / 'tmt-run.log').read_text(encoding='utf-8') == 'test log'
+        assert not (published / name / name / 'tmt-run.log').exists()
+
+    module.destroy()
+    for name in archived_names:
+        assert (published / name / 'tmt-run.log').read_text(encoding='utf-8') == 'test log'
+        assert not (published / name / name / 'tmt-run.log').exists()
+
+
 @pytest.mark.parametrize('archive_modes', ['ssh', 'ssh,s3', 's3,ssh'])
 def test_execute_destroy_ssh(monkeypatch, module, archive_modes):
     module._config['archive-mode'] = archive_modes
@@ -344,7 +514,7 @@ def test_execute_destroy_ssh(monkeypatch, module, archive_modes):
     mock_shutil_copy2 = MagicMock()
     mock_shutil_rmtree = MagicMock()
     mock_requests = MagicMock()
-    mock_requests_head = mock_requests.return_value.__enter__.return_value.head
+    mock_requests_head = mock_requests.return_value.__enter__.return_value.request
     mock_requests_head.return_value.status_code = 200
 
     monkeypatch.setattr(gluetool.utils.Command, '__init__', mock_command_init)
@@ -415,9 +585,11 @@ def test_execute_destroy_ssh(monkeypatch, module, archive_modes):
 
     mock_command_init.assert_has_calls(calls, any_order=True)
     mock_requests_head.assert_called_once_with(
-        'https://artifacts.example.com/archive-source-execute',
+        'HEAD', 'https://artifacts.example.com/archive-source-execute',
+        stream=True,
         allow_redirects=True
     )
+    mock_requests_head.return_value.close.assert_called_once_with()
 
 
 @pytest.mark.parametrize('archive_modes', ['daemon', 'daemon,s3', 's3,daemon'])
@@ -430,7 +602,7 @@ def test_destroy_daemon(monkeypatch, module, archive_modes):
     mock_shutil_copy2 = MagicMock()
     mock_shutil_rmtree = MagicMock()
     mock_requests = MagicMock()
-    mock_requests_head = mock_requests.return_value.__enter__.return_value.head
+    mock_requests_head = mock_requests.return_value.__enter__.return_value.request
     mock_requests_head.return_value.status_code = 200
 
     monkeypatch.setattr(gluetool.utils.Command, '__init__', mock_command_init)
@@ -506,7 +678,7 @@ def test_execute_destroy_local(monkeypatch, module, archive_modes):
     mock_shutil_copy2 = MagicMock()
     mock_shutil_rmtree = MagicMock()
     mock_requests = MagicMock()
-    mock_requests_head = mock_requests.return_value.__enter__.return_value.head
+    mock_requests_head = mock_requests.return_value.__enter__.return_value.request
     mock_requests_head.return_value.status_code = 200
 
     monkeypatch.setattr(gluetool.utils.Command, '__init__', mock_command_init)
@@ -581,7 +753,7 @@ def test_execute_destroy_s3(monkeypatch, module, archive_modes):
     mock_shutil_copy2 = MagicMock()
     mock_shutil_rmtree = MagicMock()
     mock_requests = MagicMock()
-    mock_requests_head = mock_requests.return_value.__enter__.return_value.head
+    mock_requests_head = mock_requests.return_value.__enter__.return_value.request
     mock_requests_head.return_value.status_code = 200
 
     monkeypatch.setattr(gluetool.utils.Command, '__init__', mock_command_init)
@@ -669,8 +841,8 @@ def test_parallel_archiving(monkeypatch, module, log, archive_modes):
     def _isdir(path):
         if path in [
             '/dir-archive-source',
-            '/archive-source-another-progress',
-            '/tmp/dir/archive-source-another-progress'
+            '/archive-source-another-progress/',
+            '/tmp/dir/archive-source-another-progress/'
         ]:
             return True
 
@@ -700,7 +872,7 @@ def test_parallel_archiving(monkeypatch, module, log, archive_modes):
     )
     assert log.match(
         levelno=logging.DEBUG,
-        message='syncing /tmp/dir/archive-source-another-progress to '
+        message='syncing /tmp/dir/archive-source-another-progress/ to '
                 'https://artifacts.example.com:/artifacts-root/request-id/archive-source-another-progress'
     )
 
@@ -712,7 +884,7 @@ def test_parallel_archiving(monkeypatch, module, log, archive_modes):
         )
 
     mock_shutil_copytree.assert_called_with(
-        '/archive-source-another-progress', '/tmp/dir/archive-source-another-progress',
+        '/archive-source-another-progress/', '/tmp/dir/archive-source-another-progress',
         symlinks=True, ignore_dangling_symlinks=True, dirs_exist_ok=True
     )
     mock_shutil_rmtree.assert_called_with('/tmp/dir')

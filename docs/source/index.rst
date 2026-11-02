@@ -10,6 +10,7 @@ Modules
 -------
 
 For end-user documentation on each module, see :doc:`modules`.
+For the Log Detective reporting behavior and time limits, see :doc:`log-detective`.
 
 
 Development

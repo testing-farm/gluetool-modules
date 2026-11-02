@@ -193,7 +193,9 @@ same ID as for the ``testing-farm-request`` module above.
 Test suites
 -----------
 
-The test suite is governed by ``tox`` and ``py.test``. Tox can be easily executed by:
+The test suite is governed by ``tox`` and ``py.test``. The archive layout tests
+execute the system ``rsync`` command, so install the ``rsync`` package before
+running the unit test suite. Tox can be easily executed by:
 
 .. code-block:: bash
 

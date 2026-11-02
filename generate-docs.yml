@@ -9,6 +9,7 @@
       - source/framework.rst
       - source/howto-write-a-module.rst
       - source/index.rst
+      - source/log-detective.rst
       - source/protocols/cache.rst
       - source/protocols/protocols.rst
       - source/protocols/provisioner-capabilities.rst

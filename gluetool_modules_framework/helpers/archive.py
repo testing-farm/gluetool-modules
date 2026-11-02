@@ -64,6 +64,7 @@ class Archive(gluetool.Module):
 
     name = 'archive'
     description = 'Archive artifacts from the testing farm to a remote location.'
+    shared_functions = ['publish_before_final_report']
 
     options = {
         'disable-archiving': {
@@ -190,6 +191,47 @@ class Archive(gluetool.Module):
     @property
     def archive_modes(self) -> List[str]:
         return list(dict.fromkeys(gluetool.utils.normalize_multistring_option(self.option('archive-mode'))))
+
+    def publish_before_final_report(self) -> None:
+        """Finish progress syncing, then publish logs before final analysis.
+
+        Reuse the configured destroy-stage map so the same artifacts are uploaded
+        before analysis and again after final results.xml has been written. The
+        second sync uploads the final report and any files produced during teardown.
+        """
+        if self.option('disable-archiving') or not self._request_id:
+            return
+
+        if not self.stop_parallel_archiving():
+            raise GlueError('Parallel archiving is still active; cannot safely publish before the final report')
+        self.archive_stage('destroy', source_copy=True)
+
+    def stop_parallel_archiving(self) -> bool:
+        """Cancel the progress timer and report whether it has finished."""
+        if not self._archive_timer:
+            return True
+
+        self.info('Stopping parallel archiving')
+        self._archive_timer.cancel()
+
+        def _wait_for_timer() -> Result[bool, bool]:
+            if self._archive_timer and self._archive_timer.is_alive():
+                return Result.Error(True)
+            return Result.Ok(True)
+
+        try:
+            gluetool.utils.wait(
+                'wait for parallel archiving to finish',
+                _wait_for_timer,
+                timeout=self.option('parallel-archiving-finish-timeout'),
+                tick=self.option('parallel-archiving-finish-tick')
+            )
+        except GlueError:
+            self.error('Parallel archiving did not finish in time', sentry=True)
+            return False
+
+        self._archive_timer = None
+        return True
 
     def sanity(self) -> None:
         modes = self.archive_modes
@@ -436,10 +478,9 @@ class Archive(gluetool.Module):
         self._created_directories.append(('local', path))
 
     def prepare_source_copy(self, original_source: str) -> Tuple[str, str]:
-        original_source = original_source.rstrip('/')
-
-        # Create a copy in the temporary directory with
-        source = os.path.join(tempfile.mkdtemp(), os.path.basename(original_source))
+        # Preserve the original path for destination selection. A trailing slash on a directory
+        # tells rsync to copy its contents, so carry it onto the staged source as well.
+        source = os.path.join(tempfile.mkdtemp(), os.path.basename(original_source.rstrip('/')))
         if os.path.isdir(original_source):
             shutil.copytree(
                 original_source, source,
@@ -450,6 +491,8 @@ class Archive(gluetool.Module):
                 # this should not be needed, but rather setting it to mitigate certain corner cases
                 dirs_exist_ok=True
             )
+            if original_source.endswith('/'):
+                source += '/'
         else:
             shutil.copy2(original_source, source, follow_symlinks=False)
 
@@ -457,8 +500,8 @@ class Archive(gluetool.Module):
 
     def delete_source_copy(self, source: str) -> None:
         self.debug('removing source copy {}'.format(source))
-        # Delete the temporary created directory
-        shutil.rmtree(os.path.dirname(source))
+        # Strip the rsync-only slash before finding the temporary directory to remove.
+        shutil.rmtree(os.path.dirname(source.rstrip('/')))
 
     def run_rsync(
         self,
@@ -482,6 +525,7 @@ class Archive(gluetool.Module):
         # Reuse source directory name as destination if destination is not set
         # This is useful when we want to sync particular files
         # from the source directory without losing the directory structure
+        implicit_destination = not destination
         if not destination:
             destination = os.path.dirname(original_source or source)
             destination = destination.lstrip('/')
@@ -494,9 +538,10 @@ class Archive(gluetool.Module):
             else:
                 self.create_archive_directory_local(destination)
 
-        # In case we are working with a copy, the destination must be set to the original source,
-        # because the source and destination are different
-        if original_source is not None:
+        # Keep the original parent as the destination for copied directories.
+        # Rsync adds the directory name for sources without a trailing slash;
+        # with a trailing slash, the parent path already ends in that name.
+        if original_source is not None and implicit_destination and not os.path.isdir(source):
             destination = original_source
             destination = destination.lstrip('/')
 
@@ -575,9 +620,9 @@ class Archive(gluetool.Module):
         # This is useful when we want to sync particular files
         # from the source directory without losing the directory structure
 
-        # In case we are working with a copy, the destination must be set to the original source,
-        # because the source and destination are different
-        if not destination or original_source is not None:
+        # An implicit destination follows the original source path, never the temporary copy.
+        # An explicit destination keeps the mapping selected by the caller.
+        if not destination:
             destination = original_source or source
             destination = destination.lstrip('/').lstrip('./')
 
@@ -614,7 +659,8 @@ class Archive(gluetool.Module):
 
     # The stage is default to progress because we want to use the function
     # in the parallel archiving timer without calling it
-    def archive_stage(self, stage: str = 'progress') -> None:
+    def archive_stage(self, stage: str = 'progress', source_copy: bool = False) -> None:
+        """Sync one stage, optionally redacting temporary source copies."""
 
         if not self._request_id:
             self.warn('No testing farm request found, skipping archiving', sentry=True)
@@ -653,7 +699,7 @@ class Archive(gluetool.Module):
                     self.debug('Archiving cancelled, stopping progress sync')
                     return
 
-                source_copy: Optional[str] = None
+                source_copy_path: Optional[str] = None
                 try:
                     if excludes is not None and any(re.search(exclude_entry, source) for exclude_entry in excludes):
                         self.debug('Skipping {} because it matches exclude pattern {}'.format(source, excludes))
@@ -662,10 +708,11 @@ class Archive(gluetool.Module):
                     archive_source = source
                     original_source: Optional[str] = None
                     # hide-secrets uses 'sed -i', which changes the inode and breaks writing to live logs.
-                    # Prepare one redacted snapshot for all modes in the 'progress' and 'execute' stages.
-                    if stage in ARCHIVE_STAGES_USING_COPY:
-                        source_copy, original_source = self.prepare_source_copy(source)
-                        archive_source = source_copy
+                    # Prepare one redacted snapshot for all modes in the 'progress' and 'execute' stages,
+                    # and for pre-report publication.
+                    if source_copy or stage in ARCHIVE_STAGES_USING_COPY:
+                        source_copy_path, original_source = self.prepare_source_copy(source)
+                        archive_source = source_copy_path
 
                     self.shared('hide_secrets', search_path=archive_source)
                     verify_archive = any(mode != 'local' for mode in self.archive_modes)
@@ -712,9 +759,14 @@ class Archive(gluetool.Module):
                         with gluetool.utils.requests() as request:
                             # For HEAD method we need to enable redirects explicitely
                             # https://requests.readthedocs.io/en/latest/user/quickstart/#redirection-and-history
-                            response = request.head(target, allow_redirects=True)
+                            # gluetool's head() wrapper reads and logs response.text.
+                            response = request.request('HEAD', target, stream=True, allow_redirects=True)
+                            try:
+                                available = response.status_code == 200
+                            finally:
+                                response.close()
 
-                            if response.status_code == 200:
+                            if available:
                                 return Result.Ok(True)
 
                             return Result.Error(True)
@@ -732,8 +784,8 @@ class Archive(gluetool.Module):
                     # Log error and continue with another item
                     self.error(f'Failed to sync {sources}: {error}', sentry=True)
                 finally:
-                    if source_copy is not None:
-                        self.delete_source_copy(source_copy)
+                    if source_copy_path is not None:
+                        self.delete_source_copy(source_copy_path)
 
     def _safe_archive_stage(self, stage: str = 'progress') -> None:
         """
@@ -791,30 +843,7 @@ class Archive(gluetool.Module):
             self.info('Archiving is disabled, skipping')
             return
 
-        if self.option('enable-parallel-archiving'):
-            self.info('Stopping parallel archiving')
-            if self._archive_timer:
-                self._archive_timer.cancel()
-
-                # Wait until the timer is finished
-                self.debug('Waiting for parallel archiving to finish')
-
-                def _wait_for_timer() -> Result[bool, bool]:
-                    if self._archive_timer and self._archive_timer.is_alive():
-                        return Result.Error(True)
-                    return Result.Ok(True)
-
-                try:
-                    gluetool.utils.wait(
-                        "wait for parallel archiving to finish",
-                        _wait_for_timer,
-                        timeout=self.option('parallel-archiving-finish-timeout'),
-                        tick=self.option('parallel-archiving-finish-tick')
-                    )
-                except GlueError:
-                    self.error('Parallel archiving did not finish in time', sentry=True)
-
-                self._archive_timer = None
+        self.stop_parallel_archiving()
 
         # Gracefully catch errors, so other destroy functions can get a chance.
         # Send the error to Sentry so we know this is happening.

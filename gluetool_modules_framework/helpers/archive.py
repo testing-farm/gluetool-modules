@@ -438,11 +438,6 @@ class Archive(gluetool.Module):
     def batched_archiving(self) -> bool:
         """
         Whether the copy based stages transfer their files with a single batched rsync invocation.
-
-        Read through ``normalize_bool_option`` on purpose, rather than declaring the option as
-        ``store_true``. This is a revert switch for a hot code path, and ``enable-... = no`` in a
-        configuration file must disable it - with ``store_true`` the option value would be the
-        non-empty, and therefore truthy, string ``'no'``.
         """
 
         return normalize_bool_option(self.option('enable-batched-archiving'))

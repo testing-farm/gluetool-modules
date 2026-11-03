@@ -555,7 +555,8 @@ def test_local_rsync_directory_copy_preserves_source_layout(
     monkeypatch.setattr(module, 'source_destination_map', lambda: {
         'destroy': [{'source': source_path, 'destination': 'logs/'}]
     })
-    patch_shared(monkeypatch, module, {}, callables={'hide_secrets': lambda search_path, cache_path=None, source_stats=None: None})
+    patch_shared(monkeypatch, module, {}, callables={
+                 'hide_secrets': lambda search_path, cache_path=None, source_stats=None: None})
     staged = []
     make_temp = tempfile.mkdtemp
 
@@ -599,7 +600,8 @@ def test_pre_report_implicit_directory_destination_matches_final_sync(
     monkeypatch.setattr(module, 'source_destination_map', lambda: {
         'destroy': [{'source': source_pattern}]
     })
-    patch_shared(monkeypatch, module, {}, callables={'hide_secrets': lambda search_path, cache_path=None, source_stats=None: None})
+    patch_shared(monkeypatch, module, {}, callables={
+                 'hide_secrets': lambda search_path, cache_path=None, source_stats=None: None})
     archived_names = ('work-example', 'guest-setup-localhost') if source_pattern == './*' else ('work-example',)
 
     module.publish_before_final_report()

@@ -668,7 +668,8 @@ class Archive(gluetool.Module):
             # A symlink, a special file, or one we cannot open. `shutil.copy2` copies it, or
             # fails, as it always did, and we have no proof of what it read.
             if fd is None:
-                return shutil.copy2(src, dst, follow_symlinks=follow_symlinks)
+                shutil.copy2(src, dst, follow_symlinks=follow_symlinks)
+                return dst
 
             try:
                 before = _stat(fd)

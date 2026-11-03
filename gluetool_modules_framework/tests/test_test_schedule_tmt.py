@@ -214,6 +214,12 @@ def test_prepare_environment(module, monkeypatch, tmpdir, plan, expected_prefix)
     assert os.path.isdir(os.path.join(tmpdir, work_dirpath))
 
 
+def test_tmt_run_options(module):
+    module._config['tmt-run-options'] = '-vvv -d --log-topic=cli-invocations'
+
+    assert module.tmt_run_options == ['-vvv', '-d', '--log-topic=cli-invocations']
+
+
 def _assert_results(results, expected_results):
     for result, expected in zip(results, expected_results):
         assert result.name == expected['name']
@@ -486,11 +492,22 @@ dummytmt --root some-tmt-root run --all --verbose discover --args1 discover --ar
             None,
             None
         ),
+        (  # with tmt run extra args (not available in reproducer)
+            {
+                'tmt-run-options': '--log-topic=cli-invocations',
+            },
+            {},
+            TestingEnvironment('x86_64', 'rhel-9'),
+            """# tmt reproducer
+dummytmt --root some-tmt-root run --all --verbose provision --how virtual --image guest-compose plan --name ^plan1$""",  # noqa
+            None,
+            None
+        ),
     ],
     ids=[
         'virtual', 'local', 'variables', 'tmt_context',
         'tmt_process_environment_options_only', 'tmt_process_environment', 'tmt_process_environment_not_accepted',
-        'tmt_extra_args'
+        'tmt_extra_args', 'tmt_run_options'
     ]
 )
 def test_tmt_output_dir(

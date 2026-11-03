@@ -1,23 +1,396 @@
 # Copyright Contributors to the Testing Farm project.
 # SPDX-License-Identifier: Apache-2.0
 
-import tempfile
+"""
+Hide secrets in files, see `HideSecrets`. The rest of this text describes how the ``stream``
+implementation works.
+
+Matching
+========
+
+A secret without a line break is a *literal*. ``stream`` looks for its bytes with
+``bytes.find()``, without a regular expression.
+
+For a secret with a line break, ``stream`` strips the whitespace at both ends and splits it
+at each line break, together with the whitespace around it. That leaves *pieces* of text,
+each starting and ending with non-whitespace. A regular expression matches the pieces
+literally. Between two pieces it matches any run of whitespace with at least as many line
+breaks as the secret has there. The secret ``"abc\\n  def\\n"`` gives the pieces ``abc``
+and ``def``. It matches ``abc\\ndef`` and ``abc  \\n\\n\\tdef``, but not ``abc def``.
+
+Matches can overlap, of one secret or of two. ``stream`` merges overlapping matches and
+replaces them with a single ``hidden``, so no part of either secret stays in the file.
+
+A run with 2 line breaks compiles to about ``(?:[ \\t]*+\\n){2}\\s*+``. Each
+``[ \\t]*+\\n`` takes the whitespace up to the next line break and ``\\s*+`` takes the
+rest, so the regex can split a run between them in one way only. The quantifiers are
+possessive and never give back what they matched. With plain ones, a run followed by the
+wrong text makes the regex retry every way of splitting it: 24 spaces take almost a second,
+and every 2 more take four times as long. With possessive ones, 4 MiB of spaces take
+10 milliseconds.
+
+Windows
+=======
+
+``stream`` reads a file at least 1 MiB at a time. A secret can straddle two reads, so
+``stream`` holds back the end of one read, the *carry*, and searches it together with the
+next read. The carry and the read form a *window*.
+
+The *boundary* splits a window in two. Every match starting before the boundary ends inside
+the window, so nothing read later can change how those bytes look once redacted.
+``stream`` writes them out and carries the rest into the next window. At the end of the
+file, the boundary is the end of the window.
+
+A literal match ends inside the window when it starts before the last ``len(secret) - 1``
+bytes. The same goes for the first piece of a multiline secret, so the boundary always sits
+at least that many bytes from the end.
+
+A multiline match has no fixed length, since nothing limits the whitespace between its
+pieces. Its count of non-whitespace bytes is fixed instead: it holds the bytes of its pieces
+and nothing else, and it ends with one of them. If the window holds that many
+non-whitespace bytes after the start of a possible match, the match has to end inside the
+window.
+
+``stream`` counts non-whitespace bytes back from the end of the window, up to the count of
+the multiline secret with the most of them. An occurrence of a first piece after that point
+may start a match which continues in the next read, and the boundary moves back to the
+first such occurrence.
+
+Take the secret ``abc\\ndef``, with 6 non-whitespace bytes, and a window ending with
+``xyz abc\\n   de``. From ``abc`` on, the window holds only 5 of them, ``abcde``, so
+``stream`` carries ``abc\\n   de`` into the next window. With the window ending in
+``abc\\n   dex`` instead, a match starting at ``abc`` would have to end by the ``x``. None
+does, and ``stream`` settles those bytes.
+
+A window can end inside a multibyte character, and some bytes belong both to whitespace and
+to other characters: ``\\xe3\\x80\\x80`` is U+3000 IDEOGRAPHIC SPACE, ``\\xe3\\x80\\x81`` is
+U+3001 IDEOGRAPHIC COMMA. ``stream`` counts each such byte as whitespace. Counting too few
+non-whitespace bytes holds back more data than needed. Counting too many could settle a
+match too early and leak the secret.
+
+The carry grows past the length of the longest secret only when a first piece is followed
+by megabytes of whitespace, or of bytes counted as whitespace. ``stream`` gives up on a file
+once its carry exceeds 16 MiB.
+
+Rewriting files
+===============
+
+``stream`` first reads a file to check for a secret, and stops at the first match. A file
+without a secret stays untouched, keeping its inode and modification time.
+
+``stream`` reads a file with a secret again, writes the redacted copy to a temporary file in
+the same directory and calls ``fsync()`` on it. It gives the copy the owner, group, mode and
+ACL of the original, renames it over the original, and calls ``fsync()`` on the directory,
+so the rename survives a crash. A process reading the file meanwhile sees either the old
+content or the new one.
+
+``stream`` scrubs each file on its own. It skips a file removed since it listed the files,
+retries a file failing with any other ``OSError`` until ``--retry-timeout`` runs out, and
+fails a file whose carry exceeds 16 MiB without a retry.
+After scrubbing all the other files, it raises an error naming each file it could not scrub.
+``xargs`` does the same for ``sed``: it runs ``sed`` on every file before reporting a failure.
+"""
+
+import heapq
+import os
 import re
+import stat
+import tempfile
 
 import gluetool
 
+from dataclasses import dataclass, field
 from gluetool.result import Result
 
-from typing import Any, Optional, List, Set, Union  # noqa
+from typing import Any, BinaryIO, Iterator, List, Optional, Set, Tuple, Union  # noqa
 
 DEFAULT_RETRY_TIMEOUT = 30
 DEFAULT_RETRY_TICK = 10
+DEFAULT_IMPLEMENTATION = 'sed'
+
+# Size of the read buffer used by the 'stream' implementation. Actual buffer size used at
+# runtime is at least this large, and larger still for very long secrets, see
+# `_build_stream_matchers`.
+DEFAULT_STREAM_CHUNK_SIZE = 1 * 1024 * 1024
+
+# Upper bound on the number of bytes the 'stream' implementation holds back from one read to
+# the next. It holds back about as many bytes as the longest secret has, see
+# `_StreamMatchers.boundary`, and only the first line of a secret followed by this much
+# whitespace can push it further. Such a file fails, rather than risks a leak.
+STREAM_MAX_CARRY = 16 * 1024 * 1024
+
+# Whitespace, as `str.isspace()` defines it, which `\s` does not match in a bytes pattern.
+# Workers start citool with no locale set, Python coerces that to C.UTF-8 (PEP 538), and sed
+# inherits it. There, its '[[:space:]]' matches some of these characters too. Using all of
+# them, 'stream' hides at least what 'sed' does, whichever glibc decides what '[[:space:]]' is.
+_UNICODE_SPACES = (
+    '\x1c\x1d\x1e\x1f\x85\xa0\u1680'
+    + ''.join(map(chr, range(0x2000, 0x200b)))
+    + '\u2028\u2029\u202f\u205f\u3000'
+)
+
+# Whitespace in UTF-8, and whitespace other than '\n': the characters of `\s` and
+# `_UNICODE_SPACES`, matched a run of the same kind at a time, which `re` does fast. Every
+# multibyte encoding starts with a byte which never continues one, so occurrences of these
+# never overlap, and a run of whitespace splits into them in one way only.
+_MULTIBYTE_SPACE = br'(?:\xc2[\x85\xa0]|\xe1\x9a\x80|\xe2\x80[\x80-\x8a\xa8\xa9\xaf]|\xe2\x81\x9f|\xe3\x80\x80)++'
+_SPACE = br'(?:[\t\n\x0b\x0c\r\x1c-\x1f ]++|' + _MULTIBYTE_SPACE + br')'
+_SPACE_NOT_NEWLINE = br'(?:[\t\x0b\x0c\r\x1c-\x1f ]++|' + _MULTIBYTE_SPACE + br')'
+
+_ANY_SPACE = re.compile(_SPACE)
+
+# Every byte which is whitespace, or a part of it: what `\s` matches in a bytes pattern, and
+# each byte of the encodings of `_UNICODE_SPACES`. Some characters other than whitespace
+# consist of these bytes only, U+3001 IDEOGRAPHIC COMMA for one.
+_MAYBE_SPACE = bytes(sorted(set(b' \t\n\r\x0b\x0c' + _UNICODE_SPACES.encode('utf-8'))))
+_MAYBE_SPACE_CLASS = b''.join(br'\x%02x' % byte for byte in _MAYBE_SPACE)
+
+# Whitespace at either end of a secret.
+_SECRET_EDGE_SPACE = re.compile(br'\A%s+|%s+\Z' % (_SPACE, _SPACE))
+
+# Whitespace inside a multiline secret which contains at least one line break, as a capturing
+# group so `split()` keeps it. It matches the whole run of whitespace around the line break,
+# leaving the text on either side of it starting and ending with non-whitespace.
+_SECRET_LINE_BREAK = re.compile(br'((?:%s*\n)+%s*)' % (_SPACE_NOT_NEWLINE, _SPACE))
+
+# Extended attribute holding the POSIX access ACL of a file.
+_ACL_XATTR = 'system.posix_acl_access'
+
+
+def _literal_spans(literal: bytes, data: bytes, limit: int) -> Iterator[Tuple[int, int]]:
+    """
+    Yield ``(start, end)`` of every run of overlapping occurrences of ``literal`` starting before
+    ``limit``, each run merged into one span.
+
+    Of the occurrences starting inside a run, only the last one can extend it, the others end
+    inside it already. Jumping straight to that one keeps the work low even for a secret like
+    'aaaa' in a file of nothing but 'a'.
+    """
+
+    size = len(literal)
+
+    # An occurrence starting before `limit` fits in `data[:limit - 1 + size]`.
+    start = data.find(literal, 0, limit - 1 + size)
+
+    while start != -1:
+        last, end = start, start + size
+
+        while True:
+            last = data.rfind(literal, last + 1, min(end, limit) - 1 + size)
+
+            if last == -1:
+                break
+
+            end = last + size
+
+        yield start, end
+
+        start = data.find(literal, end, limit - 1 + size)
+
+
+@dataclass
+class _MultilinePattern:
+    """
+    A secret spanning multiple lines, compiled into a regular expression which matches its
+    pieces literally and any whitespace between them with at least as many line breaks. The
+    module docstring describes the pieces and why the quantifiers are possessive.
+
+    Every match of the secret holds exactly ``nonspace`` non-whitespace bytes, however much
+    whitespace it holds. `_StreamMatchers.boundary` relies on that.
+    """
+
+    # The longest piece. Every match contains it, so when it is missing, the regex does not run.
+    prefilter: bytes
+
+    # The first piece. Every match starts with it.
+    first: bytes
+
+    pattern: re.Pattern[bytes]
+
+    # Number of non-whitespace bytes in the secret, and therefore in every match of it.
+    nonspace: int
+
+    def spans(self, data: bytes, limit: int) -> Iterator[Tuple[int, int]]:
+        """
+        Yield ``(start, end)`` of every match starting before ``limit``, overlapping ones
+        included.
+        """
+
+        if self.prefilter not in data:
+            return
+
+        pos = 0
+
+        while True:
+            match = self.pattern.search(data, pos)
+
+            if match is None or match.start() >= limit:
+                return
+
+            yield match.span()
+
+            pos = match.start() + 1
+
+
+@dataclass
+class _StreamMatchers:
+    """
+    Compiled matchers used by the 'stream' implementation, plus what they need to find secrets
+    split across read buffers.
+    """
+
+    # Secrets with no newline, matched as plain bytes (no regex involved).
+    literals: List[bytes] = field(default_factory=list)
+
+    # Secrets spanning multiple lines.
+    patterns: List[_MultilinePattern] = field(default_factory=list)
+
+    # Number of bytes read from the file per iteration.
+    chunk_size: int = DEFAULT_STREAM_CHUNK_SIZE
+
+    # Length of the longest literal, and of the longest first piece of a multiline secret,
+    # minus one byte: a match of either which starts closer than this to the end of a buffer
+    # may continue in the next one.
+    literal_overlap: int = field(init=False)
+    first_overlap: int = field(init=False)
+
+    # The most non-whitespace bytes in any multiline secret.
+    nonspace: int = field(init=False)
+
+    _nonspace_tail: Optional[re.Pattern[bytes]] = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.literal_overlap = max((len(literal) for literal in self.literals), default=1) - 1
+        self.first_overlap = max((len(multiline.first) for multiline in self.patterns), default=1) - 1
+        self.nonspace = max((multiline.nonspace for multiline in self.patterns), default=0)
+
+        # Matched against a buffer reversed, see `boundary`.
+        self._nonspace_tail = re.compile(
+            br'(?:[%s]*+[^%s]){%d}' % (_MAYBE_SPACE_CLASS, _MAYBE_SPACE_CLASS, self.nonspace)
+        ) if self.nonspace else None
+
+    def spans(self, data: bytes, limit: int) -> Iterator[Tuple[int, int]]:
+        """
+        Yield ``(start, end)`` of every run of overlapping matches, of one secret or several,
+        starting before ``limit``, each run merged into one span, in order.
+
+        Matches are merged as they are found, so memory use does not grow with their number,
+        however densely they overlap.
+        """
+
+        found = heapq.merge(
+            *[_literal_spans(literal, data, limit) for literal in self.literals],
+            *[multiline.spans(data, limit) for multiline in self.patterns]
+        )
+
+        run_start = run_end = 0
+
+        for start, end in found:
+            if start < run_end:
+                run_end = max(run_end, end)
+                continue
+
+            if run_end > run_start:
+                yield run_start, run_end
+
+            run_start, run_end = start, end
+
+        if run_end > run_start:
+            yield run_start, run_end
+
+    def contains(self, data: bytes) -> bool:
+        """
+        Return whether ``data`` contains a match of any secret, stopping at the first one.
+        """
+
+        return any(literal in data for literal in self.literals) or any(
+            next(multiline.spans(data, len(data)), None) is not None for multiline in self.patterns
+        )
+
+    def boundary(self, data: bytes) -> int:
+        """
+        Return how many leading bytes of ``data`` are settled: every match starting among them
+        ends within ``data``, so nothing read later can change how they are redacted.
+
+        A literal match is settled when ``data`` holds all of its bytes. A multiline match
+        starts with the first piece of its secret, so it can be pending only where that piece
+        occurs. It also ends with non-whitespace and holds exactly as many non-whitespace bytes
+        as its secret, however much whitespace separates its lines - so it is settled when the
+        rest of ``data`` holds at least that many non-whitespace bytes.
+        """
+
+        # A match of a literal, or of the first piece of a multiline secret, may be cut off by
+        # the end of `data`.
+        boundary = len(data) - max(self.literal_overlap, self.first_overlap)
+
+        if any(multiline.first in data for multiline in self.patterns):
+            nonspace_boundary = self._nonspace_boundary(data)
+
+            for multiline in self.patterns:
+                pending = data.find(multiline.first, nonspace_boundary)
+
+                if pending != -1:
+                    boundary = min(boundary, pending)
+
+        return max(boundary, 0)
+
+    def _nonspace_boundary(self, data: bytes) -> int:
+        """
+        Return the index just past the start of the last `nonspace` bytes of ``data`` which
+        cannot be a part of whitespace, or 0 when there are fewer.
+        """
+
+        assert self._nonspace_tail is not None
+
+        # Grow a tail of `data` until it holds enough non-whitespace bytes, counting them with
+        # `translate()` rather than a regex, which on long whitespace backtracks at a fraction
+        # of the speed. Then, since `re` cannot search backwards, match the reversed tail.
+        #
+        # Every byte which may be a part of whitespace counts as whitespace, including those of
+        # a character cut off by either end of the tail. Counting too few non-whitespace bytes
+        # only holds back more of `data`, counting too many would settle a pending match.
+        size = 4 * self.nonspace
+
+        while True:
+            tail = data[-size:]
+
+            if len(tail.translate(None, _MAYBE_SPACE)) >= self.nonspace:
+                match = self._nonspace_tail.match(tail[::-1])
+                assert match is not None
+
+                return len(data) - match.end() + 1
+
+            if size >= len(data):
+                return 0
+
+            size *= 4
 
 
 class HideSecrets(gluetool.Module):
     """
     Hide secrets from all files in the search path, by default
     current working directory.
+
+    Every occurrence of a secret becomes ``hidden``. The lines of a multiline secret match with
+    any whitespace around the line breaks between them, since logs and YAML dumps indent the
+    lines of a key.
+
+    ``--implementation`` picks one of two implementations. ``sed`` runs ``sed -z -i`` on every
+    file, which holds the whole file in memory. ``stream`` reads each file in chunks and needs
+    about the same memory for a file of any size. The module docstring describes how ``stream``
+    works.
+
+    Compared to ``sed``
+    ===================
+
+    ``stream`` hides at least what ``sed`` hides:
+
+    * It treats as whitespace every character ``str.isspace()`` accepts, more than glibc's
+      ``[[:space:]]`` matches under ``C.UTF-8``, the locale workers run ``sed`` in.
+    * It finds a multiline secret whatever whitespace surrounds its ends and line breaks.
+      ``sed`` requires the whitespace the secret itself has there.
+
+    ``sed`` fails on files over 2 GiB. ``stream`` handles a file of any size.
     """
 
     name = 'hide-secrets'
@@ -25,6 +398,20 @@ class HideSecrets(gluetool.Module):
         'search-path': {
             'help': 'Path used to search for files (default: %(default)s)',
             'default': '.'
+        },
+        'implementation': {
+            'help': """
+                Implementation used to hide secrets. 'sed' shells out to `find`, `xargs` and
+                `sed` for every call; it is battle-tested but reads whole files into memory,
+                which can exhaust worker memory - and hard-fails above 2 GiB - on large files
+                such as long-running guest console logs. 'stream' is a pure Python
+                implementation which redacts files in bounded memory with no size limit. It
+                fails on a file in which the first line of a multiline secret is followed by
+                more than {} MiB of whitespace, after hiding secrets in all other files.
+                (default: %(default)s)
+            """.format(STREAM_MAX_CARRY // (1024 * 1024)),
+            'choices': ('sed', 'stream'),
+            'default': DEFAULT_IMPLEMENTATION,
         },
         'retry-tick': {
             'help': 'Timeout between retries for failed operations. (default: %(default)s)',
@@ -65,10 +452,305 @@ class HideSecrets(gluetool.Module):
                 value = value.replace(secret, 'hidden')
         return value
 
-    def hide_secrets(self, search_path: Optional[str] = None) -> None:
-        search_path = search_path or self.option('search-path')
-        assert search_path
+    def sanity(self) -> None:
+        # gluetool checks 'choices' only on the command line, a value from a config file is used
+        # as it is. Without this check, a typo there would quietly run the sed implementation.
+        if self.option('implementation') not in ('sed', 'stream'):
+            raise gluetool.GlueError(
+                "Unknown implementation '{}', expected 'sed' or 'stream'".format(self.option('implementation'))
+            )
 
+    def _iter_regular_files(self, search_path: str) -> Iterator[str]:
+        """
+        Mirror `find <path> -type f` semantics: symlinks are never followed - not the ones
+        encountered while walking a directory, not symlinked directories, and not `search_path`
+        itself. `find` defaults to '-P', under which a symlink is of type 'l' and never 'f',
+        even when it is the starting point, so the sed implementation leaves those alone too.
+        """
+        if os.path.islink(search_path):
+            return
+
+        if os.path.isdir(search_path):
+            for root, _, files in os.walk(search_path, followlinks=False):
+                for name in files:
+                    full_path = os.path.join(root, name)
+                    if not os.path.islink(full_path) and os.path.isfile(full_path):
+                        yield full_path
+
+        elif os.path.isfile(search_path):
+            yield search_path
+
+    def _build_stream_matchers(self) -> Optional[_StreamMatchers]:
+        literals: List[bytes] = []
+        patterns: List[_MultilinePattern] = []
+
+        for secret in self._secrets:
+            # Matches the existing sed-based behaviour: an empty secret is not something we
+            # can meaningfully redact (and, unlike a targeted literal, would match everywhere).
+            if not secret:
+                continue
+
+            encoded = secret.encode('utf-8', 'surrogateescape')
+
+            if b'\n' not in encoded:
+                literals.append(encoded)
+                continue
+
+            # Whitespace around a multiline secret is not secret, and requiring it, as the sed
+            # implementation does, only makes the secret harder to find. Without it, every piece
+            # starts and ends with non-whitespace, see `_MultilinePattern`.
+            stripped = _SECRET_EDGE_SPACE.sub(b'', encoded)
+
+            if not stripped:
+                self.warn('Ignoring a secret which consists of whitespace only')
+                continue
+
+            parts = _SECRET_LINE_BREAK.split(stripped)
+
+            if len(parts) == 1:
+                literals.append(stripped)
+                continue
+
+            pieces, runs = parts[0::2], parts[1::2]
+
+            pattern = re.escape(pieces[0]) + b''.join(
+                br'(?:%s*+\n){%d}%s*+' % (_SPACE_NOT_NEWLINE, run.count(b'\n'), _SPACE) + re.escape(piece)
+                for run, piece in zip(runs, pieces[1:])
+            )
+
+            patterns.append(_MultilinePattern(
+                prefilter=max(pieces, key=len),
+                first=pieces[0],
+                pattern=re.compile(pattern),
+                nonspace=len(_ANY_SPACE.sub(b'', stripped))
+            ))
+
+        if not literals and not patterns:
+            return None
+
+        matchers = _StreamMatchers(literals=literals, patterns=patterns)
+
+        # Each read should bring in plenty of new data compared to what is held back from the
+        # previous one, which for ordinary text is about as long as the longest secret.
+        matchers.chunk_size = max(DEFAULT_STREAM_CHUNK_SIZE, 4 * matchers.literal_overlap, 4 * matchers.nonspace)
+
+        return matchers
+
+    def _scan(
+        self,
+        path: str,
+        f: BinaryIO,
+        matchers: _StreamMatchers
+    ) -> Iterator[Tuple[bytes, int]]:
+        """
+        Read ``f`` and yield ``(window, boundary)``: the next part of the file, and how many of
+        its leading bytes are settled.
+
+        Each window starts with the unsettled bytes of the previous one, exactly as read. That
+        makes matches independent of where reads happen to split the file: every match starting
+        among the settled bytes is complete, and is never found again in a later window.
+        """
+
+        carry = b''
+
+        while True:
+            buf = f.read(matchers.chunk_size)
+            window = carry + buf
+
+            if not buf:
+                yield window, len(window)
+                return
+
+            boundary = matchers.boundary(window)
+
+            # The first line of a secret, followed by more whitespace than we are willing to
+            # hold in memory before its other lines show up, if they ever do.
+            if len(window) - boundary > STREAM_MAX_CARRY:
+                raise gluetool.GlueError(
+                    "Cannot hide secrets in '{}', {} bytes of whitespace may split a secret".format(
+                        path, len(window) - boundary
+                    )
+                )
+
+            yield window, boundary
+
+            carry = window[boundary:]
+
+    def _file_contains_secret(self, path: str, matchers: _StreamMatchers) -> bool:
+        with open(path, 'rb') as f:
+            return any(matchers.contains(window) for window, _ in self._scan(path, f, matchers))
+
+    @staticmethod
+    def _fsync_directory(directory: str) -> None:
+        dir_fd = os.open(directory, os.O_RDONLY)
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
+
+    def _copy_metadata(self, path: str, original: os.stat_result, tmp_path: str) -> None:
+        """
+        Give ``tmp_path`` the owner, group, mode and ACL of ``path``, as `sed -i` does.
+
+        Owner and group are best effort: only root may give a file away, other users may set
+        only a group they belong to. The mode is set after them, since `chown` clears the
+        set-user-ID and set-group-ID bits.
+        """
+
+        for uid in (original.st_uid, -1):
+            try:
+                os.chown(tmp_path, uid, original.st_gid)
+                break
+            except PermissionError:
+                continue
+
+        os.chmod(tmp_path, stat.S_IMODE(original.st_mode))
+
+        try:
+            acl = os.getxattr(path, _ACL_XATTR)
+        except OSError:
+            # No ACL, or a filesystem without them.
+            return
+
+        try:
+            os.setxattr(tmp_path, _ACL_XATTR, acl)
+        except OSError as exc:
+            self.warn("could not copy ACL of '{}': {}".format(path, exc))
+
+    def _rewrite_file(self, path: str, matchers: _StreamMatchers) -> None:
+        """
+        Rewrite `path` with every secret redacted, atomically.
+        """
+        directory = os.path.dirname(path) or '.'
+        original = os.stat(path)
+
+        fd, tmp_path = tempfile.mkstemp(dir=directory, prefix='.hide-secrets-')
+
+        try:
+            with os.fdopen(fd, 'wb') as tmp_file, open(path, 'rb') as src_file:
+                # How many leading bytes of the current window are already written out. It runs
+                # past the settled bytes only when the last match written out does.
+                written = 0
+
+                for window, boundary in self._scan(path, src_file, matchers):
+                    for start, end in matchers.spans(window, boundary):
+                        if end <= written:
+                            continue
+
+                        # Overlapping matches, of the same secret or of different ones, are
+                        # redacted together, so no part of either is left visible. `spans()`
+                        # merges them within a window, this merges them across windows.
+                        if start < written:
+                            written = end
+                            continue
+
+                        tmp_file.write(window[written:start])
+                        tmp_file.write(b'hidden')
+                        written = end
+
+                    if written < boundary:
+                        tmp_file.write(window[written:boundary])
+                        written = boundary
+
+                    written -= boundary
+
+                tmp_file.flush()
+                os.fsync(tmp_file.fileno())
+
+            self._copy_metadata(path, original, tmp_path)
+            os.replace(tmp_path, path)
+
+        except BaseException:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
+
+        # Durability of the rename needs the directory entry on disk; fsync of the file alone
+        # does not give us that. This is what replaces the sed implementation's 'sync' call.
+        try:
+            self._fsync_directory(directory)
+        except OSError as exc:
+            self.debug("could not fsync directory '{}': {}".format(directory, exc))
+
+    def _scrub_file(self, path: str, matchers: _StreamMatchers) -> None:
+        # Files without any secret are never rewritten, so their inode and mtime are preserved.
+        if self._file_contains_secret(path, matchers):
+            self._rewrite_file(path, matchers)
+
+    def _hide_secrets_stream(self, search_path: str) -> None:
+        built_matchers = self._build_stream_matchers()
+
+        # NOTE: We will deprecate this crazy module once TFT-1813
+        if built_matchers is None:
+            self.debug("No secrets to hide, all secrets had empty values")
+            return
+
+        # A plain local (rather than relying on narrowing of `built_matchers`) so the closure
+        # below is typed as `_StreamMatchers`, not `Optional[_StreamMatchers]`.
+        matchers: _StreamMatchers = built_matchers
+
+        if not os.path.exists(search_path):
+            self.debug("search path '{}' does not exist, nothing to hide".format(search_path))
+            return
+
+        self.debug("Hiding secrets from all files under '{}' path (stream implementation)".format(search_path))
+
+        # A file which cannot be scrubbed must not stop the others from being scrubbed, the same
+        # way `xargs` runs sed on every file before reporting a failure. Files failing with
+        # `OSError` are retried, files hitting `STREAM_MAX_CARRY` would fail the same way again.
+        #
+        # Each file is only logged. Sentry gets one warning per round, listing the files to retry,
+        # and the error raised at the end, so a tree of unreadable files does not flood it.
+        pending = list(self._iter_regular_files(search_path))
+        failed: List[str] = []
+
+        def _run() -> Result[bool, bool]:
+            retry: List[str] = []
+
+            for path in pending:
+                try:
+                    self._scrub_file(path, matchers)
+
+                # A file removed since the walk holds no secret any more. `find` would not list it
+                # when sed is retried either.
+                except FileNotFoundError:
+                    self.debug("'{}' disappeared, nothing to hide".format(path))
+
+                except OSError as exc:
+                    self.warn("Hiding secrets in '{}' failed, retrying: {}".format(path, exc))
+                    retry.append(path)
+
+                except gluetool.GlueError as exc:
+                    self.warn(str(exc))
+                    failed.append(path)
+
+            if retry:
+                self.warn('Hiding secrets failed in {} file(s), retrying: {}'.format(
+                    len(retry), ', '.join("'{}'".format(path) for path in retry)
+                ), sentry=True)
+
+            pending[:] = retry
+
+            return Result.Error(False) if pending else Result.Ok(True)
+
+        try:
+            gluetool.utils.wait(
+                "hiding secrets under '{}'".format(search_path),
+                _run,
+                timeout=self.option('retry-timeout'),
+                tick=self.option('retry-tick')
+            )
+        except gluetool.GlueError:
+            failed.extend(pending)
+
+        if failed:
+            raise gluetool.GlueError('Failed to hide secrets in {}, secrets could be leaked!'.format(
+                ', '.join("'{}'".format(path) for path in failed)
+            ))
+
+    def _hide_secrets_sed(self, search_path: str) -> None:
         # POSIX.2 Basic Regular Expressions (BREs) have a specific set of characters
         # that you need to escape to use them as literals.
         #
@@ -150,6 +832,15 @@ class HideSecrets(gluetool.Module):
 
         except gluetool.GlueError:
             self.warn('Failed to sync modified files to disk.', sentry=True)
+
+    def hide_secrets(self, search_path: Optional[str] = None) -> None:
+        search_path = search_path or self.option('search-path')
+        assert search_path
+
+        if self.option('implementation') == 'stream':
+            self._hide_secrets_stream(search_path)
+        else:
+            self._hide_secrets_sed(search_path)
 
     def destroy(self, failure: Optional[Any] = None) -> None:
         self.hide_secrets()

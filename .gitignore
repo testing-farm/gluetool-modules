@@ -32,3 +32,6 @@ docs/source/module_parsers.py
 /*-artemis-guest-log.yaml
 # flasher-debug-<uuid>.log
 /flasher-debug-*.log
+
+# hypothesis example database
+.hypothesis

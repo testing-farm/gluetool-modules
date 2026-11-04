@@ -211,7 +211,7 @@ class InstallCoprBuild(gluetool.Module):
 
                 command = (
                     '{} -vvv run provision --how connect --guest {} --key {} --port {} '
-                    'prepare --how install {}'.format(
+                    'prepare --how install --allow-erasing {}'.format(
                         " ".join(self.shared('tmt_command', include_root=False)),
                         guest.hostname,
                         guest.key,

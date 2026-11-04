@@ -256,7 +256,8 @@ class InstallKojiBuildExecute(gluetool.Module):
             command = (
                 "cd {5} && cat rpms-list-{4} | xargs realpath | tee rpms-list-paths-{4} && "
                 "if [ -s rpms-list-paths-{4} ] && grep -q '\\S' rpms-list-paths-{4}; then "
-                "{0} -vvv run provision --how connect --guest {1} --key {2} --port {3} prepare --how install "
+                "{0} -vvv run provision --how connect --guest {1} --key {2} --port {3} "
+                "prepare --how install --allow-erasing "
                 "$(awk '{{print \"--package=\"$0}}' rpms-list-paths-{4}); else echo 'Nothing to install'; fi"
             ).format(
                 " ".join(self.shared('tmt_command', include_root=False)),

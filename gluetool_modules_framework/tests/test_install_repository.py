@@ -519,7 +519,7 @@ def test_guest_setup_bootc(module, environment_index, tmpdir, monkeypatch):
         call(['dnf', 'repoquery', '-q', '--repofrompath=artifacts-repo,https://example.com/repo1', '--repo', 'artifacts-repo', '--location', '--disable-modular-filtering']),  # noqa
         call(['dnf', 'repoquery', '-q', '--repofrompath=artifacts-repo,https://example.com/repo2', '--repo', 'artifacts-repo', '--location', '--disable-modular-filtering']),  # noqa
         call(['dnf', 'repoquery', '-q', '--repofrompath=artifacts-repo,https://example.com/repo3', '--repo', 'artifacts-repo', '--location', '--disable-modular-filtering']),  # noqa
-        call(['bash', '-c', 'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install --package=https://example.com/dummy1-1.0.1-1.x86_64.rpm --package=https://example.com/package-install-1.0.3-1.x86_64.rpm'])  # noqa
+        call(['bash', '-c', 'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install --allow-erasing --package=https://example.com/dummy1-1.0.1-1.x86_64.rpm --package=https://example.com/package-install-1.0.3-1.x86_64.rpm'])  # noqa
     ]
     mock_command_init.assert_has_calls(command_calls)
     assert call(['dnf', 'repoquery', '-q', '--repofrompath=artifacts-repo,https://example.com/repo6', '--repo', 'artifacts-repo', '--location', '--disable-modular-filtering']) not in mock_command_init.call_args_list  # noqa

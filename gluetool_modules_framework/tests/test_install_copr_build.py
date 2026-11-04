@@ -624,7 +624,8 @@ def test_repo_download_fails(module_shared_patched, tmpdir):
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm '
                 '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\'')],
             ['bash', '-c', (
-                'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install '
+                'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 '
+                'prepare --how install --allow-erasing '
                 '--package=https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm '
                 '--package=https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm')]
         ],
@@ -667,7 +668,8 @@ def test_repo_download_fails(module_shared_patched, tmpdir):
                 'https://example.com/dummy3_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.src.rpm '
                 '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\'')],
             ['bash', '-c', (
-                'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install '
+                'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 '
+                'prepare --how install --allow-erasing '
                 '--package=https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm '
                 '--package=https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm '
                 '--package=https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm '
@@ -737,7 +739,8 @@ def test_repo_download_fails(module_shared_patched, tmpdir):
                 'https://example.com/dummy3_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy3_rpm_name2-1.0.1-el7.src.rpm '
                 '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\'')],
             ['bash', '-c', (
-                'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install '
+                'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 '
+                'prepare --how install --allow-erasing '
                 '--package=https://example.com/dummy3_rpm_name1-1.0.1-el7.rpm '
                 '--package=https://example.com/dummy3_rpm_name2-1.0.1-el7.rpm')]
         ],
@@ -828,7 +831,8 @@ def test_repo_download_fails(module_shared_patched, tmpdir):
                 'https://example.com/dummy2_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy2_rpm_name2-1.0.1-el7.src.rpm '
                 '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\'')],
             ['bash', '-c', (
-                'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install '
+                'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 '
+                'prepare --how install --allow-erasing '
                 '--package=https://example.com/dummy2_rpm_name1-1.0.1-el7.rpm '
                 '--package=https://example.com/dummy2_rpm_name2-1.0.1-el7.rpm')]
         ],
@@ -868,7 +872,8 @@ def test_repo_download_fails(module_shared_patched, tmpdir):
                 'https://example.com/dummy1_rpm_name1-1.0.1-el7.src.rpm https://example.com/dummy1_rpm_name2-1.0.1-el7.src.rpm '
                 '| awk -v pkglist="pkglist" \'{if ($1 == "200") {print "Downloaded:", $2; print $3 >> pkglist}}\'')],
             ['bash', '-c', (
-                'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 prepare --how install '
+                'tmt -vvv run provision --how connect --guest guest0 --key guest-key --port 22 '
+                'prepare --how install --allow-erasing '
                 '--package=https://example.com/dummy1_rpm_name1-1.0.1-el7.rpm '
                 '--package=https://example.com/dummy1_rpm_name2-1.0.1-el7.rpm')],
         ],

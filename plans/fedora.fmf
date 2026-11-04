@@ -1,8 +1,8 @@
 description: |
-  Test gluetool-modules installation on Fedora latest.
+  Test gluetool-modules installation on Fedora 44.
 
 provision+:
-  image: registry.fedoraproject.org/fedora:latest
+  image: registry.fedoraproject.org/fedora:44
 
 prepare:
   how: shell

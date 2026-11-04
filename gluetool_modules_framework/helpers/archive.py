@@ -1441,7 +1441,11 @@ class Archive(gluetool.Module):
             self.error(f'Failed to sync {entry["source"]}: {error}', sentry=True)
         finally:
             if source_copy_path is not None:
-                self.delete_source_copy(source_copy_path)
+                # A failed cleanup must not stop archiving of the remaining sources.
+                try:
+                    self.delete_source_copy(source_copy_path)
+                except OSError as error:
+                    self.warn(f'Failed to remove source copy {source_copy_path}: {error}', sentry=True)
 
     def _safe_archive_stage(self, stage: str = 'progress') -> None:
         """

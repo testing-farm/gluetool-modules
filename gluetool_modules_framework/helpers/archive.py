@@ -5,6 +5,7 @@ import fnmatch
 import os
 import re
 import shutil
+import stat
 from glob import glob
 import tempfile
 
@@ -13,6 +14,7 @@ from gluetool.glue import GlueError
 from gluetool.log import log_dict
 from gluetool.utils import Command, normalize_bool_option, render_template
 from gluetool.result import Result
+from gluetool_modules_framework.libs.file_stat import FileStat, settled_file_stat
 from gluetool_modules_framework.libs.threading import RepeatTimer
 from gluetool_modules_framework.libs.pipeline_stages import PIPELINE_ARCHIVING_STARTED, PIPELINE_ARCHIVING_FINISHED
 
@@ -620,7 +622,71 @@ class Archive(gluetool.Module):
 
         self._created_directories.append(('local', path))
 
-    def prepare_source_copy(self, original_source: str) -> Tuple[str, str]:
+    def prepare_source_copy(self, original_source: str) -> Tuple[str, str, Dict[str, FileStat]]:
+        """
+        Copy `original_source` to a temporary directory.
+
+        Returns the copy, the original, and the stat of each original file which did not change
+        while we copied it, for the `source_stats` argument of `hide_secrets`. `shutil.copy2`
+        copies the data first and the metadata after, so the stat of a copy says nothing about
+        which bytes it holds.
+
+        Both stats come from the descriptor we copy the data from. Statting the path before and
+        after says nothing about what we read, when someone swaps its parent directories in
+        between and back.
+        """
+        source_stats: Dict[str, FileStat] = {}
+
+        def _stat(fd: int) -> Optional[FileStat]:
+            try:
+                return settled_file_stat(fd)
+
+            # No stat, no proof.
+            except OSError:
+                return None
+
+        def _open_regular_file(path: str, follow_symlinks: bool) -> Optional[int]:
+            # `O_NONBLOCK` keeps a FIFO from blocking the open, `O_NOFOLLOW` makes it fail for
+            # a symlink we are to copy as one.
+            flags = os.O_RDONLY | os.O_NONBLOCK | (0 if follow_symlinks else os.O_NOFOLLOW)
+
+            try:
+                fd = os.open(path, flags)
+
+            except OSError:
+                return None
+
+            if stat.S_ISREG(os.fstat(fd).st_mode):
+                return fd
+
+            os.close(fd)
+            return None
+
+        def _copy_file(src: str, dst: str, follow_symlinks: bool = True) -> str:
+            fd = _open_regular_file(src, follow_symlinks)
+
+            # A symlink, a special file, or one we cannot open. `shutil.copy2` copies it, or
+            # fails, as it always did, and we have no proof of what it read.
+            if fd is None:
+                shutil.copy2(src, dst, follow_symlinks=follow_symlinks)
+                return dst
+
+            try:
+                before = _stat(fd)
+
+                with open(fd, 'rb', closefd=False) as src_file, open(dst, 'wb') as dst_file:
+                    shutil.copyfileobj(src_file, dst_file)
+
+                shutil.copystat(src, dst, follow_symlinks=follow_symlinks)
+
+                if before is not None and before == _stat(fd):
+                    source_stats[src] = before
+
+            finally:
+                os.close(fd)
+
+            return dst
+
         # Preserve the original path for destination selection. A trailing slash on a directory
         # tells rsync to copy its contents, so carry it onto the staged source as well.
         source = os.path.join(tempfile.mkdtemp(), os.path.basename(original_source.rstrip('/')))
@@ -632,14 +698,15 @@ class Archive(gluetool.Module):
                 # ignore dangling symlinks, if they would exist
                 ignore_dangling_symlinks=True,
                 # this should not be needed, but rather setting it to mitigate certain corner cases
-                dirs_exist_ok=True
+                dirs_exist_ok=True,
+                copy_function=_copy_file
             )
             if original_source.endswith('/'):
                 source += '/'
         else:
-            shutil.copy2(original_source, source, follow_symlinks=False)
+            _copy_file(original_source, source, follow_symlinks=False)
 
-        return source, original_source
+        return source, original_source, source_stats
 
     def delete_source_copy(self, source: str) -> None:
         self.debug('removing source copy {}'.format(source))
@@ -1363,14 +1430,26 @@ class Archive(gluetool.Module):
         try:
             archive_source = source
             original_source: Optional[str] = None
+            source_stats: Dict[str, FileStat] = {}
             # hide-secrets uses 'sed -i', which changes the inode and breaks writing to live logs.
             # Prepare one redacted snapshot for all modes in the 'progress' and 'execute' stages,
             # and for pre-report publication.
             if source_copy or stage in ARCHIVE_STAGES_USING_COPY:
-                source_copy_path, original_source = self.prepare_source_copy(source)
+                source_copy_path, original_source, source_stats = self.prepare_source_copy(source)
                 archive_source = source_copy_path
 
-            self.shared('hide_secrets', search_path=archive_source)
+            # A copy is thrown away right after, so let hide-secrets file what it learns about it
+            # under the original instead: the next tick copies the same original again, and can then
+            # skip whatever has not changed.
+            if original_source is not None:
+                self.shared(
+                    'hide_secrets',
+                    search_path=archive_source,
+                    cache_path=original_source,
+                    source_stats=source_stats
+                )
+            else:
+                self.shared('hide_secrets', search_path=archive_source)
             verify_archive = any(mode != 'local' for mode in self.archive_modes)
 
             for archive_mode in self.archive_modes:

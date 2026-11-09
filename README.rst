@@ -33,8 +33,8 @@ To build the image::
 
     make build
 
-The container image is tested via `goss <https://github.com/aelsabbahy/goss>`_.
-First install it according to the `official instructions <https://github.com/aelsabbahy/goss#installation>`_.
+The container image is tested via `goss <https://github.com/goss-org/goss>`_.
+First install it according to the `official instructions <https://github.com/goss-org/goss#installation>`_.
 
 To run the image tests::
 

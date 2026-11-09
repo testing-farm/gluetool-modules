@@ -48,7 +48,7 @@ file:
   /etc/os-release:
     exists: true
     filetype: symlink
-    contains:
+    contents:
       - PRETTY_NAME="Fedora Linux 44 (Container Image)"
 
   /etc/ssh/ssh_config:
@@ -57,7 +57,7 @@ file:
     owner: root
     group: root
     filetype: file
-    contains:
+    contents:
       - Host *
       - StrictHostKeyChecking no
       - UserKnownHostsFile /dev/null
@@ -73,7 +73,7 @@ file:
     owner: root
     group: root
     filetype: file
-    contains:
+    contents:
       - "rh-allow-sha1-signatures = yes"
 
   /etc/tmt/policies/rhel-ci.yaml:

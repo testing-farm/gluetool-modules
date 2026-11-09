@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import base64
+import errno
 import os
 import shutil
 import re
@@ -164,6 +165,58 @@ def test_create_schedule_rejects_unsafe_plan_ssh_option(module, guest, monkeypat
 
         with pytest.raises(gluetool.GlueError, match='unsafe SSH options are not allowed'):
             module.create_test_schedule([guest.environment])
+
+
+def test_create_schedule_cancelled_during_discovery(module, guest, monkeypatch, tmpdir):
+    """
+    Cancellation during plan discovery must propagate as itself, even if removing the temporary
+    `tmt` workdir fails because `tmt` children are still writing into it.
+    """
+
+    module_dist_git = create_module(DistGit)[1]
+    module_dist_git._repository = DistGitRepository(
+        module_dist_git, 'some-package',
+        clone_url='http://example.com/git/myproject', branch='myfix'
+    )
+    module.glue.add_shared('dist_git_repository', module_dist_git)
+
+    tmt_workdirs = []
+
+    def _interrupted_discovery(*args, tmt_id=None, **kwargs):
+        tmt_workdirs.append(tmt_id)
+        os.makedirs(os.path.join(tmt_id, 'plans', 'discover'))
+        raise KeyboardInterrupt
+
+    original_rmtree = shutil.rmtree
+
+    def _racing_rmtree(path, *args, onexc=None, **kwargs):
+        # Simulate a child process creating files while the directory is being removed.
+        # Like `shutil.rmtree`, call `onexc` while handling the error, it may re-raise it.
+        if path in tmt_workdirs and onexc is not None:
+            try:
+                raise OSError(errno.ENOTEMPTY, 'Directory not empty', path)
+
+            except OSError as exc:
+                onexc(os.rmdir, path, exc)
+
+        original_rmtree(path, *args, onexc=onexc, **kwargs)
+
+    with monkeypatch.context() as m:
+        m.chdir(tmpdir)
+        _set_run_outputs(
+            m,
+            '',       # git clone
+            'myfix',  # git show-ref
+            'plan1',  # tmt plan ls
+        )
+        m.setattr(module, '_is_plan_empty', _interrupted_discovery)
+        m.setattr(shutil, 'rmtree', _racing_rmtree)
+
+        with pytest.raises(KeyboardInterrupt):
+            module.create_test_schedule([guest.environment])
+
+    assert len(tmt_workdirs) == 1
+    assert not os.path.exists(tmt_workdirs[0])
 
 
 def test_run_plan_rejects_unsafe_ssh_environment(module, guest, monkeypatch, tmpdir):

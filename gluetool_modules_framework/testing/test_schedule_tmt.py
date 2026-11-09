@@ -981,7 +981,10 @@ class TestScheduleTMT(Module):
 
                 tmt_env_file = self._prepare_tmt_env_file(tec, plan, repodir, work_dirpath)
 
-                with tempfile.TemporaryDirectory() as tmpdir:
+                # Ignore cleanup errors: on cancellation, processes spawned by `tmt` may still be writing
+                # into the directory while it is being removed, and the resulting `OSError` would mask
+                # the cancellation.
+                with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
                     if self._is_plan_empty(
                         plan, tmt_env_file, repodir, context_files, tec, work_dirpath, tmt_id=tmpdir
                     ):

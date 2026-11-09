@@ -48,11 +48,11 @@ container:
   image: quay.io/buildah/stable:$BUILDAH_TAG
   variables:
     GOSS_PATH: /usr/bin/goss
-    GOSS_DOWNLOAD_URL: https://github.com/goss-org/goss/releases/download/v0.3.21
+    GOSS_VERSION: v0.4.10
   script:
     - dnf -y install make poetry python3.12 podman-docker
-    - curl -L $GOSS_DOWNLOAD_URL/goss-linux-amd64 -o /usr/bin/goss && chmod +rx /usr/bin/goss
-    - curl -L $GOSS_DOWNLOAD_URL/dgoss -o /usr/bin/dgoss && chmod +rx /usr/bin/dgoss
+    - curl -fsSL "https://testing-farm-public.s3.amazonaws.com/goss/${GOSS_VERSION}/goss-linux-x86_64" -o /usr/bin/goss && chmod +rx /usr/bin/goss
+    - curl -fsSL "https://github.com/goss-org/goss/releases/download/${GOSS_VERSION}/dgoss" -o /usr/bin/dgoss && chmod +rx /usr/bin/dgoss
     - buildah login -u $QUAY_USERNAME -p $QUAY_PASSWORD quay.io
     - IMAGE_TAG=$CI_PIPELINE_ID make build
     - IMAGE_TAG=$CI_PIPELINE_ID make test-image

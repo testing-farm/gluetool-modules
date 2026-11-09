@@ -1472,7 +1472,9 @@ class TestScheduleTMTMultihost(Module):
                 outputs = TestScheduleEntryOutput(
                         stage=TestScheduleEntryStage.RUNNING,
                         label=artifact.name,
-                        log_path=path,
+                        # `TestScheduleEntryOutput.log_path` is a local path, consumers map it with
+                        # `artifacts_location` themselves.
+                        log_path=artifact.path,
                         additional_data=None
                 )
                 if outputs not in schedule_entry.outputs:

@@ -27,7 +27,7 @@ from gluetool_modules_framework.libs.results import Results, TestSuite
 from gluetool_modules_framework.libs.git import SecretGitUrl
 from gluetool_modules_framework.provision.artemis import ArtemisGuest, ArtemisGuestLog
 from gluetool_modules_framework.testing.test_schedule_tmt import gather_plan_results, TestScheduleEntry
-from gluetool_modules_framework.libs.test_schedule import TestScheduleEntryStage
+from gluetool_modules_framework.libs.test_schedule import TestSchedule, TestScheduleEntryStage
 from gluetool_modules_framework.libs.test_schedule_tmt import TMTPlan, TMTPlanProvision, TMTPlanPrepare
 from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact
 
@@ -307,6 +307,65 @@ def test_serialize_test_schedule_entry_results(module, module_dist_git, guest, m
 
     with open(os.path.join(ASSETS_DIR, asset, 'expected-results-junit.xml'), 'r') as expected_results_junit:
         assert expected_results_junit.read() == results.xunit.to_xml_string(pretty_print=True)
+
+
+def test_serialize_test_schedule_entry_outputs_local_paths(module, module_dist_git, guest, monkeypatch, tmpdir):
+    module.glue.add_shared('dist_git_repository', module_dist_git)
+
+    artifacts_url = 'https://artifacts.example.com/'
+
+    def fake_artifacts_location(local_path, logger=None):
+        return artifacts_url + local_path.lstrip('/')
+
+    test_env = TestingEnvironment('x86_64', 'rhel-9')
+    schedule_entry = TestScheduleEntry(
+        gluetool.log.Logging().get_logger(),
+        test_env,
+        '/passed',
+        'some-repo-dir'
+    )
+    schedule_entry.guest = guest
+    schedule_entry.testing_environment = test_env
+    schedule_entry.work_dirpath = os.path.join(tmpdir, 'some-workdir')
+    os.mkdir(schedule_entry.work_dirpath)
+
+    orig_gather_plan_results = gluetool_modules_framework.testing.test_schedule_tmt.gather_plan_results
+
+    def inject_gather_plan_results(module, schedule_entry, work_dir, recognize_errors=False):
+        shutil.copytree(os.path.join(ASSETS_DIR, 'passed'), os.path.join(work_dir, 'passed'))
+        return orig_gather_plan_results(module, schedule_entry, work_dir, recognize_errors=recognize_errors)
+
+    with monkeypatch.context() as m:
+        _set_run_outputs(m, 'dummy test done')
+        patch_shared(m, module, {}, callables={'artifacts_location': fake_artifacts_location})
+        try:
+            gluetool_modules_framework.testing.test_schedule_tmt.gather_plan_results = inject_gather_plan_results
+            module.run_test_schedule_entry(schedule_entry)
+        finally:
+            gluetool_modules_framework.testing.test_schedule_tmt.gather_plan_results = orig_gather_plan_results
+
+        test_suite = TestSuite(name='some-suite', result='some-result')
+        module.shared('serialize_test_schedule_entry_results', schedule_entry, test_suite)
+
+        log_fn = MagicMock()
+        TestSchedule([schedule_entry]).log(log_fn, include_logs=True, module=module)
+
+    running_outputs = [output for output in schedule_entry.outputs if output.stage == TestScheduleEntryStage.RUNNING]
+    assert running_outputs
+
+    # Outputs carry local paths, `artifacts_location` is applied only when they are rendered.
+    for output in running_outputs:
+        assert output.log_path.startswith(schedule_entry.work_dirpath)
+
+    for test_case in test_suite.test_cases:
+        for log in test_case.logs:
+            assert log.href.startswith(artifacts_url)
+
+    logged = '\n'.join(str(call.args[0]) for call in log_fn.call_args_list)
+    assert artifacts_url + schedule_entry.work_dirpath.lstrip('/') in logged
+    assert 'https:/' not in logged.replace(artifacts_url, '')
+
+    shutil.rmtree(schedule_entry.work_dirpath)
 
 
 def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest, monkeypatch, tmpdir):

@@ -35,6 +35,8 @@ from gluetool_modules_framework.libs.test_schedule_tmt import \
     TMT_ENV_FILE, TMT_LOG, TMT_REPRODUCER, TMT_VERBOSE_LOG, \
     detect_unsafe_ssh_options, normalize_ssh_directive, get_test_contacts, safe_name, \
     TmtArtifactProvider, TmtArtifactProviderType
+from gluetool_modules_framework.libs.tmt_recipe import \
+    TMT_RECIPE, check_recipe_request, load_recipe, recipe_plan_names, recipe_to_tmt_plan, write_recipe
 from gluetool_modules_framework.testing_farm.testing_farm_request import TestingFarmRequest
 from gluetool_modules_framework.libs.git import RemoteGitRepository
 from gluetool_modules_framework.libs.pipeline_stages import (
@@ -92,6 +94,9 @@ class TestScheduleEntry(BaseTestScheduleEntry):
         self.tmt_reproducer_filepath: Optional[str] = None
 
         self.tmt_env_file: Optional[str] = None
+
+        # Path to the recipe file, relative to the current directory, if the plan comes from a recipe
+        self.recipe_filepath: Optional[str] = None
 
         self.guests: Optional[Dict[str, TMTGuest]] = None
 
@@ -510,6 +515,35 @@ class TestScheduleTMTMultihost(Module):
         return None
 
     @gluetool.utils.cached_property
+    def recipe(self) -> Optional[Dict[str, Any]]:
+        """
+        The tmt recipe from the Testing Farm request, if any.
+        """
+        tf_request = cast(Optional[TestingFarmRequest], self.shared('testing_farm_request'))
+        if not tf_request or not tf_request.tmt or not tf_request.tmt.recipe:
+            return None
+
+        check_recipe_request(tf_request.tmt)
+
+        return load_recipe(tf_request.tmt.recipe, logger=self.logger)
+
+    def _write_recipe(self, work_dirpath: str) -> str:
+        """
+        Write the recipe into the work directory of a schedule entry.
+
+        :returns: path to the recipe file, relative to the current directory.
+        """
+        assert self.recipe is not None
+
+        tf_request = cast(TestingFarmRequest, self.shared('testing_farm_request'))
+        assert tf_request.tmt is not None
+
+        recipe_filepath = os.path.join(work_dirpath, TMT_RECIPE)
+        write_recipe(self.recipe, tf_request.tmt.path, recipe_filepath)
+
+        return recipe_filepath
+
+    @gluetool.utils.cached_property
     def artifact_order(self) -> str:
         return str(self.option('artifact-order'))
 
@@ -725,13 +759,15 @@ class TestScheduleTMTMultihost(Module):
                        work_dirpath: str,
                        test_filter: Optional[str] = None,
                        test_name: Optional[str] = None,
-                       tmt_id: Optional[str] = None) -> bool:
+                       tmt_id: Optional[str] = None,
+                       recipe_filepath: Optional[str] = None) -> bool:
         """
         Return ``True`` if plan would have no tests after applying test selectors, otherwise return ``False``.
         """
 
-        test_filter = test_filter or self.test_filter
-        test_name = test_name or self.test_name
+        # tests to run are defined by the recipe, tmt ignores test selectors with a recipe
+        test_filter = None if recipe_filepath else test_filter or self.test_filter
+        test_name = None if recipe_filepath else test_name or self.test_name
 
         command = [
             self.option('command')
@@ -748,6 +784,9 @@ class TestScheduleTMTMultihost(Module):
 
         if tmt_id:
             command.extend(['--id', tmt_id])
+
+        if recipe_filepath:
+            command.extend(['--recipe', os.path.abspath(recipe_filepath)])
 
         if tmt_env_file:
             env_options = [
@@ -914,7 +953,12 @@ class TestScheduleTMTMultihost(Module):
                 }
             )
 
-            plans = self._plans_from_git(repodir, tec, self.option('plan-filter'))
+            if self.recipe:
+                plans = recipe_plan_names(self.recipe)
+                log_dict(logger.info, 'plans from recipe', plans)
+
+            else:
+                plans = self._plans_from_git(repodir, tec, self.option('plan-filter'))
 
             for plan in plans:
                 # Prepare environment for test schedule entry execution
@@ -924,8 +968,14 @@ class TestScheduleTMTMultihost(Module):
 
                 tmt_env_file = self._prepare_tmt_env_file(tec, plan, repodir, work_dirpath)
 
+                if self.recipe:
+                    schedule_entry.recipe_filepath = self._write_recipe(work_dirpath)
+
                 with tempfile.TemporaryDirectory() as tmpdir:
-                    if self._is_plan_empty(plan, tmt_env_file, repodir, tec, work_dirpath, tmt_id=tmpdir):
+                    if self._is_plan_empty(
+                        plan, tmt_env_file, repodir, tec, work_dirpath, tmt_id=tmpdir,
+                        recipe_filepath=schedule_entry.recipe_filepath
+                    ):
                         self.info("skipping empty plan '{}'".format(plan))
                         schedule_entry.stage = TestScheduleEntryStage.COMPLETE
                         schedule_entry.state = TestScheduleEntryState.OK
@@ -938,7 +988,11 @@ class TestScheduleTMTMultihost(Module):
                         self, schedule_entry, tmpdir, self.option('recognize-errors'))
                 schedule_entry.results = test_results
 
-                exported_plan = self.export_plan(repodir, plan, tmt_env_file, tec)
+                if self.recipe:
+                    exported_plan: Optional[TMTPlan] = recipe_to_tmt_plan(self.recipe, plan)
+
+                else:
+                    exported_plan = self.export_plan(repodir, plan, tmt_env_file, tec)
 
                 if exported_plan:
                     for provision_phase in exported_plan.provision:
@@ -1150,6 +1204,17 @@ class TestScheduleTMTMultihost(Module):
         artemis_api_timeout = artemis_options['api-call-timeout']
 
         command.extend(['run', '--all', '--id', os.path.abspath(work_dirpath)])
+
+        if schedule_entry.recipe_filepath:
+            command.extend(['--recipe', os.path.abspath(schedule_entry.recipe_filepath)])
+
+            # reproducer command to download the recipe file
+            schedule_entry.tmt_reproducer.append(
+                'curl -LO {}'.format(
+                    artifacts_location(self, schedule_entry.recipe_filepath, logger=self.logger)
+                )
+            )
+
         command.extend(self.tmt_run_options)
 
         if schedule_entry.tmt_env_file:
@@ -1207,7 +1272,8 @@ class TestScheduleTMTMultihost(Module):
                 provide_id,
             ])
 
-        if self.test_filter or self.test_name:
+        # tests to run are defined by the recipe, tmt ignores test selectors with a recipe
+        if not schedule_entry.recipe_filepath and (self.test_filter or self.test_name):
             command.append('tests')
             if self.test_filter:
                 command.extend(['--filter', self.test_filter])

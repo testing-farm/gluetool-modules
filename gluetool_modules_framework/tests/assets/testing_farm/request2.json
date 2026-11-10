@@ -2,7 +2,8 @@
     "test": {
         "fmf": {
             "url": "faketesturl",
-            "ref": "faketestref"
+            "ref": "faketestref",
+            "recipe": "https://example.com/recipe.yaml"
         },
         "sti": null
     },

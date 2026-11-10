@@ -85,6 +85,7 @@ Initialized with 1:
     ],
     "plan": "testname",
     "plan_filter": "<not applicable>",
+    "recipe": "<not applicable>",
     "ref": "testref",
     "test_filter": "<not applicable>",
     "test_name": "<not applicable>",

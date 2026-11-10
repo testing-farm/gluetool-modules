@@ -842,6 +842,7 @@ def test_execute_request2(module):
     with (request.tmt.url == 'faketesturl').dangerous_reveal() as test:
         assert test
     assert request.tmt.ref == 'faketestref'
+    assert request.tmt.recipe == 'https://example.com/recipe.yaml'
     assert request.webhook_url == None
     assert request.webhook_token == None
     with request.environments_requested[0].variables['TESTING_FARM_GIT_URL'].dangerous_reveal() as url:
@@ -1042,7 +1043,13 @@ def test_redact_request_removes_api_key(redact):
         'notification.webhook.url',
         'https://example.com',
     ),
-], ids=['secrets', 'tmt-environment', 'security-rules-ingress', 'security-rules-egress', 'webhook-token'])
+    (
+        {'test': {'fmf': {'url': 'https://example.com/repo', 'recipe': 'https://example.com/recipe.yaml?token=x'}}},
+        'test.fmf.recipe',
+        'test.fmf.url',
+        'https://example.com/repo',
+    ),
+], ids=['secrets', 'tmt-environment', 'security-rules-ingress', 'security-rules-egress', 'webhook-token', 'tmt-recipe'])
 def test_redact_request_sensitive_fields(redact, request_data, redacted_path, preserved_path, preserved_value):
     data = redact(request_data)
 

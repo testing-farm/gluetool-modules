@@ -31,7 +31,7 @@ from gluetool_modules_framework.provision.artemis import ArtemisGuest, ArtemisGu
 from gluetool_modules_framework.testing.test_schedule_tmt_multihost import gather_plan_results, TestScheduleEntry
 from gluetool_modules_framework.libs.test_schedule import TestScheduleEntryStage
 from gluetool_modules_framework.libs.test_schedule_tmt import TMTPlan, TMTPlanProvision, TMTPlanPrepare
-from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact
+from gluetool_modules_framework.testing_farm.testing_farm_request import Artifact, TestingFarmRequestTMT
 
 from . import create_module, check_loadable, patch_shared
 
@@ -67,7 +67,7 @@ def fixture_module(monkeypatch):
         {
             'testing_farm_request': MagicMock(
                 environments_requested=[{}],
-                tmt=MagicMock(plan=None, plan_filter=None, path="some-tmt-root", test_filter=None, test_name=None),
+                tmt=MagicMock(recipe=None, plan=None, plan_filter=None, path="some-tmt-root", test_filter=None, test_name=None),
                 plans=None),
             'artemis_api_options': {
                 'api-url': 'http://artemis.example.com/v0.0.56',
@@ -589,7 +589,7 @@ def test_serialize_test_schedule_entry_no_results(module, module_dist_git, guest
             {
                 'testing_farm_request': MagicMock(
                     environments_requested=[{}],
-                    tmt=MagicMock(plan=None, plan_filter=None, path="some-tmt-root", test_filter=None, test_name='some-name'),  # noqa
+                    tmt=MagicMock(recipe=None, plan=None, plan_filter=None, path="some-tmt-root", test_filter=None, test_name='some-name'),  # noqa
                     plans=None)
             },
             TestingEnvironment('x86_64', 'rhel-9', pool='foo'),
@@ -725,7 +725,7 @@ dummytmt --root some-tmt-root run --all --id {work_dirpath} -ddddvvv --log-topic
             {
                 'testing_farm_request': MagicMock(
                     environments_requested=[{}],
-                    tmt=MagicMock(plan=None, plan_filter=None, path="some-tmt-root", test_filter=None, test_name='some-name'),  # noqa
+                    tmt=MagicMock(recipe=None, plan=None, plan_filter=None, path="some-tmt-root", test_filter=None, test_name='some-name'),  # noqa
                     plans=None,
                     settings={'provisioning': {'post_install_script': 'echo new script'}})
             },
@@ -870,7 +870,7 @@ def test_tmt_output_dir(
             {
                 'testing_farm_request': MagicMock(
                     environments_requested=[{}],
-                    tmt=MagicMock(plan=None, plan_filter=None, path="some-tmt-root", test_filter=None, test_name='some-name'),  # noqa
+                    tmt=MagicMock(recipe=None, plan=None, plan_filter=None, path="some-tmt-root", test_filter=None, test_name='some-name'),  # noqa
                     plans=None)
             },
             SecretGitUrl('http://example.com/git/myproject'),
@@ -1303,7 +1303,7 @@ def test_plans_from_git_filter_from_request(module, monkeypatch):
         {
             'testing_farm_request': MagicMock(
                 environments_requested=[{}],
-                tmt=MagicMock(plan=None, plan_filter='filter1', path="some-tmt-root"),
+                tmt=MagicMock(recipe=None, plan=None, plan_filter='filter1', path="some-tmt-root"),
                 plans=None
             )
         }
@@ -1545,7 +1545,7 @@ EMPTY_PROVISION_STEP = TMTPlanProvision(how=None)
     (None, MagicMock(stdout=TMT_PLANS[0]), TestingEnvironment(),
      ['dummytmt', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
      TMTPlan(name='some-plan', provision=[EMPTY_PROVISION_STEP])),
-    (MagicMock(tmt=MagicMock(path='some-tmt-root')), MagicMock(stdout=TMT_PLANS[0]), TestingEnvironment(),
+    (MagicMock(tmt=MagicMock(recipe=None, path='some-tmt-root')), MagicMock(stdout=TMT_PLANS[0]), TestingEnvironment(),
      ['dummytmt', '--root', 'some-tmt-root', 'plan', 'export', '-e', '@tmt-env-file', '^some\\-plan$'],
      TMTPlan(name='some-plan', provision=[EMPTY_PROVISION_STEP])),
     (None, MagicMock(stdout=TMT_PLANS[1]), TestingEnvironment(),
@@ -1913,3 +1913,122 @@ def test_refresh_test_schedule_entry_results_no_work_dirpath(module):
 
     # Results should still be None
     assert schedule_entry.results is None
+
+
+RECIPE_FILEPATH = os.path.join('gluetool_modules_framework', 'tests', 'assets', 'tmt_recipe', 'recipe.yaml')
+
+
+@pytest.fixture(name='recipe_request')
+def fixture_recipe_request(module, monkeypatch):
+    with open(RECIPE_FILEPATH) as f:
+        recipe = f.read()
+
+    patch_shared(monkeypatch, module, {
+        'testing_farm_request': MagicMock(
+            environments_requested=[{}],
+            tmt=TestingFarmRequestTMT(
+                url='http://example.com/git/myproject', ref='myfix', path='some-tmt-root', recipe=recipe
+            ),
+            plans=None)
+    })
+
+
+def test_create_schedule_recipe(module, recipe_request, monkeypatch, tmpdir):
+    module_dist_git = create_module(DistGit)[1]
+    module_dist_git._repository = DistGitRepository(
+        module_dist_git, 'some-package',
+        clone_url='http://example.com/git/myproject', ref='myfix'
+    )
+    module.glue.add_shared('dist_git_repository', module_dist_git)
+    # test selectors do not apply to recipes
+    module._config['test-filter'] = 'filter1'
+
+    mock_command = MagicMock(return_value=MagicMock(run=MagicMock(
+        return_value=MagicMock(exit_code=0, stdout='', stderr='/plans/smoke')
+    )))
+
+    with monkeypatch.context() as m:
+        m.chdir(tmpdir)
+        _set_run_outputs(m,
+                         '',       # git clone
+                         '',       # git config #1
+                         '',       # git config #2
+                         '',       # git fetch
+                         '',       # git checkout
+                         '')       # git submodule update --init --recursive
+        # tmt run discover, no `tmt plan ls` and `tmt plan export`
+        m.setattr(gluetool_modules_framework.testing.test_schedule_tmt_multihost, 'Command', mock_command)
+
+        schedule = module.create_test_schedule([TestingEnvironment('x86_64')])
+
+        assert len(schedule) == 1
+
+        entry = schedule[0]
+
+        assert entry.plan == '/plans/smoke'
+        assert entry.recipe_filepath == os.path.join(entry.work_dirpath, 'tmt-recipe.yaml')
+
+        recipe = gluetool.utils.load_yaml(entry.recipe_filepath)
+
+        mock_command.assert_called_once_with([
+            'dummytmt',
+            '--root',
+            'some-tmt-root',
+            'run',
+            '--id',
+            mock_command.call_args[0][0][5],
+            '--recipe',
+            os.path.abspath(entry.recipe_filepath),
+            'discover',
+            'plan',
+            '--name',
+            '^/plans/smoke$',
+        ])
+
+    assert recipe['run']['root'] == 'some-tmt-root'
+    assert 'environment' not in recipe['run']
+    # options filled in by tmt during the original run are dropped, Testing Farm provides them
+    assert 'image' not in recipe['plans'][0]['provision']['phases'][0]
+    assert 'arch' not in recipe['plans'][0]['provision']['phases'][0]
+
+
+def test_run_plan_recipe(module, recipe_request, monkeypatch, tmpdir):
+    testing_environment = TestingEnvironment('x86_64', 'rhel-9')
+
+    schedule_entry = TestScheduleEntry(
+        gluetool.log.Logging().get_logger(),
+        testing_environment,
+        '/plans/smoke',
+        str(tmpdir)
+    )
+
+    schedule_entry.work_dirpath = os.path.join(tmpdir, 'some-workdir')
+    os.mkdir(schedule_entry.work_dirpath)
+    schedule_entry.recipe_filepath = module._write_recipe(schedule_entry.work_dirpath)
+
+    # the test name selector, e.g. coming from module options, does not apply to recipes
+    module.shared('testing_farm_request').tmt.test_name = 'some-name'
+
+    mock_command = MagicMock(return_value=MagicMock(run=MagicMock(
+        return_value=MagicMock(exit_code=0, stdout='dummy test done', stderr='')
+    )))
+
+    with monkeypatch.context() as m:
+        m.chdir(tmpdir)
+        m.setattr(gluetool_modules_framework.testing.test_schedule_tmt_multihost, 'Command', mock_command)
+
+        module.run_test_schedule_entry(schedule_entry)
+
+    command = mock_command.call_args[0][0]
+
+    assert command[command.index('--recipe') - 2:command.index('--recipe') + 2] == [
+        '--id', os.path.abspath(schedule_entry.work_dirpath),
+        '--recipe', os.path.abspath(schedule_entry.recipe_filepath),
+    ]
+    assert 'tests' not in command
+
+    with open(os.path.join(schedule_entry.work_dirpath, 'tmt-reproducer.sh')) as f:
+        reproducer = f.read().splitlines()
+
+    assert reproducer[1].startswith('curl -LO ')
+    assert reproducer[1].endswith('some-workdir/tmt-recipe.yaml')

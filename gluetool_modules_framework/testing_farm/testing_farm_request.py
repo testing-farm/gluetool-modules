@@ -313,6 +313,7 @@ class TestingFarmRequestTMT():
     plan_filter: Optional[str] = None
     test_name: Optional[str] = None
     test_filter: Optional[str] = None
+    recipe: Optional[str] = None
 
     @property
     def plan(self) -> Optional[str]:
@@ -354,6 +355,7 @@ class Artifact():
 # NOTE: this should eventually move to the testing-farm Python client library.
 _REQUEST_REDACT_PATHS = [
     'notification.webhook.token',
+    'test.fmf.recipe',
     'environments_requested[].secrets',
     'environments_requested[].tmt.environment',
     'environments_requested[].settings.provisioning.security_group_rules_ingress',
@@ -1055,6 +1057,8 @@ class TestingFarmRequestModule(gluetool.Module):
             'plan_filter': request.tmt.plan_filter if request.tmt and request.tmt.plan_filter else '<not applicable>',
             'test_name': request.tmt.test_name if request.tmt and request.tmt.test_name else '<not applicable>',
             'test_filter': request.tmt.test_filter if request.tmt and request.tmt.test_filter else '<not applicable>',
+            # never log the recipe itself, it may contain sensitive data
+            'recipe': '<provided>' if request.tmt and request.tmt.recipe else '<not applicable>',
             'url': request.url,
             'ref': request.ref,
             'environments_requested': [env.serialize_to_json() for env in request.environments_requested],

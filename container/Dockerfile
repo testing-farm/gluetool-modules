@@ -76,6 +76,12 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       tmt+provision-container-${TMT_VERSION} \
                       tmt+provision-virtual-${TMT_VERSION} \
                       tmt+report-polarion-${TMT_VERSION} \
+    # Hotfix the brew artifact provider to use the new download URL, the old host was decommissioned.
+    # The trailing slash keeps `urljoin` from dropping `brewroot` from the RPM URLs.
+    # https://github.com/teemtee/tmt/issues/5320
+    && TMT_BREW_PROVIDER=$(find /usr/lib/python3*/site-packages/tmt/steps/prepare/artifact/providers -name brew.py) \
+    && grep -q 'top_url="https://download\.eng\.bos\.redhat\.com/brew"' ${TMT_BREW_PROVIDER} \
+    && sed -i 's|top_url="https://download\.eng\.bos\.redhat\.com/brew"|top_url="https://download.devel.redhat.com/brewroot/"|' ${TMT_BREW_PROVIDER} \
     # Pull in tmt policies
     && mkdir -p /etc/tmt/policies \
     && git clone --branch main --depth 1 https://gitlab.com/testing-farm/profiles.git /tmp/profiles \

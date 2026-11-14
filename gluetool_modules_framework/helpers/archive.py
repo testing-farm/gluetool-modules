@@ -1305,7 +1305,7 @@ class Archive(gluetool.Module):
         # An explicit destination keeps the mapping selected by the caller.
         if not destination:
             destination = original_source or source
-            destination = destination.lstrip('/').lstrip('./')
+            destination = destination.lstrip('/').removeprefix('./')
 
         assert self._request_id is not None
 

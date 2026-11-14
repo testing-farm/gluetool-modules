@@ -1836,3 +1836,39 @@ def test_directory_swap_while_copied_is_redacted_next_tick(monkeypatch, module, 
         module.archive_stage('progress')
 
     assert uploads == ['CLEAN!', 'hidden']
+
+
+@pytest.mark.parametrize('source, expected', [
+    ('./.tmt', '.tmt'),
+    ('./.hidden-file', '.hidden-file'),
+    ('./work-abc', 'work-abc'),
+    ('.tmt', '.tmt'),
+    ('./a/./b', 'a/./b'),
+])
+def test_run_aws_implicit_destination_keeps_leading_dot(monkeypatch, module, tmp_path, source, expected):
+    # `./.tmt` must become `.tmt`, not `tmt`: only a leading `./` prefix is dropped.
+    monkeypatch.chdir(tmp_path)
+    os.makedirs(os.path.join(tmp_path, source), exist_ok=True)
+
+    module._request_id = 'request-id'
+
+    mock_command_init = MagicMock(return_value=None)
+    monkeypatch.setattr(gluetool.utils.Command, '__init__', mock_command_init)
+    monkeypatch.setattr(gluetool.utils.Command, 'run', MagicMock())
+
+    module.run_aws(source, '')
+
+    assert mock_command_init.call_args.args[0][-1] == 's3://aws-s3-bucket/artifacts-root/request-id/' + expected
+
+
+def test_run_aws_implicit_destination_strips_leading_slash(monkeypatch, module, tmp_path):
+    module._request_id = 'request-id'
+
+    mock_command_init = MagicMock(return_value=None)
+    monkeypatch.setattr(gluetool.utils.Command, '__init__', mock_command_init)
+    monkeypatch.setattr(gluetool.utils.Command, 'run', MagicMock())
+
+    module.run_aws(str(tmp_path), '')
+
+    assert mock_command_init.call_args.args[0][-1] == \
+        's3://aws-s3-bucket/artifacts-root/request-id/' + str(tmp_path).lstrip('/')

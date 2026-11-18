@@ -78,16 +78,19 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       tmt+report-polarion-${TMT_VERSION} \
     # Pull in tmt policies
     && mkdir -p /etc/tmt/policies \
-    && git clone --branch main --depth 1 https://gitlab.com/testing-farm/profiles.git /tmp/profiles \
+    && git init /tmp/profiles \
+    && git -C /tmp/profiles fetch --depth 1 https://gitlab.com/testing-farm/profiles.git refs/merge-requests/116/head \
+    && git -C /tmp/profiles checkout FETCH_HEAD \
     && cp -rv /tmp/profiles/policies/* ${TMT_POLICY_ROOT}/ \
     && find ${TMT_POLICY_ROOT} -type f -print0 | xargs -0 chmod "ugo=r" \
-    # Install profiles collections individually because baseos_ci and testing_farm
+    # Install profiles collections individually because baseos_ci, testing_farm and fedora_ci
     # are nested under profiles/, not discovered by a single top-level install
     && ansible-galaxy collection install /tmp/profiles/library \
     && ansible-galaxy collection install /tmp/profiles/repository \
     && ansible-galaxy collection install /tmp/profiles/workarounds \
     && ansible-galaxy collection install /tmp/profiles/profiles/baseos_ci \
     && ansible-galaxy collection install /tmp/profiles/profiles/testing_farm \
+    && ansible-galaxy collection install /tmp/profiles/profiles/fedora_ci \
     && rm -rf /tmp/profiles \
     # common SSH configuration for testing
     && bash -c "echo 'Host *' >> /etc/ssh/ssh_config" \

@@ -76,6 +76,13 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       tmt+provision-container-${TMT_VERSION} \
                       tmt+provision-virtual-${TMT_VERSION} \
                       tmt+report-polarion-${TMT_VERSION} \
+    # The rpm `Version` above (stored in /etc/tmt-version, used by the `rpm -q`
+    # goss tests) can differ from the version `tmt --version` itself reports:
+    # Packit's pull_request copr builds encode extra uniqueness markers
+    # (timestamp, PR number, commit distance) into the rpm version, which are
+    # not part of the underlying Python package version. Store that separately
+    # for the `tmt --version` goss test.
+    && tmt --version | awk '{print $NF}' > /etc/tmt-package-version \
     # Hotfix the brew artifact provider to use the new download URL, the old host was decommissioned.
     # The trailing slash keeps `urljoin` from dropping `brewroot` from the RPM URLs.
     # https://github.com/teemtee/tmt/issues/5320

@@ -3,6 +3,7 @@
 
 import os
 import glob
+import gzip
 import time
 import pytest
 import logging
@@ -194,6 +195,520 @@ def test_archive_modes_cli(module, args, expected):
     assert module.archive_modes == expected
 
 
+@pytest.mark.parametrize('compression, expected', [
+    ('', False),
+    ('    compression: true\n', True),
+    ('    compression: false\n', False),
+    ('    compression: null\n', False),
+    ('    compression: "true"\n', True),
+    ('    compression: "false"\n', False),
+    ('    compression: "{{ ENABLED }}"\n', True),
+    ('    compression: "{{ DISABLED }}"\n', False),
+])
+def test_source_destination_map_compression(module, monkeypatch, tmp_path, compression, expected):
+    map_file = tmp_path / 'map.yaml'
+    map_file.write_text('destroy:\n  - source: input.log\n' + compression)
+    module._config['source-destination-map'] = str(map_file)
+    monkeypatch.delenv('SOURCE_DESTINATION_MAP', raising=False)
+    patch_shared(monkeypatch, module, {'eval_context': {'ENABLED': True, 'DISABLED': False}})
+
+    entry = module.source_destination_map()['destroy'][0]
+
+    assert entry['source'] == 'input.log'
+    assert gluetool.utils.normalize_bool_option(entry.get('compression') or False) is expected
+
+
+@pytest.mark.parametrize('stage, source_copy', [
+    ('execute', False), ('progress', False), ('destroy', False), ('destroy', True)
+])
+@pytest.mark.parametrize('archive_mode', ['ssh', 'daemon', 'local', 's3'])
+@pytest.mark.parametrize('destination, expected', [
+    ('', 'work/input.log.gz'),
+    ('renamed.log', 'renamed.log.gz'),
+    ('remote/', 'remote/'),
+    ('existing', 'existing/'),
+])
+def test_archive_compression(
+        module, monkeypatch, tmp_path, stage, source_copy, archive_mode, destination, expected):
+    monkeypatch.chdir(tmp_path)
+    source = Path('work/input.log')
+    source.parent.mkdir()
+    source.write_text('TOKEN\nlog contents')
+    source.chmod(0o600)
+    inode = source.stat().st_ino
+    Path('existing').mkdir()
+    module._request_id = 'request-id'
+    module._config['archive-mode'] = archive_mode
+    uploads = []
+
+    def hide_secrets(search_path, cache_path=None, source_stats=None):
+        path = Path(search_path)
+        path.write_text(path.read_text().replace('TOKEN', 'HIDDEN'))
+
+    def upload(cmd, **kwargs):
+        if cmd[0] not in ['rsync', 'aws'] or cmd[-2] == '/dev/null':
+            return
+        path = Path(cmd[-2])
+        assert path.name == 'input.log.gz'
+        assert path.stat().st_mode & 0o777 == 0o600
+        with gzip.open(path, 'rb') as stream:
+            contents = stream.read()
+        uploads.append((cmd, path, contents))
+
+    patch_shared(monkeypatch, module, {'test_schedule': None, 'generate_results': None}, callables={
+        'hide_secrets': hide_secrets,
+    })
+    monkeypatch.setattr(gluetool.utils.Command, '__init__', MagicMock(side_effect=upload))
+    monkeypatch.setattr(gluetool.utils.Command, 'run', MagicMock())
+    monkeypatch.setattr(module, 'source_destination_map', lambda: {
+        stage: [{'source': str(source), 'destination': destination, 'compression': True}]
+    })
+
+    module.archive_stage(stage, source_copy=source_copy)
+
+    assert len(uploads) == 1
+    cmd, snapshot, contents = uploads[0]
+    prefix = {
+        'ssh': 'https://artifacts.example.com:/artifacts-root/request-id/',
+        'daemon': 'rsync://artifacts-rsync.example.com/request-id/',
+        'local': '/artifacts-root/request-id/',
+        's3': 's3://aws-s3-bucket/artifacts-root/request-id/',
+    }[archive_mode]
+    assert cmd[-1] == prefix + expected
+    assert ('--checksum' in cmd) is (archive_mode != 's3')
+    assert contents == b'HIDDEN\nlog contents'
+    assert not snapshot.parent.exists()
+    assert source.read_text() == 'TOKEN\nlog contents'
+    assert source.stat().st_ino == inode
+    assert not Path(str(source) + '.gz').exists()
+
+
+@pytest.mark.parametrize('stage', ['execute', 'progress', 'destroy'])
+@pytest.mark.parametrize('failing_mode', [None, 'ssh', 's3'])
+def test_archive_compression_reuses_snapshot(module, monkeypatch, tmp_path, stage, failing_mode):
+    source = tmp_path / 'input.log'
+    source.write_text('original')
+    module._config['archive-mode'] = ['ssh', 's3', 'local', 'daemon']
+    compressed = MagicMock(wraps=module.compress_source)
+    uploads = []
+
+    def upload(path, destination, archive_mode='s3', **kwargs):
+        with gzip.open(path, 'rb') as stream:
+            uploads.append((path, stream.read()))
+        source.write_text('changed after snapshot')
+        if archive_mode == failing_mode:
+            raise gluetool.GlueError('upload failed')
+
+    patch_shared(monkeypatch, module, {}, callables={'hide_secrets': MagicMock()})
+    monkeypatch.setattr(module, 'compress_source', compressed)
+    monkeypatch.setattr(module, 'run_rsync', upload)
+    monkeypatch.setattr(module, 'run_aws', upload)
+
+    module.archive_source(stage, {'source': str(source), 'compression': True}, str(source))
+
+    compressed.assert_called_once()
+    assert len(uploads) == 4
+    assert all(uploaded == uploads[0] for uploaded in uploads)
+    assert uploads[0][1] == b'original'
+    assert not Path(uploads[0][0]).parent.exists()
+    assert source.read_text() == 'changed after snapshot'
+
+
+@pytest.mark.parametrize('failure', ['open', 'write', 'close'])
+@pytest.mark.parametrize('stage', ['execute', 'progress', 'destroy'])
+def test_archive_compression_failure_uploads_redacted_copy(module, monkeypatch, tmp_path, stage, failure):
+    source = tmp_path / 'input.log'
+    source.write_text('TOKEN')
+    module._config['archive-mode'] = ['ssh', 's3']
+    mock_gzip = MagicMock()
+    error = OSError('gzip failed')
+    if failure == 'open':
+        mock_gzip.side_effect = error
+    elif failure == 'write':
+        mock_gzip.return_value.__enter__.return_value.write.side_effect = error
+    else:
+        mock_gzip.return_value.__exit__.side_effect = error
+    warn = MagicMock()
+    uploads = []
+
+    def hide_secrets(search_path, cache_path=None, source_stats=None):
+        Path(search_path).write_text('HIDDEN')
+
+    def upload(path, destination, *args, **kwargs):
+        assert Path(path + '.gz').exists()
+        uploads.append((path, destination, Path(path).read_text()))
+
+    patch_shared(monkeypatch, module, {}, callables={'hide_secrets': hide_secrets})
+    monkeypatch.setattr(gluetool_modules_framework.helpers.archive.gzip, 'GzipFile', mock_gzip)
+    monkeypatch.setattr(module, 'warn', warn)
+    monkeypatch.setattr(module, 'run_rsync', upload)
+    monkeypatch.setattr(module, 'run_aws', upload)
+
+    module.archive_source(stage, {
+        'source': str(source), 'destination': 'renamed.log', 'compression': True,
+    }, str(source))
+
+    assert len(uploads) == 2
+    assert uploads[0] == uploads[1]
+    assert uploads[0][1:] == ('renamed.log', 'HIDDEN')
+    assert source.read_text() == 'TOKEN'
+    assert not Path(uploads[0][0]).parent.exists()
+    mock_gzip.assert_called_once()
+    warn.assert_called_once_with(
+        f'Failed to compress {source}, uploading uncompressed: gzip failed', sentry=True
+    )
+
+
+@pytest.mark.parametrize('stage', ['execute', 'progress', 'destroy'])
+def test_archive_compression_redaction_failure_skips_upload(module, monkeypatch, tmp_path, stage):
+    source = tmp_path / 'input.log'
+    source.write_text('TOKEN')
+    snapshot = MagicMock(wraps=module.prepare_source_copy)
+    cleanup = MagicMock(wraps=module.delete_source_copy)
+    compress = MagicMock()
+    uploads = MagicMock()
+    patch_shared(monkeypatch, module, {}, callables={
+        'hide_secrets': MagicMock(side_effect=gluetool.GlueError('redaction failed')),
+    })
+    monkeypatch.setattr(module, 'prepare_source_copy', snapshot)
+    monkeypatch.setattr(module, 'delete_source_copy', cleanup)
+    monkeypatch.setattr(module, 'compress_source', compress)
+    monkeypatch.setattr(module, 'run_rsync', uploads)
+    monkeypatch.setattr(module, 'run_aws', uploads)
+
+    module.archive_source(stage, {'source': str(source), 'compression': True}, str(source))
+
+    snapshot.assert_called_once_with(str(source))
+    cleanup.assert_called_once()
+    compress.assert_not_called()
+    uploads.assert_not_called()
+    assert not Path(cleanup.call_args[0][0]).parent.exists()
+    assert source.read_text() == 'TOKEN'
+
+
+@pytest.mark.parametrize('kind', ['directory', 'file-link', 'directory-link', 'broken-link'])
+def test_archive_compression_unsupported_sources(module, monkeypatch, tmp_path, kind):
+    target = tmp_path / 'target'
+    source = tmp_path / 'source'
+    if kind == 'directory':
+        source.mkdir()
+    else:
+        if kind == 'file-link':
+            target.write_text('TOKEN')
+        elif kind == 'directory-link':
+            target.mkdir()
+        source.symlink_to(target)
+    compress = MagicMock()
+    snapshot = MagicMock()
+    upload = MagicMock()
+    warn = MagicMock()
+    patch_shared(monkeypatch, module, {}, callables={'hide_secrets': MagicMock()})
+    monkeypatch.setattr(module, 'compress_source', compress)
+    monkeypatch.setattr(module, 'prepare_source_copy', snapshot)
+    monkeypatch.setattr(module, 'run_rsync', upload)
+    monkeypatch.setattr(module, 'warn', warn)
+
+    module.archive_source('destroy', {'source': str(source), 'compression': True}, str(source))
+
+    compress.assert_not_called()
+    snapshot.assert_not_called()
+    upload.assert_called_once_with(
+        str(source), '', 'ssh', options=['--recursive'] if source.is_dir() else None,
+        original_source=None, uncompressed_source=None
+    )
+    warn.assert_called_once_with(f'Cannot compress {source}: only regular files are supported, uploading unchanged')
+    if kind == 'file-link':
+        assert target.read_text() == 'TOKEN'
+
+
+def test_archive_compression_does_not_follow_snapshot_symlink(module, monkeypatch, tmp_path):
+    source = tmp_path / 'input.log'
+    source.write_text('original')
+    target = tmp_path / 'secret.log'
+    target.write_text('TOKEN')
+    snapshot = tmp_path / 'snapshot' / source.name
+    snapshot.parent.mkdir()
+    snapshot.symlink_to(target)
+    compress = MagicMock()
+    warn = MagicMock()
+    uploads = []
+
+    def upload(path, *args, **kwargs):
+        assert Path(path).is_symlink()
+        uploads.append(path)
+
+    patch_shared(monkeypatch, module, {}, callables={'hide_secrets': MagicMock()})
+    monkeypatch.setattr(module, 'prepare_source_copy', lambda path: (str(snapshot), path, {}))
+    monkeypatch.setattr(module, 'compress_source', compress)
+    monkeypatch.setattr(module, 'run_rsync', upload)
+    monkeypatch.setattr(module, 'warn', warn)
+
+    module.archive_source('destroy', {'source': str(source), 'compression': True}, str(source))
+
+    compress.assert_not_called()
+    assert uploads == [str(snapshot)]
+    assert not snapshot.parent.exists()
+    assert target.read_text() == 'TOKEN'
+    warn.assert_called_once_with(f'Cannot compress {source}: only regular files are supported, uploading unchanged')
+
+
+@pytest.mark.parametrize('compression', [None, False, 'false'])
+def test_archive_compression_disabled(module, monkeypatch, tmp_path, compression):
+    source = tmp_path / 'input.log'
+    source.write_text('contents')
+    compress = MagicMock()
+    snapshot = MagicMock()
+    upload = MagicMock()
+    patch_shared(monkeypatch, module, {}, callables={'hide_secrets': MagicMock()})
+    monkeypatch.setattr(module, 'prepare_source_copy', snapshot)
+    monkeypatch.setattr(module, 'compress_source', compress)
+    monkeypatch.setattr(module, 'run_rsync', upload)
+
+    module.archive_source('destroy', {'source': str(source), 'compression': compression}, str(source))
+
+    compress.assert_not_called()
+    snapshot.assert_not_called()
+    upload.assert_called_once_with(str(source), '', 'ssh', options=None, original_source=None, uncompressed_source=None)
+
+
+@pytest.mark.parametrize('destination, expected', [
+    ('', 'input.log'), ('renamed.log', 'renamed.log'), ('remote/', 'remote/input.log')
+])
+@pytest.mark.parametrize('failure', [False, True])
+def test_archive_compression_verifies_selected_path(module, monkeypatch, tmp_path, destination, expected, failure):
+    monkeypatch.chdir(tmp_path)
+    source = Path('input.log')
+    source.write_text('contents')
+    module._config['archive-mode'] = ['ssh', 's3']
+    requests = MagicMock()
+    head = requests.return_value.__enter__.return_value.request
+    head.return_value.status_code = 200
+    patch_shared(monkeypatch, module, {}, callables={'hide_secrets': MagicMock()})
+    monkeypatch.setattr(gluetool.utils, 'requests', requests)
+    monkeypatch.setattr(module, 'run_rsync', MagicMock())
+    monkeypatch.setattr(module, 'run_aws', MagicMock())
+    if failure:
+        monkeypatch.setattr(module, 'compress_source', MagicMock(side_effect=OSError('gzip failed')))
+
+    module.archive_source('destroy', {
+        'source': str(source), 'compression': True, 'verify': 'true', 'destination': destination,
+    }, str(source))
+
+    suffix = '' if failure else '.gz'
+    head.assert_called_once_with(
+        'HEAD', f'https://artifacts.example.com/{expected}{suffix}', stream=True, allow_redirects=True
+    )
+    head.return_value.close.assert_called_once_with()
+
+
+@pytest.mark.parametrize('destination, expected', [
+    ('', 'work/live.log'), ('renamed.log', 'renamed.log'), ('logs/', 'logs/live.log'),
+])
+@pytest.mark.parametrize('failure', [False, True])
+def test_local_rsync_compression_preserves_live_log(module, monkeypatch, tmp_path, destination, expected, failure):
+    monkeypatch.chdir(tmp_path)
+    source = Path('work/live.log')
+    source.parent.mkdir()
+    source.write_text('TOKEN')
+    inode = source.stat().st_ino
+    suffix = '' if failure else '.gz'
+    published = tmp_path / 'published' / 'request-id' / (expected + suffix)
+    published.parent.mkdir(parents=True)
+    module._request_id = 'request-id'
+    module._config['archive-mode'] = 'local'
+    module._config['rsync-options'] = '--archive'
+    module._config['artifacts-local-root'] = str(tmp_path / 'published')
+    _, hide_secrets = create_module(HideSecrets)
+    hide_secrets._config['implementation'] = 'stream'
+    hide_secrets._config['retry-tick'] = 1
+    hide_secrets._config['retry-timeout'] = 5
+    hide_secrets.add_secrets('TOKEN')
+    patch_shared(monkeypatch, module, {'test_schedule': None, 'generate_results': None}, callables={
+        'hide_secrets': hide_secrets.hide_secrets,
+    })
+    entry = {'source': str(source), 'destination': destination, 'compression': True}
+    monkeypatch.setattr(module, 'source_destination_map', lambda: {'progress': [entry], 'destroy': [entry]})
+    if failure:
+        monkeypatch.setattr(module, 'compress_source', MagicMock(side_effect=OSError('gzip failed')))
+
+    def published_contents():
+        contents = published.read_bytes()
+        return contents if failure else gzip.decompress(contents)
+
+    with source.open('a') as writer:
+        module.archive_stage('progress')
+        assert published_contents() == b'hidden'
+        module.publish_before_final_report()
+        assert published_contents() == b'hidden'
+        assert source.stat().st_ino == inode
+        writer.write('\nTOKEN continued')
+        writer.flush()
+        module.destroy()
+        assert published_contents() == b'hidden\nhidden continued'
+        assert source.stat().st_ino == inode
+
+    assert source.read_text() == 'TOKEN\nTOKEN continued'
+    assert not Path(str(source) + '.gz').exists()
+    if not failure:
+        assert not published.with_suffix('').exists()
+
+
+@pytest.mark.parametrize('stage', ['execute', 'progress', 'destroy'])
+@pytest.mark.parametrize('compression', ['disabled', 'enabled', 'failed'])
+@pytest.mark.parametrize('source_name, filters, expected', [
+    ('input.log', ['--include=*.log', '--exclude=*'], True),
+    ('input.tmp', ['--exclude=*.tmp'], False),
+    ('line\nbreak.log', ['--include=*.log', '--exclude=*'], True),
+])
+def test_local_rsync_compression_preserves_filters(
+        module, monkeypatch, tmp_path, stage, compression, source_name, filters, expected):
+    monkeypatch.chdir(tmp_path)
+    source = Path('work') / source_name
+    source.parent.mkdir()
+    source.write_text('contents')
+    published_root = tmp_path / 'published'
+    (published_root / 'request-id').mkdir(parents=True)
+    module._request_id = 'request-id'
+    module._config['archive-mode'] = 'local'
+    module._config['artifacts-local-root'] = str(published_root)
+    module._config['rsync-options'] = ['--archive'] + filters
+    patch_shared(monkeypatch, module, {}, callables={'hide_secrets': MagicMock()})
+    if compression == 'failed':
+        monkeypatch.setattr(module, 'compress_source', MagicMock(side_effect=OSError('gzip failed')))
+    errors = MagicMock()
+    monkeypatch.setattr(module, 'error', errors)
+
+    module.archive_source(stage, {
+        'source': str(source), 'destination': 'renamed', 'compression': compression != 'disabled',
+    }, str(source))
+
+    suffix = '.gz' if compression == 'enabled' else ''
+    published = published_root / 'request-id' / ('renamed' + suffix)
+    assert published.exists() is expected
+    if expected:
+        contents = published.read_bytes()
+        assert (gzip.decompress(contents) if suffix else contents) == b'contents'
+    errors.assert_not_called()
+
+
+@pytest.mark.parametrize('compression', [False, True])
+@pytest.mark.parametrize('first_stage, source_copy', [('progress', False), ('destroy', True)])
+def test_local_rsync_compression_publishes_same_second_append(
+        module, monkeypatch, tmp_path, compression, first_stage, source_copy):
+    monkeypatch.chdir(tmp_path)
+    source = Path('live.log')
+    source.write_bytes(b'A' * 1000)
+    os.utime(source, ns=(1700000000100000000, 1700000000100000000))
+    published_root = tmp_path / 'published'
+    (published_root / 'request-id').mkdir(parents=True)
+    module._request_id = 'request-id'
+    module._config['archive-mode'] = 'local'
+    module._config['artifacts-local-root'] = str(published_root)
+    module._config['rsync-options'] = '--archive'
+    patch_shared(monkeypatch, module, {}, callables={'hide_secrets': MagicMock()})
+    entry = {'source': str(source), 'compression': compression}
+    published = published_root / 'request-id' / ('live.log.gz' if compression else 'live.log')
+
+    module.archive_source(first_stage, entry, str(source), source_copy=source_copy)
+    first = published.read_bytes()
+    assert (gzip.decompress(first) if compression else first) == b'A' * 1000
+    with source.open('ab') as writer:
+        writer.write(b'A')
+    os.utime(source, ns=(1700000000200000000, 1700000000200000000))
+    if compression:
+        # Same compressed size and integer-second mtime, despite the appended byte.
+        assert len(gzip.compress(source.read_bytes(), mtime=0)) == len(first)
+    assert int(source.stat().st_mtime) == int(published.stat().st_mtime)
+
+    module.archive_source('destroy', entry, str(source))
+
+    final = published.read_bytes()
+    assert (gzip.decompress(final) if compression else final) == source.read_bytes()
+
+
+@pytest.mark.parametrize('archive_modes', [['local', 's3'], ['s3', 'local']])
+def test_compression_rsync_filters_do_not_filter_s3(module, monkeypatch, tmp_path, archive_modes):
+    monkeypatch.chdir(tmp_path)
+    source = Path('input.tmp')
+    source.write_text('contents')
+    published_root = tmp_path / 'published'
+    (published_root / 'request-id').mkdir(parents=True)
+    module._request_id = 'request-id'
+    module._config['archive-mode'] = archive_modes
+    module._config['artifacts-local-root'] = str(published_root)
+    module._config['rsync-options'] = ['--archive', '--exclude=*.tmp']
+    patch_shared(monkeypatch, module, {}, callables={'hide_secrets': MagicMock()})
+    uploads = []
+
+    def upload(path, destination, **kwargs):
+        uploads.append(gzip.decompress(Path(path).read_bytes()))
+
+    monkeypatch.setattr(module, 'run_aws', upload)
+    errors = MagicMock()
+    monkeypatch.setattr(module, 'error', errors)
+
+    module.archive_source('destroy', {'source': str(source), 'compression': True}, str(source))
+
+    assert uploads == [b'contents']
+    assert not (published_root / 'request-id' / 'input.tmp.gz').exists()
+    errors.assert_not_called()
+
+
+@pytest.mark.parametrize('archive_mode', ['ssh', 'daemon', 'local'])
+def test_compression_rsync_filter_failure_skips_transfer(module, monkeypatch, tmp_path, archive_mode):
+    source = tmp_path / 'input.log'
+    source.write_text('contents')
+    module._request_id = 'request-id'
+    module._config['archive-mode'] = [archive_mode, 's3']
+    module._config['rsync-options'] = ['--archive', '--exclude=*.tmp']
+    patch_shared(monkeypatch, module, {}, callables={'hide_secrets': MagicMock()})
+    command_run = MagicMock(side_effect=gluetool.GlueError('filter failed'))
+    monkeypatch.setattr(gluetool.utils.Command, 'run', command_run)
+    errors = MagicMock()
+    monkeypatch.setattr(module, 'error', errors)
+    uploads = []
+
+    def upload(path, destination, **kwargs):
+        assert gzip.decompress(Path(path).read_bytes()) == b'contents'
+        uploads.append(Path(path))
+
+    monkeypatch.setattr(module, 'run_aws', upload)
+
+    module.archive_source('destroy', {'source': str(source), 'compression': True}, str(source))
+
+    # Only the local filter probe ran, never an unfiltered transfer to the artifacts host.
+    command_run.assert_called_once()
+    errors.assert_called_once_with(f'Failed to sync {source} using {archive_mode}: filter failed', sentry=True)
+    assert len(uploads) == 1
+    assert not uploads[0].parent.exists()
+
+
+def test_compress_source_does_not_detect_existing_gzip(module, tmp_path):
+    source = tmp_path / 'input.gz'
+    original = gzip.compress(b'contents')
+    source.write_bytes(original)
+    source.chmod(0o640)
+    os.utime(source, (1000000000, 1000000000))
+
+    compressed = Path(module.compress_source(str(source)))
+    first = compressed.read_bytes()
+
+    assert compressed.name == 'input.gz.gz'
+    assert gzip.decompress(first) == original
+    assert source.read_bytes() == original
+    assert compressed.stat().st_mode & 0o777 == 0o640
+    assert compressed.stat().st_mtime_ns == source.stat().st_mtime_ns
+    assert first[3] & 8 == 0  # No temporary filename in the gzip header.
+    assert int.from_bytes(first[4:8], 'little') == 0
+    module.compress_source(str(source))
+    assert compressed.read_bytes() == first
+
+
+@pytest.mark.parametrize('compression, expected', [(None, True), (False, True), ('false', True), (True, False)])
+def test_compression_not_batchable(batched_module, compression, expected):
+    assert batched_module.is_batchable('progress', {'compression': compression}, 'input.log') is expected
+
+
 @pytest.mark.parametrize('archive_modes, invalid', [
     ('ssh,invalid', 'invalid'),
     (['daemon', 'invalid'], 'invalid'),
@@ -257,7 +772,8 @@ def test_archive_stage_multiple_modes(monkeypatch, module, stage, archive_modes)
             expected.append(call.aws(source, 'dest', options=None, original_source=original_source))
         else:
             expected.append(call.rsync(
-                source, 'dest', archive_mode, options=['--chmod=666'], original_source=original_source
+                source, 'dest', archive_mode, options=['--chmod=666'], original_source=original_source,
+                uncompressed_source=None
             ))
 
     if archive_modes != ['local']:
@@ -291,7 +807,9 @@ def test_archive_stage_mode_failure(monkeypatch, module, log, archive_modes, fai
 
     module.archive_stage('destroy')
 
-    mock_rsync.assert_called_once_with('/archive-source', 'dest', rsync_mode, options=None, original_source=None)
+    mock_rsync.assert_called_once_with(
+        '/archive-source', 'dest', rsync_mode, options=None, original_source=None, uncompressed_source=None
+    )
     mock_aws.assert_called_once_with('/archive-source', 'dest', options=None, original_source=None)
     mock_requests.assert_not_called()
     errors = [record.message for record in log.records if record.levelno == logging.ERROR]

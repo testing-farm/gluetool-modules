@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import fnmatch
+import gzip
 import os
 import re
 import shutil
@@ -34,7 +35,7 @@ DEFAULT_BATCH_MAX_SIZE = 256
 ARCHIVE_STAGES = ['execute', 'progress', 'destroy']
 # Stages which use a copy for syncing
 ARCHIVE_STAGES_USING_COPY = ['execute', 'progress']
-SOURCE_DESTINATION_ENTRY_KEYS = ['source', 'exclude', 'destination', 'permissions', 'verify']
+SOURCE_DESTINATION_ENTRY_KEYS = ['source', 'exclude', 'destination', 'permissions', 'verify', 'compression']
 
 # Layout of a batch staging directory, see `prepare_batch_tree`. The file list deliberately lives
 # next to the transfer root, never inside it - `hide_secrets` runs `sed -i` over everything under
@@ -86,6 +87,26 @@ class Archive(gluetool.Module):
     Use the ``verify`` flag to verify given path on the artifact location provided by the ``coldstore`` module.
     Verification checks only that location, not every selected archive mode, and is skipped if any mode fails
     or only ``local`` mode is selected.
+
+    Source-destination map entries can enable gzip compression with ``compression: true``. For example::
+
+        destroy:
+          - source: "work-*/**/*.log"
+            compression: true
+
+    Compression is disabled by default and applies in every stage. Regular files are copied, redacted and
+    compressed before uploading, without modifying the originals. The uploaded filename gets a ``.gz`` suffix,
+    including when ``destination`` renames it. Explicit directory destinations should end with ``/``.
+    Directories and symlinks are uploaded without compression, with a warning. Already compressed files are
+    not detected: selecting ``file.gz`` produces ``file.gz.gz``. Compression failures warn, report to Sentry
+    when configured, and upload the redacted, uncompressed copy instead. Redaction failures still prevent upload.
+
+    Compression applies per entry: another entry, including a recursive directory upload, can still upload
+    the original representation. Previous remote files are not deleted. Report links and machine consumers
+    are not updated automatically; select files whose consumers support the changed filename and format.
+    The ``SOURCE_DESTINATION_MAP`` environment variable format does not support compression.
+    Rsync filters still match the original filename, and compressed rsync transfers use checksums to detect
+    changed contents even when their size and timestamp match an earlier upload.
 
     The ``enable-batched-archiving`` option makes the copy based stages transfer all their files with a
     single ``rsync --files-from`` invocation per rsync archive mode instead of one invocation per file.
@@ -370,6 +391,10 @@ class Archive(gluetool.Module):
                 for key, value in dict_entry.items():
                     if key not in SOURCE_DESTINATION_ENTRY_KEYS:
                         raise GlueError('Invalid key "{}" in source-destination-map entry'.format(key))
+
+                    # Native YAML booleans are not templates. Strings still support templating, like verify.
+                    if key == 'compression' and isinstance(value, bool):
+                        continue
 
                     # Render possible templates in the value
                     if value is not None:
@@ -713,6 +738,18 @@ class Archive(gluetool.Module):
         # Strip the rsync-only slash before finding the temporary directory to remove.
         shutil.rmtree(os.path.dirname(source.rstrip('/')))
 
+    def compress_source(self, source: str) -> str:
+        """Gzip a redacted temporary source, keeping the plain copy available for fallback."""
+
+        compressed_source = source + '.gz'
+        with open(source, 'rb') as input_file, open(compressed_source, 'wb') as output_file:
+            # Do not embed temporary names or timestamps in the gzip header.
+            with gzip.GzipFile(filename='', mode='wb', fileobj=output_file, mtime=0) as compressed_file:
+                shutil.copyfileobj(input_file, compressed_file)
+
+        shutil.copystat(source, compressed_source)
+        return compressed_source
+
     def _archiving_cancelled(self, stage: str) -> bool:
         """
         Whether parallel archiving has been cancelled and the ``progress`` stage should stop.
@@ -755,6 +792,10 @@ class Archive(gluetool.Module):
 
         # Verification polls the artifacts location for one particular file after its transfer.
         if normalize_bool_option(entry.get('verify') or False):
+            return False
+
+        # Compression needs a redacted per-file snapshot and its own upload filename.
+        if normalize_bool_option(entry.get('compression') or False):
             return False
 
         # `--chmod` applies to the whole invocation, including the directories implied by
@@ -1183,13 +1224,35 @@ class Archive(gluetool.Module):
         destination: str,
         archive_mode: str,
         options: Optional[List[str]] = None,
-        original_source: Optional[str] = None
+        original_source: Optional[str] = None,
+        uncompressed_source: Optional[str] = None
     ) -> None:
+        """Upload a source, optionally compressed from a redacted ``uncompressed_source`` snapshot."""
+
         options = options or []
 
         cmd = ['rsync']
 
-        cmd += self.rsync_options
+        if uncompressed_source is not None:
+            if self.rsync_filter_options:
+                # Match the plain snapshot's name, not its new .gz suffix. A local dry run lets
+                # rsync interpret its own rules, including merge files and escaped filenames.
+                with tempfile.TemporaryDirectory() as filter_root:
+                    output = Command(['rsync'] + self.rsync_filter_options + [
+                        '--dry-run', '--out-format=%n',
+                        uncompressed_source, os.path.join(filter_root, 'destination'),
+                    ], logger=self.logger).run()
+
+                if not output.stdout:
+                    self.debug('skipping {} because rsync-options filter rules exclude it'.format(uncompressed_source))
+                    return
+
+            # Filters have already selected the original name. Applying them again would instead
+            # select on the .gz name. Gzip sizes can stay equal after an append within the same
+            # second, so the usual size/mtime quick check is not sufficient either.
+            cmd += self.rsync_transfer_options + ['--checksum']
+        else:
+            cmd += self.rsync_options
 
         if options:
             cmd += options
@@ -1425,16 +1488,23 @@ class Archive(gluetool.Module):
         destination = entry.get('destination', '')
         permissions = entry.get('permissions')
         verify = normalize_bool_option(entry.get('verify') or False)
+        compression = normalize_bool_option(entry.get('compression') or False)
+        verify_source = source
 
         source_copy_path: Optional[str] = None
         try:
+            if compression and (os.path.islink(source) or not os.path.isfile(source)):
+                self.warn(f'Cannot compress {source}: only regular files are supported, uploading unchanged')
+                compression = False
+
             archive_source = source
             original_source: Optional[str] = None
+            uncompressed_source: Optional[str] = None
             source_stats: Dict[str, FileStat] = {}
             # hide-secrets uses 'sed -i', which changes the inode and breaks writing to live logs.
             # Prepare one redacted snapshot for all modes in the 'progress' and 'execute' stages,
-            # and for pre-report publication.
-            if source_copy or stage in ARCHIVE_STAGES_USING_COPY:
+            # and for pre-report publication. Compression always needs a copy, including at destroy.
+            if source_copy or stage in ARCHIVE_STAGES_USING_COPY or compression:
                 source_copy_path, original_source, source_stats = self.prepare_source_copy(source)
                 archive_source = source_copy_path
 
@@ -1450,6 +1520,36 @@ class Archive(gluetool.Module):
                 )
             else:
                 self.shared('hide_secrets', search_path=archive_source)
+
+            if compression:
+                # A source may have become a symlink while snapshotting. Redaction skips symlinks,
+                # so never follow a copied link to compress a potentially unredacted target.
+                if os.path.islink(archive_source) or not os.path.isfile(archive_source):
+                    self.warn(f'Cannot compress {source}: only regular files are supported, uploading unchanged')
+                else:
+                    destination_is_directory = bool(destination) and (
+                        destination.endswith('/') or os.path.isdir(destination)
+                    )
+                    if destination_is_directory:
+                        # AWS also needs the slash to distinguish a directory prefix from a filename.
+                        destination = os.path.join(destination, '')
+                        verify_source = os.path.join(destination, os.path.basename(source))
+                    else:
+                        verify_source = destination or source
+
+                    try:
+                        compressed_source = self.compress_source(archive_source)
+                    except Exception as error:
+                        self.warn(f'Failed to compress {source}, uploading uncompressed: {error}', sentry=True)
+                    else:
+                        uncompressed_source = archive_source
+                        archive_source = compressed_source
+                        # Both backends use this logical name for implicit destinations, not the temp path.
+                        original_source = source + '.gz'
+                        if destination and not destination_is_directory:
+                            destination += '.gz'
+                        verify_source += '.gz'
+
             verify_archive = any(mode != 'local' for mode in self.archive_modes)
 
             for archive_mode in self.archive_modes:
@@ -1475,7 +1575,8 @@ class Archive(gluetool.Module):
                         self.run_rsync(
                             archive_source, destination, archive_mode,
                             options=options or None,
-                            original_source=original_source
+                            original_source=original_source,
+                            uncompressed_source=uncompressed_source
                         )
 
                 except Exception as error:
@@ -1488,7 +1589,7 @@ class Archive(gluetool.Module):
 
             # Verify only the coldstore location, not all archive destinations.
             # Skip verification after any upload failure: the failed mode may serve this URL.
-            target = self.shared('artifacts_location', source.lstrip('/'))
+            target = self.shared('artifacts_location', verify_source.lstrip('/'))
 
             def _verify_archivation() -> Result[bool, bool]:
                 with gluetool.utils.requests() as request:

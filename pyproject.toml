@@ -130,7 +130,7 @@ url-shortener = "gluetool_modules_framework.helpers.url_shortener:URLShortener"
 [tool.poetry.dependencies]
 python = "~3.12"
 
-ansible-core = "2.16.15"
+ansible-core = "2.21.6"
 # NOTE: without this dependency the installation will fail with
 #  "The 'backports-abc>=0.4' distribution was not found and is required by tornado"
 backports-abc = "^0.5"

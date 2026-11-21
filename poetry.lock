@@ -26,22 +26,22 @@ files = [
 
 [[package]]
 name = "ansible-core"
-version = "2.16.15"
+version = "2.21.6"
 description = "Radically simple IT automation"
 category = "main"
 optional = false
-python-versions = ">=3.10"
+python-versions = ">=3.12"
 files = [
-    {file = "ansible_core-2.16.15-py3-none-any.whl", hash = "sha256:f0d85c2ac8df8c2377cf2dae34dc022b47ec02e3c9975090fe49fa11bf2fb097"},
-    {file = "ansible_core-2.16.15.tar.gz", hash = "sha256:fd2992583d129ebd8c9585ec309ffcc61b6b9e1bac4df9daa08fb4015f16694b"},
+    {file = "ansible_core-2.21.6-py3-none-any.whl", hash = "sha256:c1fc3cbe821176ba4227b1cae8c748e1d28d42dde605e807d23c58f71b6d1a74"},
+    {file = "ansible_core-2.21.6.tar.gz", hash = "sha256:3fa05b4b1af69f2fa19b49dde8edd5a23e693c2c1c3bda2d85fce73bd6cfc36d"},
 ]
 
 [package.dependencies]
 cryptography = "*"
-jinja2 = ">=3.0.0"
+jinja2 = ">=3.1.0"
 packaging = "*"
 PyYAML = ">=5.1"
-resolvelib = ">=0.5.3,<1.1.0"
+resolvelib = ">=0.8.0,<2.0.0"
 
 [[package]]
 name = "asttokens"
@@ -3926,4 +3926,4 @@ development = ["ipdb"]
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.12"
-content-hash = "b34d8106d26cdad2fa7c4a91d59d7e0da093f7ee2957a9765209a3828a7b20fa"
+content-hash = "36e0188c914b6b04d6b1bdefc220d135f7a94344310ea0af6232e0730fb187cf"

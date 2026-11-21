@@ -119,12 +119,28 @@ command:
       - /testing_farm_profiles.testing_farm[[:space:]]+0\.0\.1/
     timeout: 100000
 
+  ansible --version:
+    exit-status: 0
+    stdout:
+      - /ansible \[core 2\.21\.6\]/
+    timeout: 100000
+
+  # Python 3.15 patch of ansible-core 2.21
+  # yamllint disable-line rule:line-length
+  grep -q "target_attribute, \.\.\.)" /opt/gluetool/lib/python3.12/site-packages/ansible/module_utils/_internal/_patches/__init__.py:
+    exit-status: 0
+    timeout: 100000
+
   # --no-deps must keep the profiles collections from pulling in a newer community.general
   ansible-galaxy collection list community.general:
     exit-status: 0
     stdout:
       - /13\.5\.1/
       - '!/14\./'
+    timeout: 100000
+
+  ansible-doc -t callback ansible.posix.debug:
+    exit-status: 0
     timeout: 100000
 
   citool -l:

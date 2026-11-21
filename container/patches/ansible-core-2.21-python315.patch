@@ -1,0 +1,16 @@
+--- a/ansible/module_utils/_internal/_patches/__init__.py
++++ b/ansible/module_utils/_internal/_patches/__init__.py
+@@ -44,3 +44,3 @@
+         """Get the current (possibly patched) implementation from the patch target container."""
+-        return getattr(cls.target_container, cls.target_attribute)
++        return getattr(cls.target_container, cls.target_attribute, ...)
+
+@@ -57,2 +57,8 @@
+
++        if cls.unpatched_implementation is ...:
++            raise RuntimeError(
++                f"Patch {cls.__name__!r} appears to be needed, but implementation to be patched "
++                f"('{cls.target_container.__name__}.{cls.target_attribute}') is not present."
++            )
++
+         # __call__ requires an instance (otherwise it'll be __new__)

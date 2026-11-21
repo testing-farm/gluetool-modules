@@ -48,6 +48,9 @@ ENV PYTHON_VERSION=3.12
 # Ansible requirements
 COPY container/requirements.yml /etc/ansible/requirements.yml
 
+# Patches applied to the Python packages of the citool virtual environment
+COPY container/patches/ /tmp/patches/
+
 # ~/.gitconfig is required for some operations of the git library in gluetool-modules
 COPY container/.gitconfig /root/.gitconfig
 
@@ -60,7 +63,7 @@ RUN    ln -s /CONFIG /etc/citool.d \
                       libpq-devel libtool libxml2-devel make openssl-devel popt-devel \
                       postgresql-devel python3.9 python${PYTHON_VERSION}-devel python3-libselinux \
                       redhat-rpm-config koji python3-virtualenv \
-                      rsync beakerlib-libraries rpm-build rpm-devel awscli \
+                      rsync beakerlib-libraries rpm-build rpm-devel awscli patch \
     # Pull in tmt from @teemtee/stable copr repository, or from the `TMT_COPR` repository if set,
     # the installed version is stored in /etc/tmt-version for goss tests
     && dnf copr -y enable @teemtee/stable \
@@ -119,6 +122,11 @@ COPY dist/gluetool_modules_framework*.whl .
 RUN    virtualenv -p python${PYTHON_VERSION} /opt/gluetool \
     && source /opt/gluetool/bin/activate \
     && pip${PYTHON_VERSION} install gluetool_modules_framework*.whl \
+    # Python 3.15 support for ansible-core 2.21 (Fedora 45, Rawhide). ansible-core 2.21.6 fails every module there with
+    # `AttributeError: module 'dataclasses' has no attribute '_is_type'`. Fixed in ansible-core 2.22.
+    # Drop when ansible-core 2.21.x ships the fix or we move to 2.22.
+    && patch -d /opt/gluetool/lib/python${PYTHON_VERSION}/site-packages -p1 < /tmp/patches/ansible-core-2.21-python315.patch \
+    && rm -rf /tmp/patches \
     && ansible-galaxy install --timeout 120 -r /etc/ansible/requirements.yml \
     && pip${PYTHON_VERSION} install dnspython \
     && rm -f gluetool_modules_framework*.whl \

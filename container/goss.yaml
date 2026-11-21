@@ -108,15 +108,23 @@ command:
   ansible-galaxy collection list:
     exit-status: 0
     stdout:
-      - /ansible.posix[[:space:]]+1\.5\.4/
-      - /community.crypto[[:space:]]+2\.26\.6/
-      - /community.general[[:space:]]+11\.4\.1/
-      - /community.postgresql[[:space:]]+4\.1\.0/
+      - /ansible.posix[[:space:]]+2\.2\.2/
+      - /community.crypto[[:space:]]+3\.5\.1/
+      - /community.general[[:space:]]+13\.5\.1/
+      - /community.postgresql[[:space:]]+4\.2\.0/
       - /testing_farm_profiles.library[[:space:]]+0\.0\.1/
       - /testing_farm_profiles.repository[[:space:]]+0\.0\.1/
       - /testing_farm_profiles.workarounds[[:space:]]+0\.0\.1/
       - /testing_farm_profiles.baseos_ci[[:space:]]+0\.0\.1/
       - /testing_farm_profiles.testing_farm[[:space:]]+0\.0\.1/
+    timeout: 100000
+
+  # --no-deps must keep the profiles collections from pulling in a newer community.general
+  ansible-galaxy collection list community.general:
+    exit-status: 0
+    stdout:
+      - /13\.5\.1/
+      - '!/14\./'
     timeout: 100000
 
   citool -l:

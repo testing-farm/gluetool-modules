@@ -123,6 +123,12 @@ COPY dist/gluetool_modules_framework*.whl .
 RUN    virtualenv -p python${PYTHON_VERSION} /opt/gluetool \
     && source /opt/gluetool/bin/activate \
     && pip${PYTHON_VERSION} install gluetool_modules_framework*.whl \
+    # Patch ansible-core 2.16 `urls.py`, which assigns `ssl.PROTOCOL_TLSv1` unconditionally. The system
+    # Python of Fedora 45 (3.15) lacks this constant, so modules like `uri` fail on Fedora 45 guests.
+    # The fallback is never used on modern Pythons. Drop this once ansible-core is 2.17 or later.
+    && f=$(python${PYTHON_VERSION} -c 'import ansible.module_utils.urls as u; print(u.__file__)') \
+    && sed -i 's/^    PROTOCOL = ssl\.PROTOCOL_TLSv1$/    PROTOCOL = getattr(ssl, "PROTOCOL_TLSv1", ssl.PROTOCOL_SSLv23)/' "$f" \
+    && grep -q 'getattr(ssl, "PROTOCOL_TLSv1"' "$f" \
     && ansible-galaxy install --timeout 120 -r /etc/ansible/requirements.yml \
     && pip${PYTHON_VERSION} install dnspython \
     && rm -f gluetool_modules_framework*.whl \

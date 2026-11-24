@@ -197,6 +197,11 @@ command:
     exit-status: 0
     timeout: 100000
 
+  # ansible-core 2.16 `urls.py` patched for Fedora 45 guests, see container/Dockerfile
+  grep -q 'getattr(ssl, "PROTOCOL_TLSv1"' /opt/gluetool/lib/python3.12/site-packages/ansible/module_utils/urls.py:
+    exit-status: 0
+    timeout: 100000
+
   /opt/gluetool/bin/pip3 show dnspython:
     exit-status: 0
     timeout: 100000
